@@ -36,7 +36,6 @@ interface QueueRow {
   file_name: string;
   file_category: string;
   status: string;
-  organization_id: string | null;
   uploaded_by: string | null;
 }
 
@@ -369,7 +368,7 @@ serve(async (req: Request) => {
   const { data: queueEntry, error: fetchError } = await supabase
     .from("file_processing_queue")
     .select(
-      "id, storage_bucket, storage_path, file_name, file_category, status, organization_id, uploaded_by",
+      "id, storage_bucket, storage_path, file_name, file_category, status, uploaded_by",
     )
     .eq("id", queueId)
     .single();

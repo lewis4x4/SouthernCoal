@@ -112,14 +112,14 @@ export function useFileUpload() {
   }
 
   /**
-   * Check for duplicate file hash in the queue (tenant-scoped per v6 Section 3).
+   * Check for duplicate file hash in the queue.
+   * RLS already scopes to user's org via uploaded_by → user_profiles chain.
    */
-  async function checkDuplicate(fileHash: string, orgId: string): Promise<boolean> {
+  async function checkDuplicate(fileHash: string): Promise<boolean> {
     const { data } = await supabase
       .from('file_processing_queue')
       .select('id')
       .eq('file_hash', fileHash)
-      .eq('organization_id', orgId)
       .limit(1);
 
     return (data?.length ?? 0) > 0;
@@ -164,7 +164,7 @@ export function useFileUpload() {
         useStagingStore.getState().updateFile(stagedFile.id, { hashHex });
 
         // 3. Check for duplicates (tenant-scoped)
-        const isDuplicate = await checkDuplicate(hashHex, userProfile.organization_id);
+        const isDuplicate = await checkDuplicate(hashHex);
         if (isDuplicate) {
           uploadStore.completeUpload(stagedFile.id);
           toast.warning('This file has already been uploaded (matching file hash).');
@@ -209,7 +209,6 @@ export function useFileUpload() {
             state_code: effectiveState ?? null,
             status: 'queued',
             uploaded_by: userProfile.id,
-            organization_id: userProfile.organization_id,
           })
           .select()
           .single();
