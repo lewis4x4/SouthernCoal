@@ -2,6 +2,7 @@ import { useStagingStore } from '@/stores/staging';
 import { useUploadStore } from '@/stores/upload';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { CATEGORIES, CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
 import { validateFile } from '@/lib/file-validation';
 import { cn } from '@/lib/cn';
@@ -24,6 +25,7 @@ export function SmartStaging() {
   const activeUploads = useUploadStore((s) => s.activeUploads);
   const { uploadFile, uploadAll } = useFileUpload();
   const { can } = usePermissions();
+  const { log } = useAuditLog();
 
   if (files.length === 0) return null;
 
@@ -46,7 +48,7 @@ export function SmartStaging() {
         </h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={clearAll}
+            onClick={() => { clearAll(); log('staging_clear_all'); }}
             className="px-3 py-1.5 text-xs font-medium rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] border border-white/[0.06] transition-colors"
           >
             <Trash2 size={12} className="inline mr-1" />

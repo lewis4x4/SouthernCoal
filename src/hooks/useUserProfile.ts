@@ -28,7 +28,7 @@ export function useUserProfile() {
     async function fetchProfile() {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, email, full_name, organization_id, created_at, organizations(name)')
+        .select('id, email, first_name, last_name, organization_id, created_at, organizations(name)')
         .eq('id', user!.id)
         .single();
 
@@ -46,7 +46,8 @@ export function useUserProfile() {
         profile: {
           id: data.id,
           email: data.email,
-          full_name: data.full_name,
+          first_name: data.first_name,
+          last_name: data.last_name,
           organization_id: data.organization_id,
           created_at: data.created_at,
         },

@@ -126,10 +126,15 @@ export function CommandPalette() {
               {can('upload') && (
                 <Command.Item
                   value="upload files drag drop"
+                  onSelect={() =>
+                    runAction('upload_hint', () => {
+                      setOpen(false);
+                    })
+                  }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
                 >
                   <Upload size={12} />
-                  Upload files (drag & drop)
+                  Upload files (drag & drop anywhere)
                 </Command.Item>
               )}
               {can('bulk_process') && (
@@ -147,6 +152,11 @@ export function CommandPalette() {
               {can('retry') && (
                 <Command.Item
                   value="retry all failed"
+                  onSelect={() =>
+                    runAction('retry_all_failed', () => {
+                      // TODO: wire retryAllFailed when bulk retry is implemented
+                    })
+                  }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
                 >
                   <RefreshCw size={12} />
@@ -156,6 +166,11 @@ export function CommandPalette() {
               {can('export') && (
                 <Command.Item
                   value="export matrix csv"
+                  onSelect={() =>
+                    runAction('export_matrix_csv', () => {
+                      // TODO: trigger matrix CSV export from here
+                    })
+                  }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
                 >
                   <Download size={12} />

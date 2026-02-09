@@ -14,7 +14,8 @@ export type Role = (typeof ROLES)[number];
 export interface UserProfile {
   id: string;
   email: string;
-  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   organization_id: string;
   created_at: string;
 }

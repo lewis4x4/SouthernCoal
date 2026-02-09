@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useSpring, useTransform, motion, type MotionValue } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { useSpring, useTransform } from 'framer-motion';
 import { cn } from '@/lib/cn';
 
 interface AnimatedCounterProps {
@@ -15,6 +15,7 @@ interface AnimatedCounterProps {
 export function AnimatedCounter({ value, className }: AnimatedCounterProps) {
   const spring = useSpring(value, { stiffness: 100, damping: 20 });
   const display = useTransform(spring, (v: number) => Math.round(v).toLocaleString());
+  const [rendered, setRendered] = useState(() => Math.round(value).toLocaleString());
   const prevRef = useRef(value);
 
   useEffect(() => {
@@ -24,9 +25,14 @@ export function AnimatedCounter({ value, className }: AnimatedCounterProps) {
     }
   }, [value, spring]);
 
+  useEffect(() => {
+    const unsubscribe = display.on('change', (v) => setRendered(v));
+    return unsubscribe;
+  }, [display]);
+
   return (
-    <motion.span className={cn('font-mono tabular-nums', className)}>
-      {display as unknown as MotionValue<string>}
-    </motion.span>
+    <span className={cn('font-mono tabular-nums', className)}>
+      {rendered}
+    </span>
   );
 }

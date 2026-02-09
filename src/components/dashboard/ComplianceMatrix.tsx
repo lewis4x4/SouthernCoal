@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useComplianceMatrix, type MatrixCellStatus } from '@/hooks/useComplianceMatrix';
 import { useQueueStore } from '@/stores/queue';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { GlassProgress } from '@/components/ui/GlassProgress';
 import { CATEGORIES, STATES } from '@/lib/constants';
 import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
@@ -44,6 +45,7 @@ export function ComplianceMatrix() {
   const { cells, stateProgress, categoryCounts } = useComplianceMatrix();
   const setFilters = useQueueStore((s) => s.setFilters);
   const { can } = usePermissions();
+  const { log } = useAuditLog();
   const [expectedCounts, setExpectedCounts] = useState(getExpectedCounts);
 
   function handleCellClick(stateCode: string, categoryKey: string) {
@@ -85,6 +87,8 @@ export function ComplianceMatrix() {
       const mdRows = rows.map((r) => `| ${r.join(' | ')} |`);
       content = [mdHeader, mdSep, ...mdRows, '', `> ${DISCLAIMER_EXPORT}`].join('\n');
     }
+
+    log(format === 'csv' ? 'matrix_export_csv' : 'matrix_export_markdown');
 
     const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'text/markdown' });
     const url = URL.createObjectURL(blob);

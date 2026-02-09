@@ -91,5 +91,37 @@ USING (
   )
 );
 
+-- user_profiles: SELECT for own profile
+-- Users need to read their own profile for org scoping and display
+CREATE POLICY "Users can view own profile"
+ON user_profiles FOR SELECT
+TO authenticated
+USING (id = auth.uid());
+
+-- organizations: SELECT scoped to user's org
+-- Users need to read their org name for header display
+CREATE POLICY "Users can view own organization"
+ON organizations FOR SELECT
+TO authenticated
+USING (
+  id IN (
+    SELECT organization_id FROM user_profiles WHERE id = auth.uid()
+  )
+);
+
+-- roles: SELECT for all authenticated
+-- Reference table — all users need to resolve role names
+CREATE POLICY "Authenticated users can read roles"
+ON roles FOR SELECT
+TO authenticated
+USING (true);
+
+-- user_role_assignments: SELECT for own assignments
+-- Users need to read their own role assignments for RBAC
+CREATE POLICY "Users can view own role assignments"
+ON user_role_assignments FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
 -- NOTE: audit_log INSERT policy for authenticated users is confirmed to already
 -- exist per CMS Schema Documentation. No additional policy needed.

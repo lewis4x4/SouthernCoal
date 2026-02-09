@@ -55,6 +55,12 @@ export function usePermissions() {
         return;
       }
 
+      if (data.length === 0) {
+        console.warn(
+          '[permissions] No role assignments found — defaulting to read_only. Check RLS policies on user_role_assignments.',
+        );
+      }
+
       const mapped: RoleAssignment[] = data.map((row) => ({
         id: row.id,
         user_id: row.user_id,

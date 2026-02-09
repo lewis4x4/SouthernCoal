@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import { useStagingStore } from '@/stores/staging';
@@ -22,7 +22,7 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
   const { addFiles } = useStagingStore();
   const { classify } = useAutoClassify();
   const { can } = usePermissions();
-  const dragCountRef = { current: 0 };
+  const dragCountRef = useRef(0);
 
   const handleDragEnter = useCallback(
     (e: DragEvent) => {
