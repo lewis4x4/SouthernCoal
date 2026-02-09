@@ -162,7 +162,7 @@ async function extractPermitData(
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [
           {
             role: "user",
@@ -200,9 +200,30 @@ async function extractPermitData(
       throw new Error("Claude returned empty response");
     }
 
+    console.log("[parse-permit-pdf] Claude response length:", text.length, "chars");
+
     // Parse JSON — handle markdown code fences if present
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
+    let jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
+
+    // Clean up common JSON issues from LLM output:
+    // 1. Remove trailing commas before } or ]
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    // 2. Remove single-line comments
+    jsonStr = jsonStr.replace(/\/\/[^\n]*/g, "");
+    // 3. If response was truncated, try to salvage by closing open structures
+    if (!jsonStr.endsWith("}")) {
+      // Find the last complete limit entry and close the array + object
+      const lastCompleteEntry = jsonStr.lastIndexOf("}");
+      if (lastCompleteEntry > 0) {
+        const truncated = jsonStr.slice(0, lastCompleteEntry + 1);
+        // Count open brackets to close them
+        const openBrackets = (truncated.match(/\[/g) || []).length - (truncated.match(/\]/g) || []).length;
+        const openBraces = (truncated.match(/\{/g) || []).length - (truncated.match(/\}/g) || []).length;
+        jsonStr = truncated + "]".repeat(Math.max(0, openBrackets)) + "}".repeat(Math.max(0, openBraces));
+        console.log("[parse-permit-pdf] Repaired truncated JSON (closed", openBrackets, "arrays,", openBraces, "objects)");
+      }
+    }
 
     const parsed: ExtractedPermitData = JSON.parse(jsonStr);
     return parsed;
