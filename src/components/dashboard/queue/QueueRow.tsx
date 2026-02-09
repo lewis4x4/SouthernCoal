@@ -2,7 +2,8 @@ import { GlassBadge } from '@/components/ui/GlassBadge';
 import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useQueueStore } from '@/stores/queue';
-import { CATEGORY_BY_DB_KEY, STATE_BY_CODE } from '@/lib/constants';
+import { supabase } from '@/lib/supabase';
+import { CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import { ChevronDown, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
@@ -25,10 +26,25 @@ export function QueueRow({ entry }: QueueRowProps) {
 
   const isExpanded = expandedRowId === entry.id;
   const category = CATEGORY_BY_DB_KEY[entry.file_category];
-  const state = entry.state_code ? STATE_BY_CODE[entry.state_code] : null;
   const isPermit = entry.file_category === 'npdes_permit';
   const canProcess = isPermit && entry.status === 'queued' && can('process');
   const canRetry = entry.status === 'failed' && can('retry');
+
+  async function handleStateChange(queueEntry: QueueEntry, newState: string) {
+    const stateCode = newState || null;
+    // Optimistic update in store
+    useQueueStore.getState().upsertEntry({ ...queueEntry, state_code: stateCode });
+    // Persist to DB
+    const { error } = await supabase
+      .from('file_processing_queue')
+      .update({ state_code: stateCode, updated_at: new Date().toISOString() })
+      .eq('id', queueEntry.id);
+    if (error) {
+      console.error('[queue] Failed to update state_code:', error.message);
+      // Revert on failure
+      useQueueStore.getState().upsertEntry(queueEntry);
+    }
+  }
 
   return (
     <div
@@ -60,10 +76,22 @@ export function QueueRow({ entry }: QueueRowProps) {
         {category?.label ?? entry.file_category}
       </span>
 
-      {/* State */}
-      <span className="text-text-secondary text-xs w-12">
-        {state?.code ?? entry.state_code ?? '—'}
-      </span>
+      {/* State — editable dropdown */}
+      <div className="w-16 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={entry.state_code ?? ''}
+          onChange={(e) => handleStateChange(entry, e.target.value)}
+          className="bg-transparent text-text-secondary text-xs w-full cursor-pointer hover:text-text-primary transition-colors border-none outline-none appearance-none"
+          title="Change state"
+        >
+          <option value="" className="bg-[#0d1117] text-[#f1f5f9]">—</option>
+          {STATES.map((s) => (
+            <option key={s.code} value={s.code} className="bg-[#0d1117] text-[#f1f5f9]">
+              {s.code}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Status badge */}
       <GlassBadge variant={entry.status as FileStatus}>

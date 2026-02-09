@@ -35,6 +35,7 @@ interface QueueRow {
   storage_path: string;
   file_name: string;
   file_category: string;
+  state_code: string | null;
   status: string;
   uploaded_by: string | null;
 }
@@ -284,21 +285,36 @@ async function markProcessing(
   }
 }
 
+const VALID_STATES = ["AL", "KY", "TN", "VA", "WV"];
+
 async function markParsed(
   supabase: ReturnType<typeof createClient>,
   queueId: string,
   extractedData: ExtractedPermitData,
+  currentStateCode: string | null,
 ): Promise<void> {
   const now = new Date().toISOString();
+
+  // Auto-fill state_code from extraction if missing on upload
+  const extractedState = extractedData.state?.toUpperCase() ?? null;
+  const shouldFillState = !currentStateCode && extractedState && VALID_STATES.includes(extractedState);
+
+  const updateData: Record<string, unknown> = {
+    status: "parsed",
+    extracted_data: extractedData,
+    records_extracted: extractedData.limit_count ?? extractedData.limits?.length ?? 0,
+    processing_completed_at: now,
+    updated_at: now,
+  };
+
+  if (shouldFillState) {
+    updateData.state_code = extractedState;
+    console.log("[parse-permit-pdf] Auto-filled state_code:", extractedState);
+  }
+
   const { error } = await supabase
     .from("file_processing_queue")
-    .update({
-      status: "parsed",
-      extracted_data: extractedData,
-      records_extracted: extractedData.limit_count ?? extractedData.limits?.length ?? 0,
-      processing_completed_at: now,
-      updated_at: now,
-    })
+    .update(updateData)
     .eq("id", queueId);
 
   if (error) {
@@ -389,7 +405,7 @@ serve(async (req: Request) => {
   const { data: queueEntry, error: fetchError } = await supabase
     .from("file_processing_queue")
     .select(
-      "id, storage_bucket, storage_path, file_name, file_category, status, uploaded_by",
+      "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by",
     )
     .eq("id", queueId)
     .single();
@@ -464,23 +480,29 @@ serve(async (req: Request) => {
       console.warn("[parse-permit-pdf] No permit number found in", queueEntry.file_name);
 
       const now = new Date().toISOString();
+      const extractedState = extractedData.state?.toUpperCase() ?? null;
+      const shouldFillState = !queueEntry.state_code && extractedState && VALID_STATES.includes(extractedState);
+
+      const updateData: Record<string, unknown> = {
+        status: "parsed",
+        extracted_data: extractedData,
+        records_extracted:
+          extractedData.limit_count ?? extractedData.limits?.length ?? 0,
+        error_log: [
+          "No permit number found in this document. Please verify this is an NPDES permit.",
+        ],
+        processing_completed_at: now,
+        updated_at: now,
+      };
+      if (shouldFillState) updateData.state_code = extractedState;
+
       await supabase
         .from("file_processing_queue")
-        .update({
-          status: "parsed",
-          extracted_data: extractedData,
-          records_extracted:
-            extractedData.limit_count ?? extractedData.limits?.length ?? 0,
-          error_log: [
-            "No permit number found in this document. Please verify this is an NPDES permit.",
-          ],
-          processing_completed_at: now,
-          updated_at: now,
-        })
+        .update(updateData)
         .eq("id", queueId);
     } else {
       // 13. Full success
-      await markParsed(supabase, queueId, extractedData);
+      await markParsed(supabase, queueId, extractedData, queueEntry.state_code);
     }
 
     console.log(
