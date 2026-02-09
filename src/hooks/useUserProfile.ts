@@ -26,21 +26,32 @@ export function useUserProfile() {
     }
 
     async function fetchProfile() {
+      // Fetch profile WITHOUT organizations join to avoid circular RLS dependency
+      // (organizations policy references user_profiles → 500 error when joined)
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, email, first_name, last_name, organization_id, created_at, organizations(name)')
+        .select('id, email, first_name, last_name, organization_id, created_at')
         .eq('id', user!.id)
         .single();
 
       if (error) {
+        console.error('[profile] Failed to fetch profile:', error.message);
         setState((s) => ({ ...s, loading: false, error: error.message }));
         return;
       }
 
-      const orgName =
-        data.organizations && typeof data.organizations === 'object' && 'name' in data.organizations
-          ? (data.organizations.name as string)
-          : null;
+      // Fetch org name separately to avoid circular RLS
+      let orgName: string | null = null;
+      if (data.organization_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', data.organization_id)
+          .single();
+        orgName = orgData?.name ?? null;
+      }
+
+      console.log('[profile] Loaded:', { id: data.id, org: orgName });
 
       setState({
         profile: {
