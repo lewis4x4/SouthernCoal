@@ -14,8 +14,9 @@ import type { QueueEntry } from '@/types/queue';
  * 1. JIT hash computation (capped at 2 concurrent workers)
  * 2. 10-slot upload concurrency
  * 3. getFreshToken() before each upload (v6 Section 11)
- * 4. Supabase Storage upload + Edge Function call
- * 5. Optimistic queue injection
+ * 4. Supabase Storage upload
+ * 5. Direct INSERT into file_processing_queue
+ * 6. Duplicate detection by file hash
  */
 export function useFileUpload() {
   const { profile } = useUserProfile();
@@ -111,6 +112,20 @@ export function useFileUpload() {
   }
 
   /**
+   * Check for duplicate file hash in the queue (tenant-scoped per v6 Section 3).
+   */
+  async function checkDuplicate(fileHash: string, orgId: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('file_processing_queue')
+      .select('id')
+      .eq('file_hash', fileHash)
+      .eq('organization_id', orgId)
+      .limit(1);
+
+    return (data?.length ?? 0) > 0;
+  }
+
+  /**
    * Upload a single staged file.
    */
   const uploadFile = useCallback(
@@ -148,17 +163,25 @@ export function useFileUpload() {
         // Update staged file with hash
         useStagingStore.getState().updateFile(stagedFile.id, { hashHex });
 
-        // 3. Get fresh auth token
-        const token = await getFreshToken();
+        // 3. Check for duplicates (tenant-scoped)
+        const isDuplicate = await checkDuplicate(hashHex, userProfile.organization_id);
+        if (isDuplicate) {
+          uploadStore.completeUpload(stagedFile.id);
+          toast.warning('This file has already been uploaded (matching file hash).');
+          return;
+        }
 
-        // 4. Build storage path
+        // 4. Get fresh auth token (ensures session is valid for storage upload)
+        await getFreshToken();
+
+        // 5. Build storage path
         const storagePath = categoryConfig.buildPath({
           stateCode: effectiveState,
           fileName: stagedFile.fileName,
           hashPrefix,
         });
 
-        // 5. Upload to Supabase Storage
+        // 6. Upload to Supabase Storage
         uploadStore.setStatus(stagedFile.id, 'uploading');
         const { error: storageError } = await supabase.storage
           .from(categoryConfig.bucket)
@@ -171,87 +194,41 @@ export function useFileUpload() {
           throw new Error(`Storage upload failed: ${storageError.message}`);
         }
 
-        // 6. Inject optimistic queue row
-        const tempId = `temp-${crypto.randomUUID()}`;
-        const optimisticEntry: QueueEntry = {
-          id: tempId,
-          storage_bucket: categoryConfig.bucket,
-          storage_path: storagePath,
-          file_name: stagedFile.fileName,
-          file_size_bytes: stagedFile.fileSize,
-          mime_type: stagedFile.mimeType,
-          file_hash: hashHex,
-          file_category: effectiveCategory,
-          state_code: effectiveState ?? null,
-          status: 'uploaded',
-          processing_started_at: null,
-          processing_completed_at: null,
-          records_extracted: 0,
-          records_imported: 0,
-          records_failed: 0,
-          error_log: null,
-          extracted_data: null,
-          document_id: null,
-          data_import_id: null,
-          uploaded_by: userProfile.id,
-          organization_id: userProfile.organization_id,
-          r2_archived: false,
-          r2_archive_path: null,
-          r2_archived_at: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        useQueueStore.getState().upsertEntry(optimisticEntry);
+        // 7. INSERT directly into file_processing_queue
+        // (Bypasses Edge Function — inserts via client with RLS)
+        const { data: insertedRow, error: insertError } = await supabase
+          .from('file_processing_queue')
+          .insert({
+            storage_bucket: categoryConfig.bucket,
+            storage_path: storagePath,
+            file_name: stagedFile.fileName,
+            file_size_bytes: stagedFile.fileSize,
+            mime_type: stagedFile.mimeType,
+            file_hash: hashHex,
+            file_category: effectiveCategory,
+            state_code: effectiveState ?? null,
+            status: 'queued',
+            uploaded_by: userProfile.id,
+            organization_id: userProfile.organization_id,
+          })
+          .select()
+          .single();
 
-        // 7. Call file-upload-handler Edge Function
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/file-upload-handler`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              bucket: categoryConfig.bucket,
-              path: storagePath,
-              fileName: stagedFile.fileName,
-              fileSize: stagedFile.fileSize,
-              mimeType: stagedFile.mimeType,
-              stateCode: effectiveState,
-              category: effectiveCategory,
-              organizationId: userProfile.organization_id, // v6 Section 3: tenant-scoped dedup
-              // TODO: MULTI-TENANT — current UNIQUE constraint is global, not org-scoped
-            }),
-          },
-        );
-
-        const result = await response.json();
-        console.log('[upload] Edge Function response:', { status: response.status, result });
-
-        if (!response.ok) {
-          throw new Error(`Edge Function HTTP ${response.status}: ${JSON.stringify(result)}`);
+        if (insertError) {
+          // Clean up the storage file since the queue row failed
+          await supabase.storage.from(categoryConfig.bucket).remove([storagePath]);
+          throw new Error(`Queue insert failed: ${insertError.message}`);
         }
 
-        if (result.status === 'duplicate') {
-          // Remove optimistic row
-          useQueueStore.getState().removeEntry(tempId);
-          toast.warning('This file has already been uploaded (matching file hash).');
-          uploadStore.completeUpload(stagedFile.id);
-          return;
-        }
+        console.log('[upload] Queue row created:', insertedRow.id);
 
-        if (result.status === 'error') {
-          useQueueStore.getState().removeEntry(tempId);
-          throw new Error(result.error || 'Upload handler returned error');
-        }
+        // 8. Add real row to Zustand store (not optimistic — this is the actual DB row)
+        useQueueStore.getState().upsertEntry(insertedRow as QueueEntry);
 
-        // Success — remove from staging, update optimistic row with real ID
+        // 9. Success — remove from staging
         useStagingStore.getState().removeFile(stagedFile.id);
         uploadStore.completeUpload(stagedFile.id);
 
-        // The Realtime subscription will swap the optimistic row for the real record
         toast.success(`${stagedFile.fileName} uploaded successfully.`);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upload failed';
