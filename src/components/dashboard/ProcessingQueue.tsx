@@ -1,7 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useQueueStore } from '@/stores/queue';
+import { useQueueStore, filterEntries } from '@/stores/queue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
@@ -19,8 +19,9 @@ const ROW_HEIGHT = 56;
  * separately below the list to avoid scroll-jump issues.
  */
 export function ProcessingQueue() {
-  const entries = useQueueStore((s) => s.getFilteredEntries());
   const allEntries = useQueueStore((s) => s.entries);
+  const filters = useQueueStore((s) => s.filters);
+  const entries = useMemo(() => filterEntries(allEntries, filters), [allEntries, filters]);
   const expandedRowId = useQueueStore((s) => s.expandedRowId);
   const { refetch } = useRealtimeQueue();
   const { can } = usePermissions();

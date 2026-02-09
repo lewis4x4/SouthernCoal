@@ -17,10 +17,9 @@ interface QueueStore {
   removeEntry: (id: string) => void;
   setFilters: (filters: Partial<QueueFilters>) => void;
   setExpandedRow: (id: string | null) => void;
-  getFilteredEntries: () => QueueEntry[];
 }
 
-export const useQueueStore = create<QueueStore>((set, get) => ({
+export const useQueueStore = create<QueueStore>((set) => ({
   entries: [],
   filters: { status: 'all', stateCode: 'all', category: 'all' },
   expandedRowId: null,
@@ -49,14 +48,14 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     })),
 
   setExpandedRow: (id) => set({ expandedRowId: id }),
-
-  getFilteredEntries: () => {
-    const { entries, filters } = get();
-    return entries.filter((e) => {
-      if (filters.status !== 'all' && e.status !== filters.status) return false;
-      if (filters.stateCode !== 'all' && e.state_code !== filters.stateCode) return false;
-      if (filters.category !== 'all' && e.file_category !== filters.category) return false;
-      return true;
-    });
-  },
 }));
+
+/** Derived selector — returns filtered entries. Use with useMemo in components. */
+export function filterEntries(entries: QueueEntry[], filters: QueueFilters): QueueEntry[] {
+  return entries.filter((e) => {
+    if (filters.status !== 'all' && e.status !== filters.status) return false;
+    if (filters.stateCode !== 'all' && e.state_code !== filters.stateCode) return false;
+    if (filters.category !== 'all' && e.file_category !== filters.category) return false;
+    return true;
+  });
+}
