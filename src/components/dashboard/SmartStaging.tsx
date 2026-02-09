@@ -138,12 +138,12 @@ export function SmartStaging() {
                   });
                 }}
                 className={cn(
-                  'px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
+                  'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoCategory ? 'text-text-ai-guess' : 'text-text-primary',
                 )}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c.dbKey} value={c.dbKey}>
+                  <option key={c.dbKey} value={c.dbKey} className="bg-[#0d1117] text-[#f1f5f9]">
                     {c.label}
                   </option>
                 ))}
@@ -161,13 +161,13 @@ export function SmartStaging() {
                   });
                 }}
                 className={cn(
-                  'px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
+                  'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoState ? 'text-text-ai-guess' : 'text-text-primary',
                 )}
               >
-                <option value="">No state</option>
+                <option value="" className="bg-[#0d1117] text-[#f1f5f9]">No state</option>
                 {STATES.map((s) => (
-                  <option key={s.code} value={s.code}>
+                  <option key={s.code} value={s.code} className="bg-[#0d1117] text-[#f1f5f9]">
                     {s.code}
                   </option>
                 ))}

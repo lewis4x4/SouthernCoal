@@ -49,6 +49,8 @@ export function usePermissions() {
         .select('id, user_id, role_id, site_id, granted_at, roles(name)')
         .eq('user_id', user!.id);
 
+      console.log('[permissions] raw response:', { data, error, userId: user!.id });
+
       if (error || !data) {
         console.error('[permissions] Failed to fetch role assignments:', error?.message);
         setAssignments([]);

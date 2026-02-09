@@ -91,11 +91,32 @@ export function useFileUpload() {
   }
 
   /**
+   * Resolve user profile — use hook value, fall back to direct query.
+   * Handles race where hook hasn't loaded yet when user clicks Upload.
+   */
+  async function resolveProfile(): Promise<{ id: string; organization_id: string } | null> {
+    if (profile) return { id: profile.id, organization_id: profile.organization_id };
+
+    // Hook hasn't resolved yet — try auth + direct query
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
+
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('id, organization_id')
+      .eq('id', session.user.id)
+      .single();
+
+    return data ?? null;
+  }
+
+  /**
    * Upload a single staged file.
    */
   const uploadFile = useCallback(
     async (stagedFile: StagedFile) => {
-      if (!profile) {
+      const userProfile = await resolveProfile();
+      if (!userProfile) {
         toast.error('You must be signed in to upload files.');
         return;
       }
@@ -172,8 +193,8 @@ export function useFileUpload() {
           extracted_data: null,
           document_id: null,
           data_import_id: null,
-          uploaded_by: profile.id,
-          organization_id: profile.organization_id,
+          uploaded_by: userProfile.id,
+          organization_id: userProfile.organization_id,
           r2_archived: false,
           r2_archive_path: null,
           r2_archived_at: null,
@@ -200,7 +221,7 @@ export function useFileUpload() {
               mimeType: stagedFile.mimeType,
               stateCode: effectiveState,
               category: effectiveCategory,
-              organizationId: profile.organization_id, // v6 Section 3: tenant-scoped dedup
+              organizationId: userProfile.organization_id, // v6 Section 3: tenant-scoped dedup
               // TODO: MULTI-TENANT — current UNIQUE constraint is global, not org-scoped
             }),
           },
