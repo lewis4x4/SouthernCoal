@@ -228,6 +228,11 @@ export function useFileUpload() {
         );
 
         const result = await response.json();
+        console.log('[upload] Edge Function response:', { status: response.status, result });
+
+        if (!response.ok) {
+          throw new Error(`Edge Function HTTP ${response.status}: ${JSON.stringify(result)}`);
+        }
 
         if (result.status === 'duplicate') {
           // Remove optimistic row

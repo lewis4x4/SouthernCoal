@@ -19,14 +19,24 @@ export function useRealtimeQueue() {
   const lastEventRef = useRef<number>(Date.now());
 
   const fetchQueue = useCallback(async () => {
-    if (!profile) return;
+    if (!profile) {
+      console.warn('[queue] No profile — skipping fetch');
+      return;
+    }
 
     const { data, error } = await supabase
       .from('file_processing_queue')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
+    console.log('[queue] fetch result:', { count: data?.length ?? 0, error: error?.message ?? null });
+
+    if (error) {
+      console.error('[queue] Failed to fetch queue:', error.message, error.details, error.hint);
+      return;
+    }
+
+    if (data) {
       setEntries(data as QueueEntry[]);
     }
   }, [profile, setEntries]);
