@@ -46,10 +46,11 @@ export function usePermissions() {
     async function fetchAssignments() {
       const { data, error } = await supabase
         .from('user_role_assignments')
-        .select('id, user_id, role_id, site_id, created_at, roles(name)')
+        .select('id, user_id, role_id, site_id, granted_at, roles(name)')
         .eq('user_id', user!.id);
 
       if (error || !data) {
+        console.error('[permissions] Failed to fetch role assignments:', error?.message);
         setAssignments([]);
         setLoading(false);
         return;
@@ -69,7 +70,7 @@ export function usePermissions() {
           ? row.roles.name
           : 'read_only') as Role,
         site_id: row.site_id,
-        created_at: row.created_at,
+        created_at: row.granted_at,
       }));
 
       setAssignments(mapped);
