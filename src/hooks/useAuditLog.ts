@@ -11,7 +11,8 @@ type AuditAction =
   | 'command_palette_action'
   | 'filter_change'
   | 'obligation_generation'
-  | 'deadline_alert_sent';
+  | 'deadline_alert_sent'
+  | 'coverage_export_csv';
 
 /**
  * Frontend audit logging — v6 override of v5.

@@ -7,6 +7,7 @@ import { Obligations } from '@/pages/Obligations';
 import { Monitoring } from '@/pages/Monitoring';
 import { Reports } from '@/pages/Reports';
 import { Admin } from '@/pages/Admin';
+import { CoverageGaps } from '@/pages/CoverageGaps';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -59,6 +60,18 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <Obligations />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Coverage Gap Analysis */}
+        <Route
+          path="/coverage"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <CoverageGaps />
               </AppShell>
             </AuthGuard>
           }
