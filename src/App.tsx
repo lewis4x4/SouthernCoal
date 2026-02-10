@@ -2,6 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { LoginPage } from '@/pages/LoginPage';
 import { UploadDashboard } from '@/pages/UploadDashboard';
+import { Dashboard } from '@/pages/Dashboard';
+import { Obligations } from '@/pages/Obligations';
+import { Monitoring } from '@/pages/Monitoring';
+import { Reports } from '@/pages/Reports';
+import { Admin } from '@/pages/Admin';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -22,8 +27,22 @@ export function App() {
       />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Executive Dashboard — new home page */}
         <Route
           path="/dashboard"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <Dashboard />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Upload Dashboard — moved from /dashboard */}
+        <Route
+          path="/compliance"
           element={
             <AuthGuard>
               <AppShell>
@@ -32,6 +51,55 @@ export function App() {
             </AuthGuard>
           }
         />
+
+        {/* Consent Decree Obligations */}
+        <Route
+          path="/obligations"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <Obligations />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Real-Time Monitoring */}
+        <Route
+          path="/monitoring"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <Monitoring />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Report Generator */}
+        <Route
+          path="/reports"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <Reports />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Administration */}
+        <Route
+          path="/admin"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <Admin />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
