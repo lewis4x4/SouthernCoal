@@ -67,26 +67,22 @@ export function QueueRow({ entry }: QueueRowProps) {
   }
 
   async function handleCategoryChange(queueEntry: QueueEntry, newCategory: string) {
-    const catConfig = CATEGORY_BY_DB_KEY[newCategory];
-    if (!catConfig) return;
-    // Optimistic update in store
+    if (!CATEGORY_BY_DB_KEY[newCategory]) return;
+    // Only update file_category — storage_bucket stays as-is because the
+    // file physically lives in the original bucket it was uploaded to.
     useQueueStore.getState().upsertEntry({
       ...queueEntry,
       file_category: newCategory,
-      storage_bucket: catConfig.bucket,
     });
-    // Persist to DB
     const { error } = await supabase
       .from('file_processing_queue')
       .update({
         file_category: newCategory,
-        storage_bucket: catConfig.bucket,
         updated_at: new Date().toISOString(),
       })
       .eq('id', queueEntry.id);
     if (error) {
       console.error('[queue] Failed to update file_category:', error.message);
-      // Revert on failure
       useQueueStore.getState().upsertEntry(queueEntry);
     }
   }
