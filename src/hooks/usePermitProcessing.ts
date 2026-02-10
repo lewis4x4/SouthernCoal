@@ -13,12 +13,18 @@ export function usePermitProcessing() {
    * Process a single permit PDF.
    */
   const processPermit = useCallback(async (queueId: string) => {
-    // Optimistic status update
     const entry = useQueueStore
       .getState()
       .entries.find((e) => e.id === queueId);
 
     if (!entry) return;
+
+    // Immediate UI feedback — Realtime subscription handles the real status
+    useQueueStore.getState().upsertEntry({
+      ...entry,
+      status: 'processing',
+      processing_started_at: new Date().toISOString(),
+    });
 
     try {
       // Refresh the JWT before each Edge Function call

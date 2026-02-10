@@ -19,6 +19,13 @@ export function useLabDataProcessing() {
 
     if (!entry) return;
 
+    // Immediate UI feedback — Realtime subscription handles the real status
+    useQueueStore.getState().upsertEntry({
+      ...entry,
+      status: 'processing',
+      processing_started_at: new Date().toISOString(),
+    });
+
     try {
       // Refresh the JWT before each Edge Function call
       let session = (await supabase.auth.getSession()).data.session;
