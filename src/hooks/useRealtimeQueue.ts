@@ -5,26 +5,32 @@ import { useUserProfile } from './useUserProfile';
 import type { QueueEntry } from '@/types/queue';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
+const HEARTBEAT_INTERVAL = 120_000; // 2 minutes (reduced from 30s to ease connection pressure)
 
 /**
  * Subscribes to Realtime changes on file_processing_queue.
  * Scoped per org via RLS + client-side filter (v6 Section 9).
- * Includes 30s heartbeat fallback for WebSocket disconnects.
+ * Includes heartbeat fallback for WebSocket disconnects.
+ *
+ * Data flow:
+ * 1. Initial load: paginated fetch (all entries)
+ * 2. Live updates: Realtime subscription (INSERT/UPDATE/DELETE)
+ * 3. Heartbeat: lightweight single-page fetch only when entries are actively processing
  */
 export function useRealtimeQueue() {
   const { profile } = useUserProfile();
   const { setEntries, upsertEntry } = useQueueStore();
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const lastEventRef = useRef<number>(Date.now());
+  const initialLoadDone = useRef(false);
 
-  const fetchQueue = useCallback(async () => {
-    if (!profile) {
-      console.warn('[queue] No profile — skipping fetch');
-      return;
-    }
+  /**
+   * Full paginated fetch — used only on initial mount.
+   * Loads all entries in 1000-row chunks.
+   */
+  const fetchAllEntries = useCallback(async () => {
+    if (!profile) return;
 
-    // Paginate to bypass PostgREST's default 1000-row limit
     const PAGE_SIZE = 1000;
     let allEntries: QueueEntry[] = [];
     let from = 0;
@@ -51,14 +57,41 @@ export function useRealtimeQueue() {
       }
     }
 
-    console.log('[queue] fetch result:', { count: allEntries.length });
+    console.log('[queue] initial fetch:', { count: allEntries.length });
     setEntries(allEntries);
+    initialLoadDone.current = true;
   }, [profile, setEntries]);
 
-  // Initial fetch
+  /**
+   * Lightweight heartbeat fetch — single query for active entries only.
+   * Only fetches rows with status processing/queued to detect stuck items.
+   */
+  const heartbeatFetch = useCallback(async () => {
+    if (!profile) return;
+
+    const { data, error } = await supabase
+      .from('file_processing_queue')
+      .select('*')
+      .in('status', ['processing', 'queued'])
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[queue] Heartbeat fetch failed:', error.message);
+      return;
+    }
+
+    if (data) {
+      // Merge active entries into existing store (don't replace everything)
+      for (const entry of data as QueueEntry[]) {
+        upsertEntry(entry);
+      }
+    }
+  }, [profile, upsertEntry]);
+
+  // Initial fetch — full paginated load once
   useEffect(() => {
-    fetchQueue();
-  }, [fetchQueue]);
+    fetchAllEntries();
+  }, [fetchAllEntries]);
 
   // Realtime subscription
   useEffect(() => {
@@ -91,7 +124,7 @@ export function useRealtimeQueue() {
     };
   }, [profile, upsertEntry]);
 
-  // Heartbeat fallback: if no Realtime event for 30s and entries in processing/queued, re-fetch
+  // Heartbeat: lightweight fetch for active entries only (every 2 min)
   useEffect(() => {
     heartbeatRef.current = setInterval(() => {
       const timeSinceLastEvent = Date.now() - lastEventRef.current;
@@ -101,14 +134,14 @@ export function useRealtimeQueue() {
       );
 
       if (timeSinceLastEvent >= HEARTBEAT_INTERVAL && hasActiveEntries) {
-        fetchQueue();
+        heartbeatFetch();
       }
     }, HEARTBEAT_INTERVAL);
 
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
-  }, [fetchQueue]);
+  }, [heartbeatFetch]);
 
-  return { refetch: fetchQueue };
+  return { refetch: fetchAllEntries };
 }
