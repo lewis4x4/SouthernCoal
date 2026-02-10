@@ -39,9 +39,14 @@ export function useFileUpload() {
   async function getFreshToken(): Promise<string> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
+    // Session missing or expired — try refresh before redirecting
     if (error || !session) {
-      window.location.href = '/login?reason=session_expired';
-      throw new Error('Session expired');
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshed.session) {
+        window.location.href = '/login?reason=session_expired';
+        throw new Error('Session expired');
+      }
+      return refreshed.session.access_token;
     }
 
     const expiresAt = session.expires_at ?? 0;
