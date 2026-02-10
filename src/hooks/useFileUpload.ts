@@ -97,35 +97,40 @@ export function useFileUpload() {
   }
 
   /**
-   * Resolve user profile — use hook value, fall back to direct query.
-   * Handles race where hook hasn't loaded yet when user clicks Upload.
-   */
-  async function resolveProfile(): Promise<{ id: string; organization_id: string } | null> {
-    if (profile) return { id: profile.id, organization_id: profile.organization_id };
-
-    // Hook hasn't resolved yet — try auth + direct query
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return null;
-
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('id, organization_id')
-      .eq('id', session.user.id)
-      .single();
-
-    return data ?? null;
-  }
-
-  /**
    * Check for duplicate file hash in the queue.
    * RLS already scopes to user's org via uploaded_by → user_profiles chain.
    */
-  async function checkDuplicate(fileHash: string): Promise<boolean> {
-    const { data } = await supabase
+  async function checkDuplicate(
+    fileHash: string,
+    storageBucket: string,
+    organizationId?: string | null,
+  ): Promise<boolean> {
+    const baseQuery = supabase
       .from('file_processing_queue')
       .select('id')
       .eq('file_hash', fileHash)
+      .eq('storage_bucket', storageBucket)
       .limit(1);
+
+    if (organizationId) {
+      const { data, error } = await baseQuery.eq('organization_id', organizationId);
+      if (error) {
+        // Fallback for older schemas without organization_id
+        if (error.message.includes('organization_id')) {
+          const { data: fallback } = await baseQuery;
+          return (fallback?.length ?? 0) > 0;
+        }
+        console.error('[upload] Duplicate check failed:', error.message);
+        return false;
+      }
+      return (data?.length ?? 0) > 0;
+    }
+
+    const { data, error } = await baseQuery;
+    if (error) {
+      console.error('[upload] Duplicate check failed:', error.message);
+      return false;
+    }
 
     return (data?.length ?? 0) > 0;
   }
@@ -135,11 +140,12 @@ export function useFileUpload() {
    */
   const uploadFile = useCallback(
     async (stagedFile: StagedFile) => {
-      const userProfile = await resolveProfile();
-      if (!userProfile) {
-        toast.error('You must be signed in to upload files.');
+      // Use hook profile directly — no fallback query to avoid pool exhaustion
+      if (!profile) {
+        toast.error('Profile not loaded yet. Please wait a moment and try again.');
         return;
       }
+      const userProfile = { id: profile.id, organization_id: profile.organization_id };
 
       const uploadStore = useUploadStore.getState();
       if (!uploadStore.canStartUpload()) {
@@ -168,8 +174,12 @@ export function useFileUpload() {
         // Update staged file with hash
         useStagingStore.getState().updateFile(stagedFile.id, { hashHex });
 
-        // 3. Check for duplicates (tenant-scoped)
-        const isDuplicate = await checkDuplicate(hashHex);
+        // 3. Check for duplicates (tenant-scoped when possible)
+        const isDuplicate = await checkDuplicate(
+          hashHex,
+          categoryConfig.bucket,
+          userProfile.organization_id,
+        );
         if (isDuplicate) {
           uploadStore.completeUpload(stagedFile.id);
           toast.warning('This file has already been uploaded (matching file hash).');
@@ -201,33 +211,85 @@ export function useFileUpload() {
 
         // 7. INSERT directly into file_processing_queue
         // (Bypasses Edge Function — inserts via client with RLS)
-        const { data: insertedRow, error: insertError } = await supabase
-          .from('file_processing_queue')
-          .insert({
-            storage_bucket: categoryConfig.bucket,
-            storage_path: storagePath,
-            file_name: stagedFile.fileName,
-            file_size_bytes: stagedFile.fileSize,
-            mime_type: stagedFile.mimeType,
-            file_hash: hashHex,
-            file_category: effectiveCategory,
-            state_code: effectiveState ?? null,
-            status: 'queued',
-            uploaded_by: userProfile.id,
-          })
-          .select()
-          .single();
+        const insertPayloadBase = {
+          storage_bucket: categoryConfig.bucket,
+          storage_path: storagePath,
+          file_name: stagedFile.fileName,
+          file_size_bytes: stagedFile.fileSize,
+          mime_type: stagedFile.mimeType,
+          file_hash: hashHex,
+          file_category: effectiveCategory,
+          state_code: effectiveState ?? null,
+          status: 'queued',
+          uploaded_by: userProfile.id,
+        };
 
-        if (insertError) {
-          // Clean up the storage file since the queue row failed
-          await supabase.storage.from(categoryConfig.bucket).remove([storagePath]);
-          throw new Error(`Queue insert failed: ${insertError.message}`);
+        const insertPayloadWithOrg = {
+          ...insertPayloadBase,
+          organization_id: userProfile.organization_id ?? null,
+        };
+
+        let insertError: Error | null = null;
+        let insertedId: string | null = null;
+
+        const attemptInsert = async (payload: typeof insertPayloadBase) => {
+          const { data, error } = await supabase
+            .from('file_processing_queue')
+            .insert(payload)
+            .select('id')
+            .single();
+          insertError = error ? new Error(error.message) : null;
+          insertedId = (data as { id?: string } | null)?.id ?? null;
+        };
+
+        await attemptInsert(insertPayloadWithOrg);
+
+        if (insertError && (insertError as Error).message.includes('organization_id')) {
+          // Fallback for schemas without organization_id
+          insertError = null;
+          insertedId = null;
+          await attemptInsert(insertPayloadBase);
         }
 
-        console.log('[upload] Queue row created:', insertedRow.id);
+        if (insertError || !insertedId) {
+          // Clean up the storage file since the queue row failed
+          await supabase.storage.from(categoryConfig.bucket).remove([storagePath]);
+          const message = (insertError as Error | null)?.message ?? 'Queue insert failed';
+          throw new Error(`Queue insert failed: ${message}`);
+        }
 
-        // 8. Add real row to Zustand store (not optimistic — this is the actual DB row)
-        useQueueStore.getState().upsertEntry(insertedRow as QueueEntry);
+        console.log('[upload] Queue row created:', insertedId);
+
+        // 8. Add an optimistic row (Realtime will hydrate full row)
+        const nowIso = new Date().toISOString();
+        useQueueStore.getState().upsertEntry({
+          id: insertedId,
+          storage_bucket: categoryConfig.bucket,
+          storage_path: storagePath,
+          file_name: stagedFile.fileName,
+          file_size_bytes: stagedFile.fileSize,
+          mime_type: stagedFile.mimeType,
+          file_hash: hashHex,
+          file_category: effectiveCategory,
+          state_code: effectiveState ?? null,
+          status: 'queued',
+          processing_started_at: null,
+          processing_completed_at: null,
+          records_extracted: 0,
+          records_imported: 0,
+          records_failed: 0,
+          error_log: null,
+          extracted_data: null,
+          document_id: null,
+          data_import_id: null,
+          uploaded_by: userProfile.id,
+          organization_id: userProfile.organization_id ?? null,
+          r2_archived: false,
+          r2_archive_path: null,
+          r2_archived_at: null,
+          created_at: nowIso,
+          updated_at: nowIso,
+        } as QueueEntry);
 
         // 9. Success — remove from staging
         useStagingStore.getState().removeFile(stagedFile.id);

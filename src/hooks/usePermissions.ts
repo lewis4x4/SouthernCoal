@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import type { Role, Permission, RoleAssignment } from '@/types/auth';
@@ -35,6 +35,7 @@ const CACHE_KEY = 'scc_role_assignments';
 
 export function usePermissions() {
   const { user } = useAuth();
+  const fetchingRef = useRef(false);
   const [assignments, setAssignments] = useState<RoleAssignment[]>(() => {
     // Hydrate from localStorage so role survives transient DB failures
     try {
@@ -53,26 +54,24 @@ export function usePermissions() {
       return;
     }
 
-    async function fetchAssignments(attempt = 1) {
+    async function fetchAssignments() {
+      // Prevent concurrent fetches from multiple renders exhausting the pool
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+
       const { data, error } = await supabase
         .from('user_role_assignments')
         .select('id, user_id, role_id, site_id, granted_at, roles(name)')
         .eq('user_id', user!.id);
 
+      fetchingRef.current = false;
+
       console.log('[permissions] raw response:', { data, error, userId: user!.id });
 
       if (error || !data) {
         console.error('[permissions] Failed to fetch role assignments:', error?.message);
-
-        // Retry once after 2s on transient failure
-        if (attempt < 2) {
-          console.log('[permissions] Retrying in 2s...');
-          setTimeout(() => fetchAssignments(attempt + 1), 2000);
-          return;
-        }
-
-        // After retry, fall back to cached assignments (not empty array)
-        console.warn('[permissions] Using cached role assignments after retry failure');
+        // No retry — use cached assignments to avoid pool exhaustion
+        console.warn('[permissions] Using cached role assignments');
         setLoading(false);
         return;
       }

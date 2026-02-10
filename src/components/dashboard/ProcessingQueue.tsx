@@ -143,7 +143,7 @@ export function ProcessingQueue() {
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  <QueueRow entry={entry} />
+                  <QueueRow entry={entry} can={can} />
                 </div>
               );
             })}

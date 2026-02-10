@@ -1,5 +1,4 @@
 import { GlassBadge } from '@/components/ui/GlassBadge';
-import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useQueueStore } from '@/stores/queue';
@@ -9,6 +8,7 @@ import { cn } from '@/lib/cn';
 import { ChevronDown, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { FileStatus } from '@/lib/constants';
+import type { Permission } from '@/types/auth';
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   original_permit: 'Original Permit',
@@ -30,6 +30,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 
 interface QueueRowProps {
   entry: QueueEntry;
+  can: (action: Permission) => boolean;
 }
 
 /**
@@ -37,10 +38,9 @@ interface QueueRowProps {
  * Click toggles expanded state; detail panel rendered separately
  * in ProcessingQueue below the virtual list.
  */
-export function QueueRow({ entry }: QueueRowProps) {
+export function QueueRow({ entry, can }: QueueRowProps) {
   const expandedRowId = useQueueStore((s) => s.expandedRowId);
   const setExpandedRow = useQueueStore((s) => s.setExpandedRow);
-  const { can } = usePermissions();
   const { processPermit, retryFailed: retryPermit } = usePermitProcessing();
   const { processLabData, retryFailed: retryLabData } = useLabDataProcessing();
 
