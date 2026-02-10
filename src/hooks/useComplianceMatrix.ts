@@ -96,8 +96,13 @@ export function useComplianceMatrix(): MatrixData {
         totalPermits++;
         const data = entry.extracted_data as Record<string, unknown> | null;
         if (data) {
-          if (typeof data.outfall_count === 'number') totalOutfalls += data.outfall_count;
-          if (typeof data.limit_count === 'number') totalLimits += data.limit_count;
+          // Only count outfalls/limits from document types that define them
+          const docType = data.document_type as string | undefined;
+          const hasLimits = !docType || ['original_permit', 'renewal', 'draft_permit', 'tsmp_permit', 'modification'].includes(docType);
+          if (hasLimits) {
+            if (typeof data.outfall_count === 'number') totalOutfalls += data.outfall_count;
+            if (typeof data.limit_count === 'number') totalLimits += data.limit_count;
+          }
         }
 
         // Awaiting review: imported + unreviewed (v6 5d)

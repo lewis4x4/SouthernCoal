@@ -9,6 +9,23 @@ import { ChevronDown, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { FileStatus } from '@/lib/constants';
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  original_permit: 'Original Permit',
+  modification: 'Modification',
+  extension: 'Extension',
+  extension_letter: 'Extension Letter',
+  renewal: 'Renewal',
+  draft_permit: 'Draft Permit',
+  transfer: 'Transfer',
+  closure: 'Closure',
+  inactivation: 'Inactivation',
+  tsmp_permit: 'TSMP Permit',
+  monitoring_release: 'Monitoring Release',
+  wet_suspension: 'WET Suspension',
+  selenium_compliance: 'Selenium Compliance',
+  administrative_notice: 'Admin Notice',
+};
+
 interface QueueRowProps {
   entry: QueueEntry;
 }
@@ -59,16 +76,26 @@ export function QueueRow({ entry }: QueueRowProps) {
         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </span>
 
-      {/* Filename */}
+      {/* Filename + document type */}
       <div className="flex-1 min-w-0">
         <span className="font-mono text-xs text-text-primary truncate block max-w-[280px]">
           {entry.file_name}
         </span>
-        {entry.file_size_bytes && (
-          <span className="text-[10px] text-text-muted">
-            {formatFileSize(entry.file_size_bytes)}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {entry.file_size_bytes && (
+            <span className="text-[10px] text-text-muted">
+              {formatFileSize(entry.file_size_bytes)}
+            </span>
+          )}
+          {(() => {
+            const docType = (entry.extracted_data as Record<string, unknown> | null)?.document_type as string | undefined;
+            return docType ? (
+              <span className="text-[10px] text-text-secondary">
+                {DOC_TYPE_LABELS[docType] ?? docType}
+              </span>
+            ) : null;
+          })()}
+        </div>
       </div>
 
       {/* Category */}

@@ -16,8 +16,16 @@ const MAX_PDF_SIZE = 20 * 1024 * 1024; // 20 MB — Anthropic document limit
 // Types
 // ---------------------------------------------------------------------------
 interface ExtractedPermitData {
+  // Always present
+  document_type: string;
   permit_number?: string;
   state?: string;
+
+  // Dates
+  effective_date?: string;
+  expiration_date?: string;
+
+  // For original_permit, renewal, draft_permit, tsmp_permit, modification
   outfall_count?: number;
   limit_count?: number;
   limits?: Array<{
@@ -27,6 +35,30 @@ interface ExtractedPermitData {
     unit?: string;
     frequency?: string;
   }>;
+
+  // For modification
+  mod_number?: string;
+  description?: string;
+
+  // For extension
+  extension_months?: number;
+  new_expiration_date?: string;
+
+  // For monitoring_release
+  released_outfalls?: string[];
+
+  // For wet_suspension
+  test_types?: string[];
+
+  // For transfer
+  from_entity?: string;
+  to_entity?: string;
+
+  // For selenium_compliance
+  monitoring_period?: string;
+
+  // General summary for any type
+  summary?: string;
 }
 
 interface QueueRow {
@@ -41,57 +73,97 @@ interface QueueRow {
 }
 
 // ---------------------------------------------------------------------------
-// Claude extraction prompt — tailored for NPDES coal mining permits
+// Claude extraction prompt — classifies + extracts permit-related documents
 // ---------------------------------------------------------------------------
-const EXTRACTION_PROMPT = `You are an NPDES permit data extraction specialist for coal mining operations under Clean Water Act regulatory oversight.
+const EXTRACTION_PROMPT = `You are an NPDES permit document specialist for coal mining operations under Clean Water Act regulatory oversight across AL, KY, TN, VA, and WV.
 
-Analyze this NPDES (National Pollutant Discharge Elimination System) permit document and extract structured data.
+STEP 1 — CLASSIFY THE DOCUMENT TYPE
 
-EXTRACTION REQUIREMENTS:
+Read the document and determine which ONE type it is:
 
-1. **Permit Number**: Find the NPDES permit number (format: typically state prefix + numbers, e.g., WV0001234, KY0098765, AL0012345, VA0088123, TN0076543). Look in the header, title page, or first few pages.
+| document_type | Description |
+|---|---|
+| original_permit | Full NPDES permit with outfall tables and effluent limits |
+| modification | Permit modification (Mod #N) — changes to an existing permit |
+| extension | Permit extension — extends expiration date (WV: "NPDES Permit Extension", NPE format) |
+| extension_letter | Administrative cover letter about an extension (WV: "NPDES Extension Letter") — NOT a permit |
+| renewal | Permit renewal (WV: NPR #N) — full replacement permit with new limits |
+| draft_permit | Draft version of a permit — not yet final/effective |
+| transfer | Permit transfer between entities |
+| closure | Permit closure or termination ("Closed", "Terminated") |
+| inactivation | Permit inactivation (KY-specific) |
+| tsmp_permit | Temporary Surface Mining Permit (TN-specific, TNR###### format) |
+| monitoring_release | Release from monitoring at specific outfalls (AL-specific) |
+| wet_suspension | WET (Whole Effluent Toxicity) test requirement suspension (AL-specific) |
+| selenium_compliance | Selenium compliance report (VA-specific) |
+| administrative_notice | Any other administrative document — letters, application updates, notices |
 
-2. **State**: Identify the issuing state from the permit number prefix or agency name:
-   - AL = Alabama (ADEM)
-   - KY = Kentucky (KYDEP)
-   - TN = Tennessee (TDEC)
-   - VA = Virginia (DMLR)
-   - WV = West Virginia (DEP)
+STATE-SPECIFIC GUIDANCE:
+- KENTUCKY: Filenames use "EKCL" (Eastern Kentucky Coal LLC). Permit numbers: KYGE##### format. Site IDs: 7-digit numbers (e.g., 8130354).
+- TENNESSEE: TSMP permits use TNR###### format. Site numbers: 4-digit prefix (e.g., 2427, 2866). Regular NPDES: TN####### format.
+- WEST VIRGINIA: Three extension types — "NPDES Permit Extension" (actual permit), "NPDES Extension Letter" (admin notice), "NPE(N)-YYYY-MMDD" (numbered extension). NPR = Notice of Permit Renewal. Mod # = modification number.
+- VIRGINIA: Mine numbers: 7-digit prefix (e.g., 1100877). Selenium compliance is a VA-specific reporting requirement.
+- ALABAMA: Monitoring releases reference specific outfalls. WET suspensions specify acute and/or chronic test types.
 
-3. **Outfalls**: Count the total number of outfall/discharge points (e.g., Outfall 001, Outfall 002, Internal Outfall 101). Include both external and internal outfalls.
+STEP 2 — EXTRACT DATA BASED ON DOCUMENT TYPE
 
-4. **Effluent Limits**: For EACH discharge limit listed in the permit, extract:
-   - parameter: The water quality parameter name (e.g., "Total Suspended Solids", "pH", "Iron, Total", "Manganese, Total", "Aluminum, Total", "Selenium, Total", "Specific Conductance", "Flow")
-   - outfall: The outfall identifier (e.g., "001", "002", "101")
-   - value: The numeric limit value with qualifier (e.g., "35.0 mg/L daily max", "70.0 mg/L monthly avg", "6.0-9.0 S.U.")
-   - unit: The measurement unit (e.g., "mg/L", "S.U.", "umhos/cm", "MGD", "lbs/day")
-   - frequency: Monitoring frequency (e.g., "1/week", "1/month", "1/quarter", "continuous", "2/month")
+For ALL types, extract:
+- document_type (from Step 1)
+- permit_number (NPDES permit number: AL#######, KYGE#####, TN#######, VA#######, WV#######, or TNR###### for TSMP)
+- state (two-letter code: AL, KY, TN, VA, WV)
+- effective_date (YYYY-MM-DD if found)
+- expiration_date (YYYY-MM-DD if found)
+- summary (1-2 sentence description of the document)
 
-RESPOND WITH ONLY A JSON OBJECT in this exact structure (no markdown, no explanation):
+ADDITIONAL FIELDS by document type:
+
+For original_permit, renewal, draft_permit, tsmp_permit:
+- outfall_count: total outfall/discharge points (external + internal)
+- limit_count: total individual limit entries
+- limits: array of { parameter, outfall, value, unit, frequency }
+
+For modification:
+- mod_number: modification identifier (e.g., "1", "2", "Mod #3")
+- description: what was modified
+- outfall_count, limit_count, limits (if the modification includes updated limit tables)
+
+For extension:
+- extension_months: number of months extended (if stated)
+- new_expiration_date: new expiration date (YYYY-MM-DD)
+
+For monitoring_release:
+- released_outfalls: array of outfall IDs released (e.g., ["002", "003"])
+
+For wet_suspension:
+- test_types: array of test types suspended (e.g., ["acute", "chronic"])
+
+For transfer:
+- from_entity: previous permit holder name
+- to_entity: new permit holder name
+
+For selenium_compliance:
+- monitoring_period: the reporting period covered
+
+RESPOND WITH ONLY A JSON OBJECT (no markdown, no explanation, no code fences):
 
 {
-  "permit_number": "string or null if not found",
-  "state": "two-letter state code or null",
-  "outfall_count": number,
-  "limit_count": number,
-  "limits": [
-    {
-      "parameter": "parameter name",
-      "outfall": "outfall ID",
-      "value": "limit value with qualifier",
-      "unit": "measurement unit",
-      "frequency": "monitoring frequency"
-    }
-  ]
+  "document_type": "one of the 14 types above",
+  "permit_number": "string or null",
+  "state": "two-letter code or null",
+  "effective_date": "YYYY-MM-DD or null",
+  "expiration_date": "YYYY-MM-DD or null",
+  "summary": "brief description",
+  ... type-specific fields as listed above ...
 }
 
 IMPORTANT RULES:
-- Set limit_count to the total number of individual limit entries extracted
+- document_type is REQUIRED — always classify the document
 - If you cannot find a permit number, set permit_number to null (do not guess)
-- If a field is ambiguous or not clearly stated, include your best interpretation with the raw text
-- Include ALL limits from ALL outfalls — do not summarize or skip any
-- Distinguish between daily maximum, monthly average, instantaneous maximum where specified
-- For pH, capture as range (e.g., "6.0-9.0 S.U.") not as separate min/max entries`;
+- For limits: include ALL limits from ALL outfalls — do not summarize or skip any
+- Distinguish between daily maximum, monthly average, instantaneous maximum
+- For pH, capture as range (e.g., "6.0-9.0 S.U.")
+- Set limit_count to the total number of limit entries extracted
+- If the document does not contain limit tables, omit limits/outfall_count/limit_count entirely`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -299,10 +371,17 @@ async function markParsed(
   const extractedState = extractedData.state?.toUpperCase() ?? null;
   const shouldFillState = !currentStateCode && extractedState && VALID_STATES.includes(extractedState);
 
+  // records_extracted depends on document type
+  const docType = extractedData.document_type;
+  const hasLimits = ["original_permit", "renewal", "draft_permit", "tsmp_permit", "modification"].includes(docType);
+  const recordCount = hasLimits
+    ? (extractedData.limit_count ?? extractedData.limits?.length ?? 0)
+    : 1; // Non-limit documents count as 1 processed record
+
   const updateData: Record<string, unknown> = {
     status: "parsed",
     extracted_data: extractedData,
-    records_extracted: extractedData.limit_count ?? extractedData.limits?.length ?? 0,
+    records_extracted: recordCount,
     processing_completed_at: now,
     updated_at: now,
   };
@@ -483,11 +562,16 @@ serve(async (req: Request) => {
       const extractedState = extractedData.state?.toUpperCase() ?? null;
       const shouldFillState = !queueEntry.state_code && extractedState && VALID_STATES.includes(extractedState);
 
+      const docType = extractedData.document_type;
+      const hasLimits = ["original_permit", "renewal", "draft_permit", "tsmp_permit", "modification"].includes(docType);
+      const recordCount = hasLimits
+        ? (extractedData.limit_count ?? extractedData.limits?.length ?? 0)
+        : 1;
+
       const updateData: Record<string, unknown> = {
         status: "parsed",
         extracted_data: extractedData,
-        records_extracted:
-          extractedData.limit_count ?? extractedData.limits?.length ?? 0,
+        records_extracted: recordCount,
         error_log: [
           "No permit number found in this document. Please verify this is an NPDES permit.",
         ],
@@ -508,6 +592,8 @@ serve(async (req: Request) => {
     console.log(
       "[parse-permit-pdf] Success:",
       queueEntry.file_name,
+      "| Type:",
+      extractedData.document_type,
       "| Permit:",
       extractedData.permit_number ?? "NOT FOUND",
       "| Outfalls:",

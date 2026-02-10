@@ -10,8 +10,11 @@ interface ExtractionPanelProps {
 }
 
 interface ExtractedData {
+  document_type?: string;
   permit_number?: string;
   state?: string;
+  effective_date?: string;
+  expiration_date?: string;
   outfall_count?: number;
   limit_count?: number;
   limits?: Array<{
@@ -21,11 +24,41 @@ interface ExtractedData {
     unit?: string;
     frequency?: string;
   }>;
+  mod_number?: string;
+  description?: string;
+  extension_months?: number;
+  new_expiration_date?: string;
+  released_outfalls?: string[];
+  test_types?: string[];
+  from_entity?: string;
+  to_entity?: string;
+  monitoring_period?: string;
+  summary?: string;
 }
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  original_permit: 'Original Permit',
+  modification: 'Modification',
+  extension: 'Extension',
+  extension_letter: 'Extension Letter',
+  renewal: 'Renewal',
+  draft_permit: 'Draft Permit',
+  transfer: 'Transfer',
+  closure: 'Closure',
+  inactivation: 'Inactivation',
+  tsmp_permit: 'TSMP Permit',
+  monitoring_release: 'Monitoring Release',
+  wet_suspension: 'WET Suspension',
+  selenium_compliance: 'Selenium Compliance',
+  administrative_notice: 'Administrative Notice',
+};
+
+const TYPES_WITH_LIMITS = ['original_permit', 'renewal', 'draft_permit', 'tsmp_permit', 'modification'];
 
 /**
  * Extraction detail panel — shows AI-extracted permit data
  * with verification badges and human review actions.
+ * Renders type-specific content based on document_type.
  */
 export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const { can } = usePermissions();
@@ -41,6 +74,9 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const data = entry.extracted_data as ExtractedData | null;
   if (!data) return null;
 
+  const docType = data.document_type ?? 'original_permit';
+  const docLabel = DOCUMENT_TYPE_LABELS[docType] ?? docType;
+  const hasLimits = TYPES_WITH_LIMITS.includes(docType);
   const limits = data.limits ?? [];
 
   return (
@@ -64,16 +100,46 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         </div>
       </div>
 
-      {/* Summary stats */}
+      {/* Summary stats — always show type, permit #, state */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryItem label="Doc Type" value={docLabel} />
         <SummaryItem label="Permit #" value={data.permit_number ?? '—'} />
         <SummaryItem label="State" value={data.state ?? '—'} />
-        <SummaryItem label="Outfalls" value={data.outfall_count ?? 0} />
-        <SummaryItem label="Limits" value={data.limit_count ?? limits.length} />
+        {hasLimits ? (
+          <SummaryItem label="Limits" value={data.limit_count ?? limits.length} />
+        ) : (
+          <SummaryItem label="Effective" value={data.effective_date ?? '—'} />
+        )}
       </div>
 
-      {/* Limits table */}
-      {limits.length > 0 && (
+      {/* Additional stats row for permits with limits */}
+      {hasLimits && (data.outfall_count || data.effective_date || data.expiration_date) && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {data.outfall_count != null && (
+            <SummaryItem label="Outfalls" value={data.outfall_count} />
+          )}
+          {data.effective_date && (
+            <SummaryItem label="Effective" value={data.effective_date} />
+          )}
+          {data.expiration_date && (
+            <SummaryItem label="Expires" value={data.expiration_date} />
+          )}
+        </div>
+      )}
+
+      {/* Type-specific details */}
+      <TypeSpecificDetails data={data} docType={docType} />
+
+      {/* Summary text (all types) */}
+      {data.summary && (
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
+          <p className="text-xs text-text-secondary">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Limits table — only for document types that have limits */}
+      {hasLimits && limits.length > 0 && (
         <div className="mt-3">
           <h5 className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-2">
             Extracted Limits
@@ -123,6 +189,67 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
       )}
     </div>
   );
+}
+
+function TypeSpecificDetails({ data, docType }: { data: ExtractedData; docType: string }) {
+  switch (docType) {
+    case 'modification':
+      return (data.mod_number || data.description) ? (
+        <div className="grid grid-cols-2 gap-3">
+          {data.mod_number && <SummaryItem label="Mod #" value={data.mod_number} />}
+          {data.description && (
+            <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] col-span-2">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider">What Changed</p>
+              <p className="text-xs text-text-secondary mt-0.5">{data.description}</p>
+            </div>
+          )}
+        </div>
+      ) : null;
+
+    case 'extension':
+      return (data.extension_months || data.new_expiration_date) ? (
+        <div className="grid grid-cols-2 gap-3">
+          {data.extension_months != null && (
+            <SummaryItem label="Extension" value={`${data.extension_months} months`} />
+          )}
+          {data.new_expiration_date && (
+            <SummaryItem label="New Expiration" value={data.new_expiration_date} />
+          )}
+        </div>
+      ) : null;
+
+    case 'monitoring_release':
+      return data.released_outfalls?.length ? (
+        <div className="grid grid-cols-1 gap-3">
+          <SummaryItem label="Released Outfalls" value={data.released_outfalls.join(', ')} />
+        </div>
+      ) : null;
+
+    case 'wet_suspension':
+      return data.test_types?.length ? (
+        <div className="grid grid-cols-1 gap-3">
+          <SummaryItem label="Suspended Tests" value={data.test_types.join(', ')} />
+        </div>
+      ) : null;
+
+    case 'transfer':
+      return (data.from_entity || data.to_entity) ? (
+        <div className="grid grid-cols-2 gap-3">
+          {data.from_entity && <SummaryItem label="From" value={data.from_entity} />}
+          {data.to_entity && <SummaryItem label="To" value={data.to_entity} />}
+        </div>
+      ) : null;
+
+    case 'selenium_compliance':
+      return data.monitoring_period ? (
+        <div className="grid grid-cols-1 gap-3">
+          <SummaryItem label="Monitoring Period" value={data.monitoring_period} />
+        </div>
+      ) : null;
+
+    default:
+      return null;
+  }
 }
 
 function SummaryItem({ label, value }: { label: string; value: string | number }) {
