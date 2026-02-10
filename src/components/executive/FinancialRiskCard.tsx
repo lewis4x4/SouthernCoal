@@ -30,11 +30,15 @@ export function FinancialRiskCard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetch() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
         .select('id, next_due_date, status, days_at_risk, penalty_tier, accrued_penalty')
         .in('status', ['pending', 'in_progress', 'overdue']);
+
+      if (cancelled) return;
 
       if (error || !rows) {
         console.error('[dashboard] Failed to fetch obligations:', error?.message);
@@ -80,6 +84,7 @@ export function FinancialRiskCard() {
     }
 
     fetch();
+    return () => { cancelled = true; };
   }, []);
 
   const riskLevel =

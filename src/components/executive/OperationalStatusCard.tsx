@@ -13,71 +13,82 @@ interface StatRow {
 }
 
 export function OperationalStatusCard() {
-  const [stats, setStats] = useState<StatRow[]>([]);
+  const [dbStats, setDbStats] = useState<{ orgCount: number; permitCount: number; outfallCount: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const queueEntries = useQueueStore((s) => s.entries);
 
+  // DB counts — fetch ONCE on mount with slight delay to avoid connection burst
+  // (FinancialRiskCard + ActionQueueCard fire first, this waits 300ms)
   useEffect(() => {
-    async function fetch() {
-      // Parallel queries for different aggregate counts
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
       const [orgsRes, permitsRes, outfallsRes] = await Promise.all([
         supabase.from('organizations').select('id', { count: 'exact', head: true }),
         supabase.from('permits').select('id', { count: 'exact', head: true }),
         supabase.from('outfalls').select('id', { count: 'exact', head: true }),
       ]);
 
-      const orgCount = orgsRes.count ?? 0;
-      const permitCount = permitsRes.count ?? 0;
-      const outfallCount = outfallsRes.count ?? 0;
+      if (cancelled) return;
 
-      // Queue-derived stats
-      const processingCount = queueEntries.filter(
-        (e) => e.status === 'processing' || e.status === 'queued',
-      ).length;
-      const failedCount = queueEntries.filter((e) => e.status === 'failed').length;
-
-      setStats([
-        {
-          label: 'Active Facilities',
-          value: orgCount,
-          subtext: '5 states (AL, KY, TN, VA, WV)',
-          icon: Building2,
-          status: 'good',
-        },
-        {
-          label: 'Permits Uploaded',
-          value: permitCount,
-          subtext: permitCount === 0 ? 'Upload permits to populate' : 'Across all states',
-          icon: FileCheck,
-          status: permitCount === 0 ? 'warning' : 'good',
-        },
-        {
-          label: 'Outfalls Tracked',
-          value: outfallCount,
-          subtext: outfallCount === 0 ? 'Extracted from permits' : 'Active discharge points',
-          icon: Droplet,
-          status: outfallCount === 0 ? 'warning' : 'good',
-        },
-        {
-          label: 'Files Processing',
-          value: processingCount,
-          subtext: `${failedCount} failed`,
-          icon: Calendar,
-          status: failedCount > 0 ? 'critical' : processingCount > 0 ? 'warning' : 'good',
-        },
-        {
-          label: 'Failed Files',
-          value: failedCount,
-          subtext: failedCount > 0 ? 'Retry from Upload Dashboard' : 'All clear',
-          icon: AlertCircle,
-          status: failedCount > 0 ? 'critical' : 'good',
-        },
-      ]);
+      setDbStats({
+        orgCount: orgsRes.count ?? 0,
+        permitCount: permitsRes.count ?? 0,
+        outfallCount: outfallsRes.count ?? 0,
+      });
       setLoading(false);
-    }
+    }, 300);
 
-    fetch();
-  }, [queueEntries]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  // Queue stats — derived from store, no DB call
+  const processingCount = queueEntries.filter(
+    (e) => e.status === 'processing' || e.status === 'queued',
+  ).length;
+  const failedCount = queueEntries.filter((e) => e.status === 'failed').length;
+
+  const orgCount = dbStats?.orgCount ?? 0;
+  const permitCount = dbStats?.permitCount ?? 0;
+  const outfallCount = dbStats?.outfallCount ?? 0;
+
+  const stats: StatRow[] = [
+    {
+      label: 'Active Facilities',
+      value: orgCount,
+      subtext: '5 states (AL, KY, TN, VA, WV)',
+      icon: Building2,
+      status: 'good',
+    },
+    {
+      label: 'Permits Uploaded',
+      value: permitCount,
+      subtext: permitCount === 0 ? 'Upload permits to populate' : 'Across all states',
+      icon: FileCheck,
+      status: permitCount === 0 ? 'warning' : 'good',
+    },
+    {
+      label: 'Outfalls Tracked',
+      value: outfallCount,
+      subtext: outfallCount === 0 ? 'Extracted from permits' : 'Active discharge points',
+      icon: Droplet,
+      status: outfallCount === 0 ? 'warning' : 'good',
+    },
+    {
+      label: 'Files Processing',
+      value: processingCount,
+      subtext: `${failedCount} failed`,
+      icon: Calendar,
+      status: failedCount > 0 ? 'critical' : processingCount > 0 ? 'warning' : 'good',
+    },
+    {
+      label: 'Failed Files',
+      value: failedCount,
+      subtext: failedCount > 0 ? 'Retry from Upload Dashboard' : 'All clear',
+      icon: AlertCircle,
+      status: failedCount > 0 ? 'critical' : 'good',
+    },
+  ];
 
   const statusColors: Record<string, string> = {
     good: 'text-emerald-400',

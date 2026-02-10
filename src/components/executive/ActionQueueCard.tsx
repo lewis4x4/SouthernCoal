@@ -19,6 +19,8 @@ export function ActionQueueCard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetch() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
@@ -26,6 +28,8 @@ export function ActionQueueCard() {
         .in('status', ['pending', 'in_progress', 'overdue'])
         .order('next_due_date', { ascending: true })
         .limit(20);
+
+      if (cancelled) return;
 
       if (error || !rows) {
         console.error('[dashboard] Failed to fetch actions:', error?.message);
@@ -65,6 +69,7 @@ export function ActionQueueCard() {
     }
 
     fetch();
+    return () => { cancelled = true; };
   }, []);
 
   const priorityStyles: Record<string, string> = {
