@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -11,6 +12,7 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
 const CLAUDE_TIMEOUT_MS = 120_000; // 120 seconds — large permits via URL can take longer
 const SIGNED_URL_EXPIRY = 300; // 5 minutes — enough for Claude to fetch the PDF
+const BASE64_FALLBACK_MAX_BYTES = 25 * 1024 * 1024; // 25 MB — max file size for base64 fallback
 
 // ---------------------------------------------------------------------------
 // Types
@@ -205,16 +207,33 @@ async function getSignedUrl(
   return data.signedUrl;
 }
 
-/** Call Claude API with PDF URL for structured extraction. */
+/** Download a PDF from storage via signed URL and return as base64. */
+async function downloadPdfAsBase64(signedUrl: string): Promise<string> {
+  const response = await fetch(signedUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download PDF: HTTP ${response.status}`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  return encodeBase64(bytes);
+}
+
+/** Document source for Claude API — either URL or base64. */
+type PdfSource =
+  | { type: "url"; url: string }
+  | { type: "base64"; media_type: "application/pdf"; data: string };
+
+/** Call Claude API with PDF (via URL or base64) for structured extraction. */
 async function extractPermitData(
-  pdfUrl: string,
+  source: PdfSource,
   fileName: string,
 ): Promise<ExtractedPermitData> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
 
+  const mode = source.type === "url" ? "URL" : "base64";
+
   try {
-    console.log("[parse-permit-pdf] Calling Claude API for", fileName, "(via URL)");
+    console.log("[parse-permit-pdf] Calling Claude API for", fileName, `(via ${mode})`);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -232,10 +251,7 @@ async function extractPermitData(
             content: [
               {
                 type: "document",
-                source: {
-                  type: "url",
-                  url: pdfUrl,
-                },
+                source,
               },
               {
                 type: "text",
@@ -477,7 +493,7 @@ serve(async (req: Request) => {
   const { data: queueEntry, error: fetchError } = await supabase
     .from("file_processing_queue")
     .select(
-      "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by",
+      "id, storage_bucket, storage_path, file_name, file_size_bytes, file_category, state_code, status, uploaded_by",
     )
     .eq("id", queueId)
     .single();
@@ -512,7 +528,7 @@ serve(async (req: Request) => {
   await markProcessing(supabase, queueId);
 
   try {
-    // 7. Generate signed URL for the PDF (Claude fetches it directly — no memory pressure)
+    // 7. Generate signed URL for the PDF
     console.log(
       "[parse-permit-pdf] Creating signed URL for",
       queueEntry.storage_bucket,
@@ -524,36 +540,39 @@ serve(async (req: Request) => {
       queueEntry.storage_path,
     );
 
-    // 7b. Pre-flight check: verify the signed URL is accessible and returns a PDF
-    const preflight = await fetch(pdfUrl, { method: "HEAD" });
-    const contentType = preflight.headers.get("content-type") ?? "unknown";
-    const contentLength = preflight.headers.get("content-length") ?? "unknown";
-    console.log(
-      "[parse-permit-pdf] Pre-flight:",
-      "status=" + preflight.status,
-      "content-type=" + contentType,
-      "content-length=" + contentLength,
-    );
-    if (!preflight.ok) {
-      throw new Error(
-        `Signed URL returned HTTP ${preflight.status}. The file may have been deleted or the storage bucket is misconfigured. Content-Type: ${contentType}`,
+    // 8. Try URL-first extraction, fall back to base64 on auth/JWT errors
+    let extractedData: ExtractedPermitData;
+    try {
+      extractedData = await extractPermitData(
+        { type: "url", url: pdfUrl },
+        queueEntry.file_name,
       );
-    }
-    if (!contentType.includes("pdf") && !contentType.includes("octet-stream")) {
-      // Download first 16 bytes to check PDF magic number (%PDF)
-      const probe = await fetch(pdfUrl, { headers: { Range: "bytes=0-15" } });
-      const probeBytes = new Uint8Array(await probe.arrayBuffer());
-      const header = new TextDecoder().decode(probeBytes.slice(0, 5));
-      console.log("[parse-permit-pdf] File header bytes:", header, "| Content-Type:", contentType);
-      if (!header.startsWith("%PDF")) {
+    } catch (urlErr) {
+      const urlErrMsg = urlErr instanceof Error ? urlErr.message : String(urlErr);
+      const isAuthError = /jwt|401|403|unauthorized|forbidden/i.test(urlErrMsg);
+
+      if (!isAuthError) {
+        throw urlErr; // Not an auth error — don't retry
+      }
+
+      const fileSize = queueEntry.file_size_bytes ?? 0;
+      if (fileSize > BASE64_FALLBACK_MAX_BYTES) {
         throw new Error(
-          `File is not a valid PDF. Content-Type: ${contentType}, file header: "${header}". The uploaded file may not be a real PDF.`,
+          `URL-based extraction failed (${urlErrMsg}). File is ${(fileSize / 1024 / 1024).toFixed(1)}MB — too large for base64 fallback (max ${BASE64_FALLBACK_MAX_BYTES / 1024 / 1024}MB).`,
         );
       }
-    }
 
-    // 8. Call Claude for structured extraction (PDF sent via URL, not base64)
-    const extractedData = await extractPermitData(pdfUrl, queueEntry.file_name);
+      console.log(
+        "[parse-permit-pdf] URL extraction failed with auth error, falling back to base64.",
+        "File size:", fileSize, "bytes. Error:", urlErrMsg,
+      );
+
+      const pdfBase64 = await downloadPdfAsBase64(pdfUrl);
+      extractedData = await extractPermitData(
+        { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+        queueEntry.file_name,
+      );
+    }
 
     // 9. Fallback: extract effective_date from filename if Claude missed it
     // Filenames follow pattern: PERMITNUMBER-YYYY-MMDD description.pdf
