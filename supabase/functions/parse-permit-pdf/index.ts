@@ -111,7 +111,7 @@ For ALL types, extract:
 - document_type (from Step 1)
 - permit_number (NPDES permit number: AL#######, KYGE#####, TN#######, VA#######, WV#######, or TNR###### for TSMP)
 - state (two-letter code: AL, KY, TN, VA, WV)
-- effective_date (YYYY-MM-DD if found)
+- effective_date (YYYY-MM-DD) — REQUIRED: use the permit effective date, letter date, issuance date, or document date. Every document has a date — find it. For letters and notices, use the date at the top of the letter. For permits, use the effective date field.
 - expiration_date (YYYY-MM-DD if found)
 - summary (1-2 sentence description of the document)
 
@@ -158,6 +158,7 @@ RESPOND WITH ONLY A JSON OBJECT (no markdown, no explanation, no code fences):
 
 IMPORTANT RULES:
 - document_type is REQUIRED — always classify the document
+- effective_date is REQUIRED — every document has a date. Use the letter date, issuance date, or document date if there is no explicit "effective date" field. Never return null for effective_date.
 - If you cannot find a permit number, set permit_number to null (do not guess)
 - For limits: include ALL limits from ALL outfalls — do not summarize or skip any
 - Distinguish between daily maximum, monthly average, instantaneous maximum
@@ -296,32 +297,34 @@ async function extractPermitData(
   }
 }
 
-/** Classify errors into strings that match ErrorForensics.tsx patterns. */
+/** Classify errors into strings that match ErrorForensics.tsx patterns.
+ *  Always includes the raw error as second element for diagnostics. */
 function classifyError(err: unknown): string[] {
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
+  const raw = message.length > 800 ? message.slice(0, 800) + "..." : message;
 
   if (lower.includes("password") || lower.includes("encrypted")) {
-    return ["File is password protected. Please upload an unlocked version."];
+    return ["File is password protected. Please upload an unlocked version.", raw];
   }
 
   if (lower.includes("invalid") || lower.includes("corrupt") || lower.includes("malformed")) {
-    return ["File appears to be corrupt or is not a valid PDF document."];
+    return ["File appears to be corrupt or is not a valid PDF document.", raw];
   }
 
   if (lower.includes("abort") || lower.includes("timeout") || lower.includes("timed out")) {
-    return ["Processing timed out. The document may be too large or complex."];
+    return ["Processing timed out. The document may be too large or complex.", raw];
   }
 
   if (lower.includes("overloaded") || lower.includes("rate limit") || lower.includes("429")) {
-    return ["AI processing service is temporarily overloaded. Please retry in a few minutes."];
+    return ["AI processing service is temporarily overloaded. Please retry in a few minutes.", raw];
   }
 
   if (lower.includes("worker") || lower.includes("compute") || lower.includes("resource") || lower.includes("memory")) {
-    return ["Edge Function ran out of compute resources. The file may be too large for server-side processing."];
+    return ["Edge Function ran out of compute resources. The file may be too large for server-side processing.", raw];
   }
 
-  return [message.length > 500 ? message.slice(0, 500) + "..." : message];
+  return [raw];
 }
 
 // ---------------------------------------------------------------------------
@@ -521,10 +524,49 @@ serve(async (req: Request) => {
       queueEntry.storage_path,
     );
 
+    // 7b. Pre-flight check: verify the signed URL is accessible and returns a PDF
+    const preflight = await fetch(pdfUrl, { method: "HEAD" });
+    const contentType = preflight.headers.get("content-type") ?? "unknown";
+    const contentLength = preflight.headers.get("content-length") ?? "unknown";
+    console.log(
+      "[parse-permit-pdf] Pre-flight:",
+      "status=" + preflight.status,
+      "content-type=" + contentType,
+      "content-length=" + contentLength,
+    );
+    if (!preflight.ok) {
+      throw new Error(
+        `Signed URL returned HTTP ${preflight.status}. The file may have been deleted or the storage bucket is misconfigured. Content-Type: ${contentType}`,
+      );
+    }
+    if (!contentType.includes("pdf") && !contentType.includes("octet-stream")) {
+      // Download first 16 bytes to check PDF magic number (%PDF)
+      const probe = await fetch(pdfUrl, { headers: { Range: "bytes=0-15" } });
+      const probeBytes = new Uint8Array(await probe.arrayBuffer());
+      const header = new TextDecoder().decode(probeBytes.slice(0, 5));
+      console.log("[parse-permit-pdf] File header bytes:", header, "| Content-Type:", contentType);
+      if (!header.startsWith("%PDF")) {
+        throw new Error(
+          `File is not a valid PDF. Content-Type: ${contentType}, file header: "${header}". The uploaded file may not be a real PDF.`,
+        );
+      }
+    }
+
     // 8. Call Claude for structured extraction (PDF sent via URL, not base64)
     const extractedData = await extractPermitData(pdfUrl, queueEntry.file_name);
 
-    // 12. Handle missing permit number (still useful data, mark parsed with warning)
+    // 9. Fallback: extract effective_date from filename if Claude missed it
+    // Filenames follow pattern: PERMITNUMBER-YYYY-MMDD description.pdf
+    if (!extractedData.effective_date) {
+      const dateMatch = queueEntry.file_name.match(/(\d{4})-(\d{2})(\d{2})/);
+      if (dateMatch) {
+        const [, year, month, day] = dateMatch;
+        extractedData.effective_date = `${year}-${month}-${day}`;
+        console.log("[parse-permit-pdf] Filled effective_date from filename:", extractedData.effective_date);
+      }
+    }
+
+    // 10. Handle missing permit number (still useful data, mark parsed with warning)
     if (!extractedData.permit_number) {
       console.warn("[parse-permit-pdf] No permit number found in", queueEntry.file_name);
 
