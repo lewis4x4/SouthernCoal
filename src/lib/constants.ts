@@ -56,6 +56,7 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Lab Data',
     matrixLabel: 'Lab Data',
     acceptedTypes: [
+      'application/pdf',
       'text/csv',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -234,7 +235,7 @@ export const FILENAME_PATTERNS: ClassificationPattern[] = [
   { regex: /\btsmp\b|TNR\d{6}/i, field: 'category', value: 'npdes_permit' },
   { regex: /\bEKCL\b|KYGE\d{5}/i, field: 'category', value: 'npdes_permit' },
   { regex: /\bNPE\(|NPR\s*#/i, field: 'category', value: 'npdes_permit' },
-  { regex: /\blab|analytical|results\b/i, field: 'category', value: 'lab_data' },
+  { regex: /\blab|analytical|results|edd\b/i, field: 'category', value: 'lab_data' },
   { regex: /\bdmr|discharge.?monitoring\b/i, field: 'category', value: 'dmr' },
   { regex: /\bquarterly|q[1-4]\b/i, field: 'category', value: 'quarterly_report' },
   { regex: /\bfield.?inspect|inspection.?report|site.?visit|swppp\b/i, field: 'category', value: 'field_inspection' },

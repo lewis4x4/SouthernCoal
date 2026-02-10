@@ -4,7 +4,7 @@ import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useQueueStore } from '@/stores/queue';
 import { supabase } from '@/lib/supabase';
-import { CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
+import { CATEGORIES, CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import { ChevronDown, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
@@ -45,7 +45,6 @@ export function QueueRow({ entry }: QueueRowProps) {
   const { processLabData, retryFailed: retryLabData } = useLabDataProcessing();
 
   const isExpanded = expandedRowId === entry.id;
-  const category = CATEGORY_BY_DB_KEY[entry.file_category];
   const isPermit = entry.file_category === 'npdes_permit';
   const isLabData = entry.file_category === 'lab_data';
   const canProcess = (isPermit || isLabData) && entry.status === 'queued' && can('process');
@@ -62,6 +61,31 @@ export function QueueRow({ entry }: QueueRowProps) {
       .eq('id', queueEntry.id);
     if (error) {
       console.error('[queue] Failed to update state_code:', error.message);
+      // Revert on failure
+      useQueueStore.getState().upsertEntry(queueEntry);
+    }
+  }
+
+  async function handleCategoryChange(queueEntry: QueueEntry, newCategory: string) {
+    const catConfig = CATEGORY_BY_DB_KEY[newCategory];
+    if (!catConfig) return;
+    // Optimistic update in store
+    useQueueStore.getState().upsertEntry({
+      ...queueEntry,
+      file_category: newCategory,
+      storage_bucket: catConfig.bucket,
+    });
+    // Persist to DB
+    const { error } = await supabase
+      .from('file_processing_queue')
+      .update({
+        file_category: newCategory,
+        storage_bucket: catConfig.bucket,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', queueEntry.id);
+    if (error) {
+      console.error('[queue] Failed to update file_category:', error.message);
       // Revert on failure
       useQueueStore.getState().upsertEntry(queueEntry);
     }
@@ -102,10 +126,21 @@ export function QueueRow({ entry }: QueueRowProps) {
         </div>
       </div>
 
-      {/* Category */}
-      <span className="text-text-secondary text-xs w-24 truncate">
-        {category?.label ?? entry.file_category}
-      </span>
+      {/* Category — editable dropdown */}
+      <div className="w-24 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={entry.file_category}
+          onChange={(e) => handleCategoryChange(entry, e.target.value)}
+          className="bg-transparent text-text-secondary text-xs w-full cursor-pointer hover:text-text-primary transition-colors border-none outline-none appearance-none truncate"
+          title="Change category"
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c.dbKey} value={c.dbKey} className="bg-[#0d1117] text-[#f1f5f9]">
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* State — editable dropdown */}
       <div className="w-16 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
