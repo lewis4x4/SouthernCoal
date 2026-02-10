@@ -78,6 +78,20 @@ export function usePermissions() {
       }
 
       if (data.length === 0) {
+        // If cache has assignments but DB returned empty, RLS may be blocking
+        // (e.g. user_profiles row missing blocks org-scoped RLS). Keep cached data.
+        try {
+          const cached = localStorage.getItem(CACHE_KEY);
+          const cachedAssignments: RoleAssignment[] = cached ? JSON.parse(cached) : [];
+          if (cachedAssignments.length > 0) {
+            console.warn(
+              '[permissions] DB returned 0 assignments but cache has data — keeping cache (likely RLS/connection issue)',
+            );
+            setAssignments(cachedAssignments);
+            setLoading(false);
+            return;
+          }
+        } catch { /* parse error — fall through */ }
         console.warn(
           '[permissions] No role assignments found — defaulting to read_only. Check RLS policies on user_role_assignments.',
         );
@@ -95,10 +109,12 @@ export function usePermissions() {
       }));
 
       setAssignments(mapped);
-      // Cache successful fetch so transient failures don't strip permissions
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
-      } catch { /* quota exceeded — non-critical */ }
+      // Only cache non-empty results — never let empty overwrites strip admin
+      if (mapped.length > 0) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
+        } catch { /* quota exceeded — non-critical */ }
+      }
       setLoading(false);
     }
 
