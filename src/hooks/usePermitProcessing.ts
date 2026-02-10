@@ -28,11 +28,13 @@ export function usePermitProcessing() {
     });
 
     try {
+      // Refresh the JWT before each Edge Function call (per CLAUDE.md: getFreshToken)
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
 
-      if (!session) {
+      if (refreshError || !session) {
         window.location.href = '/login?reason=session_expired';
         return;
       }
