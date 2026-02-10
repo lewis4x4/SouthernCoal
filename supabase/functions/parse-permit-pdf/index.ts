@@ -11,7 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
-const CLAUDE_TIMEOUT_MS = 120_000; // 120 seconds — large permits via URL can take longer
+const CLAUDE_TIMEOUT_MS = 180_000; // 180 seconds — scanned PDFs with many image pages take longer
 const SIGNED_URL_EXPIRY = 300; // 5 minutes — enough for Claude to fetch the PDF
 const BASE64_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — keep low to avoid WORKER_LIMIT on scanned PDFs
 
@@ -606,17 +606,21 @@ serve(async (req: Request) => {
       const isPageLimit = /100 pdf pages|page limit|too many pages/i.test(urlErrMsg);
 
       if (isPageLimit) {
-        // PDF exceeds 100-page API limit — download, trim, and retry as base64
+        // PDF exceeds 100-page API limit — download, trim to 30 pages (key permit data
+        // is in the first 20-30 pages; rest is appendices/fact sheets), retry as base64.
+        // Using 30 instead of 100 also keeps memory usage low to avoid WORKER_LIMIT.
+        const MAX_TRIMMED_PAGES = 30;
         console.log(
-          "[parse-permit-pdf] PDF exceeds 100-page limit. Downloading and trimming...",
+          "[parse-permit-pdf] PDF exceeds 100-page limit. Downloading and trimming to",
+          MAX_TRIMMED_PAGES, "pages...",
         );
         const { base64, totalPages, keptPages } = await downloadAndTrimPdf(
           supabase,
           queueEntry.storage_bucket,
           queueEntry.storage_path,
-          100,
+          MAX_TRIMMED_PAGES,
         );
-        pageTrimWarning = `Document has ${totalPages} pages. Only the first ${keptPages} pages were processed (API limit: 100). Some data from later pages may be missing.`;
+        pageTrimWarning = `Document has ${totalPages} pages. Only the first ${keptPages} pages were processed to stay within resource limits. Appendices and fact sheets may not be included.`;
         extractedData = await extractPermitData(
           { type: "base64", media_type: "application/pdf", data: base64 },
           queueEntry.file_name,
