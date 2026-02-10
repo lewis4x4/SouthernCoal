@@ -12,7 +12,7 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
 const CLAUDE_TIMEOUT_MS = 120_000; // 120 seconds — large permits via URL can take longer
 const SIGNED_URL_EXPIRY = 300; // 5 minutes — enough for Claude to fetch the PDF
-const BASE64_MAX_BYTES = 20 * 1024 * 1024; // 20 MB raw → ~27 MB base64 — safely under 32 MB API request limit
+const BASE64_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — keep low to avoid WORKER_LIMIT on scanned PDFs
 
 // ---------------------------------------------------------------------------
 // Types
@@ -542,58 +542,47 @@ serve(async (req: Request) => {
   await markProcessing(supabase, queueId);
 
   try {
-    // 7. Extract permit data — base64-first (more reliable for scanned PDFs), URL fallback for large files
+    // 7. Generate signed URL for the PDF
     const fileSize = queueEntry.file_size_bytes ?? 0;
-    let extractedData: ExtractedPermitData;
+    console.log(
+      "[parse-permit-pdf] Creating signed URL for",
+      queueEntry.file_name,
+      `(${(fileSize / 1024 / 1024).toFixed(1)}MB)`,
+    );
+    const pdfUrl = await getSignedUrl(
+      supabase,
+      queueEntry.storage_bucket,
+      queueEntry.storage_path,
+    );
 
-    if (fileSize <= BASE64_MAX_BYTES) {
-      // Base64-first for files ≤20 MB (handles scanned PDFs, avoids URL-fetch issues)
-      try {
-        console.log(
-          "[parse-permit-pdf] Using base64 approach for",
-          queueEntry.file_name,
-          `(${(fileSize / 1024 / 1024).toFixed(1)}MB)`,
-        );
-        const pdfBase64 = await downloadPdfAsBase64(
-          supabase,
-          queueEntry.storage_bucket,
-          queueEntry.storage_path,
-        );
-        extractedData = await extractPermitData(
-          { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-          queueEntry.file_name,
-        );
-      } catch (b64Err) {
-        // Base64 failed — fall back to URL approach
-        const b64ErrMsg = b64Err instanceof Error ? b64Err.message : String(b64Err);
-        console.log(
-          "[parse-permit-pdf] Base64 failed, trying URL fallback. Error:",
-          b64ErrMsg,
-        );
-        const pdfUrl = await getSignedUrl(
-          supabase,
-          queueEntry.storage_bucket,
-          queueEntry.storage_path,
-        );
-        extractedData = await extractPermitData(
-          { type: "url", url: pdfUrl },
-          queueEntry.file_name,
-        );
-      }
-    } else {
-      // URL-first for large files (>20 MB), base64 not feasible
-      console.log(
-        "[parse-permit-pdf] File too large for base64, using URL for",
+    // 8. URL-first extraction (Claude fetches the PDF — no Edge Function memory pressure)
+    //    Falls back to base64 only for small files (≤5 MB) to stay within worker limits.
+    let extractedData: ExtractedPermitData;
+    try {
+      extractedData = await extractPermitData(
+        { type: "url", url: pdfUrl },
         queueEntry.file_name,
-        `(${(fileSize / 1024 / 1024).toFixed(1)}MB)`,
       );
-      const pdfUrl = await getSignedUrl(
+    } catch (urlErr) {
+      const urlErrMsg = urlErr instanceof Error ? urlErr.message : String(urlErr);
+
+      // Only attempt base64 fallback for small files to avoid WORKER_LIMIT
+      if (fileSize > BASE64_MAX_BYTES) {
+        throw urlErr; // Too large for base64 — surface the real error
+      }
+
+      console.log(
+        "[parse-permit-pdf] URL extraction failed, trying base64 fallback.",
+        "File size:", fileSize, "bytes. Error:", urlErrMsg,
+      );
+
+      const pdfBase64 = await downloadPdfAsBase64(
         supabase,
         queueEntry.storage_bucket,
         queueEntry.storage_path,
       );
       extractedData = await extractPermitData(
-        { type: "url", url: pdfUrl },
+        { type: "base64", media_type: "application/pdf", data: pdfBase64 },
         queueEntry.file_name,
       );
     }
