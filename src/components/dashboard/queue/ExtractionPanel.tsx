@@ -547,6 +547,20 @@ function LabDataExtractionPanel({
           Record preview truncated. Full data is preserved in the original file.
         </p>
       )}
+
+      {/* Approve & Import — disabled placeholder for two-step workflow */}
+      <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <button
+          disabled
+          className="px-4 py-2 text-xs font-medium rounded-lg bg-white/[0.03] text-text-muted border border-white/[0.06] cursor-not-allowed opacity-50"
+          title="Import verified lab data into compliance tables (coming soon)"
+        >
+          Approve & Import (Coming Soon)
+        </button>
+        <p className="text-[10px] text-text-muted mt-1.5">
+          Domain table imports will be enabled in a future update. Data is safely stored in extracted_data.
+        </p>
+      </div>
     </div>
   );
 }
