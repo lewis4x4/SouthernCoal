@@ -5,6 +5,7 @@ import { useQueueStore, filterEntries } from '@/stores/queue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
+import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { ErrorForensics } from '@/components/ui/ErrorForensics';
 import { ExtractionPanel } from '@/components/dashboard/queue/ExtractionPanel';
 import { QueueRow } from '@/components/dashboard/queue/QueueRow';
@@ -26,6 +27,7 @@ export function ProcessingQueue() {
   const { refetch } = useRealtimeQueue();
   const { can } = usePermissions();
   const { processAllQueued, retryFailed } = usePermitProcessing();
+  const { processAllQueuedLabData } = useLabDataProcessing();
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +40,10 @@ export function ProcessingQueue() {
 
   const queuedPermitCount = allEntries.filter(
     (e) => e.file_category === 'npdes_permit' && e.status === 'queued',
+  ).length;
+
+  const queuedLabDataCount = allEntries.filter(
+    (e) => e.file_category === 'lab_data' && e.status === 'queued',
   ).length;
 
   const expandedEntry = expandedRowId
@@ -77,7 +83,17 @@ export function ProcessingQueue() {
               title={`Process ${queuedPermitCount} queued permit${queuedPermitCount !== 1 ? 's' : ''} sequentially`}
             >
               <Play size={10} className="inline mr-1" />
-              Process All Queued ({queuedPermitCount})
+              Process Permits ({queuedPermitCount})
+            </button>
+          )}
+          {queuedLabDataCount > 0 && can('bulk_process') && (
+            <button
+              onClick={() => processAllQueuedLabData()}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
+              title={`Process ${queuedLabDataCount} queued lab data file${queuedLabDataCount !== 1 ? 's' : ''} sequentially`}
+            >
+              <Play size={10} className="inline mr-1" />
+              Process Lab Data ({queuedLabDataCount})
             </button>
           )}
           <button

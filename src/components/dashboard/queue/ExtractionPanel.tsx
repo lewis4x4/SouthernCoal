@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useVerificationStore } from '@/stores/verification';
 import { usePermissions } from '@/hooks/usePermissions';
 import { VerificationBadge } from './VerificationBadge';
-import { CheckCircle2, Flag } from 'lucide-react';
+import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
+import type { VerificationStatus } from '@/stores/verification';
 
 interface ExtractionPanelProps {
   entry: QueueEntry;
@@ -73,6 +74,19 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
 
   const data = entry.extracted_data as ExtractedData | null;
   if (!data) return null;
+
+  // Lab data branch — different layout than permit extraction
+  if (data.document_type === 'lab_data_edd') {
+    return (
+      <LabDataExtractionPanel
+        data={data as unknown as ExtractedLabData}
+        verificationStatus={verificationStatus}
+        onVerify={() => setStatus(entry.id, 'verified')}
+        onDispute={() => setStatus(entry.id, 'disputed')}
+        canVerify={can('verify')}
+      />
+    );
+  }
 
   const docType = data.document_type ?? 'original_permit';
   const docLabel = DOCUMENT_TYPE_LABELS[docType] ?? docType;
@@ -250,6 +264,291 @@ function TypeSpecificDetails({ data, docType }: { data: ExtractedData; docType: 
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Lab Data Extraction Panel
+// ---------------------------------------------------------------------------
+
+interface ExtractedLabData {
+  document_type: 'lab_data_edd';
+  file_format: string;
+  column_count: number;
+  total_rows: number;
+  parsed_rows: number;
+  skipped_rows: number;
+  permit_numbers: string[];
+  states: string[];
+  sites: string[];
+  date_range: { earliest: string | null; latest: string | null };
+  lab_names: string[];
+  parameters_found: number;
+  parameter_summary: Array<{
+    canonical_name: string;
+    sample_count: number;
+    below_detection_count: number;
+  }>;
+  outfalls_found: number;
+  outfall_summary: Array<{
+    raw_name: string;
+    matched_id: string | null;
+    sample_count: number;
+  }>;
+  warnings: string[];
+  validation_errors: Array<{ row: number; column: string; message: string }>;
+  hold_time_violations: Array<{
+    row: number;
+    parameter: string;
+    outfall: string;
+    sample_date: string;
+    analysis_date: string;
+    days_held: number;
+    max_hold_days: number;
+  }>;
+  records_truncated: boolean;
+  summary: string;
+}
+
+interface LabDataExtractionPanelProps {
+  data: ExtractedLabData;
+  verificationStatus: VerificationStatus;
+  onVerify: () => void;
+  onDispute: () => void;
+  canVerify: boolean;
+}
+
+function LabDataExtractionPanel({
+  data,
+  verificationStatus,
+  onVerify,
+  onDispute,
+  canVerify,
+}: LabDataExtractionPanelProps) {
+  const [showWarnings, setShowWarnings] = useState(false);
+  const [showHoldTime, setShowHoldTime] = useState(false);
+
+  const unmatchedOutfalls = data.outfall_summary.filter((o) => !o.matched_id);
+  const dateRange = data.date_range.earliest && data.date_range.latest
+    ? `${data.date_range.earliest} — ${data.date_range.latest}`
+    : '—';
+
+  return (
+    <div className="space-y-4">
+      {/* Header with verification badge */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-text-primary">
+          Lab Data Extraction
+        </h4>
+        <div className="flex items-center gap-2">
+          <VerificationBadge status={verificationStatus} />
+          {canVerify && verificationStatus !== 'verified' && (
+            <button
+              onClick={onVerify}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all"
+            >
+              <CheckCircle2 size={10} className="inline mr-1" />
+              Mark Verified
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Summary stats row 1 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryItem label="Format" value={data.file_format.toUpperCase()} />
+        <SummaryItem label="Parsed Rows" value={data.parsed_rows.toLocaleString()} />
+        <SummaryItem label="Date Range" value={dateRange} />
+        <SummaryItem label="Parameters" value={data.parameters_found} />
+      </div>
+
+      {/* Summary stats row 2 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryItem label="Outfalls" value={data.outfalls_found} />
+        <SummaryItem label="Sites" value={data.sites.length} />
+        <SummaryItem label="Labs" value={data.lab_names.join(', ') || '—'} />
+        <SummaryItem
+          label="Hold Time Issues"
+          value={data.hold_time_violations.length}
+        />
+      </div>
+
+      {/* Permit numbers */}
+      {data.permit_numbers.length > 0 && (
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
+            Permit Numbers
+          </p>
+          <p className="text-xs text-text-secondary font-mono">
+            {data.permit_numbers.join(', ')}
+          </p>
+        </div>
+      )}
+
+      {/* Summary text */}
+      {data.summary && (
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
+          <p className="text-xs text-text-secondary">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Parameter summary table */}
+      {data.parameter_summary.length > 0 && (
+        <div className="mt-3">
+          <h5 className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-2">
+            Parameters ({data.parameters_found})
+          </h5>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-text-muted">
+                  <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">Samples</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">Below Detection</th>
+                  {canVerify && (
+                    <th className="text-right py-1.5 font-medium">Action</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {data.parameter_summary.map((param) => (
+                  <tr
+                    key={param.canonical_name}
+                    className="border-b border-white/[0.03] text-text-secondary"
+                  >
+                    <td className="py-1.5 pr-3">{param.canonical_name}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">{param.sample_count}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {param.below_detection_count > 0 ? (
+                        <span className="text-amber-400">{param.below_detection_count}</span>
+                      ) : (
+                        '0'
+                      )}
+                    </td>
+                    {canVerify && (
+                      <td className="py-1.5 text-right">
+                        <button
+                          onClick={onDispute}
+                          className="p-1 rounded text-text-muted hover:text-verification-disputed transition-colors"
+                          title="Flag issue with this parameter"
+                        >
+                          <Flag size={12} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Outfall matching — only show if there are unmatched */}
+      {unmatchedOutfalls.length > 0 && (
+        <div className="mt-3 p-3 rounded-lg bg-amber-500/[0.06] border border-amber-500/20">
+          <h5 className="text-[10px] uppercase tracking-wider text-amber-300 font-medium mb-2">
+            <AlertTriangle size={10} className="inline mr-1" />
+            Unmatched Outfalls ({unmatchedOutfalls.length})
+          </h5>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-amber-500/10 text-text-muted">
+                  <th className="text-left py-1.5 pr-3 font-medium">Raw ID</th>
+                  <th className="text-right py-1.5 font-medium">Samples</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unmatchedOutfalls.map((o) => (
+                  <tr
+                    key={o.raw_name}
+                    className="border-b border-amber-500/5 text-text-secondary"
+                  >
+                    <td className="py-1.5 pr-3 font-mono">{o.raw_name}</td>
+                    <td className="py-1.5 text-right font-mono">{o.sample_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Warnings — collapsible */}
+      {data.warnings.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowWarnings(!showWarnings)}
+            className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300 font-medium mb-1 hover:text-amber-200 transition-colors"
+          >
+            {showWarnings ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+            Warnings ({data.warnings.length})
+          </button>
+          {showWarnings && (
+            <ul className="space-y-1 pl-3">
+              {data.warnings.map((w, i) => (
+                <li key={i} className="text-xs text-amber-200/70">
+                  {w}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Hold time violations — collapsible */}
+      {data.hold_time_violations.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowHoldTime(!showHoldTime)}
+            className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300 font-medium mb-1 hover:text-amber-200 transition-colors"
+          >
+            {showHoldTime ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+            Hold Time Violations ({data.hold_time_violations.length})
+          </button>
+          {showHoldTime && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-text-muted">
+                    <th className="text-left py-1.5 pr-3 font-medium">Row</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">Outfall</th>
+                    <th className="text-right py-1.5 pr-3 font-medium">Days Held</th>
+                    <th className="text-right py-1.5 font-medium">Max Days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.hold_time_violations.map((v, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-white/[0.03] text-text-secondary"
+                    >
+                      <td className="py-1.5 pr-3 font-mono">{v.row}</td>
+                      <td className="py-1.5 pr-3">{v.parameter}</td>
+                      <td className="py-1.5 pr-3 font-mono">{v.outfall}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono text-status-failed">
+                        {v.days_held}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">{v.max_hold_days}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Truncation notice */}
+      {data.records_truncated && (
+        <p className="text-[10px] text-text-muted italic">
+          Record preview truncated. Full data is preserved in the original file.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function SummaryItem({ label, value }: { label: string; value: string | number }) {
