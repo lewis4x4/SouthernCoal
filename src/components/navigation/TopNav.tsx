@@ -8,6 +8,8 @@ import {
   FileText,
   Settings,
   LogOut,
+  FileEdit,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +34,8 @@ const NAV_ITEMS = [
   { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
   { label: 'Monitoring', href: '/monitoring', icon: Activity },
   { label: 'Reports', href: '/reports', icon: FileText },
+  { label: 'Corrections', href: '/corrections', icon: FileEdit },
+  { label: 'Roadmap', href: '/roadmap', icon: Map },
   { label: 'Admin', href: '/admin', icon: Settings },
 ] as const;
 

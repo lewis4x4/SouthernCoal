@@ -1,40 +1,103 @@
 import { Link } from 'react-router-dom';
-import { Settings, ArrowLeft } from 'lucide-react';
+import { Settings, ScrollText, Shield, Bell, MapPin } from 'lucide-react';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
+
+const ADMIN_CARDS = [
+  {
+    label: 'Audit Log',
+    description: 'Human-readable change log — who changed what, when, with before/after values.',
+    href: '/admin/audit-log',
+    icon: ScrollText,
+    color: 'rgba(168, 85, 247, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Access Control',
+    description: 'User management, role assignments, quarterly access review, RBAC verification.',
+    href: '/admin/access-control',
+    icon: Shield,
+    color: 'rgba(59, 130, 246, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Notification Preferences',
+    description: 'Email, SMS, and in-app notification settings per event type.',
+    href: '/admin',
+    icon: Bell,
+    color: 'rgba(245, 158, 11, 0.08)',
+    ready: false,
+  },
+  {
+    label: 'State Regulatory Config',
+    description: 'Agency contacts, DMR system settings, and state-specific rules.',
+    href: '/admin',
+    icon: MapPin,
+    color: 'rgba(16, 185, 129, 0.08)',
+    ready: false,
+  },
+] as const;
 
 export function Admin() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6 py-12 text-center">
-      <div className="inline-flex rounded-2xl bg-slate-500/10 p-4">
-        <Settings className="h-10 w-10 text-slate-400" />
+    <div className="mx-auto max-w-4xl space-y-8">
+      {/* Header */}
+      <div className="flex items-start gap-4">
+        <div className="inline-flex rounded-xl bg-slate-500/10 p-2.5">
+          <Settings className="h-6 w-6 text-slate-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+            Administration
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            System configuration, user management, and compliance audit tools.
+          </p>
+        </div>
       </div>
 
-      <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-        Administration
-      </h1>
+      {/* Cards Grid */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {ADMIN_CARDS.map((card) => {
+          const Icon = card.icon;
 
-      <p className="text-text-secondary">
-        User management, role assignments, notification preferences, and system configuration.
-        Manage access across 8 roles with site-level or global scoping.
-      </p>
+          if (!card.ready) {
+            return (
+              <div
+                key={card.label}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.01] p-6 opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-white/[0.05] p-2">
+                    <Icon className="h-5 w-5 text-text-muted" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-text-secondary">{card.label}</h3>
+                    <span className="text-[10px] uppercase tracking-wider text-text-muted">Coming Soon</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-text-muted">{card.description}</p>
+              </div>
+            );
+          }
 
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 text-left">
-        <h3 className="mb-3 text-sm font-medium text-text-secondary">Coming Soon</h3>
-        <ul className="space-y-2 text-sm text-text-muted">
-          <li>User profiles — CRUD on user_profiles table</li>
-          <li>Role assignments — site-scoped and global via user_role_assignments</li>
-          <li>Notification preferences — email/SMS/in-app per event type</li>
-          <li>State regulatory configs — agency and DMR system settings</li>
-          <li>Audit log viewer — read-only browse of all system actions</li>
-        </ul>
+          return (
+            <Link key={card.label} to={card.href}>
+              <SpotlightCard
+                spotlightColor={card.color}
+                className="h-full p-6 transition-all hover:border-white/[0.12]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-white/[0.05] p-2">
+                    <Icon className="h-5 w-5 text-text-secondary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-text-primary">{card.label}</h3>
+                </div>
+                <p className="mt-3 text-xs text-text-muted">{card.description}</p>
+              </SpotlightCard>
+            </Link>
+          );
+        })}
       </div>
-
-      <Link
-        to="/dashboard"
-        className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Dashboard
-      </Link>
     </div>
   );
 }

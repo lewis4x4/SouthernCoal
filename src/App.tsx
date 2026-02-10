@@ -8,6 +8,10 @@ import { Monitoring } from '@/pages/Monitoring';
 import { Reports } from '@/pages/Reports';
 import { Admin } from '@/pages/Admin';
 import { CoverageGaps } from '@/pages/CoverageGaps';
+import { AuditLogPage } from '@/pages/AuditLogPage';
+import { AccessControlPage } from '@/pages/AccessControlPage';
+import { CorrectionsPage } from '@/pages/CorrectionsPage';
+import { RoadmapPage } from '@/pages/RoadmapPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -108,6 +112,54 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <Admin />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Audit Log */}
+        <Route
+          path="/admin/audit-log"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <AuditLogPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Access Control */}
+        <Route
+          path="/admin/access-control"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <AccessControlPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Data Corrections */}
+        <Route
+          path="/corrections"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <CorrectionsPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Implementation Roadmap */}
+        <Route
+          path="/roadmap"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <RoadmapPage />
               </AppShell>
             </AuthGuard>
           }

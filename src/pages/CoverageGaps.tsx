@@ -61,7 +61,7 @@ export function CoverageGaps() {
     a.click();
     URL.revokeObjectURL(url);
 
-    log('coverage_export_csv' as Parameters<typeof log>[0], { category, year });
+    log('coverage_export_csv', { category, year });
     toast.success('CSV exported');
   }, [cells, category, year, log]);
 

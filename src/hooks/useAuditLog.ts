@@ -12,18 +12,43 @@ type AuditAction =
   | 'filter_change'
   | 'obligation_generation'
   | 'deadline_alert_sent'
-  | 'coverage_export_csv';
+  | 'coverage_export_csv'
+  | 'audit_log_export_csv'
+  | 'role_change'
+  | 'user_deactivated'
+  | 'user_reactivated'
+  | 'access_review_completed'
+  | 'correction_requested'
+  | 'correction_approved'
+  | 'correction_rejected'
+  | 'roadmap_status_change'
+  | 'roadmap_evidence_upload'
+  | 'evidence_uploaded';
+
+export type { AuditAction };
+
+interface AuditEntity {
+  module: string;
+  tableName: string;
+  recordId?: string;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+}
 
 /**
  * Frontend audit logging — v6 override of v5.
  * Logs UI-only actions that Edge Functions never see.
  * Fire-and-forget: never blocks UI on insert failure.
+ *
+ * audit_log columns: id, user_id, action, module (NOT NULL), table_name (NOT NULL),
+ * record_id (uuid), old_values (jsonb), new_values (jsonb), ip_address, user_agent,
+ * description (text), created_at
  */
 export function useAuditLog() {
   const { user } = useAuth();
 
   const log = useCallback(
-    (action: AuditAction, details?: Record<string, unknown>) => {
+    (action: AuditAction, details?: Record<string, unknown>, entity?: AuditEntity) => {
       if (!user) return;
 
       // Fire-and-forget — catch + warn, never block UI
@@ -32,7 +57,12 @@ export function useAuditLog() {
         .insert({
           user_id: user.id,
           action,
-          details: details ?? {},
+          module: entity?.module ?? 'frontend',
+          table_name: entity?.tableName ?? 'ui_action',
+          record_id: entity?.recordId ?? null,
+          old_values: entity?.oldValues ?? null,
+          new_values: entity?.newValues ?? null,
+          description: details ? JSON.stringify(details) : null,
           created_at: new Date().toISOString(),
         })
         .then(({ error }) => {
