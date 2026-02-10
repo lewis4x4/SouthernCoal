@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -219,6 +220,42 @@ async function downloadPdfAsBase64(
   }
   const bytes = new Uint8Array(await data.arrayBuffer());
   return encodeBase64(bytes);
+}
+
+/** Download a PDF, trim to maxPages, and return as base64.
+ *  Uses pdf-lib to copy only the first N pages into a new document. */
+async function downloadAndTrimPdf(
+  supabase: ReturnType<typeof createClient>,
+  bucket: string,
+  path: string,
+  maxPages: number = 100,
+): Promise<{ base64: string; totalPages: number; keptPages: number }> {
+  const { data, error } = await supabase.storage.from(bucket).download(path);
+  if (error || !data) {
+    throw new Error(`Failed to download PDF: ${error?.message ?? "no data returned"}`);
+  }
+
+  const pdfBytes = new Uint8Array(await data.arrayBuffer());
+  const srcDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const totalPages = srcDoc.getPageCount();
+  const keptPages = Math.min(totalPages, maxPages);
+
+  if (totalPages <= maxPages) {
+    // No trimming needed
+    return { base64: encodeBase64(pdfBytes), totalPages, keptPages };
+  }
+
+  console.log(`[parse-permit-pdf] Trimming PDF from ${totalPages} to ${keptPages} pages`);
+
+  const trimmedDoc = await PDFDocument.create();
+  const pageIndices = Array.from({ length: keptPages }, (_, i) => i);
+  const copiedPages = await trimmedDoc.copyPages(srcDoc, pageIndices);
+  for (const page of copiedPages) {
+    trimmedDoc.addPage(page);
+  }
+
+  const trimmedBytes = await trimmedDoc.save();
+  return { base64: encodeBase64(new Uint8Array(trimmedBytes)), totalPages, keptPages };
 }
 
 /** Document source for Claude API — either URL or base64. */
@@ -556,8 +593,9 @@ serve(async (req: Request) => {
     );
 
     // 8. URL-first extraction (Claude fetches the PDF — no Edge Function memory pressure)
-    //    Falls back to base64 only for small files (≤5 MB) to stay within worker limits.
+    //    Falls back to trimmed base64 for >100-page PDFs, plain base64 for small files.
     let extractedData: ExtractedPermitData;
+    let pageTrimWarning: string | null = null;
     try {
       extractedData = await extractPermitData(
         { type: "url", url: pdfUrl },
@@ -565,26 +603,42 @@ serve(async (req: Request) => {
       );
     } catch (urlErr) {
       const urlErrMsg = urlErr instanceof Error ? urlErr.message : String(urlErr);
+      const isPageLimit = /100 pdf pages|page limit|too many pages/i.test(urlErrMsg);
 
-      // Only attempt base64 fallback for small files to avoid WORKER_LIMIT
-      if (fileSize > BASE64_MAX_BYTES) {
+      if (isPageLimit) {
+        // PDF exceeds 100-page API limit — download, trim, and retry as base64
+        console.log(
+          "[parse-permit-pdf] PDF exceeds 100-page limit. Downloading and trimming...",
+        );
+        const { base64, totalPages, keptPages } = await downloadAndTrimPdf(
+          supabase,
+          queueEntry.storage_bucket,
+          queueEntry.storage_path,
+          100,
+        );
+        pageTrimWarning = `Document has ${totalPages} pages. Only the first ${keptPages} pages were processed (API limit: 100). Some data from later pages may be missing.`;
+        extractedData = await extractPermitData(
+          { type: "base64", media_type: "application/pdf", data: base64 },
+          queueEntry.file_name,
+        );
+      } else if (fileSize <= BASE64_MAX_BYTES) {
+        // Small file — try plain base64 fallback
+        console.log(
+          "[parse-permit-pdf] URL extraction failed, trying base64 fallback.",
+          "File size:", fileSize, "bytes. Error:", urlErrMsg,
+        );
+        const pdfBase64 = await downloadPdfAsBase64(
+          supabase,
+          queueEntry.storage_bucket,
+          queueEntry.storage_path,
+        );
+        extractedData = await extractPermitData(
+          { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+          queueEntry.file_name,
+        );
+      } else {
         throw urlErr; // Too large for base64 — surface the real error
       }
-
-      console.log(
-        "[parse-permit-pdf] URL extraction failed, trying base64 fallback.",
-        "File size:", fileSize, "bytes. Error:", urlErrMsg,
-      );
-
-      const pdfBase64 = await downloadPdfAsBase64(
-        supabase,
-        queueEntry.storage_bucket,
-        queueEntry.storage_path,
-      );
-      extractedData = await extractPermitData(
-        { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-        queueEntry.file_name,
-      );
     }
 
     // 9. Fallback: extract effective_date from filename if Claude missed it
@@ -612,13 +666,16 @@ serve(async (req: Request) => {
         ? (extractedData.limit_count ?? extractedData.limits?.length ?? 0)
         : 1;
 
+      const warnings = [
+        "No permit number found in this document. Please verify this is an NPDES permit.",
+      ];
+      if (pageTrimWarning) warnings.push(pageTrimWarning);
+
       const updateData: Record<string, unknown> = {
         status: "parsed",
         extracted_data: extractedData,
         records_extracted: recordCount,
-        error_log: [
-          "No permit number found in this document. Please verify this is an NPDES permit.",
-        ],
+        error_log: warnings,
         processing_completed_at: now,
         updated_at: now,
       };
@@ -631,6 +688,14 @@ serve(async (req: Request) => {
     } else {
       // 13. Full success
       await markParsed(supabase, queueId, extractedData, queueEntry.state_code);
+
+      // Store page-trim warning if applicable
+      if (pageTrimWarning) {
+        await supabase
+          .from("file_processing_queue")
+          .update({ error_log: [pageTrimWarning] })
+          .eq("id", queueId);
+      }
     }
 
     console.log(
