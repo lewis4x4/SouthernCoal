@@ -207,13 +207,17 @@ async function getSignedUrl(
   return data.signedUrl;
 }
 
-/** Download a PDF from storage via signed URL and return as base64. */
-async function downloadPdfAsBase64(signedUrl: string): Promise<string> {
-  const response = await fetch(signedUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download PDF: HTTP ${response.status}`);
+/** Download a PDF from storage via Supabase client (service role) and return as base64. */
+async function downloadPdfAsBase64(
+  supabase: ReturnType<typeof createClient>,
+  bucket: string,
+  path: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).download(path);
+  if (error || !data) {
+    throw new Error(`Failed to download PDF: ${error?.message ?? "no data returned"}`);
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const bytes = new Uint8Array(await data.arrayBuffer());
   return encodeBase64(bytes);
 }
 
@@ -567,7 +571,7 @@ serve(async (req: Request) => {
         "File size:", fileSize, "bytes. Error:", urlErrMsg,
       );
 
-      const pdfBase64 = await downloadPdfAsBase64(pdfUrl);
+      const pdfBase64 = await downloadPdfAsBase64(supabase, queueEntry.storage_bucket, queueEntry.storage_path);
       extractedData = await extractPermitData(
         { type: "base64", media_type: "application/pdf", data: pdfBase64 },
         queueEntry.file_name,
