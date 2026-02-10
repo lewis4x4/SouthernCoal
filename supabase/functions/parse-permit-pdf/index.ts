@@ -9,8 +9,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
-const CLAUDE_TIMEOUT_MS = 90_000; // 90 seconds — permits can be 50+ pages
-const MAX_PDF_SIZE = 20 * 1024 * 1024; // 20 MB — Anthropic document limit
+const CLAUDE_TIMEOUT_MS = 120_000; // 120 seconds — large permits via URL can take longer
+const SIGNED_URL_EXPIRY = 300; // 5 minutes — enough for Claude to fetch the PDF
 
 // ---------------------------------------------------------------------------
 // Types
@@ -187,44 +187,33 @@ async function verifyAuth(
   return user.id;
 }
 
-/** Download PDF bytes from Supabase Storage. */
-async function downloadPdf(
+/** Generate a signed URL for a storage file. */
+async function getSignedUrl(
   supabase: ReturnType<typeof createClient>,
   bucket: string,
   path: string,
-): Promise<Uint8Array> {
-  const { data, error } = await supabase.storage.from(bucket).download(path);
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, SIGNED_URL_EXPIRY);
 
-  if (error) {
-    throw new Error(`Storage download failed: ${error.message}`);
-  }
-  if (!data) {
-    throw new Error("Storage returned empty file");
+  if (error || !data?.signedUrl) {
+    throw new Error(`Failed to create signed URL: ${error?.message ?? "no URL returned"}`);
   }
 
-  const arrayBuffer = await data.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+  return data.signedUrl;
 }
 
-/** Convert Uint8Array to base64 string (Deno-compatible). */
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/** Call Claude API with PDF document for structured extraction. */
+/** Call Claude API with PDF URL for structured extraction. */
 async function extractPermitData(
-  pdfBase64: string,
+  pdfUrl: string,
   fileName: string,
 ): Promise<ExtractedPermitData> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
 
   try {
-    console.log("[parse-permit-pdf] Calling Claude API for", fileName);
+    console.log("[parse-permit-pdf] Calling Claude API for", fileName, "(via URL)");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -243,9 +232,8 @@ async function extractPermitData(
               {
                 type: "document",
                 source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: pdfBase64,
+                  type: "url",
+                  url: pdfUrl,
                 },
               },
               {
@@ -286,11 +274,9 @@ async function extractPermitData(
     jsonStr = jsonStr.replace(/\/\/[^\n]*/g, "");
     // 3. If response was truncated, try to salvage by closing open structures
     if (!jsonStr.endsWith("}")) {
-      // Find the last complete limit entry and close the array + object
       const lastCompleteEntry = jsonStr.lastIndexOf("}");
       if (lastCompleteEntry > 0) {
         const truncated = jsonStr.slice(0, lastCompleteEntry + 1);
-        // Count open brackets to close them
         const openBrackets = (truncated.match(/\[/g) || []).length - (truncated.match(/\]/g) || []).length;
         const openBraces = (truncated.match(/\{/g) || []).length - (truncated.match(/\}/g) || []).length;
         jsonStr = truncated + "]".repeat(Math.max(0, openBrackets)) + "}".repeat(Math.max(0, openBraces));
@@ -304,7 +290,7 @@ async function extractPermitData(
     clearTimeout(timeout);
 
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("Claude API timed out after 90 seconds");
+      throw new Error("Claude API timed out after 120 seconds");
     }
     throw err;
   }
@@ -329,6 +315,10 @@ function classifyError(err: unknown): string[] {
 
   if (lower.includes("overloaded") || lower.includes("rate limit") || lower.includes("429")) {
     return ["AI processing service is temporarily overloaded. Please retry in a few minutes."];
+  }
+
+  if (lower.includes("worker") || lower.includes("compute") || lower.includes("resource") || lower.includes("memory")) {
+    return ["Edge Function ran out of compute resources. The file may be too large for server-side processing."];
   }
 
   return [message.length > 500 ? message.slice(0, 500) + "..." : message];
@@ -519,40 +509,20 @@ serve(async (req: Request) => {
   await markProcessing(supabase, queueId);
 
   try {
-    // 7. Download PDF from Storage
+    // 7. Generate signed URL for the PDF (Claude fetches it directly — no memory pressure)
     console.log(
-      "[parse-permit-pdf] Downloading from",
+      "[parse-permit-pdf] Creating signed URL for",
       queueEntry.storage_bucket,
       queueEntry.storage_path,
     );
-    const pdfBytes = await downloadPdf(
+    const pdfUrl = await getSignedUrl(
       supabase,
       queueEntry.storage_bucket,
       queueEntry.storage_path,
     );
 
-    // 8. Validate PDF size
-    if (pdfBytes.length > MAX_PDF_SIZE) {
-      await markFailed(supabase, queueId, [
-        `PDF file is too large (${(pdfBytes.length / 1024 / 1024).toFixed(1)}MB). Maximum supported size is ${MAX_PDF_SIZE / 1024 / 1024}MB.`,
-      ]);
-      return jsonResponse({ success: true, message: "File too large for processing" });
-    }
-
-    // 9. Validate PDF magic bytes
-    const pdfHeader = new TextDecoder().decode(pdfBytes.slice(0, 5));
-    if (pdfHeader !== "%PDF-") {
-      await markFailed(supabase, queueId, [
-        "File is not a valid PDF. The file header does not match PDF format.",
-      ]);
-      return jsonResponse({ success: true, message: "Invalid PDF format" });
-    }
-
-    // 10. Convert to base64 for Claude API
-    const pdfBase64 = uint8ArrayToBase64(pdfBytes);
-
-    // 11. Call Claude for structured extraction
-    const extractedData = await extractPermitData(pdfBase64, queueEntry.file_name);
+    // 8. Call Claude for structured extraction (PDF sent via URL, not base64)
+    const extractedData = await extractPermitData(pdfUrl, queueEntry.file_name);
 
     // 12. Handle missing permit number (still useful data, mark parsed with warning)
     if (!extractedData.permit_number) {
