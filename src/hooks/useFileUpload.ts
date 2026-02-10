@@ -239,7 +239,7 @@ export function useFileUpload() {
   );
 
   /**
-   * Upload all ready files in the staging area.
+   * Upload all ready files in the staging area — sequentially, one at a time.
    */
   const uploadAll = useCallback(async () => {
     const readyFiles = useStagingStore.getState().getReadyFiles();
@@ -248,13 +248,12 @@ export function useFileUpload() {
       return;
     }
 
+    toast.info(`Uploading ${readyFiles.length} file${readyFiles.length > 1 ? 's' : ''} sequentially...`);
+
     for (const file of readyFiles) {
-      // Respect concurrency limit — wait if full
-      while (!useUploadStore.getState().canStartUpload()) {
-        await new Promise((r) => setTimeout(r, 500));
-      }
-      // Fire and don't await — concurrency managed by the store
-      uploadFile(file);
+      await uploadFile(file);
+      // Small delay between sequential uploads
+      await new Promise((r) => setTimeout(r, 300));
     }
   }, [uploadFile]);
 
