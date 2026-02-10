@@ -24,21 +24,35 @@ export function useRealtimeQueue() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('file_processing_queue')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Paginate to bypass PostgREST's default 1000-row limit
+    const PAGE_SIZE = 1000;
+    let allEntries: QueueEntry[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    console.log('[queue] fetch result:', { count: data?.length ?? 0, error: error?.message ?? null });
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('file_processing_queue')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (error) {
-      console.error('[queue] Failed to fetch queue:', error.message, error.details, error.hint);
-      return;
+      if (error) {
+        console.error('[queue] Failed to fetch queue:', error.message, error.details, error.hint);
+        return;
+      }
+
+      if (data) {
+        allEntries = allEntries.concat(data as QueueEntry[]);
+        hasMore = data.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
     }
 
-    if (data) {
-      setEntries(data as QueueEntry[]);
-    }
+    console.log('[queue] fetch result:', { count: allEntries.length });
+    setEntries(allEntries);
   }, [profile, setEntries]);
 
   // Initial fetch
