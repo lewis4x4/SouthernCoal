@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useVerificationStore } from '@/stores/verification';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useObligationGeneration } from '@/hooks/useObligationGeneration';
 import { VerificationBadge } from './VerificationBadge';
-import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { VerificationStatus } from '@/stores/verification';
 
@@ -63,6 +65,7 @@ const TYPES_WITH_LIMITS = ['original_permit', 'renewal', 'draft_permit', 'tsmp_p
  */
 export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const { can } = usePermissions();
+  const { generateDMRSchedule, generating } = useObligationGeneration();
   const verificationStatus = useVerificationStore((s) => s.getStatus(entry.id));
   const setStatus = useVerificationStore((s) => s.setStatus);
   const markOpened = useVerificationStore((s) => s.markOpened);
@@ -201,6 +204,41 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
           </div>
         </div>
       )}
+
+      {/* Generate DMR Schedule — only for parsed permits with dates */}
+      {entry.file_category === 'npdes_permit' &&
+        data.effective_date &&
+        data.expiration_date &&
+        data.permit_number &&
+        data.state &&
+        can('process') && (
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
+            <button
+              onClick={async () => {
+                const result = await generateDMRSchedule({
+                  queueId: entry.id,
+                  permitNumber: data.permit_number!,
+                  state: data.state!,
+                  effectiveDate: data.effective_date!,
+                  expirationDate: data.expiration_date!,
+                });
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  toast.success(`Generated ${result.generated} DMR obligations`);
+                }
+              }}
+              disabled={generating}
+              className="px-4 py-2 text-xs font-medium rounded-lg bg-purple-500/15 text-purple-300 border border-purple-500/20 hover:bg-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CalendarPlus size={12} className="inline mr-1.5" />
+              {generating ? 'Generating...' : 'Generate DMR Schedule'}
+            </button>
+            <p className="text-[10px] text-text-muted mt-1.5">
+              Creates recurring DMR submission obligations from {data.effective_date} to {data.expiration_date}
+            </p>
+          </div>
+        )}
     </div>
   );
 }

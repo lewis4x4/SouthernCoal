@@ -9,7 +9,9 @@ type AuditAction =
   | 'bulk_retry'
   | 'staging_clear_all'
   | 'command_palette_action'
-  | 'filter_change';
+  | 'filter_change'
+  | 'obligation_generation'
+  | 'deadline_alert_sent';
 
 /**
  * Frontend audit logging — v6 override of v5.

@@ -9,6 +9,7 @@ interface ActionItem {
   description: string;
   dueDate: string;
   daysUntilDue: number;
+  daysAtRisk: number;
   priority: 'critical' | 'urgent' | 'upcoming';
   obligationType: string;
 }
@@ -21,9 +22,9 @@ export function ActionQueueCard() {
     async function fetch() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
-        .select('id, description, due_date, obligation_type, status')
+        .select('id, description, next_due_date, obligation_type, status, days_at_risk')
         .in('status', ['pending', 'in_progress', 'overdue'])
-        .order('due_date', { ascending: true })
+        .order('next_due_date', { ascending: true })
         .limit(20);
 
       if (error || !rows) {
@@ -34,19 +35,21 @@ export function ActionQueueCard() {
 
       const now = new Date();
       const mapped: ActionItem[] = rows
-        .filter((r) => r.due_date)
+        .filter((r) => r.next_due_date)
         .map((r) => {
-          const due = new Date(r.due_date as string);
+          const due = new Date(r.next_due_date as string);
           const daysUntilDue = Math.floor((due.getTime() - now.getTime()) / 86_400_000);
+          const daysAtRisk = (r.days_at_risk as number) ?? 0;
           let priority: ActionItem['priority'] = 'upcoming';
-          if (daysUntilDue < -14) priority = 'critical';
-          else if (daysUntilDue < 2) priority = 'urgent';
+          if (daysAtRisk > 14) priority = 'critical';
+          else if (daysAtRisk > 0 || daysUntilDue < 2) priority = 'urgent';
 
           return {
             id: r.id as string,
             description: (r.description as string) ?? 'Unnamed obligation',
             dueDate: due.toLocaleDateString(),
             daysUntilDue,
+            daysAtRisk,
             priority,
             obligationType: (r.obligation_type as string) ?? 'general',
           };

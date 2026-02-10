@@ -2,40 +2,25 @@ import { useEffect, useState, useMemo } from 'react';
 import { ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
-
-interface Obligation {
-  id: string;
-  paragraph_number: string | null;
-  description: string;
-  obligation_type: string | null;
-  due_date: string | null;
-  status: string;
-  penalty_rate: number | null;
-  assigned_to: string | null;
-  notes: string | null;
-  created_at: string;
-}
+import type { Obligation, PenaltyTier } from '@/types/obligations';
 
 type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue';
 type TierFilter = 'all' | 'current' | 'tier1' | 'tier2' | 'tier3';
 
-function getDaysLate(dueDate: string | null): number {
-  if (!dueDate) return 0;
-  const now = new Date();
-  const due = new Date(dueDate);
-  return Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+/** Map server tier format (tier_1) to style keys (tier1) */
+function tierStyleKey(tier: PenaltyTier): string {
+  return tier === 'none' ? 'current' : tier.replace('_', '');
 }
 
-function getTier(daysLate: number): 'current' | 'tier1' | 'tier2' | 'tier3' {
-  if (daysLate <= 0) return 'current';
-  if (daysLate <= 14) return 'tier1';
-  if (daysLate <= 30) return 'tier2';
-  return 'tier3';
-}
-
-function getAccruedPenalty(daysLate: number, rate: number | null): number {
-  if (daysLate <= 0) return 0;
-  return daysLate * (rate ?? 250);
+/** Map TierFilter back to server format for comparison */
+function filterToServerTier(filter: TierFilter): PenaltyTier | null {
+  switch (filter) {
+    case 'current': return 'none';
+    case 'tier1': return 'tier_1';
+    case 'tier2': return 'tier_2';
+    case 'tier3': return 'tier_3';
+    default: return null;
+  }
 }
 
 export function Obligations() {
@@ -50,7 +35,7 @@ export function Obligations() {
       const { data, error } = await supabase
         .from('consent_decree_obligations')
         .select('*')
-        .order('due_date', { ascending: true });
+        .order('next_due_date', { ascending: true });
 
       if (error || !data) {
         console.error('[obligations] Failed to fetch:', error?.message);
@@ -66,13 +51,10 @@ export function Obligations() {
   }, []);
 
   const filtered = useMemo(() => {
+    const serverTier = filterToServerTier(tierFilter);
     return obligations.filter((o) => {
       if (statusFilter !== 'all' && o.status !== statusFilter) return false;
-      if (tierFilter !== 'all') {
-        const daysLate = getDaysLate(o.due_date);
-        const tier = getTier(daysLate);
-        if (tierFilter !== tier) return false;
-      }
+      if (serverTier !== null && o.penalty_tier !== serverTier) return false;
       return true;
     });
   }, [obligations, statusFilter, tierFilter]);
@@ -84,13 +66,12 @@ export function Obligations() {
     const now = new Date();
 
     for (const o of obligations) {
-      const daysLate = getDaysLate(o.due_date);
-      if (daysLate > 0 && o.status !== 'completed') {
+      if (o.days_at_risk > 0 && o.status !== 'completed') {
         overdue++;
-        totalPenalties += getAccruedPenalty(daysLate, o.penalty_rate);
+        totalPenalties += o.accrued_penalty ?? 0;
       }
-      if (o.due_date) {
-        const due = new Date(o.due_date);
+      if (o.next_due_date) {
+        const due = new Date(o.next_due_date);
         const daysUntil = Math.floor((due.getTime() - now.getTime()) / 86_400_000);
         if (daysUntil >= 0 && daysUntil <= 7 && o.status !== 'completed') dueThisWeek++;
       }
@@ -112,6 +93,17 @@ export function Obligations() {
     tier2: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
     tier3: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
+
+  /** Per-type daily rate label for expanded details */
+  function getDailyRate(o: Obligation): string {
+    const tier = o.penalty_tier;
+    const type = o.obligation_type ?? '';
+    const isBase = ['ems_audit', 'treatment_inspection', 'database_maintenance'].includes(type);
+    if (tier === 'tier_1') return isBase ? '$1,000' : '$250';
+    if (tier === 'tier_2') return isBase ? '$2,500' : '$500';
+    if (tier === 'tier_3') return isBase ? '$4,500' : '$1,250';
+    return '$0';
+  }
 
   return (
     <div className="mx-auto max-w-[1920px] space-y-6">
@@ -197,9 +189,7 @@ export function Obligations() {
           </div>
         ) : (
           filtered.map((o) => {
-            const daysLate = getDaysLate(o.due_date);
-            const tier = getTier(daysLate);
-            const accrued = getAccruedPenalty(daysLate, o.penalty_rate);
+            const styleKey = tierStyleKey(o.penalty_tier);
             const isExpanded = expandedId === o.id;
 
             return (
@@ -208,7 +198,7 @@ export function Obligations() {
                   onClick={() => setExpandedId(isExpanded ? null : o.id)}
                   className={cn(
                     'grid w-full grid-cols-[80px_1fr_120px_120px_100px_100px_120px] items-center gap-3 border-b border-white/[0.04] px-4 py-3 text-left text-sm transition-colors hover:bg-white/[0.03]',
-                    tierRowStyles[tier],
+                    tierRowStyles[styleKey],
                   )}
                 >
                   <div className="font-mono text-xs text-text-muted">
@@ -217,7 +207,7 @@ export function Obligations() {
                   <div className="truncate text-text-primary">{o.description}</div>
                   <div className="text-xs text-text-secondary">{o.obligation_type ?? '—'}</div>
                   <div className="text-xs text-text-secondary">
-                    {o.due_date ? new Date(o.due_date).toLocaleDateString() : '—'}
+                    {o.next_due_date ? new Date(o.next_due_date).toLocaleDateString() : '—'}
                   </div>
                   <div>
                     <span
@@ -236,20 +226,20 @@ export function Obligations() {
                   <div
                     className={cn(
                       'text-xs font-medium',
-                      daysLate > 0 ? 'text-red-400' : 'text-text-muted',
+                      o.days_at_risk > 0 ? 'text-red-400' : 'text-text-muted',
                     )}
                   >
-                    {daysLate > 0 ? daysLate : '—'}
+                    {o.days_at_risk > 0 ? o.days_at_risk : '—'}
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    {accrued > 0 && (
+                    {o.accrued_penalty > 0 && (
                       <span
                         className={cn(
                           'rounded border px-1.5 py-0.5 text-[10px] font-bold',
-                          tierBadgeStyles[tier],
+                          tierBadgeStyles[styleKey],
                         )}
                       >
-                        ${accrued.toLocaleString()}
+                        ${o.accrued_penalty.toLocaleString()}
                       </span>
                     )}
                     {isExpanded ? (
@@ -274,18 +264,18 @@ export function Obligations() {
                         <div className="mb-1 text-xs font-medium uppercase text-text-muted">
                           Penalty Tier
                         </div>
-                        <div className={cn('font-medium', tierBadgeStyles[tier]?.split(' ')[1])}>
-                          {tier === 'current'
+                        <div className={cn('font-medium', tierBadgeStyles[styleKey]?.split(' ')[1])}>
+                          {o.penalty_tier === 'none'
                             ? 'Current (no penalty)'
-                            : `${tier.replace('tier', 'Tier ')} — $${o.penalty_rate ?? 250}/day`}
+                            : `${styleKey.replace('tier', 'Tier ')} — ${getDailyRate(o)}/day`}
                         </div>
                       </div>
                       <div>
                         <div className="mb-1 text-xs font-medium uppercase text-text-muted">
-                          Created
+                          Responsible Role
                         </div>
                         <div className="text-text-secondary">
-                          {new Date(o.created_at).toLocaleDateString()}
+                          {o.responsible_role ?? '—'}
                         </div>
                       </div>
                       {o.notes && (

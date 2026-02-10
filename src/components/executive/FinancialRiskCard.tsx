@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { DollarSign, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
+import type { PenaltyTier } from '@/types/obligations';
 
 interface TierData {
   count: number;
@@ -24,9 +25,6 @@ const EMPTY: PenaltyData = {
   escalatingIn48h: 0,
 };
 
-/** Daily penalty rates per consent decree tier */
-const TIER_RATES = { tier1: 250, tier2: 500, tier3: 1000 };
-
 export function FinancialRiskCard() {
   const [data, setData] = useState<PenaltyData>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -35,7 +33,7 @@ export function FinancialRiskCard() {
     async function fetch() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
-        .select('id, due_date, status, penalty_rate')
+        .select('id, next_due_date, status, days_at_risk, penalty_tier, accrued_penalty')
         .in('status', ['pending', 'in_progress', 'overdue']);
 
       if (error || !rows) {
@@ -44,34 +42,30 @@ export function FinancialRiskCard() {
         return;
       }
 
-      const now = new Date();
       const tier1: TierData = { count: 0, amount: 0 };
       const tier2: TierData = { count: 0, amount: 0 };
       const tier3: TierData = { count: 0, amount: 0 };
       let escalating = 0;
+      const now = new Date();
 
       for (const row of rows) {
-        if (!row.due_date) continue;
-        const due = new Date(row.due_date as string);
-        const daysLate = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+        const penaltyTier = (row.penalty_tier as PenaltyTier) ?? 'none';
+        const accrued = (row.accrued_penalty as number) ?? 0;
 
-        if (daysLate <= 0) {
-          // Not yet overdue — check if escalating within 48h
-          if (daysLate >= -2) escalating++;
-          continue;
-        }
-
-        const rate = (row.penalty_rate as number) ?? TIER_RATES.tier1;
-
-        if (daysLate <= 14) {
+        if (penaltyTier === 'tier_1') {
           tier1.count++;
-          tier1.amount += daysLate * rate;
-        } else if (daysLate <= 30) {
+          tier1.amount += accrued;
+        } else if (penaltyTier === 'tier_2') {
           tier2.count++;
-          tier2.amount += daysLate * rate;
-        } else {
+          tier2.amount += accrued;
+        } else if (penaltyTier === 'tier_3') {
           tier3.count++;
-          tier3.amount += daysLate * rate;
+          tier3.amount += accrued;
+        } else if (row.next_due_date) {
+          // Not yet overdue — check if escalating within 48h
+          const due = new Date(row.next_due_date as string);
+          const daysUntil = Math.floor((due.getTime() - now.getTime()) / 86_400_000);
+          if (daysUntil >= -2 && daysUntil <= 0) escalating++;
         }
       }
 
