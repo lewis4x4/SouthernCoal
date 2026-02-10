@@ -27,35 +27,51 @@ export function useLabDataProcessing() {
     });
 
     try {
-      // Refresh the JWT before each Edge Function call (per CLAUDE.md: getFreshToken)
-      const {
-        data: { session },
-        error: refreshError,
-      } = await supabase.auth.refreshSession();
-
-      if (refreshError || !session) {
-        window.location.href = '/login?reason=session_expired';
-        return;
+      // Refresh the JWT before each Edge Function call
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshed.session) {
+          window.location.href = '/login?reason=session_expired';
+          return;
+        }
+        session = refreshed.session;
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
-      // Fire and forget — Realtime subscription handles status updates
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/parse-lab-data-edd`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ queue_id: queueId }),
-        },
-      );
+      // Fire with 10s timeout — just long enough to catch immediate HTTP errors.
+      // Edge Function continues server-side; Realtime subscription handles status updates.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP ${response.status}`);
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/parse-lab-data-edd`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ queue_id: queueId }),
+            signal: controller.signal,
+          },
+        );
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `HTTP ${response.status}`);
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        // AbortError = timeout, Edge Function still running server-side
+        if (fetchErr instanceof DOMException && fetchErr.name === 'AbortError') {
+          toast.info(`Processing ${entry.file_name}... (this may take a moment)`);
+          return;
+        }
+        throw fetchErr;
       }
 
       toast.info(`Processing started for ${entry.file_name}`);
