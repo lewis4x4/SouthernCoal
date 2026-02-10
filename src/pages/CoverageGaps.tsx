@@ -24,7 +24,7 @@ const YEARS = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear -
 export function CoverageGaps() {
   const [category, setCategory] = useState('lab_data');
   const [year, setYear] = useState(currentYear);
-  const { cells, gapCount, coveredCount, totalCells } = useCoverageGapMatrix(category, year);
+  const { cells, gapCount, coveredCount, totalCells, unplacedCount } = useCoverageGapMatrix(category, year);
   const { log } = useAuditLog();
 
   const pct = totalCells > 0 ? Math.round((coveredCount / totalCells) * 100) : 0;
@@ -172,6 +172,14 @@ export function CoverageGaps() {
           <span className={cn('font-medium', gapCount > 0 ? 'text-red-400' : 'text-emerald-400')}>
             {gapCount} gap{gapCount !== 1 ? 's' : ''}
           </span>
+          {unplacedCount > 0 && (
+            <>
+              <span className="text-text-muted">·</span>
+              <span className="text-amber-400" title="Files missing extracted date range — not shown in matrix">
+                {unplacedCount} file{unplacedCount !== 1 ? 's' : ''} undated
+              </span>
+            </>
+          )}
         </div>
 
         {/* Legend + Export */}

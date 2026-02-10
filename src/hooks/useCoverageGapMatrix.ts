@@ -17,6 +17,8 @@ export interface CoverageGapData {
   gapCount: number;
   coveredCount: number;
   totalCells: number;
+  /** Files that couldn't be placed — missing extracted date range */
+  unplacedCount: number;
 }
 
 const MONTH_COUNT = 12;
@@ -47,6 +49,7 @@ export function useCoverageGapMatrix(
 
     // Filter entries to selected category
     const filtered = entries.filter((e) => e.file_category === category);
+    let unplacedCount = 0;
 
     for (const entry of filtered) {
       const stateCode = entry.state_code;
@@ -54,6 +57,9 @@ export function useCoverageGapMatrix(
 
       // Determine which months this entry covers
       const months = getEntryMonths(entry, category, year);
+      if (months.length === 0) {
+        unplacedCount++;
+      }
 
       for (const month of months) {
         const cell = cells[stateCode]![month]!;
@@ -92,6 +98,7 @@ export function useCoverageGapMatrix(
       gapCount,
       coveredCount,
       totalCells: STATES.length * MONTH_COUNT,
+      unplacedCount,
     };
   }, [entries, category, year]);
 }
@@ -130,11 +137,7 @@ function getLabDataMonths(
     | undefined;
 
   if (!dateRange?.earliest || !dateRange?.latest) {
-    // Fallback to created_at
-    const created = new Date(entry.created_at);
-    if (created.getFullYear() === year) {
-      return [created.getMonth()];
-    }
+    // No extracted dates — don't guess from created_at (upload date ≠ data date)
     return [];
   }
 
