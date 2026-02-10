@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
+import type { QueueEntry } from '@/types/queue';
 
 /**
  * Permit processing hook — triggers parse-permit-pdf Edge Function.
@@ -109,6 +110,13 @@ export function usePermitProcessing() {
     for (let i = 0; i < queued.length; i++) {
       const entry = queued[i]!;
 
+      // Optimistic UI update — show 'processing' immediately
+      useQueueStore.getState().upsertEntry({
+        ...entry,
+        status: 'processing',
+        processing_started_at: new Date().toISOString(),
+      });
+
       // Refresh session before each call
       let session = (await supabase.auth.getSession()).data.session;
       if (!session) {
@@ -154,6 +162,15 @@ export function usePermitProcessing() {
     }
 
     toast.success(`Finished processing ${queued.length} permits.`);
+
+    // Force sync store with database — Realtime events may have been coalesced during batch
+    const { data: freshEntries } = await supabase
+      .from('file_processing_queue')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (freshEntries) {
+      useQueueStore.getState().setEntries(freshEntries as QueueEntry[]);
+    }
   }, []);
 
   /**
