@@ -19,13 +19,6 @@ export function useLabDataProcessing() {
 
     if (!entry) return;
 
-    // Optimistic status update
-    useQueueStore.getState().upsertEntry({
-      ...entry,
-      status: 'processing',
-      processing_started_at: new Date().toISOString(),
-    });
-
     try {
       // Refresh the JWT before each Edge Function call
       let session = (await supabase.auth.getSession()).data.session;
@@ -84,18 +77,13 @@ export function useLabDataProcessing() {
             useQueueStore.getState().setExpandedRow(queueId),
         },
       });
-
-      // Revert optimistic update
-      useQueueStore.getState().upsertEntry({
-        ...entry,
-        status: entry.status,
-        processing_started_at: entry.processing_started_at,
-      });
     }
   }, []);
 
   /**
-   * Process all queued lab data files sequentially.
+   * Process all queued lab data files — truly sequential to avoid connection pool exhaustion.
+   * Waits for each Edge Function to complete before starting the next.
+   * Pool size is only 15, so we MUST limit to 1 concurrent Edge Function.
    */
   const processAllQueuedLabData = useCallback(async () => {
     const entries = useQueueStore.getState().entries;
@@ -111,12 +99,55 @@ export function useLabDataProcessing() {
 
     toast.info(`Processing ${queued.length} queued lab data file${queued.length > 1 ? 's' : ''}...`);
 
-    for (const entry of queued) {
-      await processLabData(entry.id);
-      // Small delay between sequential processing calls
-      await new Promise((r) => setTimeout(r, 500));
+    for (let i = 0; i < queued.length; i++) {
+      const entry = queued[i]!;
+
+      // Refresh session before each call
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshed.session) {
+          window.location.href = '/login?reason=session_expired';
+          return;
+        }
+        session = refreshed.session;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+
+      try {
+        // Wait for the FULL response (up to 160s) — ensures Edge Function finishes
+        // and releases its DB connection before we start the next one.
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/parse-lab-data-edd`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ queue_id: entry.id }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[lab-data] Failed ${entry.file_name}:`, errorText);
+          toast.error(`Failed: ${entry.file_name}`);
+        } else {
+          toast.success(`Parsed ${entry.file_name} (${i + 1}/${queued.length})`);
+        }
+      } catch (err) {
+        console.error(`[lab-data] Error processing ${entry.file_name}:`, err);
+        toast.error(`Error processing ${entry.file_name}`);
+      }
+
+      // Brief pause between files
+      await new Promise((r) => setTimeout(r, 1000));
     }
-  }, [processLabData]);
+
+    toast.success(`Finished processing ${queued.length} lab data files.`);
+  }, []);
 
   /**
    * Retry a failed lab data file.

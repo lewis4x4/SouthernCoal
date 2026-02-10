@@ -20,13 +20,6 @@ export function usePermitProcessing() {
 
     if (!entry) return;
 
-    // Update local state immediately
-    useQueueStore.getState().upsertEntry({
-      ...entry,
-      status: 'processing',
-      processing_started_at: new Date().toISOString(),
-    });
-
     try {
       // Refresh the JWT before each Edge Function call
       let session = (await supabase.auth.getSession()).data.session;
@@ -85,18 +78,13 @@ export function usePermitProcessing() {
             useQueueStore.getState().setExpandedRow(queueId),
         },
       });
-
-      // Revert optimistic update
-      useQueueStore.getState().upsertEntry({
-        ...entry,
-        status: entry.status,
-        processing_started_at: entry.processing_started_at,
-      });
     }
   }, []);
 
   /**
-   * Process all queued permits sequentially (not all at once).
+   * Process all queued permits — truly sequential to avoid connection pool exhaustion.
+   * Waits for each Edge Function to complete before starting the next.
+   * Pool size is only 15, so we MUST limit to 1 concurrent Edge Function.
    */
   const processAllQueued = useCallback(async () => {
     const entries = useQueueStore.getState().entries;
@@ -112,12 +100,55 @@ export function usePermitProcessing() {
 
     toast.info(`Processing ${queued.length} queued permit${queued.length > 1 ? 's' : ''}...`);
 
-    for (const entry of queued) {
-      await processPermit(entry.id);
-      // Small delay between sequential processing calls
-      await new Promise((r) => setTimeout(r, 500));
+    for (let i = 0; i < queued.length; i++) {
+      const entry = queued[i]!;
+
+      // Refresh session before each call
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshed.session) {
+          window.location.href = '/login?reason=session_expired';
+          return;
+        }
+        session = refreshed.session;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+
+      try {
+        // Wait for the FULL response — ensures Edge Function finishes
+        // and releases its DB connection before we start the next one.
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/parse-permit-pdf`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ queue_id: entry.id }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[permits] Failed ${entry.file_name}:`, errorText);
+          toast.error(`Failed: ${entry.file_name}`);
+        } else {
+          toast.success(`Parsed ${entry.file_name} (${i + 1}/${queued.length})`);
+        }
+      } catch (err) {
+        console.error(`[permits] Error processing ${entry.file_name}:`, err);
+        toast.error(`Error processing ${entry.file_name}`);
+      }
+
+      // Brief pause between files
+      await new Promise((r) => setTimeout(r, 1000));
     }
-  }, [processPermit]);
+
+    toast.success(`Finished processing ${queued.length} permits.`);
+  }, []);
 
   /**
    * Retry a failed permit.
