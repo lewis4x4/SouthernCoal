@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
-import { useUserProfile } from './useUserProfile';
+import { useAuth } from './useAuth';
 import type { QueueEntry } from '@/types/queue';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -18,7 +18,7 @@ const HEARTBEAT_INTERVAL = 120_000; // 2 minutes (reduced from 30s to ease conne
  * 3. Heartbeat: lightweight single-page fetch only when entries are actively processing
  */
 export function useRealtimeQueue() {
-  const { profile } = useUserProfile();
+  const { user } = useAuth();
   const { setEntries, upsertEntry } = useQueueStore();
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const lastEventRef = useRef<number>(Date.now());
@@ -29,7 +29,7 @@ export function useRealtimeQueue() {
    * Loads all entries in 1000-row chunks.
    */
   const fetchAllEntries = useCallback(async () => {
-    if (!profile) return;
+    if (!user) return;
 
     const PAGE_SIZE = 1000;
     let allEntries: QueueEntry[] = [];
@@ -60,14 +60,14 @@ export function useRealtimeQueue() {
     console.log('[queue] initial fetch:', { count: allEntries.length });
     setEntries(allEntries);
     initialLoadDone.current = true;
-  }, [profile, setEntries]);
+  }, [user, setEntries]);
 
   /**
    * Lightweight heartbeat fetch — single query for active entries only.
    * Only fetches rows with status processing/queued to detect stuck items.
    */
   const heartbeatFetch = useCallback(async () => {
-    if (!profile) return;
+    if (!user) return;
 
     const { data, error } = await supabase
       .from('file_processing_queue')
@@ -86,7 +86,7 @@ export function useRealtimeQueue() {
         upsertEntry(entry);
       }
     }
-  }, [profile, upsertEntry]);
+  }, [user, upsertEntry]);
 
   // Initial fetch — full paginated load once
   useEffect(() => {
@@ -95,7 +95,7 @@ export function useRealtimeQueue() {
 
   // Realtime subscription
   useEffect(() => {
-    if (!profile) return;
+    if (!user) return;
 
     const channel = supabase
       .channel('queue-changes')
@@ -122,7 +122,7 @@ export function useRealtimeQueue() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile, upsertEntry]);
+  }, [user, upsertEntry]);
 
   // Heartbeat: lightweight fetch for active entries only (every 2 min)
   useEffect(() => {
