@@ -331,39 +331,62 @@ function normalizeHeader(h: string): string {
     .replace(/permit\s+#/, "permit#");
 }
 
-/** Validate the header row. Returns column count (26 or 27) or throws. */
-function validateHeaders(headerRow: unknown[]): number {
-  if (!headerRow || headerRow.length < 26) {
+/** Validate the header row. Returns { columnCount, warnings }. */
+function validateHeaders(headerRow: unknown[]): { columnCount: number; warnings: string[] } {
+  const warnings: string[] = [];
+
+  if (!headerRow || headerRow.length < 20) {
     throw new Error(
-      `Header mismatch: expected 26 columns, found ${headerRow?.length ?? 0}. ` +
+      `Header mismatch: expected ~26 columns, found ${headerRow?.length ?? 0}. ` +
         "This file does not match the expected EDD format.",
     );
   }
 
   const normalized = headerRow.map((h) => normalizeHeader(String(h ?? "")));
 
-  // Check first 26 columns match
+  // Check for key EDD columns that MUST exist (by content, not position)
+  const allHeaders = normalized.join(" ");
+  const hasPermitCol = allHeaders.includes("permit");
+  const hasParameterCol = normalized.includes("parameter");
+  const hasValueCol = normalized.includes("value");
+
+  if (!hasPermitCol || !hasParameterCol || !hasValueCol) {
+    throw new Error(
+      "This file does not appear to be an EDD format. " +
+        `Missing key columns: ${[
+          !hasPermitCol && '"Permit#"',
+          !hasParameterCol && '"Parameter"',
+          !hasValueCol && '"Value"',
+        ].filter(Boolean).join(", ")}. ` +
+        `Found headers: ${normalized.slice(0, 10).join(", ")}...`,
+    );
+  }
+
+  // Check positional matches (informational — mismatches logged as warnings)
+  const checkCount = Math.min(26, normalized.length);
   const mismatches: string[] = [];
-  for (let i = 0; i < 26; i++) {
-    if (normalized[i] !== EXPECTED_HEADERS[i]) {
+  for (let i = 0; i < checkCount; i++) {
+    if (i < EXPECTED_HEADERS.length && normalized[i] !== EXPECTED_HEADERS[i]) {
       mismatches.push(
         `Column ${i + 1}: expected "${EXPECTED_HEADERS[i]}", got "${normalized[i]}"`,
       );
     }
   }
 
-  if (mismatches.length > 3) {
-    throw new Error(
-      `Header mismatch: ${mismatches.length} columns don't match expected EDD format. ` +
-        mismatches.slice(0, 5).join("; "),
-    );
+  if (mismatches.length > 0) {
+    console.log(`[parse-lab-data-edd] ${mismatches.length} header variations:`, mismatches);
+    if (mismatches.length > 6) {
+      warnings.push(
+        `${mismatches.length} column headers differ from standard EDD format. Data may be mapped incorrectly.`,
+      );
+    }
   }
 
   // 27-column variant: column 27 is empty or "column1"
   const is27Col = headerRow.length >= 27 &&
     (!normalized[26] || normalized[26] === "column1");
 
-  return is27Col ? 27 : 26;
+  return { columnCount: is27Col ? 27 : Math.min(headerRow.length, 26), warnings };
 }
 
 /** Parse a date string (MM/DD/YYYY or M/D/YYYY) to YYYY-MM-DD. */
@@ -873,10 +896,25 @@ serve(async (req: Request) => {
 
     // 10. Validate headers
     const headerRow = allRows[0];
-    const columnCount = validateHeaders(headerRow);
+    const { columnCount, warnings: headerWarnings } = validateHeaders(headerRow);
 
     // Data rows (skip header)
-    const dataRows = allRows.slice(1);
+    let dataRows = allRows.slice(1);
+
+    // Skip type descriptor rows (e.g., row of "txt", "num", "date", "int", etc.)
+    const TYPE_DESCRIPTORS = new Set(["txt", "num", "int", "date", "varchar", "float", "double", "text", "number", "string"]);
+    while (dataRows.length > 0) {
+      const firstRow = dataRows[0];
+      const nonEmpty = firstRow.filter((c) => c && c.trim());
+      const allDescriptors = nonEmpty.length > 0 && nonEmpty.every((c) => TYPE_DESCRIPTORS.has(c.trim().toLowerCase()));
+      if (allDescriptors) {
+        console.log("[parse-lab-data-edd] Skipping type descriptor row:", firstRow.slice(0, 5).join(", "));
+        dataRows = dataRows.slice(1);
+      } else {
+        break;
+      }
+    }
+
     const totalRows = dataRows.length;
 
     if (totalRows > MAX_ROWS) {
@@ -929,7 +967,7 @@ serve(async (req: Request) => {
 
     // 12. Process each row
     const records: ParsedRecord[] = [];
-    const warnings: string[] = [];
+    const warnings: string[] = [...headerWarnings];
     const validationErrors: Array<{ row: number; column: string; message: string }> = [];
     const holdTimeViolations: ExtractedLabData["hold_time_violations"] = [];
 
