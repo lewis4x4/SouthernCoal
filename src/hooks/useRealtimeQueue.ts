@@ -60,7 +60,8 @@ export function useRealtimeQueue() {
     console.log('[queue] initial fetch:', { count: allEntries.length });
     setEntries(allEntries);
     initialLoadDone.current = true;
-  }, [user, setEntries]);
+    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+  }, [user?.id, setEntries]);
 
   /**
    * Lightweight heartbeat fetch — single query for active entries only.
@@ -86,7 +87,8 @@ export function useRealtimeQueue() {
         upsertEntry(entry);
       }
     }
-  }, [user, upsertEntry]);
+    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+  }, [user?.id, upsertEntry]);
 
   // Initial fetch — full paginated load once
   useEffect(() => {
@@ -122,7 +124,8 @@ export function useRealtimeQueue() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, upsertEntry]);
+    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+  }, [user?.id, upsertEntry]);
 
   // Heartbeat: lightweight fetch for active entries only (every 2 min)
   useEffect(() => {

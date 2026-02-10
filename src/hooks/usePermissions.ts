@@ -118,7 +118,8 @@ export function usePermissions() {
     }
 
     fetchAssignments();
-  }, [user]);
+    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+  }, [user?.id]);
 
   /**
    * Check if user can perform an action.

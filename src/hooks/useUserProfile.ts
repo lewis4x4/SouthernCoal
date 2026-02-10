@@ -69,7 +69,8 @@ export function useUserProfile() {
     }
 
     fetchProfile();
-  }, [user, isAuthenticated]);
+    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+  }, [user?.id, isAuthenticated]);
 
   return state;
 }
