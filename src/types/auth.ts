@@ -39,4 +39,5 @@ export type Permission =
   | 'export'
   | 'verify'
   | 'set_expected'
-  | 'command_palette';
+  | 'command_palette'
+  | 'search';

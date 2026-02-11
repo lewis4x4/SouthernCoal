@@ -9,14 +9,14 @@ import type { Role, Permission, RoleAssignment } from '@/types/auth';
  * Supports global and site-scoped roles.
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  executive: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette'],
-  site_manager: ['view', 'upload', 'export', 'command_palette'],
-  environmental_manager: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette'],
-  safety_manager: ['view', 'upload', 'command_palette'],
-  field_sampler: ['view', 'upload', 'command_palette'],
-  lab_tech: ['view', 'upload', 'command_palette'],
-  admin: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette'],
-  read_only: ['view', 'export', 'command_palette'],
+  executive: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
+  site_manager: ['view', 'upload', 'export', 'command_palette', 'search'],
+  environmental_manager: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
+  safety_manager: ['view', 'upload', 'command_palette', 'search'],
+  field_sampler: ['view', 'upload', 'command_palette', 'search'],
+  lab_tech: ['view', 'upload', 'command_palette', 'search'],
+  admin: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
+  read_only: ['view', 'export', 'command_palette', 'search'],
 };
 
 /** Priority order: higher index = more permissive. Used to resolve highest-privilege assignment. */

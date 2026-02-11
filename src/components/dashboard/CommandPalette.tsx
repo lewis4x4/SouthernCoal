@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { useQueueStore } from '@/stores/queue';
 import { useStagingStore } from '@/stores/staging';
@@ -22,6 +23,7 @@ import {
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const { can } = usePermissions();
   const setFilters = useQueueStore((s) => s.setFilters);
   const clearAll = useStagingStore((s) => s.clearAll);
@@ -123,6 +125,16 @@ export function CommandPalette() {
 
             {/* Actions */}
             <Command.Group heading="Actions" className="text-[10px] uppercase tracking-wider text-text-muted px-2 py-1.5">
+              <Command.Item
+                value="search compliance data natural language query"
+                onSelect={() =>
+                  runAction('navigate_search', () => navigate('/search'))
+                }
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+              >
+                <Search size={12} />
+                Search compliance data
+              </Command.Item>
               {can('upload') && (
                 <Command.Item
                   value="upload files drag drop"

@@ -23,7 +23,9 @@ type AuditAction =
   | 'correction_rejected'
   | 'roadmap_status_change'
   | 'roadmap_evidence_upload'
-  | 'evidence_uploaded';
+  | 'evidence_uploaded'
+  | 'compliance_search'
+  | 'compliance_search_export';
 
 export type { AuditAction };
 

@@ -12,6 +12,8 @@ import { AuditLogPage } from '@/pages/AuditLogPage';
 import { AccessControlPage } from '@/pages/AccessControlPage';
 import { CorrectionsPage } from '@/pages/CorrectionsPage';
 import { RoadmapPage } from '@/pages/RoadmapPage';
+import { SearchPage } from '@/pages/SearchPage';
+import { SearchObservabilityPage } from '@/pages/SearchObservabilityPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -160,6 +162,30 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <RoadmapPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Compliance Search */}
+        <Route
+          path="/search"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <SearchPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Search Observability */}
+        <Route
+          path="/search/observability"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <SearchObservabilityPage />
               </AppShell>
             </AuthGuard>
           }

@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
+  Search,
   Upload,
   ClipboardList,
   Grid3X3,
@@ -29,6 +30,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const NAV_ITEMS = [
   { label: 'Home', href: '/dashboard', icon: Home },
+  { label: 'Search', href: '/search', icon: Search },
   { label: 'Upload', href: '/compliance', icon: Upload },
   { label: 'Obligations', href: '/obligations', icon: ClipboardList },
   { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
