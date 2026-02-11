@@ -942,7 +942,7 @@ ${schemaContext}`;
 
     const { data: results, error: queryError } = await userClient.rpc(
       "execute_readonly_query",
-      { query_text: generatedQuery.sql, query_params: JSON.stringify(generatedQuery.params) },
+      { query_text: generatedQuery.sql, query_params: generatedQuery.params || [] },
     );
 
     if (queryError) {
@@ -954,7 +954,7 @@ ${schemaContext}`;
       return new Response(
         JSON.stringify({
           success: false,
-          error: "That query took too long or encountered an error. Try narrowing your search.",
+          error: `Query error: ${queryError.message}. Try narrowing your search.`,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
