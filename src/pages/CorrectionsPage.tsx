@@ -11,19 +11,20 @@ import { ENTITY_TYPE_LABELS, STATUS_LABELS } from '@/types/corrections';
 export function CorrectionsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getEffectiveRole } = usePermissions();
+  const { getEffectiveRole, loading: permissionsLoading } = usePermissions();
   const { corrections, loading, reviewCorrection } = useDataCorrections();
   const role = getEffectiveRole();
 
   const [reviewComment, setReviewComment] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('pending_review');
 
-  // RBAC gate
+  // RBAC gate — wait for permissions to load before deciding
   useEffect(() => {
+    if (permissionsLoading) return;
     if (!['executive', 'environmental_manager', 'admin'].includes(role)) {
       navigate('/dashboard', { replace: true });
     }
-  }, [role, navigate]);
+  }, [role, permissionsLoading, navigate]);
 
   const filtered = corrections.filter(c => filter === 'all' || c.status === filter);
 

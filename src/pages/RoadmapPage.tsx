@@ -503,7 +503,7 @@ function TaskDetailDrawer({
 
 export function RoadmapPage() {
   const navigate = useNavigate();
-  const { getEffectiveRole } = usePermissions();
+  const { getEffectiveRole, loading: permissionsLoading } = usePermissions();
   const { tasks, loading, updateStatus, updateNotes, refresh } = useRoadmapTasks();
   const role = getEffectiveRole();
 
@@ -517,12 +517,13 @@ export function RoadmapPage() {
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([1]));
   const [selectedTask, setSelectedTask] = useState<RoadmapTask | null>(null);
 
-  // RBAC gate
+  // RBAC gate — wait for permissions to load before deciding
   useEffect(() => {
+    if (permissionsLoading) return;
     if (!['executive', 'environmental_manager', 'admin', 'site_manager'].includes(role)) {
       navigate('/dashboard', { replace: true });
     }
-  }, [role, navigate]);
+  }, [role, permissionsLoading, navigate]);
 
   // Derive unique sections for the current phase filter
   const availableSections = useMemo(() => {
