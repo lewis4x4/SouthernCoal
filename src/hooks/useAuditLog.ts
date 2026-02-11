@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 type AuditAction =
   | 'matrix_export_csv'
@@ -52,12 +53,13 @@ interface AuditEntity {
  * Logs UI-only actions that Edge Functions never see.
  * Fire-and-forget: never blocks UI on insert failure.
  *
- * audit_log columns: id, user_id, action, module (NOT NULL), table_name (NOT NULL),
- * record_id (uuid), old_values (jsonb), new_values (jsonb), ip_address, user_agent,
- * description (text), created_at
+ * audit_log columns: id, user_id, organization_id, action, module (NOT NULL),
+ * table_name (NOT NULL), record_id (uuid), old_values (jsonb), new_values (jsonb),
+ * ip_address, user_agent, description (text), created_at
  */
 export function useAuditLog() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
 
   const log = useCallback(
     (action: AuditAction, details?: Record<string, unknown>, entity?: AuditEntity) => {
@@ -68,6 +70,7 @@ export function useAuditLog() {
         .from('audit_log')
         .insert({
           user_id: user.id,
+          organization_id: profile?.organization_id ?? null,
           action,
           module: entity?.module ?? 'frontend',
           table_name: entity?.tableName ?? 'ui_action',
@@ -83,7 +86,7 @@ export function useAuditLog() {
           }
         });
     },
-    [user],
+    [user, profile],
   );
 
   return { log };

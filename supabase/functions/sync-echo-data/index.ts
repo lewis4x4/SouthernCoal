@@ -9,7 +9,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 
-const ECHO_BASE = "https://echo.epa.gov/api";
+const ECHO_BASE = "https://echodata.epa.gov/echo";
 const RATE_LIMIT_MS = 500; // max ~2 req/sec per EPA guidelines
 const MAX_RETRIES = 3;
 const BACKFILL_YEARS = 3;
@@ -28,32 +28,48 @@ interface PermitMapping {
 // ---------------------------------------------------------------------------
 const ALLOWED_ROLES = ["environmental_manager", "executive", "admin"];
 
+interface AuthResult {
+  authorized: boolean;
+  userId: string | null;
+  orgId: string | null;
+  role: string | null;
+}
+
 async function validateAuth(
   req: Request,
   supabase: ReturnType<typeof createClient>,
-): Promise<boolean> {
+): Promise<AuthResult> {
+  const denied: AuthResult = { authorized: false, userId: null, orgId: null, role: null };
+
   // Path 1: Internal secret (cron, server-to-server)
   const secret = req.headers.get("x-internal-secret");
   if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
-    return true;
+    return { authorized: true, userId: null, orgId: null, role: "system" };
   }
 
   // Path 2: User JWT (frontend "Sync Now")
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return false;
+  if (!authHeader?.startsWith("Bearer ")) return denied;
 
   const token = authHeader.replace("Bearer ", "");
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return false;
+  if (error || !user) return denied;
 
-  // Check user role
+  // Check user role + org
   const { data: profile } = await supabase
     .from("user_profiles")
-    .select("role")
+    .select("role, organization_id")
     .eq("id", user.id)
     .single();
 
-  return !!profile?.role && ALLOWED_ROLES.includes(profile.role);
+  if (!profile?.role || !ALLOWED_ROLES.includes(profile.role)) return denied;
+
+  return {
+    authorized: true,
+    userId: user.id,
+    orgId: profile.organization_id || null,
+    role: profile.role,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -93,29 +109,65 @@ async function fetchWithRetry(
 // ---------------------------------------------------------------------------
 function parseFacilityInfo(data: Record<string, unknown>, npdesId: string): Record<string, unknown> | null {
   try {
-    // ECHO API wraps results in Results.Facilities array
+    // DFR API wraps results under Results with Permits, ComplianceSummary, etc.
     const results = data?.Results as Record<string, unknown> | undefined;
-    const facilities = results?.Facilities as Record<string, unknown>[] | undefined;
-    if (!facilities || facilities.length === 0) return null;
+    if (!results) return null;
 
-    const f = facilities[0];
+    // Check for DFR "no data" message
+    const message = results.Message as string | undefined;
+    if (message && message.toLowerCase().includes("no ")) {
+      console.log(`${npdesId}: DFR reports: ${message}`);
+      return null;
+    }
+
+    // Facility info from Permits array
+    const permits = results.Permits as Record<string, unknown>[] | undefined;
+    if (!permits || permits.length === 0) return null;
+
+    const f = permits[0];
+
+    // Compliance info from ComplianceSummary.Source or EnforcementComplianceSummaries.Summaries
+    const compSummary = results.ComplianceSummary as Record<string, unknown> | undefined;
+    const compSources = (compSummary?.Source as Record<string, unknown>[]) || [];
+    const compSource = compSources.find((s) => s.SourceID === npdesId) || compSources[0];
+
+    const ecsSummary = results.EnforcementComplianceSummaries as Record<string, unknown> | undefined;
+    const ecsSummaries = (ecsSummary?.Summaries as Record<string, unknown>[]) || [];
+    const ecsEntry = ecsSummaries.find((s) => s.Statute === "CWA") || ecsSummaries[0];
+
+    // SIC / NAICS — DFR nests under Sources[].SICCodes[] / NAICSCodes[]
+    const sicObj = results.SIC as Record<string, unknown> | undefined;
+    const sicSources = (sicObj?.Sources as Record<string, unknown>[]) || [];
+    const sicCodes = sicSources.flatMap((s) => (s.SICCodes as Record<string, unknown>[]) || []);
+
+    const naicsObj = results.NAICS as Record<string, unknown> | undefined;
+    const naicsSources = (naicsObj?.Sources as Record<string, unknown>[]) || [];
+    const naicsCodes = naicsSources.flatMap((s) => (s.NAICSCodes as Record<string, unknown>[]) || []);
+
+    // Parse inspection date from enforcement summary (MM/DD/YYYY → ISO date)
+    let lastInspDate: string | null = null;
+    if (ecsEntry?.LastInspection) {
+      const parts = String(ecsEntry.LastInspection).split("/");
+      if (parts.length === 3) lastInspDate = `${parts[2]}-${parts[0]}-${parts[1]}`;
+    }
+
     return {
-      facility_name: f.FacName || f.CWPName || null,
-      permit_status: f.CWPPermitStatusDesc || f.CWPStatus || null,
-      compliance_status: f.CWPSNCStatus || f.CWPComplianceStatus || null,
-      qtrs_in_nc: f.CWPQtrsInNC ? Number(f.CWPQtrsInNC) : null,
-      last_inspection_date: f.CWPLastInspectionDate || null,
-      last_penalty_amount: f.CWPLastPenaltyAmt ? Number(f.CWPLastPenaltyAmt) : null,
-      last_penalty_date: f.CWPLastPenaltyDate || null,
-      facility_address: f.FacStreet || null,
-      city: f.FacCity || null,
-      zip: f.FacZip || null,
-      latitude: f.FacLat ? Number(f.FacLat) : null,
-      longitude: f.FacLong ? Number(f.FacLong) : null,
-      permit_effective_date: f.CWPEffectiveDate || null,
-      permit_expiration_date: f.CWPExpirationDate || null,
-      sic_codes: f.SICCodes ? String(f.SICCodes).split(",").map((s: string) => s.trim()) : [],
-      naics_codes: f.NAICSCodes ? String(f.NAICSCodes).split(",").map((s: string) => s.trim()) : [],
+      facility_name: f.FacilityName || null,
+      permit_status: ecsEntry?.CurrentStatus || compSource?.CurrentSNC || null,
+      compliance_status: ecsEntry?.CurrentStatus || (compSource?.CurrentSNC === "Yes" ? "Significant Noncompliance" : compSource?.CurrentSNC === "No" ? "No Violation" : null),
+      qtrs_in_nc: compSource?.QtrsInNC ? Number(compSource.QtrsInNC) : (ecsEntry?.QtrsInNC ? Number(ecsEntry.QtrsInNC) : null),
+      last_inspection_date: lastInspDate,
+      last_penalty_amount: ecsEntry?.TotalPenalties ? Number(ecsEntry.TotalPenalties) : null,
+      last_penalty_date: null, // DFR doesn't provide individual penalty dates
+      facility_address: f.FacilityStreet || null,
+      city: f.FacilityCity || null,
+      zip: f.FacilityZip || null,
+      latitude: f.Latitude ? Number(f.Latitude) : null,
+      longitude: f.Longitude ? Number(f.Longitude) : null,
+      permit_effective_date: null, // DFR doesn't surface permit effective date directly
+      permit_expiration_date: f.ExpDate || null,
+      sic_codes: sicCodes.map((s) => String(s.SICCode || "")).filter(Boolean),
+      naics_codes: naicsCodes.map((n) => String(n.NAICSCode || "")).filter(Boolean),
     };
   } catch (err) {
     console.error(`Error parsing facility info for ${npdesId}:`, err);
@@ -182,7 +234,8 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Auth — internal secret OR JWT with role check
-  if (!(await validateAuth(req, supabase))) {
+  const auth = await validateAuth(req, supabase);
+  if (!auth.authorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -191,11 +244,15 @@ serve(async (req) => {
 
   // Parse optional body
   let syncType = "manual";
+  let limit = 0; // 0 = no limit
+  let offset = 0;
   try {
     const body = await req.json();
     syncType = body.sync_type || "manual";
+    limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 0;
+    offset = typeof body.offset === "number" && body.offset >= 0 ? body.offset : 0;
   } catch {
-    // No body is fine — defaults to manual
+    // No body is fine — defaults to manual, no limit, offset 0
   }
 
   // -----------------------------------------------------------------------
@@ -246,8 +303,15 @@ serve(async (req) => {
     }
   }
 
-  const permits = Array.from(permitMap.values());
-  console.log(`Found ${permits.length} unique NPDES permits to sync`);
+  const allPermits = Array.from(permitMap.values()).sort((a, b) =>
+    a.npdes_id.localeCompare(b.npdes_id),
+  );
+  const sliced = offset > 0 ? allPermits.slice(offset) : allPermits;
+  const permits = limit > 0 ? sliced.slice(0, limit) : sliced;
+  const hasMore = offset + permits.length < allPermits.length;
+  console.log(
+    `Found ${allPermits.length} unique NPDES permits, syncing ${permits.length} (offset=${offset}, limit=${limit || "all"}, hasMore=${hasMore})`,
+  );
 
   if (permits.length === 0) {
     return new Response(
@@ -267,6 +331,7 @@ serve(async (req) => {
       source: "echo_facility",
       sync_type: syncType,
       status: "running",
+      triggered_by: auth.userId,
     })
     .select("id")
     .single();
@@ -293,8 +358,8 @@ serve(async (req) => {
 
   for (const permit of permits) {
     try {
-      // 3a. Facility info
-      const facilityUrl = `${ECHO_BASE}/cwa_rest_services.get_facility_info?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON`;
+      // 3a. Facility info via DFR (Detailed Facility Report)
+      const facilityUrl = `${ECHO_BASE}/dfr_rest_services.get_dfr?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON`;
       const facilityResp = await fetchWithRetry(facilityUrl);
 
       if (!facilityResp) {
@@ -305,6 +370,16 @@ serve(async (req) => {
 
       const facilityJson = await facilityResp.json() as Record<string, unknown>;
       const parsed = parseFacilityInfo(facilityJson, permit.npdes_id);
+
+      if (!parsed) {
+        // Include diagnostic info in errors for debugging
+        const topKeys = Object.keys((facilityJson?.Results as Record<string, unknown>) || facilityJson || {});
+        const resultsObj = facilityJson?.Results as Record<string, unknown> | undefined;
+        const permitsArr = (resultsObj?.Permits as unknown[]) || [];
+        const msg = resultsObj?.Message || "no message";
+        const fetchStatus = facilityResp.status;
+        errors.push(`${permit.npdes_id}: parse returned null (status=${fetchStatus}, msg=${msg}, keys=[${topKeys.slice(0, 5).join(",")}], permits=${permitsArr.length})`);
+      }
 
       if (parsed) {
         const { error: upsertErr } = await supabase
@@ -335,7 +410,7 @@ serve(async (req) => {
       await sleep(RATE_LIMIT_MS);
 
       // 3b. DMR / effluent data
-      const dmrUrl = `${ECHO_BASE}/eff_rest_services.get_effluent_chart?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON&p_start_date=${startDateStr}`;
+      const dmrUrl = `${ECHO_BASE}/eff_rest_services.get_effluent_chart?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON&p_start_date=${startDateStr}`; // same path, just new base URL
       const dmrResp = await fetchWithRetry(dmrUrl);
 
       if (!dmrResp) {
@@ -413,7 +488,15 @@ serve(async (req) => {
       records_synced: facilitiesSynced,
       records_failed: errors.length,
       error_details: errors.length > 0 ? { errors } : null,
-      metadata: { dmrs_inserted: dmrsInserted, permits_total: permits.length },
+      metadata: {
+        dmrs_inserted: dmrsInserted,
+        permits_total: allPermits.length,
+        permits_synced_this_batch: permits.length,
+        offset,
+        has_more: hasMore,
+        next_offset: hasMore ? offset + permits.length : null,
+        triggered_by: auth.userId || "system",
+      },
     })
     .eq("id", syncLog.id);
 
@@ -421,16 +504,20 @@ serve(async (req) => {
   // 5. Audit log
   // -----------------------------------------------------------------------
   await supabase.from("audit_log").insert({
+    user_id: auth.userId,
+    organization_id: orgId,
     action: errors.length === permits.length ? "external_sync_failed" : "external_sync_completed",
     module: "external_data",
-    organization_id: orgId,
-    metadata: {
+    table_name: "external_sync_log",
+    record_id: syncLog.id,
+    description: JSON.stringify({
       source: "echo",
-      sync_log_id: syncLog.id,
       facilities_synced: facilitiesSynced,
       dmrs_inserted: dmrsInserted,
       errors_count: errors.length,
-    },
+      triggered_by: auth.userId || "system",
+      role: auth.role,
+    }),
   });
 
   // -----------------------------------------------------------------------
@@ -444,7 +531,12 @@ serve(async (req) => {
         "Content-Type": "application/json",
         "x-internal-secret": SYNC_INTERNAL_SECRET,
       },
-      body: JSON.stringify({ source: "echo", organization_id: orgId, sync_log_id: syncLog.id }),
+      body: JSON.stringify({
+        source: "echo",
+        organization_id: orgId,
+        sync_log_id: syncLog.id,
+        triggered_by: auth.userId,
+      }),
     });
   } catch (err) {
     console.error("Failed to trigger discrepancy detection:", err);
@@ -460,7 +552,11 @@ serve(async (req) => {
       permitsSynced: facilitiesSynced,
       dmrsInserted,
       errors: errors.length > 0 ? errors : undefined,
-      totalPermits: permits.length,
+      totalPermits: allPermits.length,
+      batchSize: permits.length,
+      offset,
+      hasMore,
+      nextOffset: hasMore ? offset + permits.length : null,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );

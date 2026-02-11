@@ -285,12 +285,14 @@ serve(async (req) => {
   let source = "echo";
   let orgId: string | null = null;
   let syncLogId: string | null = null;
+  let triggeredBy: string | null = null;
 
   try {
     const body = await req.json();
     source = body.source || "echo";
     orgId = body.organization_id || null;
     syncLogId = body.sync_log_id || null;
+    triggeredBy = body.triggered_by || null;
   } catch {
     // Defaults
   }
@@ -344,16 +346,19 @@ serve(async (req) => {
 
   // Audit log
   await supabase.from("audit_log").insert({
+    user_id: triggeredBy,
+    organization_id: orgId,
     action: "discrepancy_detected",
     module: "external_data",
-    organization_id: orgId,
-    metadata: {
+    table_name: "discrepancy_reviews",
+    description: JSON.stringify({
       source,
       sync_log_id: syncLogId,
       total_found: discrepancies.length,
       inserted,
       skipped_duplicates: skippedDupes,
-    },
+      triggered_by: triggeredBy || "system",
+    }),
   });
 
   console.log(
