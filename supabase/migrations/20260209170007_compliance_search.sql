@@ -15,19 +15,32 @@ SET search_path = public
 AS $$
 DECLARE
   result jsonb;
+  params text[];
+  sql_text text;
+  i int;
 BEGIN
   -- Verify SELECT only
   IF NOT (upper(trim(query_text)) LIKE 'SELECT%') THEN
     RAISE EXCEPTION 'Only SELECT queries are permitted';
   END IF;
 
-  -- Execute with parameters
+  -- Build params array from JSONB
+  SELECT array_agg(elem) INTO params
+  FROM jsonb_array_elements_text(query_params) AS elem;
+
+  -- Replace $N placeholders with quoted values (reverse order to avoid $1 matching $10)
+  sql_text := query_text;
+  IF params IS NOT NULL THEN
+    FOR i IN REVERSE array_length(params, 1)..1 LOOP
+      sql_text := replace(sql_text, '$' || i, quote_literal(params[i]));
+    END LOOP;
+  END IF;
+
+  -- Execute the resolved query
   EXECUTE format(
     'SELECT jsonb_agg(row_to_json(t)) FROM (%s) t',
-    query_text
+    sql_text
   )
-  USING
-    VARIADIC (SELECT array_agg(elem::text) FROM jsonb_array_elements_text(query_params) AS elem)
   INTO result;
 
   RETURN COALESCE(result, '[]'::jsonb);
