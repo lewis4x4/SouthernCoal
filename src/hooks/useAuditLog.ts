@@ -34,7 +34,8 @@ type AuditAction =
   | 'discrepancy_detected'
   | 'discrepancy_reviewed'
   | 'discrepancy_dismissed'
-  | 'discrepancy_escalated';
+  | 'discrepancy_escalated'
+  | 'discrepancy_resolved';
 
 export type { AuditAction };
 

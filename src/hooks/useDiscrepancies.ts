@@ -89,6 +89,7 @@ export function useDiscrepancies() {
         reviewed: 'discrepancy_reviewed',
         dismissed: 'discrepancy_dismissed',
         escalated: 'discrepancy_escalated',
+        resolved: 'discrepancy_resolved',
       };
       const action = actionMap[status];
       if (action) {

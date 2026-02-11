@@ -24,11 +24,36 @@ interface PermitMapping {
 }
 
 // ---------------------------------------------------------------------------
-// Auth — internal secret only (server-to-server)
+// Auth — dual path: internal secret OR JWT with role check
 // ---------------------------------------------------------------------------
-function validateAuth(req: Request): boolean {
+const ALLOWED_ROLES = ["environmental_manager", "executive", "admin"];
+
+async function validateAuth(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<boolean> {
+  // Path 1: Internal secret (cron, server-to-server)
   const secret = req.headers.get("x-internal-secret");
-  return !!SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET;
+  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+    return true;
+  }
+
+  // Path 2: User JWT (frontend "Sync Now")
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return false;
+
+  // Check user role
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  return !!profile?.role && ALLOWED_ROLES.includes(profile.role);
 }
 
 // ---------------------------------------------------------------------------
@@ -154,15 +179,15 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Auth
-  if (!validateAuth(req)) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // Auth — internal secret OR JWT with role check
+  if (!(await validateAuth(req, supabase))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Parse optional body
   let syncType = "manual";
