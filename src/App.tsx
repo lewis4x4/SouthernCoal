@@ -14,6 +14,7 @@ import { CorrectionsPage } from '@/pages/CorrectionsPage';
 import { RoadmapPage } from '@/pages/RoadmapPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { SearchObservabilityPage } from '@/pages/SearchObservabilityPage';
+import { ReviewQueuePage } from '@/pages/ReviewQueuePage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -174,6 +175,18 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <SearchPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Review Queue — discrepancy triage */}
+        <Route
+          path="/compliance/review-queue"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <ReviewQueuePage />
               </AppShell>
             </AuthGuard>
           }

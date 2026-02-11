@@ -107,14 +107,12 @@ serve(async (req: Request) => {
     // Filter out entries that already have chunks
     const entriesToProcess: typeof entries = [];
     for (const entry of entries) {
-      if (!entry.document_id) {
-        entriesToProcess.push(entry);
-        continue;
-      }
-      const { count } = await supabase
-        .from("document_chunks")
-        .select("id", { count: "exact", head: true })
-        .eq("document_id", entry.document_id);
+      // Check by document_id if available, otherwise by queue entry id
+      const chunkQuery = entry.document_id
+        ? supabase.from("document_chunks").select("id", { count: "exact", head: true }).eq("document_id", entry.document_id)
+        : supabase.from("document_chunks").select("id", { count: "exact", head: true }).eq("queue_entry_id", entry.id);
+
+      const { count } = await chunkQuery;
 
       if (!count || count === 0) {
         entriesToProcess.push(entry);

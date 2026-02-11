@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ComplianceSearchResponse, DocumentSearchResponse, SearchMode } from '@/types/search';
+import type { ComplianceSearchResponse, DocumentSearchFilters, DocumentSearchResponse, SearchMode } from '@/types/search';
 
 const RECENT_KEY = 'scc_recent_searches';
 const REVIEW_KEY = 'scc_search_review_mode';
@@ -37,6 +37,7 @@ interface SearchStore {
   documentResults: DocumentSearchResponse | null;
   documentLoading: boolean;
   documentError: string | null;
+  documentFilters: DocumentSearchFilters;
 
   setQuery: (query: string) => void;
   setLoading: (loading: boolean) => void;
@@ -52,6 +53,7 @@ interface SearchStore {
   setDocumentResults: (results: DocumentSearchResponse) => void;
   setDocumentError: (error: string) => void;
   clearDocumentResults: () => void;
+  setDocumentFilters: (filters: DocumentSearchFilters) => void;
 }
 
 export const useSearchStore = create<SearchStore>((set) => ({
@@ -68,6 +70,7 @@ export const useSearchStore = create<SearchStore>((set) => ({
   documentResults: null,
   documentLoading: false,
   documentError: null,
+  documentFilters: {},
 
   setQuery: (query) => set({ query }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -111,4 +114,6 @@ export const useSearchStore = create<SearchStore>((set) => ({
 
   clearDocumentResults: () =>
     set({ documentResults: null, documentError: null }),
+
+  setDocumentFilters: (documentFilters) => set({ documentFilters }),
 }));

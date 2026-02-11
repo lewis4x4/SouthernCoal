@@ -5,6 +5,8 @@ import { SearchSuggestions } from './SearchSuggestions';
 import { SQLReviewModal } from './SQLReviewModal';
 import { SearchModeToggle } from './SearchModeToggle';
 import { DocumentSearchResults } from './DocumentSearchResults';
+import { DocumentSearchFilters } from './DocumentSearchFilters';
+import { RawChunksDebug } from './RawChunksDebug';
 import { useComplianceSearch } from '@/hooks/useComplianceSearch';
 import { useDocumentSearch } from '@/hooks/useDocumentSearch';
 import { useSearchStore } from '@/stores/search';
@@ -24,13 +26,16 @@ export function ComplianceSearch() {
   const reviewMode = useSearchStore((s) => s.reviewMode);
   const toggleReviewMode = useSearchStore((s) => s.toggleReviewMode);
   const searchMode = useSearchStore((s) => s.searchMode);
+  const documentFilters = useSearchStore((s) => s.documentFilters);
   const { getEffectiveRole } = usePermissions();
 
   const role = getEffectiveRole();
   const canReview = role === 'executive' || role === 'admin';
+  const isAdmin = role === 'admin';
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingReview, setPendingReview] = useState<ComplianceSearchResponse | null>(null);
   const [lastQuery, setLastQuery] = useState('');
+  const [chunksMode, setChunksMode] = useState(false);
 
   const isDocMode = searchMode === 'document';
   const activeLoading = isDocMode ? docLoading : isLoading;
@@ -54,7 +59,10 @@ export function ComplianceSearch() {
       setLastQuery(query);
 
       if (isDocMode) {
-        await docSearch(query, 'answer');
+        const activeFilters = (documentFilters.state || documentFilters.document_type || documentFilters.permit_number)
+          ? documentFilters
+          : undefined;
+        await docSearch(query, chunksMode ? 'chunks' : 'answer', activeFilters);
       } else {
         const result = await search(query);
         // If review mode returned SQL without executing, show review modal
@@ -63,7 +71,7 @@ export function ComplianceSearch() {
         }
       }
     },
-    [isDocMode, search, docSearch],
+    [isDocMode, search, docSearch, documentFilters],
   );
 
   async function handleConfirmReview() {
@@ -102,6 +110,22 @@ export function ComplianceSearch() {
         searchMode={searchMode}
       />
 
+      {/* Document search filters (document mode only) */}
+      {isDocMode && <DocumentSearchFilters />}
+
+      {/* Admin chunks debug toggle (document mode only) */}
+      {isAdmin && isDocMode && (
+        <label className="flex items-center gap-2 text-xs text-text-muted">
+          <input
+            type="checkbox"
+            checked={chunksMode}
+            onChange={() => setChunksMode((v) => !v)}
+            className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.05] text-purple-500 focus:ring-0 focus:ring-offset-0"
+          />
+          Raw chunks debug mode
+        </label>
+      )}
+
       {/* Review mode toggle (Executive/Admin only, data mode only) */}
       {canReview && !isDocMode && (
         <label className="flex items-center gap-2 text-xs text-text-muted">
@@ -139,7 +163,10 @@ export function ComplianceSearch() {
       )}
 
       {/* Results — mode-specific */}
-      {isDocMode && docResults && (
+      {isDocMode && docResults && chunksMode && docResults.chunks.length > 0 && (
+        <RawChunksDebug chunks={docResults.chunks} />
+      )}
+      {isDocMode && docResults && !chunksMode && (
         <DocumentSearchResults response={docResults} onRetry={handleRetry} />
       )}
       {!isDocMode && results && (

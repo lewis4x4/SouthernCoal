@@ -11,6 +11,7 @@ import {
   LogOut,
   FileEdit,
   Map,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +43,7 @@ const NAV_GROUPS = [
       { label: 'Obligations', href: '/obligations', icon: ClipboardList },
       { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
       { label: 'Monitoring', href: '/monitoring', icon: Activity },
+      { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert },
     ],
     activeColor: 'bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/5',
     hoverColor: 'hover:text-cyan-400',

@@ -27,7 +27,14 @@ type AuditAction =
   | 'compliance_search'
   | 'compliance_search_export'
   | 'document_search'
-  | 'generate_embedding';
+  | 'generate_embedding'
+  | 'external_sync_started'
+  | 'external_sync_completed'
+  | 'external_sync_failed'
+  | 'discrepancy_detected'
+  | 'discrepancy_reviewed'
+  | 'discrepancy_dismissed'
+  | 'discrepancy_escalated';
 
 export type { AuditAction };
 

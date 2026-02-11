@@ -1,5 +1,8 @@
-import { FileText } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, ExternalLink, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
+import { supabase } from '@/lib/supabase';
 import type { DocumentChunk } from '@/types/search';
 
 interface CitationCardProps {
@@ -20,11 +23,46 @@ function getSimilarityBg(similarity: number): string {
 }
 
 export function CitationCard({ chunk, index }: CitationCardProps) {
+  const [viewLoading, setViewLoading] = useState(false);
   const similarityPct = (chunk.similarity * 100).toFixed(1);
   const previewText =
     chunk.chunk_text.length > 200
       ? chunk.chunk_text.slice(0, 200) + '...'
       : chunk.chunk_text;
+
+  async function viewDocument() {
+    if (!chunk.document_id) return;
+    setViewLoading(true);
+    try {
+      // Look up storage info from file_processing_queue
+      const { data: entry, error: fetchError } = await supabase
+        .from('file_processing_queue')
+        .select('storage_bucket, storage_path')
+        .eq('document_id', chunk.document_id)
+        .limit(1)
+        .single();
+
+      if (fetchError || !entry) {
+        toast.error('Could not locate document file');
+        return;
+      }
+
+      const { data: urlData, error: urlError } = await supabase.storage
+        .from(entry.storage_bucket)
+        .createSignedUrl(entry.storage_path, 300);
+
+      if (urlError || !urlData?.signedUrl) {
+        toast.error('Could not generate document URL');
+        return;
+      }
+
+      window.open(urlData.signedUrl, '_blank');
+    } catch {
+      toast.error('Failed to open document');
+    } finally {
+      setViewLoading(false);
+    }
+  }
 
   return (
     <div
@@ -44,11 +82,25 @@ export function CitationCard({ chunk, index }: CitationCardProps) {
           </span>
         </div>
 
-        {chunk.source_page > 0 && (
-          <span className="text-[11px] text-text-muted">
-            Page {chunk.source_page}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {chunk.source_page > 0 && (
+            <span className="text-[11px] text-text-muted">
+              Page {chunk.source_page}
+            </span>
+          )}
+          <button
+            onClick={viewDocument}
+            disabled={viewLoading || !chunk.document_id}
+            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
+          >
+            {viewLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <ExternalLink className="h-3 w-3" />
+            )}
+            View
+          </button>
+        </div>
       </div>
 
       {/* File info */}

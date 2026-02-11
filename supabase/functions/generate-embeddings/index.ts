@@ -444,6 +444,12 @@ serve(async (req: Request) => {
         .from("document_chunks")
         .delete()
         .eq("document_id", queueEntry.document_id);
+    } else {
+      // Entries without document_id — delete by queue_entry_id
+      await supabase
+        .from("document_chunks")
+        .delete()
+        .eq("queue_entry_id", queueEntry.id);
     }
 
     // 7. Extract text — PDF vs spreadsheet

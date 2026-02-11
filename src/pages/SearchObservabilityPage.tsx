@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, RefreshCw, DollarSign, AlertTriangle, BarChart3, Clock, Search, ShieldAlert, FileText, Database, Layers } from 'lucide-react';
+import { Activity, RefreshCw, DollarSign, AlertTriangle, BarChart3, Clock, Search, ShieldAlert, FileText, Database, Layers, Wifi, WifiOff } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -33,6 +33,9 @@ export function SearchObservabilityPage() {
   const [chunkStats, setChunkStats] = useState<{ totalChunks: number; docsWithChunks: number; totalParsed: number; avgChunksPerDoc: number }>({
     totalChunks: 0, docsWithChunks: 0, totalParsed: 0, avgChunksPerDoc: 0,
   });
+  const [syncLogs, setSyncLogs] = useState<{ id: string; source: string; status: string; started_at: string; completed_at: string | null; records_synced: number; records_failed: number }[]>([]);
+  const [discrepancyTrend, setDiscrepancyTrend] = useState<{ date: string; count: number }[]>([]);
+  const [triageStats, setTriageStats] = useState<{ avgHours: number; totalTriaged: number; pending: number }>({ avgHours: 0, totalTriaged: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -91,6 +94,58 @@ export function SearchObservabilityPage() {
       docsWithChunks,
       totalParsed: totalParsed || 0,
       avgChunksPerDoc: docsWithChunks > 0 ? Math.round((totalChunks || 0) / docsWithChunks) : 0,
+    });
+
+    // Sync health data
+    const { data: syncData } = await supabase
+      .from('external_sync_log')
+      .select('id, source, status, started_at, completed_at, records_synced, records_failed')
+      .order('started_at', { ascending: false })
+      .limit(20);
+    setSyncLogs((syncData || []) as typeof syncLogs);
+
+    // Discrepancy trend (30d)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: discData } = await supabase
+      .from('discrepancy_reviews')
+      .select('detected_at')
+      .gte('detected_at', thirtyDaysAgo)
+      .order('detected_at', { ascending: true });
+
+    const trendDays: Record<string, number> = {};
+    for (const d of discData || []) {
+      const day = (d as { detected_at: string }).detected_at?.slice(0, 10);
+      if (day) trendDays[day] = (trendDays[day] || 0) + 1;
+    }
+    setDiscrepancyTrend(Object.entries(trendDays).map(([date, count]) => ({ date, count })));
+
+    // Triage velocity
+    const { data: triagedData } = await supabase
+      .from('discrepancy_reviews')
+      .select('detected_at, reviewed_at')
+      .not('reviewed_at', 'is', null)
+      .limit(100);
+
+    let totalHours = 0;
+    let countTriaged = 0;
+    for (const r of triagedData || []) {
+      const row = r as { detected_at: string; reviewed_at: string };
+      const diff = new Date(row.reviewed_at).getTime() - new Date(row.detected_at).getTime();
+      if (diff > 0) {
+        totalHours += diff / (1000 * 60 * 60);
+        countTriaged++;
+      }
+    }
+
+    const { count: pendingCount } = await supabase
+      .from('discrepancy_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    setTriageStats({
+      avgHours: countTriaged > 0 ? Math.round(totalHours / countTriaged) : 0,
+      totalTriaged: countTriaged,
+      pending: pendingCount || 0,
     });
 
     setLoading(false);
@@ -582,6 +637,115 @@ export function SearchObservabilityPage() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </SpotlightCard>
+        </div>
+      </div>
+
+      {/* Sync Health Section */}
+      <div className="border-t border-white/[0.06] pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Wifi className="h-5 w-5 text-emerald-400" />
+          <h2 className="text-lg font-semibold text-text-primary">External Sync Health</h2>
+        </div>
+
+        {/* Sync health cards */}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Wifi className="h-3.5 w-3.5" />
+              Pending Review
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{triageStats.pending}</p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Clock className="h-3.5 w-3.5" />
+              Avg Triage Time
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">
+              {triageStats.avgHours > 0 ? `${triageStats.avgHours}h` : '—'}
+            </p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Triaged (all time)
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{triageStats.totalTriaged}</p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Database className="h-3.5 w-3.5" />
+              Syncs (recent)
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{syncLogs.length}</p>
+          </SpotlightCard>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Sync status timeline */}
+          <SpotlightCard className="p-4">
+            <h3 className="mb-3 text-sm font-medium text-text-secondary">Sync Timeline</h3>
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {syncLogs.length === 0 ? (
+                <p className="py-4 text-center text-xs text-text-muted">No syncs recorded yet</p>
+              ) : (
+                syncLogs.map((log) => {
+                  const hoursSince = log.completed_at
+                    ? Math.round((Date.now() - new Date(log.completed_at).getTime()) / (1000 * 60 * 60))
+                    : null;
+                  const isStale = log.source.includes('echo') ? (hoursSince ?? 999) > 48 : (hoursSince ?? 999) > 168;
+
+                  return (
+                    <div key={log.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                      <div className="flex items-center gap-2">
+                        {log.status === 'completed' ? (
+                          <Wifi size={12} className={isStale ? 'text-red-400' : 'text-emerald-400'} />
+                        ) : log.status === 'running' ? (
+                          <RefreshCw size={12} className="animate-spin text-cyan-400" />
+                        ) : (
+                          <WifiOff size={12} className="text-red-400" />
+                        )}
+                        <span className="uppercase text-text-muted font-medium">{log.source}</span>
+                      </div>
+                      <div className="flex items-center gap-3 font-mono text-text-muted">
+                        <span>{log.records_synced} synced</span>
+                        {log.records_failed > 0 && <span className="text-red-400">{log.records_failed} failed</span>}
+                        <span>{new Date(log.started_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </SpotlightCard>
+
+          {/* Discrepancy trend chart */}
+          <SpotlightCard className="p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
+              <BarChart3 className="h-4 w-4" />
+              Discrepancies Detected (30d)
+            </h3>
+            <div className="h-48">
+              {discrepancyTrend.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={discrepancyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(13,17,23,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+                    />
+                    <Bar dataKey="count" fill="#f97316" name="Discrepancies" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-text-muted">
+                  No discrepancies detected in the last 30 days
+                </div>
               )}
             </div>
           </SpotlightCard>
