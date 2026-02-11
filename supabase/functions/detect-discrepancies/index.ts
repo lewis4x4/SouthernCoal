@@ -71,29 +71,6 @@ function assignSeverity(type: string, context: Record<string, unknown>): string 
 }
 
 // ---------------------------------------------------------------------------
-// Dedup check: don't re-insert if a matching discrepancy is already pending/reviewed
-// ---------------------------------------------------------------------------
-async function isDuplicate(
-  supabase: ReturnType<typeof createClient>,
-  d: Discrepancy,
-): Promise<boolean> {
-  let query = supabase
-    .from("discrepancy_reviews")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", d.organization_id)
-    .eq("discrepancy_type", d.discrepancy_type)
-    .eq("source", d.source)
-    .in("status", ["pending", "reviewed"]);
-
-  if (d.npdes_id) query = query.eq("npdes_id", d.npdes_id);
-  if (d.monitoring_period_end) query = query.eq("monitoring_period_end", d.monitoring_period_end);
-  if (d.external_source_id) query = query.eq("external_source_id", d.external_source_id);
-
-  const { count } = await query;
-  return (count ?? 0) > 0;
-}
-
-// ---------------------------------------------------------------------------
 // ECHO comparison rules
 // ---------------------------------------------------------------------------
 async function detectEchoDiscrepancies(
@@ -325,20 +302,27 @@ serve(async (req) => {
   // Dedup and insert
   let inserted = 0;
   let skippedDupes = 0;
+  let insertErrors = 0;
 
   for (const d of discrepancies) {
-    const dupe = await isDuplicate(supabase, d);
-    if (dupe) {
-      skippedDupes++;
+    if (!d.external_source_id) {
+      insertErrors++;
+      console.error("Skipping discrepancy with missing external_source_id:", d);
       continue;
     }
 
     const { error: insertErr } = await supabase
       .from("discrepancy_reviews")
-      .insert(d);
+      .insert({ ...d, status: "pending" });
 
     if (insertErr) {
-      console.error("Failed to insert discrepancy:", insertErr.message);
+      const code = (insertErr as { code?: string }).code;
+      if (code === "23505") {
+        skippedDupes++;
+        continue;
+      }
+      insertErrors++;
+      console.error("Failed to insert discrepancy:", insertErr.message, "code=", code);
     } else {
       inserted++;
     }
@@ -357,12 +341,13 @@ serve(async (req) => {
       total_found: discrepancies.length,
       inserted,
       skipped_duplicates: skippedDupes,
+      insert_errors: insertErrors,
       triggered_by: triggeredBy || "system",
     }),
   });
 
   console.log(
-    `Discrepancy detection: ${discrepancies.length} found, ${inserted} inserted, ${skippedDupes} skipped (dupes)`,
+    `Discrepancy detection: ${discrepancies.length} found, ${inserted} inserted, ${skippedDupes} skipped (dupes), ${insertErrors} insert errors`,
   );
 
   return new Response(
@@ -372,6 +357,9 @@ serve(async (req) => {
       totalFound: discrepancies.length,
       inserted,
       skippedDuplicates: skippedDupes,
+      skipped_duplicates: skippedDupes,
+      insertErrors,
+      insert_errors: insertErrors,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );

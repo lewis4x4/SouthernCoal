@@ -23,10 +23,18 @@ interface PermitMapping {
   state_code: string | null;
 }
 
+type NormalizeResult =
+  | { normalized: string; reason: null }
+  | { normalized: null; reason: "missing_state_prefix" | "non_npdes_format" | "malformed_id" };
+
 // ---------------------------------------------------------------------------
 // Auth — dual path: internal secret OR JWT with role check
 // ---------------------------------------------------------------------------
 const ALLOWED_ROLES = ["environmental_manager", "executive", "admin"];
+const ECHO_SKIP_PATTERNS = [
+  /^KYGE\d{5}$/,   // KY general permits
+  /^TNR059\d{3}$/, // TN stormwater general permits
+];
 
 interface AuthResult {
   authorized: boolean;
@@ -79,6 +87,35 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function normalizeNpdesId(rawValue: string, stateCode: string | null): NormalizeResult {
+  const cleaned = rawValue.trim().toUpperCase();
+  if (!cleaned) return { normalized: null, reason: "malformed_id" };
+
+  // SMCRA-like IDs (e.g., S-4001-07) are not NPDES permits.
+  if (/^[A-Z]-\d/.test(cleaned)) {
+    return { normalized: null, reason: "non_npdes_format" };
+  }
+
+  let normalized = cleaned;
+  if (/^\d+$/.test(cleaned)) {
+    const state = (stateCode || "").trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(state)) {
+      return { normalized: null, reason: "missing_state_prefix" };
+    }
+    normalized = `${state}${cleaned}`;
+  }
+
+  if (!/^[A-Z0-9-]+$/.test(normalized) || normalized.length < 7 || normalized.length > 12) {
+    return { normalized: null, reason: "malformed_id" };
+  }
+
+  return { normalized, reason: null };
+}
+
+function shouldSkipEcho(npdesId: string): boolean {
+  return ECHO_SKIP_PATTERNS.some((pattern) => pattern.test(npdesId));
+}
+
 async function fetchWithRetry(
   url: string,
   retries = MAX_RETRIES,
@@ -124,7 +161,11 @@ function parseFacilityInfo(data: Record<string, unknown>, npdesId: string): Reco
     const permits = results.Permits as Record<string, unknown>[] | undefined;
     if (!permits || permits.length === 0) return null;
 
-    const f = permits[0];
+    // Prefer the NPDES-specific permit row in multi-permit DFR responses.
+    const f =
+      permits.find((p) => String(p.SourceID || "").toUpperCase() === npdesId.toUpperCase()) ||
+      permits.find((p) => String(p.EPASystem || "").toUpperCase() === "ICIS-NPDES") ||
+      permits[0];
 
     // Compliance info from ComplianceSummary.Source or EnforcementComplianceSummaries.Summaries
     const compSummary = results.ComplianceSummary as Record<string, unknown> | undefined;
@@ -153,7 +194,7 @@ function parseFacilityInfo(data: Record<string, unknown>, npdesId: string): Reco
 
     return {
       facility_name: f.FacilityName || null,
-      permit_status: ecsEntry?.CurrentStatus || compSource?.CurrentSNC || null,
+      permit_status: f.FacilityStatus || f.PermitStatus || null,
       compliance_status: ecsEntry?.CurrentStatus || (compSource?.CurrentSNC === "Yes" ? "Significant Noncompliance" : compSource?.CurrentSNC === "No" ? "No Violation" : null),
       qtrs_in_nc: compSource?.QtrsInNC ? Number(compSource.QtrsInNC) : (ecsEntry?.QtrsInNC ? Number(ecsEntry.QtrsInNC) : null),
       last_inspection_date: lastInspDate,
@@ -246,11 +287,23 @@ serve(async (req) => {
   let syncType = "manual";
   let limit = 0; // 0 = no limit
   let offset = 0;
+  let dryRun = false;
+  let runTag: string | null = null;
+  let targetNpdesIds: string[] = [];
   try {
     const body = await req.json();
     syncType = body.sync_type || "manual";
     limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 0;
     offset = typeof body.offset === "number" && body.offset >= 0 ? body.offset : 0;
+    dryRun = body.dry_run === true;
+    runTag = typeof body.run_tag === "string" && body.run_tag.trim().length > 0
+      ? body.run_tag.trim()
+      : null;
+    targetNpdesIds = Array.isArray(body.target_npdes_ids)
+      ? body.target_npdes_ids
+        .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+        .map((v: string) => v.trim().toUpperCase())
+      : [];
   } catch {
     // No body is fine — defaults to manual, no limit, offset 0
   }
@@ -288,34 +341,94 @@ serve(async (req) => {
     }
   }
 
-  // Deduplicate permits: one entry per npdes_id
+  const permitsSkippedMissingOrgSet = new Set<string>();
+  const permitsSkippedInvalidSet = new Set<string>();
+  const permitsSkippedPatternSet = new Set<string>();
+  const rawPermitIds = new Set<string>();
+
+  // Deduplicate permits: one eligible entry per normalized npdes_id
   const permitMap = new Map<string, PermitMapping>();
   for (const row of permitRows || []) {
-    const npdesId = row.extracted_data?.permit_number as string | undefined;
-    if (!npdesId || !row.uploaded_by || !orgMap[row.uploaded_by]) continue;
+    const rawPermit = row.extracted_data?.permit_number as string | undefined;
+    if (!rawPermit) continue;
+    rawPermitIds.add(rawPermit.trim().toUpperCase());
 
-    if (!permitMap.has(npdesId)) {
-      permitMap.set(npdesId, {
+    if (!row.uploaded_by || !orgMap[row.uploaded_by]) {
+      permitsSkippedMissingOrgSet.add(rawPermit.trim().toUpperCase());
+      continue;
+    }
+
+    const normalized = normalizeNpdesId(rawPermit, row.state_code ?? null);
+    if (!normalized.normalized) {
+      permitsSkippedInvalidSet.add(rawPermit.trim().toUpperCase());
+      continue;
+    }
+
+    if (shouldSkipEcho(normalized.normalized)) {
+      permitsSkippedPatternSet.add(normalized.normalized);
+      continue;
+    }
+
+    if (!permitMap.has(normalized.normalized)) {
+      permitMap.set(normalized.normalized, {
         organization_id: orgMap[row.uploaded_by],
-        npdes_id: npdesId,
+        npdes_id: normalized.normalized,
         state_code: row.state_code,
       });
     }
   }
 
-  const allPermits = Array.from(permitMap.values()).sort((a, b) =>
+  const eligiblePermits = Array.from(permitMap.values()).sort((a, b) =>
     a.npdes_id.localeCompare(b.npdes_id),
   );
-  const sliced = offset > 0 ? allPermits.slice(offset) : allPermits;
-  const permits = limit > 0 ? sliced.slice(0, limit) : sliced;
-  const hasMore = offset + permits.length < allPermits.length;
+
+  const targetSet = new Set(targetNpdesIds);
+  const selectedPermitPool = targetSet.size > 0
+    ? eligiblePermits.filter((p) => targetSet.has(p.npdes_id))
+    : eligiblePermits;
+
+  const sliced = targetSet.size > 0
+    ? selectedPermitPool
+    : (offset > 0 ? selectedPermitPool.slice(offset) : selectedPermitPool);
+  const permits = targetSet.size > 0 ? sliced : (limit > 0 ? sliced.slice(0, limit) : sliced);
+  const hasMore = targetSet.size === 0 && (offset + permits.length < selectedPermitPool.length);
+
   console.log(
-    `Found ${allPermits.length} unique NPDES permits, syncing ${permits.length} (offset=${offset}, limit=${limit || "all"}, hasMore=${hasMore})`,
+    `Found ${rawPermitIds.size} unique raw permits, ${eligiblePermits.length} eligible, syncing ${permits.length} (offset=${offset}, limit=${limit || "all"}, hasMore=${hasMore}, targets=${targetSet.size})`,
   );
+
+  if (dryRun) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        dryRun: true,
+        source: "echo",
+        permits_total: rawPermitIds.size,
+        permits_eligible: eligiblePermits.length,
+        permits_selected: permits.length,
+        permits_skipped_pattern: permitsSkippedPatternSet.size,
+        permits_skipped_invalid: permitsSkippedInvalidSet.size,
+        permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+        selected_npdes_ids: permits.map((p) => p.npdes_id),
+        run_tag: runTag,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   if (permits.length === 0) {
     return new Response(
-      JSON.stringify({ success: true, message: "No permits found to sync", permitsSynced: 0 }),
+      JSON.stringify({
+        success: true,
+        message: "No permits found to sync",
+        permitsSynced: 0,
+        totalPermits: rawPermitIds.size,
+        permits_total: rawPermitIds.size,
+        permits_eligible: eligiblePermits.length,
+        permits_skipped_pattern: permitsSkippedPatternSet.size,
+        permits_skipped_invalid: permitsSkippedInvalidSet.size,
+        permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -349,6 +462,8 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   let facilitiesSynced = 0;
   let dmrsInserted = 0;
+  let facilityEmptyResponses = 0;
+  let dmrEmptyResponses = 0;
   const errors: string[] = [];
 
   // Backfill date range
@@ -372,6 +487,7 @@ serve(async (req) => {
       const parsed = parseFacilityInfo(facilityJson, permit.npdes_id);
 
       if (!parsed) {
+        facilityEmptyResponses++;
         // Include diagnostic info in errors for debugging
         const topKeys = Object.keys((facilityJson?.Results as Record<string, unknown>) || facilityJson || {});
         const resultsObj = facilityJson?.Results as Record<string, unknown> | undefined;
@@ -421,6 +537,15 @@ serve(async (req) => {
 
       const dmrJson = await dmrResp.json() as Record<string, unknown>;
       const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
+
+      if (dmrRecords.length === 0) {
+        dmrEmptyResponses++;
+        const topLevelKeys = Object.keys(dmrJson || {});
+        const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
+        console.log(
+          `${permit.npdes_id}: DMR parse found 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
+        );
+      }
 
       if (dmrRecords.length > 0) {
         // Look up facility ID for FK
@@ -490,11 +615,19 @@ serve(async (req) => {
       error_details: errors.length > 0 ? { errors } : null,
       metadata: {
         dmrs_inserted: dmrsInserted,
-        permits_total: allPermits.length,
+        permits_total: rawPermitIds.size,
+        permits_eligible: eligiblePermits.length,
         permits_synced_this_batch: permits.length,
+        permits_skipped_pattern: permitsSkippedPatternSet.size,
+        permits_skipped_invalid: permitsSkippedInvalidSet.size,
+        permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+        facility_empty_responses: facilityEmptyResponses,
+        dmr_empty_responses: dmrEmptyResponses,
         offset,
         has_more: hasMore,
         next_offset: hasMore ? offset + permits.length : null,
+        target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : null,
+        run_tag: runTag,
         triggered_by: auth.userId || "system",
       },
     })
@@ -514,7 +647,15 @@ serve(async (req) => {
       source: "echo",
       facilities_synced: facilitiesSynced,
       dmrs_inserted: dmrsInserted,
+      permits_total: rawPermitIds.size,
+      permits_eligible: eligiblePermits.length,
+      permits_skipped_pattern: permitsSkippedPatternSet.size,
+      permits_skipped_invalid: permitsSkippedInvalidSet.size,
+      permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+      facility_empty_responses: facilityEmptyResponses,
+      dmr_empty_responses: dmrEmptyResponses,
       errors_count: errors.length,
+      run_tag: runTag,
       triggered_by: auth.userId || "system",
       role: auth.role,
     }),
@@ -552,11 +693,20 @@ serve(async (req) => {
       permitsSynced: facilitiesSynced,
       dmrsInserted,
       errors: errors.length > 0 ? errors : undefined,
-      totalPermits: allPermits.length,
+      totalPermits: rawPermitIds.size,
+      permits_total: rawPermitIds.size,
+      permits_eligible: eligiblePermits.length,
+      permits_skipped_pattern: permitsSkippedPatternSet.size,
+      permits_skipped_invalid: permitsSkippedInvalidSet.size,
+      permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+      facility_empty_responses: facilityEmptyResponses,
+      dmr_empty_responses: dmrEmptyResponses,
       batchSize: permits.length,
       offset,
       hasMore,
       nextOffset: hasMore ? offset + permits.length : null,
+      target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : undefined,
+      run_tag: runTag ?? undefined,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
