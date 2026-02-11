@@ -27,7 +27,6 @@ interface QueueRow {
   status: string;
   uploaded_by: string | null;
   document_id: string | null;
-  organization_id: string | null;
   extracted_data: Record<string, unknown> | null;
 }
 
@@ -95,12 +94,9 @@ async function validateAuth(
 async function resolveOrgId(
   supabase: ReturnType<typeof createClient>,
   authOrgId: string | null,
-  queueEntry: { uploaded_by: string | null; document_id: string | null; organization_id: string | null },
+  queueEntry: { uploaded_by: string | null; document_id: string | null },
 ): Promise<string | null> {
-  // 1. From queue entry directly
-  if (queueEntry.organization_id) return queueEntry.organization_id;
-
-  // 2. From authenticated user
+  // 1. From authenticated user
   if (authOrgId) return authOrgId;
 
   // 3. From uploader's profile
@@ -401,14 +397,20 @@ serve(async (req: Request) => {
     const { data: queueEntry, error: fetchError } = await supabase
       .from("file_processing_queue")
       .select(
-        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id, organization_id, extracted_data",
+        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id, extracted_data",
       )
       .eq("id", queue_id)
       .single();
 
     if (fetchError || !queueEntry) {
       return new Response(
-        JSON.stringify({ success: false, error: `Queue entry not found: ${queue_id}` }),
+        JSON.stringify({
+          success: false,
+          error: `Queue entry not found: ${queue_id}`,
+          details: fetchError?.message ?? null,
+          hint: fetchError?.hint ?? null,
+          code: fetchError?.code ?? null,
+        }),
         { status: 404, headers },
       );
     }
@@ -445,6 +447,9 @@ serve(async (req: Request) => {
     }
 
     // 7. Extract text — PDF vs spreadsheet
+    // Internal secret calls (backfill) skip Claude PDF extraction to stay within
+    // Edge Function timeout. extracted_data from the parse step is used instead.
+    const isBackfill = !auth.userId;
     let pages: PageText[] = [];
     const isPdf =
       queueEntry.file_name.toLowerCase().endsWith(".pdf") ||
@@ -453,8 +458,8 @@ serve(async (req: Request) => {
       queueEntry.file_category === "lab_data" ||
       /\.(csv|xlsx|xls|tsv)$/i.test(queueEntry.file_name);
 
-    if (isPdf) {
-      // Generate signed URL for Claude to fetch
+    if (isPdf && !isBackfill) {
+      // Full PDF extraction via Claude — only for frontend-triggered calls
       const { data: urlData, error: urlError } = await supabase.storage
         .from(queueEntry.storage_bucket)
         .createSignedUrl(queueEntry.storage_path, 300);
@@ -469,16 +474,13 @@ serve(async (req: Request) => {
       try {
         pages = await extractPdfText(urlData.signedUrl);
       } catch (extractErr) {
-        // Fallback to extracted_data serialization
         console.warn("PDF text extraction failed, falling back to extracted_data:", extractErr);
         if (queueEntry.extracted_data) {
           pages = serializeExtractedData(queueEntry.extracted_data);
         }
       }
-    } else if (isSpreadsheet && queueEntry.extracted_data) {
-      pages = serializeExtractedData(queueEntry.extracted_data);
     } else if (queueEntry.extracted_data) {
-      // Other document types — serialize extracted_data
+      // Backfill PDFs, spreadsheets, and other types — use extracted_data
       pages = serializeExtractedData(queueEntry.extracted_data);
     }
 
