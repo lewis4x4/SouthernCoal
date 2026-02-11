@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { ComplianceSearchResponse } from '@/types/search';
+import type { ComplianceSearchResponse, DocumentSearchResponse, SearchMode } from '@/types/search';
 
 const RECENT_KEY = 'scc_recent_searches';
 const REVIEW_KEY = 'scc_search_review_mode';
+const MODE_KEY = 'scc_search_mode';
 const MAX_RECENT = 10;
 
 function loadRecent(): string[] {
@@ -10,6 +11,15 @@ function loadRecent(): string[] {
     return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
   } catch {
     return [];
+  }
+}
+
+function loadSearchMode(): SearchMode {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    return v === 'document' ? 'document' : 'data';
+  } catch {
+    return 'data';
   }
 }
 
@@ -22,6 +32,12 @@ interface SearchStore {
   recentQueries: string[];
   reviewMode: boolean;
 
+  // Document search state
+  searchMode: SearchMode;
+  documentResults: DocumentSearchResponse | null;
+  documentLoading: boolean;
+  documentError: string | null;
+
   setQuery: (query: string) => void;
   setLoading: (loading: boolean) => void;
   setResults: (results: ComplianceSearchResponse) => void;
@@ -29,6 +45,13 @@ interface SearchStore {
   clearResults: () => void;
   addRecentQuery: (query: string) => void;
   toggleReviewMode: () => void;
+
+  // Document search actions
+  setSearchMode: (mode: SearchMode) => void;
+  setDocumentLoading: (loading: boolean) => void;
+  setDocumentResults: (results: DocumentSearchResponse) => void;
+  setDocumentError: (error: string) => void;
+  clearDocumentResults: () => void;
 }
 
 export const useSearchStore = create<SearchStore>((set) => ({
@@ -39,6 +62,12 @@ export const useSearchStore = create<SearchStore>((set) => ({
   suggestion: null,
   recentQueries: loadRecent(),
   reviewMode: localStorage.getItem(REVIEW_KEY) === 'true',
+
+  // Document search state
+  searchMode: loadSearchMode(),
+  documentResults: null,
+  documentLoading: false,
+  documentError: null,
 
   setQuery: (query) => set({ query }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -65,4 +94,21 @@ export const useSearchStore = create<SearchStore>((set) => ({
       try { localStorage.setItem(REVIEW_KEY, String(next)); } catch { /* quota */ }
       return { reviewMode: next };
     }),
+
+  // Document search actions
+  setSearchMode: (mode) => {
+    try { localStorage.setItem(MODE_KEY, mode); } catch { /* quota */ }
+    set({ searchMode: mode });
+  },
+
+  setDocumentLoading: (documentLoading) => set({ documentLoading }),
+
+  setDocumentResults: (documentResults) =>
+    set({ documentResults, documentError: null, documentLoading: false }),
+
+  setDocumentError: (documentError) =>
+    set({ documentError, documentResults: null, documentLoading: false }),
+
+  clearDocumentResults: () =>
+    set({ documentResults: null, documentError: null }),
 }));

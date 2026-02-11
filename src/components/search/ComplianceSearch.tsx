@@ -3,16 +3,27 @@ import { SearchBar } from './SearchBar';
 import { SearchResults } from './SearchResults';
 import { SearchSuggestions } from './SearchSuggestions';
 import { SQLReviewModal } from './SQLReviewModal';
+import { SearchModeToggle } from './SearchModeToggle';
+import { DocumentSearchResults } from './DocumentSearchResults';
 import { useComplianceSearch } from '@/hooks/useComplianceSearch';
+import { useDocumentSearch } from '@/hooks/useDocumentSearch';
 import { useSearchStore } from '@/stores/search';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { ComplianceSearchResponse } from '@/types/search';
 
 export function ComplianceSearch() {
   const { isLoading, results, error, suggestion, search, clearResults } = useComplianceSearch();
+  const {
+    isLoading: docLoading,
+    results: docResults,
+    error: docError,
+    search: docSearch,
+  } = useDocumentSearch();
+
   const recentQueries = useSearchStore((s) => s.recentQueries);
   const reviewMode = useSearchStore((s) => s.reviewMode);
   const toggleReviewMode = useSearchStore((s) => s.toggleReviewMode);
+  const searchMode = useSearchStore((s) => s.searchMode);
   const { getEffectiveRole } = usePermissions();
 
   const role = getEffectiveRole();
@@ -20,6 +31,11 @@ export function ComplianceSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingReview, setPendingReview] = useState<ComplianceSearchResponse | null>(null);
   const [lastQuery, setLastQuery] = useState('');
+
+  const isDocMode = searchMode === 'document';
+  const activeLoading = isDocMode ? docLoading : isLoading;
+  const activeError = isDocMode ? docError : error;
+  const hasResults = isDocMode ? !!docResults : !!results;
 
   // Cmd+K focuses search input on this page
   useEffect(() => {
@@ -36,14 +52,18 @@ export function ComplianceSearch() {
   const handleSearch = useCallback(
     async (query: string) => {
       setLastQuery(query);
-      const result = await search(query);
 
-      // If review mode returned SQL without executing, show review modal
-      if (result?.metadata?.reviewMode && result.success) {
-        setPendingReview(result);
+      if (isDocMode) {
+        await docSearch(query, 'answer');
+      } else {
+        const result = await search(query);
+        // If review mode returned SQL without executing, show review modal
+        if (result?.metadata?.reviewMode && result.success) {
+          setPendingReview(result);
+        }
       }
     },
-    [search],
+    [isDocMode, search, docSearch],
   );
 
   async function handleConfirmReview() {
@@ -64,20 +84,26 @@ export function ComplianceSearch() {
     }
   }
 
-  const showSuggestions = !isLoading && !results && !error;
+  const showSuggestions = !activeLoading && !hasResults && !activeError;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      {/* Mode toggle */}
+      <div className="flex items-center justify-between">
+        <SearchModeToggle />
+      </div>
+
       {/* Search bar */}
       <SearchBar
         onSearch={handleSearch}
-        isLoading={isLoading}
+        isLoading={activeLoading}
         recentQueries={recentQueries}
         inputRef={inputRef}
+        searchMode={searchMode}
       />
 
-      {/* Review mode toggle (Executive/Admin only) */}
-      {canReview && (
+      {/* Review mode toggle (Executive/Admin only, data mode only) */}
+      {canReview && !isDocMode && (
         <label className="flex items-center gap-2 text-xs text-text-muted">
           <input
             type="checkbox"
@@ -91,29 +117,36 @@ export function ComplianceSearch() {
 
       {/* Suggestions */}
       {showSuggestions && (
-        <SearchSuggestions userRole={role} onSelect={handleSearch} />
+        <SearchSuggestions userRole={role} onSelect={handleSearch} searchMode={searchMode} />
       )}
 
       {/* Loading state */}
-      {isLoading && (
+      {activeLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-400/30 border-t-blue-400" />
-          <span className="ml-3 text-sm text-text-secondary">Searching compliance data...</span>
+          <span className="ml-3 text-sm text-text-secondary">
+            {isDocMode ? 'Searching documents...' : 'Searching compliance data...'}
+          </span>
         </div>
       )}
 
-      {/* Error state (no results object) */}
-      {error && !results && (
+      {/* Error state */}
+      {activeError && !hasResults && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
-          <p className="text-sm text-text-primary">{error}</p>
-          {suggestion && <p className="mt-1 text-xs text-text-secondary">{suggestion}</p>}
+          <p className="text-sm text-text-primary">{activeError}</p>
+          {!isDocMode && suggestion && <p className="mt-1 text-xs text-text-secondary">{suggestion}</p>}
         </div>
       )}
 
-      {/* Results */}
-      {results && <SearchResults response={results} onRetry={handleRetry} />}
+      {/* Results — mode-specific */}
+      {isDocMode && docResults && (
+        <DocumentSearchResults response={docResults} onRetry={handleRetry} />
+      )}
+      {!isDocMode && results && (
+        <SearchResults response={results} onRetry={handleRetry} />
+      )}
 
-      {/* SQL Review Modal */}
+      {/* SQL Review Modal (data mode only) */}
       {pendingReview && (
         <SQLReviewModal
           query={pendingReview.query}

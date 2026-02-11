@@ -1,4 +1,16 @@
 import { Sparkles } from 'lucide-react';
+import type { SearchMode } from '@/types/search';
+
+const DOCUMENT_SUGGESTIONS: string[] = [
+  'What are the discharge limits for iron?',
+  'Show me monitoring requirements for outfall 001',
+  'What are the reporting deadlines in this permit?',
+  'Summarize the special conditions section',
+  'What corrective actions are required by the consent decree?',
+  'Are there any selenium monitoring requirements?',
+  'What are the pH limits across all permits?',
+  'Show me effluent limitations for total suspended solids',
+];
 
 const ROLE_SUGGESTIONS: Record<string, string[]> = {
   executive: [
@@ -73,10 +85,14 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
 interface SearchSuggestionsProps {
   userRole: string;
   onSelect: (query: string) => void;
+  searchMode?: SearchMode;
 }
 
-export function SearchSuggestions({ userRole, onSelect }: SearchSuggestionsProps) {
-  const suggestions = ROLE_SUGGESTIONS[userRole] ?? ROLE_SUGGESTIONS.read_only ?? [];
+export function SearchSuggestions({ userRole, onSelect, searchMode = 'data' }: SearchSuggestionsProps) {
+  const suggestions =
+    searchMode === 'document'
+      ? DOCUMENT_SUGGESTIONS
+      : ROLE_SUGGESTIONS[userRole] ?? ROLE_SUGGESTIONS.read_only ?? [];
 
   return (
     <div className="space-y-2">

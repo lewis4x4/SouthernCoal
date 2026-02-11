@@ -25,7 +25,9 @@ type AuditAction =
   | 'roadmap_evidence_upload'
   | 'evidence_uploaded'
   | 'compliance_search'
-  | 'compliance_search_export';
+  | 'compliance_search_export'
+  | 'document_search'
+  | 'generate_embedding';
 
 export type { AuditAction };
 

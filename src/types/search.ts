@@ -1,3 +1,49 @@
+// ---------------------------------------------------------------------------
+// Document Search (RAG) types
+// ---------------------------------------------------------------------------
+
+export type SearchMode = 'data' | 'document';
+
+export interface DocumentChunk {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  chunk_text: string;
+  source_page: number;
+  source_section: string | null;
+  document_type: string;
+  state_code: string;
+  permit_number: string | null;
+  file_name: string;
+  similarity: number;
+}
+
+export interface DocumentSearchResponse {
+  success: boolean;
+  mode: 'chunks' | 'answer';
+  query: string;
+  answer: string | null;
+  chunks: DocumentChunk[];
+  metadata: {
+    queryId: string;
+    chunkCount: number;
+    executionTimeMs: number;
+    matchThreshold: number;
+  };
+  disclaimer: string;
+  error?: string;
+}
+
+export interface DocumentSearchFilters {
+  state?: string;
+  document_type?: string;
+  permit_number?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Compliance Search (SQL) types
+// ---------------------------------------------------------------------------
+
 export type QueryDomain =
   | 'permits'
   | 'exceedances'

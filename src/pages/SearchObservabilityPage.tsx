@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, RefreshCw, DollarSign, AlertTriangle, BarChart3, Clock, Search, ShieldAlert } from 'lucide-react';
+import { Activity, RefreshCw, DollarSign, AlertTriangle, BarChart3, Clock, Search, ShieldAlert, FileText, Database, Layers } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -29,6 +29,10 @@ export function SearchObservabilityPage() {
   const role = getEffectiveRole();
 
   const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [docEntries, setDocEntries] = useState<AuditEntry[]>([]);
+  const [chunkStats, setChunkStats] = useState<{ totalChunks: number; docsWithChunks: number; totalParsed: number; avgChunksPerDoc: number }>({
+    totalChunks: 0, docsWithChunks: 0, totalParsed: 0, avgChunksPerDoc: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -53,6 +57,42 @@ export function SearchObservabilityPage() {
       .limit(5000);
 
     setEntries(data || []);
+
+    // Fetch document search audit entries
+    const { data: docData } = await supabase
+      .from('audit_log')
+      .select('created_at, description')
+      .eq('action', 'document_search')
+      .gte('created_at', sevenDaysAgo)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    setDocEntries(docData || []);
+
+    // Fetch chunk stats
+    const { count: totalChunks } = await supabase
+      .from('document_chunks')
+      .select('id', { count: 'exact', head: true });
+
+    const { data: distinctDocs } = await supabase
+      .from('document_chunks')
+      .select('document_id')
+      .not('document_id', 'is', null);
+
+    const docsWithChunks = new Set((distinctDocs || []).map((d: { document_id: string }) => d.document_id)).size;
+
+    const { count: totalParsed } = await supabase
+      .from('file_processing_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'parsed');
+
+    setChunkStats({
+      totalChunks: totalChunks || 0,
+      docsWithChunks,
+      totalParsed: totalParsed || 0,
+      avgChunksPerDoc: docsWithChunks > 0 ? Math.round((totalChunks || 0) / docsWithChunks) : 0,
+    });
+
     setLoading(false);
     setLastRefresh(new Date());
   }, []);
@@ -179,6 +219,47 @@ export function SearchObservabilityPage() {
       }))
       .slice(0, 20);
   }, [parsed]);
+
+  // --- Document search derived data ---
+  const docParsed = useMemo(() => {
+    return docEntries.map((e) => {
+      try {
+        return { ...JSON.parse(e.description || '{}'), created_at: e.created_at };
+      } catch {
+        return { created_at: e.created_at };
+      }
+    });
+  }, [docEntries]);
+
+  // Document search volume by day
+  const docVolumeByDay = useMemo(() => {
+    const days: Record<string, number> = {};
+    for (const p of docParsed) {
+      const day = p.created_at?.slice(0, 10);
+      if (!day) continue;
+      days[day] = (days[day] || 0) + 1;
+    }
+    return Object.entries(days)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [docParsed]);
+
+  // Citation quality — recent searches
+  const citationQuality = useMemo(() => {
+    return docParsed
+      .filter((p) => p.chunkCount != null)
+      .slice(0, 15)
+      .map((p) => ({
+        query: (p.query as string)?.substring(0, 60) || '—',
+        chunkCount: p.chunkCount || 0,
+        executionTimeMs: p.executionTimeMs || 0,
+        date: p.created_at?.slice(0, 16)?.replace('T', ' ') || '',
+      }));
+  }, [docParsed]);
+
+  const embeddingCoveragePct = chunkStats.totalParsed > 0
+    ? Math.round((chunkStats.docsWithChunks / chunkStats.totalParsed) * 100)
+    : 0;
 
   // --- Summary stats ---
   const totalQueries = parsed.length;
@@ -415,6 +496,97 @@ export function SearchObservabilityPage() {
           </div>
         </SpotlightCard>
       )}
+
+      {/* Document Search Section */}
+      <div className="border-t border-white/[0.06] pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <FileText className="h-5 w-5 text-cyan-400" />
+          <h2 className="text-lg font-semibold text-text-primary">Document Search (RAG)</h2>
+        </div>
+
+        {/* Chunk stats cards */}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Layers className="h-3.5 w-3.5" />
+              Total Chunks
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{chunkStats.totalChunks.toLocaleString()}</p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Database className="h-3.5 w-3.5" />
+              Embedding Coverage
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{embeddingCoveragePct}%</p>
+            <p className="text-[10px] text-text-muted">{chunkStats.docsWithChunks} / {chunkStats.totalParsed} docs</p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <FileText className="h-3.5 w-3.5" />
+              Avg Chunks/Doc
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{chunkStats.avgChunksPerDoc}</p>
+          </SpotlightCard>
+          <SpotlightCard className="p-4">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Search className="h-3.5 w-3.5" />
+              Doc Searches (7d)
+            </div>
+            <p className="mt-1 font-mono text-2xl font-bold text-text-primary">{docParsed.length}</p>
+          </SpotlightCard>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Document search volume */}
+          <SpotlightCard className="p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
+              <BarChart3 className="h-4 w-4" />
+              Document Search Volume
+            </h3>
+            <div className="h-48">
+              {docVolumeByDay.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={docVolumeByDay}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(13,17,23,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+                    />
+                    <Line type="monotone" dataKey="count" stroke="#22d3ee" strokeWidth={2} dot={false} name="Searches" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-text-muted">
+                  No document searches yet
+                </div>
+              )}
+            </div>
+          </SpotlightCard>
+
+          {/* Citation quality */}
+          <SpotlightCard className="p-4">
+            <h3 className="mb-3 text-sm font-medium text-text-secondary">Recent Document Searches</h3>
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {citationQuality.length === 0 ? (
+                <p className="py-4 text-center text-xs text-text-muted">No document searches yet</p>
+              ) : (
+                citationQuality.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                    <span className="min-w-0 truncate text-text-secondary">{item.query}</span>
+                    <div className="flex shrink-0 items-center gap-2 font-mono text-text-muted">
+                      <span>{item.chunkCount} chunks</span>
+                      <span>{(item.executionTimeMs / 1000).toFixed(1)}s</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </SpotlightCard>
+        </div>
+      </div>
 
       {/* Last refresh */}
       <p className="text-center text-[10px] text-text-muted">

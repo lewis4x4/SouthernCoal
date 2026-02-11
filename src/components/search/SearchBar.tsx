@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import type { SearchMode } from '@/types/search';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   isLoading: boolean;
   recentQueries: string[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  searchMode?: SearchMode;
 }
 
-export function SearchBar({ onSearch, isLoading, recentQueries, inputRef }: SearchBarProps) {
+export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, searchMode = 'data' }: SearchBarProps) {
   const [value, setValue] = useState('');
   const [showRecent, setShowRecent] = useState(false);
   const localRef = useRef<HTMLInputElement>(null);
@@ -60,7 +62,11 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef }: Sear
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => recentQueries.length > 0 && setShowRecent(true)}
-          placeholder="Ask anything about your compliance data..."
+          placeholder={
+            searchMode === 'document'
+              ? 'Search within uploaded documents...'
+              : 'Ask anything about your compliance data...'
+          }
           disabled={isLoading}
           className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-white/30 focus:outline-none disabled:opacity-50"
         />

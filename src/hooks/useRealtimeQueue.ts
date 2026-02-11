@@ -5,6 +5,28 @@ import { useAuth } from './useAuth';
 import type { QueueEntry } from '@/types/queue';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
+/**
+ * Fire-and-forget embedding generation after a document is parsed.
+ * Never blocks the UI — failures are logged but silently ignored.
+ */
+async function triggerEmbeddings(queueId: string) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    await fetch(`${supabaseUrl}/functions/v1/generate-embeddings`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ queue_id: queueId }),
+    });
+  } catch (err) {
+    console.warn('[embeddings] Generation failed (non-blocking):', err);
+  }
+}
+
 const HEARTBEAT_INTERVAL = 120_000; // 2 minutes (reduced from 30s to ease connection pressure)
 
 /**
@@ -114,6 +136,11 @@ export function useRealtimeQueue() {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const entry = payload.new as unknown as QueueEntry;
             upsertEntry(entry);
+
+            // Trigger embedding generation when parse completes
+            if (payload.eventType === 'UPDATE' && entry.status === 'parsed') {
+              triggerEmbeddings(entry.id);
+            }
           } else if (payload.eventType === 'DELETE' && payload.old && 'id' in payload.old) {
             useQueueStore.getState().removeEntry(payload.old.id as string);
           }

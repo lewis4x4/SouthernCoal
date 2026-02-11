@@ -96,11 +96,11 @@ function FilterSelect({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs font-medium uppercase text-text-muted">{label}</span>
+      <span className="text-sm font-medium uppercase text-text-muted">{label}</span>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="rounded-lg border border-white/[0.08] bg-crystal-surface px-2 py-1.5 text-sm text-text-secondary outline-none"
+        className="rounded-lg border border-white/[0.08] bg-crystal-surface px-2.5 py-1.5 text-base text-text-secondary outline-none"
       >
         {options.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -127,9 +127,9 @@ function StatsBar({ tasks }: { tasks: RoadmapTask[] }) {
       <StatCard label="Complete" value={complete} color="text-emerald-400" />
       <StatCard label="In Progress" value={inProgress} color="text-blue-400" />
       <StatCard label="Blocked" value={blocked} color="text-amber-400" />
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-        <div className="text-xs font-medium uppercase text-text-muted">Progress</div>
-        <div className="mt-1 text-xl font-bold text-text-primary">{pct}%</div>
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="text-sm font-medium uppercase text-text-muted">Progress</div>
+        <div className="mt-1 text-2xl font-bold text-text-primary">{pct}%</div>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
@@ -143,9 +143,9 @@ function StatsBar({ tasks }: { tasks: RoadmapTask[] }) {
 
 function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-      <div className="text-xs font-medium uppercase text-text-muted">{label}</div>
-      <div className={cn('mt-1 text-xl font-bold', color ?? 'text-text-primary')}>{value}</div>
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="text-sm font-medium uppercase text-text-muted">{label}</div>
+      <div className={cn('mt-1 text-2xl font-bold', color ?? 'text-text-primary')}>{value}</div>
     </div>
   );
 }
@@ -187,20 +187,20 @@ function PhaseAccordion({
         className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-text-muted" />
+          <ChevronDown className="h-5 w-5 shrink-0 text-text-muted" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
+          <ChevronRight className="h-5 w-5 shrink-0 text-text-muted" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-text-primary">
+          <div className="text-base font-semibold text-text-primary">
             {PHASE_LABELS[phase] ?? `Phase ${phase}`}
           </div>
-          <div className="mt-0.5 text-xs text-text-muted">
+          <div className="mt-0.5 text-sm text-text-muted">
             {tasks.length} tasks &middot; {complete}/{actionable} complete
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-secondary">{phasePct}%</span>
+          <span className="text-base font-medium text-text-secondary">{phasePct}%</span>
           <div className="h-1.5 w-20 overflow-hidden rounded-full bg-white/[0.06]">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all"
@@ -222,7 +222,7 @@ function PhaseAccordion({
             <div className="border-t border-white/[0.04] px-5 pb-3 pt-2">
               {sections.map(([sectionName, sectionTasks]) => (
                 <div key={sectionName} className="mt-2">
-                  <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-text-muted">
+                  <div className="mb-1.5 text-sm font-medium uppercase tracking-wider text-text-muted">
                     {sectionName}
                   </div>
                   <div className="space-y-1">
@@ -265,15 +265,15 @@ function TaskRow({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04]"
+      className="flex w-full items-center gap-4 rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04]"
     >
       {/* Task ID */}
-      <span className="w-16 shrink-0 font-mono text-xs font-bold text-text-secondary">
+      <span className="w-16 shrink-0 font-mono text-sm font-bold text-text-secondary">
         {task.task_id}
       </span>
 
       {/* Description */}
-      <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+      <span className="min-w-0 flex-1 truncate text-base text-text-primary">
         {task.task_description}
       </span>
 
@@ -288,14 +288,14 @@ function TaskRow({
 
         {/* v3 NEW badge */}
         {task.is_new_v3 && (
-          <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-400">
-            <Sparkles size={11} /> NEW
+          <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+            <Sparkles size={12} /> NEW
           </span>
         )}
 
         {/* Owner badge */}
         <span className={cn(
-          'rounded-full border px-1.5 py-0.5 text-[11px] font-medium',
+          'rounded-full border px-2 py-0.5 text-xs font-medium',
           OWNER_COLORS[task.owner_type],
         )}>
           {OWNER_LABELS[task.owner_type]}
@@ -303,7 +303,7 @@ function TaskRow({
 
         {/* Status badge */}
         <span className={cn(
-          'rounded-full border px-1.5 py-0.5 text-[11px] font-medium',
+          'rounded-full border px-2 py-0.5 text-xs font-medium',
           STATUS_COLORS[task.status],
         )}>
           {STATUS_LABELS[task.status]}
@@ -348,14 +348,14 @@ function TaskDetailDrawer({
       <div className="flex items-start justify-between border-b border-white/[0.06] px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-bold text-text-primary">{task.task_id}</span>
+            <span className="font-mono text-base font-bold text-text-primary">{task.task_id}</span>
             {task.is_new_v3 && (
-              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-400">
-                <Sparkles size={11} /> v3 NEW
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                <Sparkles size={12} /> v3 NEW
               </span>
             )}
           </div>
-          <div className="mt-1 text-xs text-text-muted">{PHASE_LABELS[task.phase]}</div>
+          <div className="mt-1 text-sm text-text-muted">{PHASE_LABELS[task.phase]}</div>
         </div>
         <button onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-white/[0.05]">
           <X size={18} />
@@ -366,20 +366,20 @@ function TaskDetailDrawer({
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
         {/* Description */}
         <div>
-          <div className="text-xs font-medium uppercase text-text-muted">Description</div>
-          <div className="mt-1 text-sm text-text-primary">{task.task_description}</div>
+          <div className="text-sm font-medium uppercase text-text-muted">Description</div>
+          <div className="mt-1 text-base text-text-primary">{task.task_description}</div>
         </div>
 
         {/* Section + Owner */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-medium uppercase text-text-muted">Section</div>
-            <div className="mt-1 text-sm text-text-secondary">{task.section}</div>
+            <div className="text-sm font-medium uppercase text-text-muted">Section</div>
+            <div className="mt-1 text-base text-text-secondary">{task.section}</div>
           </div>
           <div>
-            <div className="text-xs font-medium uppercase text-text-muted">Owner</div>
+            <div className="text-sm font-medium uppercase text-text-muted">Owner</div>
             <span className={cn(
-              'mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium',
+              'mt-1 inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium',
               OWNER_COLORS[task.owner_type],
             )}>
               {OWNER_LABELS[task.owner_type]}
@@ -389,11 +389,11 @@ function TaskDetailDrawer({
 
         {/* Status dropdown */}
         <div>
-          <div className="text-xs font-medium uppercase text-text-muted">Status</div>
+          <div className="text-sm font-medium uppercase text-text-muted">Status</div>
           <select
             value={task.status}
             onChange={e => onStatusChange(task.task_id, task.id, e.target.value as RoadmapStatus, task.status)}
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-2 text-sm text-text-secondary outline-none"
+            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-2.5 text-base text-text-secondary outline-none"
           >
             <option value="not_started">Not Started</option>
             <option value="in_progress">In Progress</option>
@@ -406,16 +406,16 @@ function TaskDetailDrawer({
         {/* Dependencies */}
         {deps.length > 0 && (
           <div>
-            <div className="text-xs font-medium uppercase text-text-muted">
+            <div className="text-sm font-medium uppercase text-text-muted">
               Depends On ({deps.length})
             </div>
             <div className="mt-1 space-y-1">
               {deps.map(dep => (
-                <div key={dep.id} className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-2.5 py-1.5">
-                  <span className="font-mono text-xs font-bold text-text-secondary">{dep.task_id}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{dep.task_description}</span>
+                <div key={dep.id} className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                  <span className="font-mono text-sm font-bold text-text-secondary">{dep.task_id}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{dep.task_description}</span>
                   <span className={cn(
-                    'rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                    'rounded-full border px-2 py-0.5 text-xs font-medium',
                     STATUS_COLORS[dep.status],
                   )}>
                     {STATUS_LABELS[dep.status]}
@@ -429,12 +429,12 @@ function TaskDetailDrawer({
         {/* Blocked by */}
         {blockedBy.length > 0 && (
           <div>
-            <div className="text-xs font-medium uppercase text-text-muted">
+            <div className="text-sm font-medium uppercase text-text-muted">
               Blocking ({blockedBy.length})
             </div>
             <div className="mt-1 space-y-1">
               {blockedBy.map(t => (
-                <div key={t.id} className="flex items-center gap-2 text-xs text-text-muted">
+                <div key={t.id} className="flex items-center gap-2 text-sm text-text-muted">
                   <span className="font-mono font-bold">{t.task_id}</span>
                   <span className="truncate">{t.task_description}</span>
                 </div>
@@ -445,7 +445,7 @@ function TaskDetailDrawer({
 
         {/* Notes */}
         <div>
-          <div className="text-xs font-medium uppercase text-text-muted">Notes</div>
+          <div className="text-sm font-medium uppercase text-text-muted">Notes</div>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
@@ -456,13 +456,13 @@ function TaskDetailDrawer({
             }}
             placeholder="Add notes..."
             rows={3}
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-text-secondary outline-none placeholder:text-text-muted"
+            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-base text-text-secondary outline-none placeholder:text-text-muted"
           />
         </div>
 
         {/* Evidence */}
         <div>
-          <div className="text-xs font-medium uppercase text-text-muted">Evidence</div>
+          <div className="text-sm font-medium uppercase text-text-muted">Evidence</div>
           <div className="mt-1.5">
             {(task.evidence_paths ?? []).length > 0 && (
               <div className="mb-2">
@@ -487,7 +487,7 @@ function TaskDetailDrawer({
         </div>
 
         {/* Timestamps */}
-        <div className="border-t border-white/[0.04] pt-3 text-xs text-text-muted">
+        <div className="border-t border-white/[0.04] pt-3 text-sm text-text-muted">
           <div>Created: {new Date(task.created_at).toLocaleString()}</div>
           <div>Updated: {new Date(task.updated_at).toLocaleString()}</div>
           {task.completed_at && (
@@ -567,14 +567,14 @@ export function RoadmapPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-xl bg-cyan-500/10 p-2.5">
-            <Map className="h-5 w-5 text-cyan-400" />
+          <div className="inline-flex rounded-xl bg-cyan-500/10 p-3">
+            <Map className="h-6 w-6 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+            <h1 className="text-3xl font-bold tracking-tight text-text-primary">
               Implementation Roadmap
             </h1>
-            <p className="mt-0.5 text-sm text-text-muted">
+            <p className="mt-0.5 text-base text-text-muted">
               Consent Decree compliance implementation tracker — 5 phases, {tasks.length} tasks
             </p>
           </div>
