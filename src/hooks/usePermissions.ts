@@ -50,7 +50,9 @@ export function usePermissions() {
   useEffect(() => {
     if (!user) {
       setAssignments([]);
-      setLoading(false);
+      // Keep loading=true while auth is resolving — AuthGuard handles
+      // the genuinely-unauthenticated case. Setting false here causes
+      // RBAC gates to redirect before the real role loads.
       return;
     }
 
