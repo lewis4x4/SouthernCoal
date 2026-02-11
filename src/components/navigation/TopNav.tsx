@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -28,23 +27,46 @@ const ROLE_LABELS: Record<string, string> = {
   read_only: 'Read-Only',
 };
 
-const NAV_ITEMS = [
-  { label: 'Home', href: '/dashboard', icon: Home },
-  { label: 'Search', href: '/search', icon: Search },
-  { label: 'Upload', href: '/compliance', icon: Upload },
-  { label: 'Obligations', href: '/obligations', icon: ClipboardList },
-  { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
-  { label: 'Monitoring', href: '/monitoring', icon: Activity },
-  { label: 'Reports', href: '/reports', icon: FileText },
-  { label: 'Corrections', href: '/corrections', icon: FileEdit },
-  { label: 'Roadmap', href: '/roadmap', icon: Map },
-  { label: 'Admin', href: '/admin', icon: Settings },
-] as const;
+const NAV_GROUPS = [
+  {
+    items: [
+      { label: 'Home', href: '/dashboard', icon: Home },
+      { label: 'Search', href: '/search', icon: Search },
+    ],
+    activeColor: 'bg-white/10 text-white shadow-lg shadow-white/5',
+    hoverColor: 'hover:text-text-secondary',
+  },
+  {
+    items: [
+      { label: 'Upload', href: '/compliance', icon: Upload },
+      { label: 'Obligations', href: '/obligations', icon: ClipboardList },
+      { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
+      { label: 'Monitoring', href: '/monitoring', icon: Activity },
+    ],
+    activeColor: 'bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/5',
+    hoverColor: 'hover:text-cyan-400',
+  },
+  {
+    items: [
+      { label: 'Reports', href: '/reports', icon: FileText },
+      { label: 'Corrections', href: '/corrections', icon: FileEdit },
+    ],
+    activeColor: 'bg-amber-500/15 text-amber-300 shadow-lg shadow-amber-500/5',
+    hoverColor: 'hover:text-amber-400',
+  },
+  {
+    items: [
+      { label: 'Roadmap', href: '/roadmap', icon: Map },
+      { label: 'Admin', href: '/admin', icon: Settings },
+    ],
+    activeColor: 'bg-purple-500/15 text-purple-300 shadow-lg shadow-purple-500/5',
+    hoverColor: 'hover:text-purple-400',
+  },
+];
 
 export function TopNav() {
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { organizationName } = useUserProfile();
   const { getEffectiveRole } = usePermissions();
 
   const role = getEffectiveRole();
@@ -54,43 +76,44 @@ export function TopNav() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-crystal-surface/80 backdrop-blur-xl">
       <div className="mx-auto max-w-[1920px] px-6">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo + Org */}
-          <div className="flex items-center gap-3">
-            <Link
-              to="/dashboard"
-              className="text-lg font-semibold tracking-tight text-text-primary"
-            >
-              SCC Compliance Monitor
-            </Link>
-            {organizationName && (
-              <span className="hidden text-xs text-text-secondary lg:inline">
-                {organizationName}
-              </span>
-            )}
-          </div>
+          {/* Logo placeholder — user will add custom logo */}
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
+              <span className="text-sm font-bold text-white">SC</span>
+            </div>
+          </Link>
 
-          {/* Nav Links */}
+          {/* Nav Links — grouped with dividers */}
           <div className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
+            {NAV_GROUPS.map((group, groupIdx) => (
+              <div key={groupIdx} className="flex items-center">
+                {groupIdx > 0 && (
+                  <div className="mx-1.5 h-6 border-l border-white/[0.08]" />
+                )}
+                <div className="flex items-center gap-0.5">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.href;
 
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                    isActive
-                      ? 'bg-white/10 text-white shadow-lg shadow-white/5'
-                      : 'text-text-muted hover:bg-white/[0.05] hover:text-text-secondary',
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                </Link>
-              );
-            })}
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                          isActive
+                            ? group.activeColor
+                            : cn('text-text-muted hover:bg-white/[0.05]', group.hoverColor),
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="hidden lg:inline">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Right side: Role + User + Sign out */}
