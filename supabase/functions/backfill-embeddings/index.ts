@@ -49,30 +49,55 @@ serve(async (req: Request) => {
     const batchSize = (body.batch_size as number) ?? 50;
     const dryRun = (body.dry_run as boolean) ?? false;
 
-    // Fetch all parsed queue entries that don't yet have chunks
-    let query = supabase
-      .from("file_processing_queue")
-      .select("id, file_name, file_category, state_code, status, document_id")
-      .eq("status", "parsed")
-      .order("created_at", { ascending: true });
+    // Fetch all parsed queue entries — paginated to avoid Supabase 1,000 row limit
+    const PAGE_SIZE = 1000;
+    let allEntries: Array<{
+      id: string;
+      file_name: string;
+      file_category: string;
+      state_code: string | null;
+      status: string;
+      document_id: string | null;
+    }> = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (body.category) {
-      query = query.eq("file_category", body.category as string);
+    while (hasMore) {
+      let query = supabase
+        .from("file_processing_queue")
+        .select("id, file_name, file_category, state_code, status, document_id")
+        .eq("status", "parsed")
+        .order("created_at", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (body.category) {
+        query = query.eq("file_category", body.category as string);
+      }
+      if (body.state_code) {
+        query = query.eq("state_code", body.state_code as string);
+      }
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Fetch failed: ${fetchError.message}` }),
+          { status: 500, headers },
+        );
+      }
+
+      if (data) {
+        allEntries = allEntries.concat(data);
+        hasMore = data.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
     }
-    if (body.state_code) {
-      query = query.eq("state_code", body.state_code as string);
-    }
 
-    const { data: entries, error: fetchError } = await query;
+    const entries = allEntries;
 
-    if (fetchError) {
-      return new Response(
-        JSON.stringify({ success: false, error: `Fetch failed: ${fetchError.message}` }),
-        { status: 500, headers },
-      );
-    }
-
-    if (!entries || entries.length === 0) {
+    if (entries.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No parsed entries to backfill", total: 0 }),
         { status: 200, headers },
