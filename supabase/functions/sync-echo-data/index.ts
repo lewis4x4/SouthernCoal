@@ -314,7 +314,8 @@ serve(async (req) => {
   const { data: permitRows, error: permitError } = await supabase
     .from("file_processing_queue")
     .select("uploaded_by, state_code, extracted_data")
-    .eq("status", "parsed")
+    // Permit rows can be post-parse statuses (embedded/imported) in current pipeline.
+    .in("status", ["parsed", "embedded", "imported"])
     .eq("file_category", "npdes_permit")
     .not("extracted_data->permit_number", "is", null);
 
