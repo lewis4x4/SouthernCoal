@@ -1,10 +1,13 @@
-/** MVP Phase 1 query domains */
 export type QueryDomain =
   | 'permits'
   | 'exceedances'
   | 'penalties'
   | 'sampling'
-  | 'organizations';
+  | 'organizations'
+  | 'lab_results'
+  | 'dmr'
+  | 'consent_decree'
+  | 'enforcement';
 
 export type SearchResultType = 'table' | 'count' | 'single_value' | 'summary';
 

@@ -12,6 +12,30 @@ import type { ComplianceSearchResponse } from '@/types/search';
 
 const ROW_HEIGHT = 40;
 
+/** Route mapping for drill-down links by table name (future use) */
+const RECORD_ROUTES: Record<string, string> = {
+  npdes_permits: '/permits',
+  outfalls: '/permits',
+  exceedances: '/exceedances',
+  corrective_actions: '/corrective-actions',
+  stipulated_penalties: '/penalties',
+  sampling_schedules: '/sampling',
+  sampling_calendar: '/sampling',
+  organizations: '/organizations',
+  sites: '/sites',
+  lab_results: '/lab-results',
+  sampling_events: '/sampling',
+  data_imports: '/imports',
+  dmr_submissions: '/dmr',
+  dmr_line_items: '/dmr',
+  consent_decree_obligations: '/consent-decree',
+  enforcement_actions: '/enforcement',
+  compliance_audits: '/audits',
+};
+
+// Suppress unused warning — RECORD_ROUTES is referenced here for future drill-down implementation
+void RECORD_ROUTES;
+
 interface SearchResultsProps {
   response: ComplianceSearchResponse;
   onRetry?: () => void;

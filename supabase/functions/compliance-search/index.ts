@@ -24,7 +24,11 @@ type QueryDomain =
   | "exceedances"
   | "penalties"
   | "sampling"
-  | "organizations";
+  | "organizations"
+  | "lab_results"
+  | "dmr"
+  | "consent_decree"
+  | "enforcement";
 
 interface ComplianceSearchRequest {
   query: string;
@@ -62,9 +66,9 @@ const ROLE_DOMAIN_RESTRICTIONS: Record<string, QueryDomain[] | null> = {
   environmental_manager: null,
   admin: null,
   site_manager: null,
-  safety_manager: ["exceedances", "organizations", "sampling"],
-  field_sampler: ["permits", "sampling", "organizations"],
-  lab_tech: ["organizations"],
+  safety_manager: ["exceedances", "organizations", "sampling", "enforcement"],
+  field_sampler: ["permits", "sampling", "organizations", "lab_results"],
+  lab_tech: ["organizations", "lab_results"],
   read_only: null,
 };
 
@@ -89,6 +93,21 @@ const DOMAIN_TABLE_ALLOWLIST: Record<QueryDomain, string[]> = {
   ],
   organizations: [
     "organizations", "sites", "user_profiles", "states",
+  ],
+  lab_results: [
+    "lab_results", "sampling_events", "data_imports",
+    "parameters", "outfalls", "npdes_permits", "sites",
+  ],
+  dmr: [
+    "dmr_submissions", "dmr_line_items",
+    "outfalls", "npdes_permits", "parameters", "sites",
+  ],
+  consent_decree: [
+    "consent_decree_obligations", "organizations", "user_profiles",
+  ],
+  enforcement: [
+    "enforcement_actions", "compliance_audits",
+    "organizations", "sites",
   ],
 };
 
@@ -274,6 +293,174 @@ const SCHEMA_CONTEXTS: Record<QueryDomain, string> = {
 - name: text
 - regulatory_agency: text
 `,
+
+  lab_results: `
+## Lab Results Tables
+
+### lab_results
+- id: uuid PK
+- sampling_event_id: uuid FK → sampling_events
+- parameter_id: uuid FK → parameters
+- result_value: numeric (the measured value)
+- result_unit: text (e.g., 'mg/L', 'ug/L', 's.u.')
+- below_detection: boolean (true if value was below detection limit)
+- detection_limit: numeric (the detection limit value)
+- data_qualifier: text ('<' for below detection, '>' for above range, 'J' for estimated)
+- analysis_date: date (when the lab analyzed the sample)
+- lab_name: text (name of the analyzing laboratory)
+- method: text (analytical method, e.g., 'EPA 200.7', 'SM 2540D')
+- hold_time_compliant: boolean (true if analysis was within required hold time)
+- import_batch_id: uuid FK → data_imports
+- created_at, updated_at: timestamptz
+
+### sampling_events
+- id: uuid PK
+- organization_id: uuid FK → organizations (USE THIS FOR ORG FILTER)
+- site_id: uuid FK → sites
+- outfall_id: uuid FK → outfalls
+- sample_date: date
+- sample_time: time
+- sampled_by: text
+- sample_type: text ('grab' or 'composite')
+- weather_conditions: text
+- precipitation_inches: numeric
+- chain_of_custody_number: text
+- field_notes: text
+
+### data_imports
+- id: uuid PK
+- organization_id: uuid FK → organizations (USE THIS FOR ORG FILTER)
+- site_id: uuid FK → sites
+- import_type: text ('lab_edd', 'dmr_csv', 'monitoring_report', 'field_log')
+- file_name: text
+- file_hash: text (SHA-256 for deduplication)
+- status: enum ('pending', 'processing', 'completed', 'failed', 'rolled_back')
+- rows_total: integer
+- rows_imported: integer
+- rows_rejected: integer
+- error_log: jsonb (array of {row, field, error} objects)
+- imported_by: uuid FK → user_profiles
+- created_at: timestamptz
+
+### parameters (shared with permits domain)
+- id: uuid PK
+- parameter_name: text (e.g., 'Iron', 'pH', 'Total Suspended Solids')
+- storet_code: text (e.g., '01045', '00400', '00530')
+- fraction: text ('total', 'dissolved', 'total_recoverable')
+- default_unit: text
+
+IMPORTANT JOINS:
+- lab_results → sampling_events (via sampling_event_id) → get organization_id, site_id, outfall_id
+- lab_results → parameters (via parameter_id) → get parameter_name
+- lab_results → data_imports (via import_batch_id) → get import status and file info
+- sampling_events has direct organization_id → use this for tenant filtering
+`,
+
+  dmr: `
+## DMR (Discharge Monitoring Report) Tables
+
+### dmr_submissions
+- id: uuid PK
+- permit_id: uuid FK → npdes_permits
+- period_start: date (first day of monitoring period)
+- period_end: date (last day of monitoring period)
+- reporting_frequency: text ('monthly', 'quarterly', 'annual')
+- status: enum ('draft', 'review', 'approved', 'submitted')
+- submission_system: text ('netdmr', 'e2dmr', 'mytdec', 'edmr')
+- confirmation_number: text
+- submitted_at: timestamptz
+- submitted_by: uuid FK → user_profiles
+- created_at, updated_at: timestamptz
+
+### dmr_line_items
+- id: uuid PK
+- dmr_submission_id: uuid FK → dmr_submissions
+- outfall_id: uuid FK → outfalls
+- parameter_id: uuid FK → parameters
+- monthly_avg: numeric (calculated monthly average)
+- daily_max: numeric (maximum single-day value)
+- daily_min: numeric (minimum single-day value)
+- avg_qualifier: text ('<' if below detection, '>' if above range)
+- max_qualifier: text
+- min_qualifier: text
+- sample_count: integer
+- exceedance_count: integer
+- nodi_code: text ('C' = No Discharge, '9' = Conditional, 'N' = No Data Available)
+- sample_type: text ('GR' = Grab, 'CP' = Composite, 'EST' = Estimated)
+- below_detection_method: text
+- limit_value: numeric (the permit limit for comparison)
+- limit_type: text ('daily_max', 'monthly_avg', etc.)
+
+IMPORTANT JOINS:
+- dmr_submissions → npdes_permits (via permit_id) → get permit_number, state_code
+- dmr_line_items → dmr_submissions (via dmr_submission_id) → get period, status
+- dmr_line_items → outfalls (via outfall_id) → get outfall_number
+- dmr_line_items → parameters (via parameter_id) → get parameter_name
+- For org filter: dmr_submissions → npdes_permits → sites.organization_id
+`,
+
+  consent_decree: `
+## Consent Decree Tables
+
+### consent_decree_obligations
+- id: uuid PK
+- organization_id: uuid FK → organizations (USE THIS FOR ORG FILTER)
+- obligation_number: integer (sequential reference, e.g., 1-75)
+- cd_paragraph: text (Consent Decree paragraph reference, e.g., '47.a', '52.b.iii')
+- description: text (human-readable description of the obligation)
+- obligation_type: enum ('one_time', 'recurring', 'ongoing', 'conditional')
+- due_date: date (for one-time obligations)
+- recurrence_rule: text (for recurring: 'quarterly', 'annually', 'monthly')
+- status: enum ('pending', 'in_progress', 'completed', 'overdue', 'not_applicable')
+- evidence_required: text (what documentation proves compliance)
+- evidence_status: text ('not_started', 'partial', 'complete')
+- assigned_to: uuid FK → user_profiles
+- completed_at: timestamptz
+- verified_by: uuid FK → user_profiles
+- notes: text
+- created_at, updated_at: timestamptz
+
+IMPORTANT: This table has direct organization_id → use it for tenant filtering.
+There are 75 seeded obligations from Case 7:16-cv-00462-GEC.
+`,
+
+  enforcement: `
+## Enforcement Tables
+
+### enforcement_actions
+- id: uuid PK
+- organization_id: uuid FK → organizations (USE THIS FOR ORG FILTER)
+- site_id: uuid FK → sites
+- action_type: text ('nov', 'cessation_order', 'consent_order', 'penalty_assessment', 'compliance_schedule', 'show_cause_order', 'administrative_order', 'civil_referral', 'criminal_referral', 'permit_revocation', 'bond_forfeiture', 'injunctive_relief', 'supplemental_environmental_project', 'other')
+- issuing_agency: text (e.g., 'EPA', 'KYDEP', 'WVDEP', 'ADEM', 'TDEC', 'VADEQ', 'MSHA', 'OSMRE')
+- action_date: date
+- received_date: date
+- description: text
+- status: enum ('open', 'responded', 'resolved', 'appealed', 'withdrawn')
+- penalty_amount: numeric (assessed penalty, if any)
+- response_deadline: date
+- response_filed: boolean
+- resolution_date: date
+- resolution_notes: text
+- created_at, updated_at: timestamptz
+
+### compliance_audits
+- id: uuid PK
+- organization_id: uuid FK → organizations (USE THIS FOR ORG FILTER)
+- site_id: uuid FK → sites
+- audit_type: text ('internal', 'third_party', 'regulatory_inspection', 'ems_audit')
+- audit_date: date
+- auditor: text (name or firm)
+- scope: text (what the audit covered)
+- findings_count: integer
+- critical_findings_count: integer
+- status: enum ('scheduled', 'in_progress', 'completed', 'findings_open', 'closed')
+- report_file_id: uuid
+- next_audit_date: date
+- created_at, updated_at: timestamptz
+
+IMPORTANT: Both tables have direct organization_id → use for tenant filtering.
+`,
 };
 
 // ---------------------------------------------------------------------------
@@ -288,6 +475,10 @@ function classifyQuery(query: string): QueryDomain[] {
   if (/penal|fine|stipulated|payment|exposure|cost/.test(q)) domains.push("penalties");
   if (/sampl|schedule|calendar|overdue|missed|frequency|due/.test(q)) domains.push("sampling");
   if (/site|facility|subsidiary|organization|mine|personnel|who/.test(q)) domains.push("organizations");
+  if (/lab|result|sample result|edd|detection|hold time|analysis|analyt|concentration/.test(q)) domains.push("lab_results");
+  if (/dmr|discharge monitoring|submission|filed|reported|nodi|no discharge|netdmr/.test(q)) domains.push("dmr");
+  if (/consent decree|obligation|cd |decree|paragraph|stipulat/.test(q)) domains.push("consent_decree");
+  if (/enforce|nov |notice of violation|audit|inspection|cessation|finding/.test(q)) domains.push("enforcement");
 
   return domains.length > 0 ? domains : ["organizations"];
 }
@@ -376,7 +567,7 @@ async function getDataFreshness(
   domains: QueryDomain[],
   orgId: string,
 ): Promise<string> {
-  const dataDomains: QueryDomain[] = ["exceedances", "penalties", "sampling"];
+  const dataDomains: QueryDomain[] = ["exceedances", "penalties", "sampling", "lab_results", "dmr"];
   const needsFreshness = domains.some((d) => dataDomains.includes(d));
   if (!needsFreshness) return "";
 
@@ -575,6 +766,9 @@ ${allowedTables.join(", ")}
 Any reference to tables outside this list is FORBIDDEN. Return an error if the question requires tables not in this list.
 
 JOIN DEPTH LIMIT: Maximum 3 tables per query. If a question requires more than 3 joins, return an error explaining the query is too complex and suggest the user narrow their question.
+
+COMPLEX QUERY HANDLING:
+If a question requires data from more than 3 tables, break it into the most useful single query that stays within the 3-table join limit. Explain in the description what additional context the user might need. Example: Instead of joining lab_results all the way to permit_limits, return the lab results with their values and note "Compare these values against permit limits for the relevant outfalls."
 
 RESPONSE FORMAT (JSON only, no markdown fences, no explanation):
 {
