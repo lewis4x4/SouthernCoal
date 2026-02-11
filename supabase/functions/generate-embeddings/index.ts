@@ -354,7 +354,7 @@ async function generateEmbedding(
   text: string,
 ): Promise<number[]> {
   // Use Supabase Edge Runtime's built-in AI session
-  // @ts-ignore — Supabase.ai is available in Edge Runtime
+  // @ts-expect-error — Supabase.ai is available in Edge Runtime
   const session = new Supabase.ai.Session("gte-small");
   const embedding = await session.run(text, { mean_pool: true, normalize: true });
   return Array.from(embedding);
@@ -460,10 +460,6 @@ serve(async (req: Request) => {
     const isPdf =
       queueEntry.file_name.toLowerCase().endsWith(".pdf") ||
       queueEntry.file_category === "npdes_permit";
-    const isSpreadsheet =
-      queueEntry.file_category === "lab_data" ||
-      /\.(csv|xlsx|xls|tsv)$/i.test(queueEntry.file_name);
-
     if (isPdf && !isBackfill) {
       // Full PDF extraction via Claude — only for frontend-triggered calls
       const { data: urlData, error: urlError } = await supabase.storage

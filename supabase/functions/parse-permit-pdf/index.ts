@@ -64,17 +64,6 @@ interface ExtractedPermitData {
   summary?: string;
 }
 
-interface QueueRow {
-  id: string;
-  storage_bucket: string;
-  storage_path: string;
-  file_name: string;
-  file_category: string;
-  state_code: string | null;
-  status: string;
-  uploaded_by: string | null;
-}
-
 // ---------------------------------------------------------------------------
 // Claude extraction prompt — classifies + extracts permit-related documents
 // ---------------------------------------------------------------------------

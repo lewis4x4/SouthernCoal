@@ -71,7 +71,7 @@ export function ComplianceSearch() {
         }
       }
     },
-    [isDocMode, search, docSearch, documentFilters],
+    [isDocMode, search, docSearch, documentFilters, chunksMode],
   );
 
   async function handleConfirmReview() {

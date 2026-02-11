@@ -107,7 +107,7 @@ async function checkRateLimit(
 // Embedding generation via Supabase AI (gte-small)
 // ---------------------------------------------------------------------------
 async function generateQueryEmbedding(text: string): Promise<number[]> {
-  // @ts-ignore — Supabase.ai is available in Edge Runtime
+  // @ts-expect-error — Supabase.ai is available in Edge Runtime
   const session = new Supabase.ai.Session("gte-small");
   const embedding = await session.run(text, { mean_pool: true, normalize: true });
   return Array.from(embedding);
