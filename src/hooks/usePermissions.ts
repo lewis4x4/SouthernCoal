@@ -41,8 +41,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   admin: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
-    // CA: Full workflow except signatures
-    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_reopen', 'ca_generate_pdf',
+    // CA: Full access including signatures
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
   ],
   read_only: [
     'view', 'export', 'command_palette', 'search',

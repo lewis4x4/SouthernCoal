@@ -436,11 +436,12 @@ serve(async (req: Request) => {
     // Generate PDF
     const pdfBytes = await generatePdf(ca);
 
-    // Upload to storage
+    // Upload to storage - use verified orgId from auth, not ca.organization_id
+    // This prevents cross-org storage writes if RLS is bypassed
     const fileName = `CA-${ca.id.slice(0, 8).toUpperCase()}-${
       new Date().toISOString().split("T")[0]
     }.pdf`;
-    const storagePath = `corrective-actions/${ca.organization_id}/${fileName}`;
+    const storagePath = `corrective-actions/${orgId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("compliance-docs")
@@ -480,7 +481,7 @@ serve(async (req: Request) => {
     try {
       await supabase.from("audit_log").insert({
         user_id: userId,
-        organization_id: ca.organization_id,
+        organization_id: orgId, // Use verified orgId from auth
         action: "corrective_action_pdf_generated",
         module: "corrective_actions",
         table_name: "corrective_actions",

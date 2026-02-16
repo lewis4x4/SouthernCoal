@@ -341,6 +341,14 @@ function IdentificationForm({ data, onChange, readOnly }: StepFormProps) {
           placeholder="Inspector name"
         />
       </div>
+      <FormInput
+        label="Follow-up Assigned To"
+        value={data.followup_assigned_to || ''}
+        onChange={(v) => onChange('followup_assigned_to', v)}
+        readOnly={readOnly}
+        required
+        placeholder="User ID or name of person responsible for follow-up"
+      />
     </div>
   );
 }
@@ -606,6 +614,7 @@ function getStepFormData(
         regulation_cited: action.regulation_cited || '',
         issuing_agency: action.issuing_agency || '',
         issuing_person: action.issuing_person || '',
+        followup_assigned_to: action.followup_assigned_to || '',
       };
     case 'root_cause_analysis':
       return {

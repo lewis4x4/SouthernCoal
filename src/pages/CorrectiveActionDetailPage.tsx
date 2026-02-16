@@ -7,6 +7,7 @@ import { useWorkflowTransition } from '@/hooks/useWorkflowTransition';
 import { useCorrectiveActionsStore } from '@/stores/correctiveActions';
 import { CorrectiveActionDetail } from '@/components/corrective-actions/CorrectiveActionDetail';
 import { CorrectiveActionSignature } from '@/components/corrective-actions/CorrectiveActionSignature';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -118,10 +119,12 @@ export function CorrectiveActionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <CorrectiveActionDetail
-        action={action}
-        onGeneratePdf={handleGeneratePdf}
-      />
+      <ErrorBoundary>
+        <CorrectiveActionDetail
+          action={action}
+          onGeneratePdf={handleGeneratePdf}
+        />
+      </ErrorBoundary>
 
       {/* Signature Modal */}
       <CorrectiveActionSignature
