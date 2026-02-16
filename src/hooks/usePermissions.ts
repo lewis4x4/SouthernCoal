@@ -9,14 +9,46 @@ import type { Role, Permission, RoleAssignment } from '@/types/auth';
  * Supports global and site-scoped roles.
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  executive: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
-  site_manager: ['view', 'upload', 'export', 'command_palette', 'search'],
-  environmental_manager: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
-  safety_manager: ['view', 'upload', 'command_palette', 'search'],
-  field_sampler: ['view', 'upload', 'command_palette', 'search'],
-  lab_tech: ['view', 'upload', 'command_palette', 'search'],
-  admin: ['view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search'],
-  read_only: ['view', 'export', 'command_palette', 'search'],
+  executive: [
+    'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
+    // CA: Full access including approver signature
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
+  ],
+  site_manager: [
+    'view', 'upload', 'export', 'command_palette', 'search',
+    // CA: Can view, edit assigned, sign as responsible
+    'ca_view', 'ca_edit', 'ca_sign_responsible', 'ca_generate_pdf',
+  ],
+  environmental_manager: [
+    'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
+    // CA: Full access except approver signature
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
+  ],
+  safety_manager: [
+    'view', 'upload', 'command_palette', 'search',
+    // CA: View only
+    'ca_view',
+  ],
+  field_sampler: [
+    'view', 'upload', 'command_palette', 'search',
+    // CA: View only
+    'ca_view',
+  ],
+  lab_tech: [
+    'view', 'upload', 'command_palette', 'search',
+    // CA: View only
+    'ca_view',
+  ],
+  admin: [
+    'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
+    // CA: Full workflow except signatures
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_reopen', 'ca_generate_pdf',
+  ],
+  read_only: [
+    'view', 'export', 'command_palette', 'search',
+    // CA: View only
+    'ca_view',
+  ],
 };
 
 /** Priority order: higher index = more permissive. Used to resolve highest-privilege assignment. */

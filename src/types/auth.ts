@@ -40,4 +40,12 @@ export type Permission =
   | 'verify'
   | 'set_expected'
   | 'command_palette'
-  | 'search';
+  | 'search'
+  // Corrective Action permissions
+  | 'ca_view'
+  | 'ca_edit'
+  | 'ca_advance_workflow'
+  | 'ca_sign_responsible'
+  | 'ca_sign_approver'
+  | 'ca_reopen'
+  | 'ca_generate_pdf';

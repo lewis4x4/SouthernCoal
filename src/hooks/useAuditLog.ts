@@ -36,7 +36,18 @@ type AuditAction =
   | 'discrepancy_reviewed'
   | 'discrepancy_dismissed'
   | 'discrepancy_escalated'
-  | 'discrepancy_resolved';
+  | 'discrepancy_resolved'
+  // Corrective Action workflow
+  | 'corrective_action_created'
+  | 'corrective_action_assigned'
+  | 'corrective_action_step_advanced'
+  | 'corrective_action_step_data_updated'
+  | 'corrective_action_signed'
+  | 'corrective_action_approved'
+  | 'corrective_action_closed'
+  | 'corrective_action_reopened'
+  | 'corrective_action_pdf_generated'
+  | 'corrective_action_exported';
 
 export type { AuditAction };
 

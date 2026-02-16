@@ -15,6 +15,8 @@ import { RoadmapPage } from '@/pages/RoadmapPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { SearchObservabilityPage } from '@/pages/SearchObservabilityPage';
 import { ReviewQueuePage } from '@/pages/ReviewQueuePage';
+import { CorrectiveActionsPage } from '@/pages/CorrectiveActionsPage';
+import { CorrectiveActionDetailPage } from '@/pages/CorrectiveActionDetailPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 
@@ -199,6 +201,30 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <SearchObservabilityPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Corrective Actions List */}
+        <Route
+          path="/corrective-actions"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <CorrectiveActionsPage />
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Corrective Action Detail */}
+        <Route
+          path="/corrective-actions/:id"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <CorrectiveActionDetailPage />
               </AppShell>
             </AuthGuard>
           }
