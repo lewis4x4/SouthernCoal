@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   AlertTriangle,
@@ -70,6 +71,9 @@ export function CorrectiveActionDetail({
     setAdvancing(false);
     if (result.error) {
       console.error('Failed to advance:', result.error);
+      toast.error('Failed to advance step', { description: result.error });
+    } else {
+      toast.success('Step advanced');
     }
   };
 
@@ -80,6 +84,9 @@ export function CorrectiveActionDetail({
     setClosing(false);
     if (result.error) {
       console.error('Failed to close:', result.error);
+      toast.error('Failed to close action', { description: result.error });
+    } else {
+      toast.success('Corrective action closed');
     }
   };
 
@@ -90,6 +97,9 @@ export function CorrectiveActionDetail({
     setReopening(false);
     if (result.error) {
       console.error('Failed to reopen:', result.error);
+      toast.error('Failed to reopen action', { description: result.error });
+    } else {
+      toast.success('Corrective action reopened');
     }
   };
 

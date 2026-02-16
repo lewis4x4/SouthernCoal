@@ -203,8 +203,11 @@ export function useCorrectiveActions() {
   useEffect(() => {
     if (!user) return;
 
+    // Create unique channel name to prevent stale listeners
+    const channelName = `ca-changes-${user.id}-${Date.now()}`;
+
     const channel = supabase
-      .channel('ca-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -227,7 +230,10 @@ export function useCorrectiveActions() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      // Ensure proper cleanup to prevent memory leaks
+      channel.unsubscribe().then(() => {
+        supabase.removeChannel(channel);
+      });
     };
   }, [user?.id, fetchActions]);
 

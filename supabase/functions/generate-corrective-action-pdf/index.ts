@@ -248,7 +248,9 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
   // INCIDENT FOLLOW UP
   drawHeader("INCIDENT FOLLOW UP:");
   const followupName = ca.followup_user
-    ? `${ca.followup_user.first_name} ${ca.followup_user.last_name}`
+    ? [ca.followup_user.first_name, ca.followup_user.last_name]
+        .filter(Boolean)
+        .join(" ") || null
     : null;
   drawField("Follow up assigned to", followupName);
   y -= 4;
@@ -271,7 +273,9 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
   y -= 4;
 
   const respName = ca.responsible_person
-    ? `${ca.responsible_person.first_name} ${ca.responsible_person.last_name}`
+    ? [ca.responsible_person.first_name, ca.responsible_person.last_name]
+        .filter(Boolean)
+        .join(" ") || "_______________________"
     : "_______________________";
   const respDate = ca.responsible_person_signed_at
     ? ca.responsible_person_signed_at.split("T")[0]
@@ -297,7 +301,9 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
   y -= lineHeight + 8;
 
   const apprName = ca.approved_by
-    ? `${ca.approved_by.first_name} ${ca.approved_by.last_name}`
+    ? [ca.approved_by.first_name, ca.approved_by.last_name]
+        .filter(Boolean)
+        .join(" ") || "_______________________"
     : "_______________________";
   const apprDate = ca.approved_by_signed_at
     ? ca.approved_by_signed_at.split("T")[0]
@@ -415,7 +421,8 @@ serve(async (req: Request) => {
   }
 
   // Verify user has access to this CA's org
-  if (orgId && ca.organization_id !== orgId) {
+  // CRITICAL: Must check even if orgId is null (prevents auth bypass)
+  if (!orgId || ca.organization_id !== orgId) {
     return new Response(
       JSON.stringify({ error: "Access denied to this corrective action" }),
       {
@@ -469,17 +476,21 @@ serve(async (req: Request) => {
       );
     }
 
-    // Audit log
-    await supabase.from("audit_log").insert({
-      user_id: userId,
-      organization_id: ca.organization_id,
-      action: "corrective_action_pdf_generated",
-      module: "corrective_actions",
-      table_name: "corrective_actions",
-      record_id: corrective_action_id,
-      description: JSON.stringify({ pdf_path: storagePath }),
-      created_at: new Date().toISOString(),
-    });
+    // Audit log (fire-and-forget, don't block on failure)
+    try {
+      await supabase.from("audit_log").insert({
+        user_id: userId,
+        organization_id: ca.organization_id,
+        action: "corrective_action_pdf_generated",
+        module: "corrective_actions",
+        table_name: "corrective_actions",
+        record_id: corrective_action_id,
+        description: JSON.stringify({ pdf_path: storagePath }),
+        created_at: new Date().toISOString(),
+      });
+    } catch (auditErr) {
+      console.warn("[generate-ca-pdf] Audit log failed:", auditErr);
+    }
 
     return new Response(
       JSON.stringify({

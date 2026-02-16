@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -57,9 +58,16 @@ export function CorrectiveActionForm({
       const result = await updateStepData(action.id, step, formData);
       if (result.error) {
         console.error('Failed to save:', result.error);
+        toast.error('Failed to save changes', {
+          description: result.error,
+        });
       } else {
+        toast.success('Changes saved');
         onSave?.();
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error';
+      toast.error('Save failed', { description: message });
     } finally {
       setSaving(false);
     }
@@ -156,6 +164,7 @@ function FormInput({
   placeholder,
   rows = 3,
 }: FormInputProps) {
+  const id = useId();
   const baseClasses = cn(
     'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
     'bg-white/[0.02] border-white/[0.08]',
@@ -166,12 +175,13 @@ function FormInput({
 
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-medium text-text-secondary">
+      <label htmlFor={id} className="block text-xs font-medium text-text-secondary">
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
       </label>
       {type === 'textarea' ? (
         <textarea
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           readOnly={readOnly}
@@ -181,6 +191,7 @@ function FormInput({
         />
       ) : (
         <input
+          id={id}
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -210,13 +221,15 @@ function FormSelect({
   readOnly = false,
   required = false,
 }: FormSelectProps) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-medium text-text-secondary">
+      <label htmlFor={id} className="block text-xs font-medium text-text-secondary">
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
       </label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={readOnly}
@@ -462,14 +475,24 @@ function VerificationForm({ data, onChange, readOnly }: StepFormProps) {
         rows={4}
         placeholder="Assessment of whether corrective actions were effective..."
       />
-      <FormInput
-        label="Verified Date"
-        value={data.verified_date || ''}
-        onChange={(v) => onChange('verified_date', v)}
-        readOnly={readOnly}
-        required
-        type="date"
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormInput
+          label="Verified By"
+          value={data.verified_by || ''}
+          onChange={(v) => onChange('verified_by', v)}
+          readOnly={readOnly}
+          required
+          placeholder="Name of verifier"
+        />
+        <FormInput
+          label="Verified Date"
+          value={data.verified_date || ''}
+          onChange={(v) => onChange('verified_date', v)}
+          readOnly={readOnly}
+          required
+          type="date"
+        />
+      </div>
     </div>
   );
 }
@@ -607,6 +630,7 @@ function getStepFormData(
     case 'verification':
       return {
         effectiveness_assessment: action.effectiveness_assessment || '',
+        verified_by: action.verified_by || '',
         verified_date: action.verified_date || '',
       };
     case 'closure':

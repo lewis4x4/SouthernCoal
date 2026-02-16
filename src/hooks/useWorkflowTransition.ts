@@ -220,6 +220,12 @@ export function useWorkflowTransition() {
         return { error: 'Can only reopen closed or verified actions' };
       }
 
+      // Track signatures being cleared for audit trail
+      const clearedSignatures = {
+        responsible_person_signed_at: ca.responsible_person_signed_at,
+        approved_by_signed_at: ca.approved_by_signed_at,
+      };
+
       // Reopen to verification step
       const { data, error: updateErr } = await supabase
         .from('corrective_actions')
@@ -245,16 +251,25 @@ export function useWorkflowTransition() {
         upsertAction(data as CorrectiveAction);
       }
 
-      // Audit log
+      // Audit log - include signature clearing for compliance trail
       log(
         'corrective_action_reopened',
-        { ca_id: caId, reason },
+        { ca_id: caId, reason, signatures_cleared: clearedSignatures },
         {
           module: 'corrective_actions',
           tableName: 'corrective_actions',
           recordId: caId,
-          oldValues: { status: ca.status, workflow_step: ca.workflow_step },
-          newValues: { status: 'in_progress', workflow_step: 'verification' },
+          oldValues: {
+            status: ca.status,
+            workflow_step: ca.workflow_step,
+            ...clearedSignatures,
+          },
+          newValues: {
+            status: 'in_progress',
+            workflow_step: 'verification',
+            responsible_person_signed_at: null,
+            approved_by_signed_at: null,
+          },
         }
       );
 
