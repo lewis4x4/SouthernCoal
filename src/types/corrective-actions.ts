@@ -167,7 +167,9 @@ export interface CorrectiveAction {
 
   // Audit
   created_at: string;
+  created_by: string | null;
   updated_at: string;
+  updated_by: string | null;
 
   // JOINed data (from queries)
   organization_name?: string;
@@ -250,6 +252,20 @@ export interface CAFilters {
   date_from?: string;
   date_to?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Status Transitions (state machine for workflow advancement)
+// ---------------------------------------------------------------------------
+// Note: 'closed' status is set by closeAction(), not advanceStep()
+export const STATUS_TRANSITIONS: Record<WorkflowStep, CAStatus> = {
+  identification: 'open',
+  root_cause_analysis: 'in_progress',
+  corrective_action_plan: 'in_progress',
+  preventive_action: 'in_progress',
+  implementation: 'in_progress',
+  verification: 'completed',
+  closure: 'verified',
+};
 
 // ---------------------------------------------------------------------------
 // Step Requirements (what must be filled before advancing)

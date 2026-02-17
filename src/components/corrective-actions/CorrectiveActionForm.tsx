@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useId } from 'react';
+import { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -57,6 +57,14 @@ export function CorrectiveActionForm({
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
+  // Mount guard for async operations
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const isCurrentStep = action.workflow_step === step;
   const canEdit = isCurrentStep && can('ca_edit') && action.status !== 'closed';
 
@@ -95,6 +103,7 @@ export function CorrectiveActionForm({
     setSaving(true);
     try {
       const result = await updateStepData(action.id, step, validatedData);
+      if (!isMountedRef.current) return;
       if (result.error) {
         console.error('Failed to save:', result.error);
         toast.error('Failed to save changes', {
@@ -105,10 +114,13 @@ export function CorrectiveActionForm({
         onSave?.();
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
       const message = err instanceof Error ? err.message : 'Unexpected error';
       toast.error('Save failed', { description: message });
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     }
   }, [action.id, step, formData, updateStepData, canEdit, onSave]);
 

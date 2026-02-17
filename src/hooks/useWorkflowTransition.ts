@@ -7,23 +7,11 @@ import { useCorrectiveActionsStore } from '@/stores/correctiveActions';
 import {
   WORKFLOW_STEPS,
   STEP_REQUIRED_FIELDS,
+  STATUS_TRANSITIONS,
   getNextStep,
   type CorrectiveAction,
   type WorkflowStep,
-  type CAStatus,
 } from '@/types/corrective-actions';
-
-// Issue #7 Fix: Explicit status transitions for advanceStep
-// Note: 'closed' status is set by closeAction(), not advanceStep()
-const STATUS_TRANSITIONS: Record<WorkflowStep, CAStatus> = {
-  identification: 'open',
-  root_cause_analysis: 'in_progress',
-  corrective_action_plan: 'in_progress',
-  preventive_action: 'in_progress',
-  implementation: 'in_progress',
-  verification: 'completed',
-  closure: 'verified',
-};
 
 interface ValidationResult {
   valid: boolean;
