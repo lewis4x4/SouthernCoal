@@ -5,9 +5,11 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useObligationGeneration } from '@/hooks/useObligationGeneration';
 import { useLabDataImport } from '@/hooks/useLabDataImport';
 import { VerificationBadge } from './VerificationBadge';
+import { ParameterSheetExtractionPanel } from './ParameterSheetExtractionPanel';
 import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus, Upload, Loader2 } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { VerificationStatus } from '@/stores/verification';
+import type { ExtractedParameterSheet } from '@/types/database';
 
 interface ExtractionPanelProps {
   entry: QueueEntry;
@@ -85,6 +87,20 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
       <LabDataExtractionPanel
         entry={entry}
         data={data as unknown as LabDataExtractionDisplay}
+        verificationStatus={verificationStatus}
+        onVerify={() => setStatus(entry.id, 'verified')}
+        onDispute={() => setStatus(entry.id, 'disputed')}
+        canVerify={can('verify')}
+      />
+    );
+  }
+
+  // Parameter sheet branch — WV Excel permit parameter sheets
+  if (data.document_type === 'parameter_sheet') {
+    return (
+      <ParameterSheetExtractionPanel
+        entry={entry}
+        data={data as unknown as ExtractedParameterSheet}
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
         onDispute={() => setStatus(entry.id, 'disputed')}
