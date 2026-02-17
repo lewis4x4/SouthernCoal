@@ -44,11 +44,13 @@ export function useLabDataImport() {
 
       try {
         // Refresh JWT before Edge Function call
-        let session = (await supabase.auth.getSession()).data.session;
+        const sessionResult = await supabase.auth.getSession();
+        let session = sessionResult.data?.session;
+
         if (!session) {
           const { data: refreshed, error: refreshError } =
             await supabase.auth.refreshSession();
-          if (refreshError || !refreshed.session) {
+          if (refreshError || !refreshed?.session) {
             window.location.href = '/login?reason=session_expired';
             return;
           }
@@ -152,44 +154,70 @@ export function useLabDataImport() {
 
   /**
    * Import all parsed lab data files — sequential to avoid pool exhaustion.
+   * Includes batch-level timeout and stale state protection.
    */
   const importAllParsedLabData = useCallback(async () => {
-    const entries = useQueueStore.getState().entries;
-    const parsed = entries.filter(
-      (e) => e.status === 'parsed' && e.file_category === 'lab_data',
-    );
+    const BATCH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes total
+    const startTime = Date.now();
 
-    if (parsed.length === 0) {
+    // Capture IDs at start, but re-fetch state each iteration to avoid stale closures
+    const initialEntries = useQueueStore.getState().entries;
+    const idsToImport = initialEntries
+      .filter((e) => e.status === 'parsed' && e.file_category === 'lab_data')
+      .map((e) => e.id);
+
+    if (idsToImport.length === 0) {
       toast.info('No parsed lab data files to import.');
       return;
     }
 
     toast.info(
-      `Importing ${parsed.length} parsed lab data file${parsed.length > 1 ? 's' : ''}...`,
+      `Importing ${idsToImport.length} parsed lab data file${idsToImport.length > 1 ? 's' : ''}...`,
     );
 
     let successCount = 0;
     let failCount = 0;
+    let skippedCount = 0;
 
-    for (let i = 0; i < parsed.length; i++) {
-      const entry = parsed[i]!;
+    for (const id of idsToImport) {
+      // Check batch timeout
+      if (Date.now() - startTime > BATCH_TIMEOUT_MS) {
+        const remaining = idsToImport.length - successCount - failCount - skippedCount;
+        toast.warning(`Batch timeout reached. ${remaining} files skipped. Please retry.`);
+        break;
+      }
+
+      // Re-fetch fresh state each iteration to handle concurrent changes
+      const freshEntry = useQueueStore.getState().entries.find((e) => e.id === id);
+
+      // Skip if entry no longer exists or status changed (e.g., imported by another user)
+      if (!freshEntry || freshEntry.status !== 'parsed') {
+        skippedCount++;
+        continue;
+      }
 
       try {
-        await importLabData(entry.id);
+        await importLabData(id);
         successCount++;
-      } catch {
+      } catch (err) {
         failCount++;
+        // Log failure for debugging (importLabData already shows toast)
+        console.error(
+          '[useLabDataImport] Batch import failed for',
+          id,
+          err instanceof Error ? err.message : err,
+        );
       }
 
       // Brief pause between imports
       await new Promise((r) => setTimeout(r, 500));
     }
 
-    if (failCount === 0) {
+    if (failCount === 0 && skippedCount === 0) {
       toast.success(`Successfully imported ${successCount} lab data files.`);
     } else {
       toast.warning(
-        `Imported ${successCount} files, ${failCount} failed. Check individual entries for details.`,
+        `Imported ${successCount}, failed ${failCount}, skipped ${skippedCount}. Check entries for details.`,
       );
     }
 

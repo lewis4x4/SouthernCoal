@@ -308,3 +308,110 @@ export interface LabResultWithRelations extends LabResult {
     storet_code: string | null;
   } | null;
 }
+
+// ---------------------------------------------------------------------------
+// Parsed Lab Data Types (from parse-lab-data-edd Edge Function)
+// ---------------------------------------------------------------------------
+
+/** Individual parsed record from lab EDD file */
+export interface ParsedLabRecord {
+  row_number: number;
+  permittee_name: string;
+  permit_number: string;
+  site_name: string;
+  site_state: string;
+  site_county: string;
+  lab_name: string;
+  sampler: string;
+  outfall_raw: string;
+  outfall_matched: string | null;
+  outfall_db_id: string | null;
+  outfall_match_method: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  stream_name: string;
+  sample_date: string | null;
+  sample_time: string | null;
+  analysis_date: string | null;
+  parameter_raw: string;
+  parameter_canonical: string;
+  parameter_id: string | null;
+  value: number | null;
+  value_raw: string;
+  unit: string;
+  below_detection: boolean;
+  data_qualifier: string | null;
+  comments: string | null;
+  hold_time_days: number | null;
+  hold_time_compliant: boolean | null;
+  is_duplicate: boolean;
+}
+
+/**
+ * Extracted data envelope for lab_data_edd files
+ * Stored in file_processing_queue.extracted_data
+ * Contains both raw records for import AND summary fields for UI display
+ */
+export interface ExtractedLabData {
+  document_type: 'lab_data_edd';
+
+  // Raw records for import (used by import-lab-data Edge Function)
+  records?: ParsedLabRecord[];
+  import_id: string | null;
+
+  // Parse metadata
+  file_format?: string;
+  column_count?: number;
+  total_rows?: number;
+  parsed_rows?: number;
+  skipped_rows?: number;
+  records_truncated?: boolean;
+
+  // Summary fields for UI display
+  permit_numbers?: string[];
+  permit_number?: string;  // Legacy single permit
+  states?: string[];
+  sites?: string[];
+  site_name?: string;  // Legacy single site
+  date_range?: {
+    earliest?: string | null;
+    latest?: string | null;
+    start?: string;
+    end?: string;
+  };
+  lab_names?: string[];
+
+  // Parameter summary
+  parameters_found?: number;
+  unique_parameters?: number;
+  parameter_summary?: Array<{
+    canonical_name: string;
+    sample_count: number;
+    below_detection_count: number;
+  }>;
+
+  // Outfall summary
+  outfalls_found?: number;
+  outfall_summary?: Array<{
+    raw_name: string;
+    matched_id: string | null;
+    sample_count: number;
+  }>;
+
+  // Validation results
+  warnings?: string[];
+  validation_warnings?: string[];  // Legacy alias
+  validation_errors?: Array<{ row: number; column: string; message: string }>;
+  hold_time_violations?: Array<{
+    row: number;
+    parameter: string;
+    outfall: string;
+    sample_date: string;
+    analysis_date: string;
+    days_held: number;
+    max_hold_days: number;
+  }>;
+
+  // Human-readable summary
+  summary?: string;
+}

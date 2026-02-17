@@ -29,6 +29,9 @@ export type {
   SamplingEventWithRelations,
   LabResult,
   LabResultWithRelations,
+  // Parsed lab data types (from parse-lab-data-edd)
+  ParsedLabRecord,
+  ExtractedLabData,
 } from './database';
 
 // Obligations and compliance

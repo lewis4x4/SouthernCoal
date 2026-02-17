@@ -84,7 +84,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
     return (
       <LabDataExtractionPanel
         entry={entry}
-        data={data as unknown as ExtractedLabData}
+        data={data as unknown as LabDataExtractionDisplay}
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
         onDispute={() => setStatus(entry.id, 'disputed')}
@@ -310,7 +310,12 @@ function TypeSpecificDetails({ data, docType }: { data: ExtractedData; docType: 
 // Lab Data Extraction Panel
 // ---------------------------------------------------------------------------
 
-interface ExtractedLabData {
+/**
+ * Display-focused interface for lab data extraction UI.
+ * This is a stricter version of ExtractedLabData with required display fields.
+ * The base ExtractedLabData type is used for import operations.
+ */
+interface LabDataExtractionDisplay {
   document_type: 'lab_data_edd';
   file_format: string;
   column_count: number;
@@ -351,7 +356,7 @@ interface ExtractedLabData {
 
 interface LabDataExtractionPanelProps {
   entry: QueueEntry;
-  data: ExtractedLabData;
+  data: LabDataExtractionDisplay;
   verificationStatus: VerificationStatus;
   onVerify: () => void;
   onDispute: () => void;

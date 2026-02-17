@@ -12,19 +12,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  */
 
 // ---------------------------------------------------------------------------
-// CORS Headers
-// ---------------------------------------------------------------------------
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-// ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173";
+
+// ---------------------------------------------------------------------------
+// CORS Headers - restricted to known frontend origin
+// ---------------------------------------------------------------------------
+const corsHeaders = {
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
@@ -78,7 +79,11 @@ interface ExtractedLabData {
 interface AuthResult {
   userId: string;
   organizationId: string;
+  canImport: boolean;
 }
+
+// Roles allowed to import lab data
+const IMPORT_ALLOWED_ROLES = ["admin", "environmental_manager", "site_manager", "executive"];
 
 async function verifyAuth(
   req: Request,
@@ -95,10 +100,10 @@ async function verifyAuth(
 
   if (error || !user) return null;
 
-  // Get user's organization membership
+  // Get user's organization membership and role
   const { data: profile, error: profileError } = await supabase
     .from("user_profiles")
-    .select("organization_id")
+    .select("organization_id, role_assignments(roles(name))")
     .eq("id", user.id)
     .single();
 
@@ -107,9 +112,26 @@ async function verifyAuth(
     return null;
   }
 
+  // Check if user has a role that allows import
+  const userRoles: string[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roleAssignments = (profile as any).role_assignments;
+  if (Array.isArray(roleAssignments)) {
+    for (const assignment of roleAssignments) {
+      if (assignment?.roles?.name) {
+        userRoles.push(assignment.roles.name.toLowerCase());
+      }
+    }
+  }
+
+  const canImport = userRoles.some((role) =>
+    IMPORT_ALLOWED_ROLES.includes(role)
+  );
+
   return {
     userId: user.id,
     organizationId: profile.organization_id,
+    canImport,
   };
 }
 
@@ -136,7 +158,9 @@ function groupByEvent(records: ParsedRecord[]): Map<string, ParsedRecord[]> {
     // Skip duplicates flagged by parser
     if (record.is_duplicate) continue;
 
-    const key = `${record.outfall_db_id}|${record.sample_date}|${record.sample_time ?? ""}`;
+    // Use 00:00:00 as default to match database COALESCE index
+    const normalizedTime = record.sample_time || "00:00:00";
+    const key = `${record.outfall_db_id}|${record.sample_date}|${normalizedTime}`;
 
     if (!groups.has(key)) {
       groups.set(key, []);
@@ -169,7 +193,16 @@ serve(async (req: Request) => {
   if (!auth) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
-  const { userId, organizationId: userOrgId } = auth;
+  const { userId, organizationId: userOrgId, canImport } = auth;
+
+  // 1b. Verify user has role that allows import
+  if (!canImport) {
+    console.error("[import-lab-data] User lacks import permission:", userId);
+    return jsonResponse(
+      { success: false, error: "Forbidden: insufficient permissions to import data" },
+      403,
+    );
+  }
 
   // 2. Parse request body
   let queueId: string;
@@ -334,65 +367,91 @@ serve(async (req: Request) => {
     const importedEventIds: string[] = [];
     const importedResultIds: string[] = [];
 
-    // 8. Process each event group
+    // 8. BATCH APPROACH: Prepare all events for upsert (reduces N queries to 2-3)
+    console.log("[import-lab-data] Preparing batch upsert for", eventGroups.size, "events");
+
+    // Step 1: Build events array for batch upsert
+    const eventsToUpsert: Array<{
+      outfall_id: string;
+      sample_date: string;
+      sample_time: string | null;
+      lab_name: string | null;
+      status: string;
+      metadata: Record<string, unknown>;
+    }> = [];
+
+    const eventKeyMap = new Map<string, number>(); // Maps eventKey to index in eventsToUpsert
+
     for (const [eventKey, records] of eventGroups) {
       const [outfallId, sampleDate, sampleTime] = eventKey.split("|");
-
-      // Get first record for event metadata
       const firstRecord = records[0];
 
-      // Check if sampling_event already exists for this outfall+date+time
-      const { data: existingEvent } = await supabase
-        .from("sampling_events")
-        .select("id")
-        .eq("outfall_id", outfallId)
-        .eq("sample_date", sampleDate)
-        .eq("sample_time", sampleTime || null)
-        .maybeSingle();
+      eventKeyMap.set(eventKey, eventsToUpsert.length);
+      eventsToUpsert.push({
+        outfall_id: outfallId,
+        sample_date: sampleDate,
+        // Store actual time or null; COALESCE index handles null → 00:00:00 conversion
+        sample_time: sampleTime === "00:00:00" ? null : sampleTime || null,
+        lab_name: firstRecord.lab_name || null,
+        status: "imported",
+        metadata: {
+          import_id: importId,
+          source_file_id: queueId,
+          sampler: firstRecord.sampler || null,
+          latitude: firstRecord.latitude,
+          longitude: firstRecord.longitude,
+          stream_name: firstRecord.stream_name || null,
+        },
+      });
+    }
 
-      let event: { id: string } | null = existingEvent;
+    // Step 2: Batch upsert all sampling_events (uses UNIQUE constraint)
+    const { data: upsertedEvents, error: eventBatchError } = await supabase
+      .from("sampling_events")
+      .upsert(eventsToUpsert, {
+        onConflict: "outfall_id,sample_date,sample_time",
+        ignoreDuplicates: false,
+      })
+      .select("id, outfall_id, sample_date, sample_time");
 
-      if (!existingEvent) {
-        // Create new sampling_event using existing table schema
-        const eventData = {
-          outfall_id: outfallId,
-          sample_date: sampleDate,
-          sample_time: sampleTime || null,
-          lab_name: firstRecord.lab_name || null,
-          status: "imported",
-          metadata: {
-            import_id: importId,
-            source_file_id: queueId,
-            sampler: firstRecord.sampler || null,
-            latitude: firstRecord.latitude,
-            longitude: firstRecord.longitude,
-            stream_name: firstRecord.stream_name || null,
-          },
-        };
+    if (eventBatchError) {
+      throw new Error(`Batch event upsert failed: ${eventBatchError.message}`);
+    }
 
-        const { data: newEvent, error: eventError } = await supabase
-          .from("sampling_events")
-          .insert(eventData)
-          .select("id")
-          .single();
+    // Step 3: Build lookup map from event key to database ID
+    const eventIdMap = new Map<string, string>();
+    for (const evt of upsertedEvents ?? []) {
+      // Use 00:00:00 for null sample_time to match groupByEvent key generation
+      const normalizedTime = evt.sample_time || "00:00:00";
+      const key = `${evt.outfall_id}|${evt.sample_date}|${normalizedTime}`;
+      eventIdMap.set(key, evt.id);
+      importedEventIds.push(evt.id);
+    }
+    totalEventsCreated = upsertedEvents?.length ?? 0;
 
-        if (eventError) {
-          console.error("[import-lab-data] Failed to insert sampling_event:", eventError.message);
-          continue;
-        }
-        event = newEvent;
-      }
+    console.log("[import-lab-data] Upserted", totalEventsCreated, "sampling_events");
 
-      if (eventError) {
-        console.error("[import-lab-data] Failed to upsert sampling_event:", eventError.message);
+    // Step 4: Prepare all lab_results for batch upsert
+    const allResults: Array<{
+      sampling_event_id: string;
+      parameter_id: string;
+      result_value: number | null;
+      result_text: string | null;
+      unit: string | null;
+      is_non_detect: boolean;
+      qualifier: string | null;
+      analyzed_date: string | null;
+      hold_time_met: boolean | null;
+      import_id: string | null;
+    }> = [];
+
+    for (const [eventKey, records] of eventGroups) {
+      const eventId = eventIdMap.get(eventKey);
+      if (!eventId) {
+        console.warn("[import-lab-data] Missing event ID for key:", eventKey);
         continue;
       }
 
-      totalEventsCreated++;
-      importedEventIds.push(event.id);
-
-      // Insert lab_results for this event
-      const resultsToInsert = [];
       for (const record of records) {
         // Skip if no parameter_id (unresolved parameter)
         if (!record.parameter_id) {
@@ -400,8 +459,8 @@ serve(async (req: Request) => {
           continue;
         }
 
-        resultsToInsert.push({
-          sampling_event_id: event.id,
+        allResults.push({
+          sampling_event_id: eventId,
           parameter_id: record.parameter_id,
           result_value: record.value,
           result_text: record.value_raw || null,
@@ -413,44 +472,31 @@ serve(async (req: Request) => {
           import_id: importId,
         });
       }
+    }
 
-      if (resultsToInsert.length > 0) {
-        // Check for existing results to avoid duplicates
-        const parameterIds = resultsToInsert.map(r => r.parameter_id);
-        const { data: existingResults } = await supabase
-          .from("lab_results")
-          .select("parameter_id")
-          .eq("sampling_event_id", event.id)
-          .in("parameter_id", parameterIds);
+    // Step 5: Batch upsert all lab_results (skip duplicates via ON CONFLICT)
+    if (allResults.length > 0) {
+      console.log("[import-lab-data] Batch inserting", allResults.length, "lab_results");
 
-        const existingParamIds = new Set(
-          existingResults?.map((r: { parameter_id: string }) => r.parameter_id) ?? []
-        );
+      const { data: insertedResults, error: resultBatchError } = await supabase
+        .from("lab_results")
+        .upsert(allResults, {
+          onConflict: "sampling_event_id,parameter_id",
+          ignoreDuplicates: true,
+        })
+        .select("id");
 
-        // Filter out duplicates
-        const newResults = resultsToInsert.filter(
-          r => !existingParamIds.has(r.parameter_id)
-        );
+      if (resultBatchError) {
+        throw new Error(`Batch result insert failed: ${resultBatchError.message}`);
+      }
 
-        if (newResults.length > 0) {
-          const { data: results, error: resultsError } = await supabase
-            .from("lab_results")
-            .insert(newResults)
-            .select("id");
+      totalResultsCreated = insertedResults?.length ?? 0;
+      importedResultIds.push(...(insertedResults ?? []).map((r: { id: string }) => r.id));
 
-          if (resultsError) {
-            console.error("[import-lab-data] Failed to insert lab_results:", resultsError.message);
-          } else if (results) {
-            totalResultsCreated += results.length;
-            importedResultIds.push(...results.map((r: { id: string }) => r.id));
-          }
-        }
-
-        // Count skipped duplicates
-        const skippedDupes = resultsToInsert.length - newResults.length;
-        if (skippedDupes > 0) {
-          console.log(`[import-lab-data] Skipped ${skippedDupes} duplicate results for event ${event.id}`);
-        }
+      // Log skipped duplicates
+      const skippedDupes = allResults.length - totalResultsCreated;
+      if (skippedDupes > 0) {
+        console.log("[import-lab-data] Skipped", skippedDupes, "duplicate lab_results");
       }
     }
 
@@ -486,7 +532,8 @@ serve(async (req: Request) => {
     }
 
     // 12. Audit log — use 'bulk_process' action type which is in the CHECK constraint
-    await supabase.from("audit_log").insert({
+    // Fire-and-forget but log failures (Consent Decree requires audit trail)
+    const { error: auditError } = await supabase.from("audit_log").insert({
       user_id: userId,
       organization_id: organizationId,
       action: "bulk_process",
@@ -502,6 +549,12 @@ serve(async (req: Request) => {
         import_id: importId,
       }),
     });
+
+    if (auditError) {
+      // Log failure but don't fail the import — data is already committed
+      console.error("[import-lab-data] CRITICAL: Audit log failed:", auditError.message);
+      // TODO: Consider secondary logging mechanism (external service, file)
+    }
 
     console.log(
       "[import-lab-data] Success:",
