@@ -48,7 +48,7 @@ export function QueueRow({ entry, can }: QueueRowProps) {
   const isPermit = entry.file_category === 'npdes_permit';
   const isLabData = entry.file_category === 'lab_data';
   const canProcess = (isPermit || isLabData) && entry.status === 'queued' && can('process');
-  const canRetry = entry.status === 'failed' && can('retry');
+  const canRetry = (isPermit || isLabData) && entry.status === 'failed' && can('retry');
 
   async function handleStateChange(queueEntry: QueueEntry, newState: string) {
     const stateCode = newState || null;
@@ -122,13 +122,20 @@ export function QueueRow({ entry, can }: QueueRowProps) {
         </div>
       </div>
 
-      {/* Category — editable dropdown */}
+      {/* Category — editable dropdown (RBAC: requires 'process' permission) */}
       <div className="w-24 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         <select
           value={entry.file_category}
           onChange={(e) => handleCategoryChange(entry, e.target.value)}
-          className="bg-transparent text-text-secondary text-xs w-full cursor-pointer hover:text-text-primary transition-colors border-none outline-none appearance-none truncate"
-          title="Change category"
+          disabled={!can('process')}
+          aria-label="Document category"
+          className={cn(
+            "bg-transparent text-xs w-full border-none outline-none appearance-none truncate transition-colors",
+            can('process')
+              ? "text-text-secondary cursor-pointer hover:text-text-primary"
+              : "text-text-muted cursor-not-allowed opacity-60"
+          )}
+          title={can('process') ? "Change category" : "Permission required to change category"}
         >
           {CATEGORIES.map((c) => (
             <option key={c.dbKey} value={c.dbKey} className="bg-[#0d1117] text-[#f1f5f9]">
@@ -138,13 +145,20 @@ export function QueueRow({ entry, can }: QueueRowProps) {
         </select>
       </div>
 
-      {/* State — editable dropdown */}
+      {/* State — editable dropdown (RBAC: requires 'process' permission) */}
       <div className="w-16 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         <select
           value={entry.state_code ?? ''}
           onChange={(e) => handleStateChange(entry, e.target.value)}
-          className="bg-transparent text-text-secondary text-xs w-full cursor-pointer hover:text-text-primary transition-colors border-none outline-none appearance-none"
-          title="Change state"
+          disabled={!can('process')}
+          aria-label="State"
+          className={cn(
+            "bg-transparent text-xs w-full border-none outline-none appearance-none transition-colors",
+            can('process')
+              ? "text-text-secondary cursor-pointer hover:text-text-primary"
+              : "text-text-muted cursor-not-allowed opacity-60"
+          )}
+          title={can('process') ? "Change state" : "Permission required to change state"}
         >
           <option value="" className="bg-[#0d1117] text-[#f1f5f9]">—</option>
           {STATES.map((s) => (
@@ -186,7 +200,7 @@ export function QueueRow({ entry, can }: QueueRowProps) {
         )}
         {canRetry && (
           <button
-            onClick={() => isPermit ? retryPermit(entry.id) : isLabData ? retryLabData(entry.id) : retryPermit(entry.id)}
+            onClick={() => isPermit ? retryPermit(entry.id) : retryLabData(entry.id)}
             className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-status-processing/15 text-status-processing border border-status-processing/20 hover:bg-status-processing/25 transition-all"
             title="Retry processing"
           >

@@ -122,7 +122,7 @@ export function SmartStaging() {
                 )}
               </div>
 
-              {/* Category dropdown */}
+              {/* Category dropdown (RBAC: requires 'upload' permission) */}
               <select
                 value={effectiveCategory}
                 onChange={(e) => {
@@ -137,9 +137,13 @@ export function SmartStaging() {
                     validationErrors: errors,
                   });
                 }}
+                disabled={!can('upload')}
+                aria-label="Document category"
+                title={can('upload') ? 'Select document category' : 'Permission required to change category'}
                 className={cn(
                   'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoCategory ? 'text-text-ai-guess' : 'text-text-primary',
+                  !can('upload') && 'opacity-60 cursor-not-allowed',
                 )}
               >
                 {CATEGORIES.map((c) => (
@@ -149,7 +153,7 @@ export function SmartStaging() {
                 ))}
               </select>
 
-              {/* State dropdown */}
+              {/* State dropdown (RBAC: requires 'upload' permission) */}
               <select
                 value={effectiveState}
                 onChange={(e) => {
@@ -160,9 +164,13 @@ export function SmartStaging() {
                     },
                   });
                 }}
+                disabled={!can('upload')}
+                aria-label="State"
+                title={can('upload') ? 'Select state' : 'Permission required to change state'}
                 className={cn(
                   'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoState ? 'text-text-ai-guess' : 'text-text-primary',
+                  !can('upload') && 'opacity-60 cursor-not-allowed',
                 )}
               >
                 <option value="" className="bg-[#0d1117] text-[#f1f5f9]">No state</option>

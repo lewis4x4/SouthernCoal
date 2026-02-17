@@ -1,7 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import { corsHeaders } from "../_shared/cors.ts";
+
+// ---------------------------------------------------------------------------
+// CORS Headers (inlined for MCP deployment compatibility)
+// ---------------------------------------------------------------------------
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -13,6 +21,9 @@ const MAX_ROWS = 50_000;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_RECORDS_IN_EXTRACTED = 5_000; // Cap records stored in extracted_data JSONB
 const VALID_STATES = ["AL", "KY", "TN", "VA", "WV"];
+
+// v5: Parser version for tracking
+const PARSER_VERSION = "5.0.0";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +46,8 @@ interface ParsedRecord {
   sampler: string;
   outfall_raw: string;
   outfall_matched: string | null;
+  outfall_db_id: string | null;        // v5: UUID for direct FK linking
+  outfall_match_method: string | null; // v5: How the match was made
   latitude: number | null;
   longitude: number | null;
   stream_name: string;
@@ -43,6 +56,7 @@ interface ParsedRecord {
   analysis_date: string | null;
   parameter_raw: string;
   parameter_canonical: string;
+  parameter_id: string | null;         // v5: UUID for direct FK linking
   value: number | null;
   value_raw: string;
   unit: string;
@@ -51,30 +65,39 @@ interface ParsedRecord {
   comments: string | null;
   hold_time_days: number | null;
   hold_time_compliant: boolean | null;
+  is_duplicate: boolean;               // v5: Duplicate detection flag
 }
 
 interface ExtractedLabData {
   document_type: "lab_data_edd";
   file_format: "xlsx" | "xls" | "csv";
+  parser_version: string;              // v5: Track parser version
   column_count: number;
   total_rows: number;
   parsed_rows: number;
   skipped_rows: number;
+  duplicate_rows: number;              // v5: Duplicate detection
   permit_numbers: string[];
   states: string[];
   sites: string[];
   date_range: { earliest: string | null; latest: string | null };
   lab_names: string[];
   parameters_found: number;
+  parameters_resolved: number;         // v5: How many resolved via alias table
   parameter_summary: Array<{
     canonical_name: string;
+    parameter_id: string | null;       // v5: Include FK for import
     sample_count: number;
     below_detection_count: number;
   }>;
   outfalls_found: number;
+  outfalls_resolved: number;           // v5: How many matched to DB outfalls
+  outfall_aliases_created: number;     // v5: New aliases persisted
   outfall_summary: Array<{
     raw_name: string;
     matched_id: string | null;
+    outfall_db_id: string | null;      // v5: Include FK for import
+    match_method: string | null;       // v5: How matched
     sample_count: number;
   }>;
   warnings: string[];
@@ -91,6 +114,7 @@ interface ExtractedLabData {
   records: ParsedRecord[];
   records_truncated: boolean;
   summary: string;
+  import_id: string | null;            // v5: data_imports FK for rollback
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +275,360 @@ const PARAMETER_MAP: Record<string, string> = {
 
 // Values to skip entirely — not real parameters
 const IGNORED_PARAMETERS = new Set(["txt", "", "n/a", "na", "none"]);
+
+// ---------------------------------------------------------------------------
+// v5: Parameter alias cache loaded from database
+// ---------------------------------------------------------------------------
+type ParameterAliasCache = Map<string, { parameterId: string; canonicalName: string }>;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any;
+
+/**
+ * Load parameter aliases from the database.
+ * Falls back to PARAMETER_MAP if the table doesn't exist or query fails.
+ */
+async function loadParameterAliases(
+  supabase: SupabaseClientAny,
+): Promise<ParameterAliasCache> {
+  const cache: ParameterAliasCache = new Map();
+
+  try {
+    const { data, error } = await supabase
+      .from("parameter_aliases")
+      .select(`
+        alias,
+        parameter_id,
+        parameters:parameter_id (name)
+      `) as { data: Array<{ alias: string; parameter_id: string; parameters: { name: string } | null }> | null; error: { message: string } | null };
+
+    if (error) {
+      console.log("[parse-lab-data-edd] parameter_aliases query failed, using PARAMETER_MAP fallback:", error.message);
+      return cache; // Empty cache - will use PARAMETER_MAP
+    }
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const alias = (row.alias ?? "").toLowerCase().trim();
+        const parameterId = row.parameter_id;
+        const canonicalName = row.parameters?.name ?? null;
+
+        if (alias && parameterId && canonicalName) {
+          cache.set(alias, { parameterId, canonicalName });
+        }
+      }
+      console.log(`[parse-lab-data-edd] Loaded ${cache.size} parameter aliases from database`);
+    }
+  } catch (err) {
+    console.log("[parse-lab-data-edd] parameter_aliases load error, using PARAMETER_MAP fallback:", err);
+  }
+
+  return cache;
+}
+
+// ---------------------------------------------------------------------------
+// v5: Outfall alias cache for fuzzy match persistence
+// ---------------------------------------------------------------------------
+interface OutfallAliasEntry {
+  outfallId: string;
+  canonicalId: string;
+  matchMethod: "exact" | "zero_strip" | "digits_only";
+}
+
+type OutfallAliasCache = Map<string, OutfallAliasEntry>;
+
+/**
+ * Load outfall aliases for an organization from the database.
+ */
+async function loadOutfallAliases(
+  supabase: SupabaseClientAny,
+  organizationId: string,
+  permitIds: string[],
+): Promise<OutfallAliasCache> {
+  const cache: OutfallAliasCache = new Map();
+
+  if (!organizationId || permitIds.length === 0) return cache;
+
+  try {
+    const { data, error } = await supabase
+      .from("outfall_aliases")
+      .select(`
+        alias,
+        outfall_id,
+        match_method,
+        outfalls:outfall_id (outfall_id)
+      `)
+      .eq("organization_id", organizationId)
+      .in("permit_id", permitIds) as { data: Array<{ alias: string; outfall_id: string; match_method: string; outfalls: { outfall_id: string } | null }> | null; error: { message: string } | null };
+
+    if (error) {
+      console.log("[parse-lab-data-edd] outfall_aliases query failed:", error.message);
+      return cache;
+    }
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const alias = (row.alias ?? "").toLowerCase().trim();
+        const outfallDbId = row.outfall_id;
+        const canonicalId = row.outfalls?.outfall_id ?? null;
+        const matchMethod = row.match_method as "exact" | "zero_strip" | "digits_only";
+
+        if (alias && outfallDbId && canonicalId) {
+          cache.set(alias, { outfallId: outfallDbId, canonicalId, matchMethod });
+        }
+      }
+      console.log(`[parse-lab-data-edd] Loaded ${cache.size} outfall aliases from database`);
+    }
+  } catch (err) {
+    console.log("[parse-lab-data-edd] outfall_aliases load error:", err);
+  }
+
+  return cache;
+}
+
+/**
+ * Persist a new outfall alias to the database (fire-and-forget).
+ */
+async function saveOutfallAlias(
+  supabase: SupabaseClientAny,
+  alias: string,
+  outfallId: string,
+  organizationId: string,
+  permitId: string,
+  matchMethod: "exact" | "zero_strip" | "digits_only",
+): Promise<void> {
+  try {
+    await (supabase as any)
+      .from("outfall_aliases")
+      .upsert({
+        alias: alias.toLowerCase().trim(),
+        outfall_id: outfallId,
+        organization_id: organizationId,
+        permit_id: permitId,
+        match_method: matchMethod,
+        source: "lab_edd",
+      }, {
+        onConflict: "alias,organization_id,permit_id",
+        ignoreDuplicates: true,
+      });
+  } catch (err) {
+    // Fire-and-forget — don't block parsing on alias persistence
+    console.log("[parse-lab-data-edd] Failed to save outfall alias:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v5: Data imports tracking
+// ---------------------------------------------------------------------------
+interface DataImportRecord {
+  id: string;
+  organization_id: string;
+  file_name: string;
+  file_category: string;
+  source_system: string;
+  import_status: string;
+  import_started_at: string;
+  imported_by: string;
+  record_count: number;
+  import_metadata: Record<string, unknown>;
+  can_rollback: boolean;
+}
+
+/**
+ * Create a data_imports record to track this parsing operation.
+ * Returns the import ID for linking parsed records.
+ */
+async function createDataImportRecord(
+  supabase: SupabaseClientAny,
+  organizationId: string,
+  fileName: string,
+  userId: string,
+  queueId: string,
+): Promise<string | null> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from("data_imports")
+      .insert({
+        organization_id: organizationId,
+        file_name: fileName,
+        file_category: "lab_data",
+        source_system: "lab_edd",
+        import_status: "parsing",
+        import_started_at: new Date().toISOString(),
+        imported_by: userId,
+        record_count: 0,
+        import_metadata: {
+          parser_version: PARSER_VERSION,
+          queue_id: queueId,
+        },
+        can_rollback: true,
+      })
+      .select("id")
+      .single() as { data: { id: string } | null; error: { message: string } | null };
+
+    if (error) {
+      console.log("[parse-lab-data-edd] Failed to create data_imports record:", error.message);
+      return null;
+    }
+
+    console.log(`[parse-lab-data-edd] Created data_imports record: ${data?.id}`);
+    return data?.id ?? null;
+  } catch (err) {
+    console.log("[parse-lab-data-edd] data_imports creation error:", err);
+    return null;
+  }
+}
+
+/**
+ * Update data_imports record with final counts and metadata.
+ */
+async function updateDataImportRecord(
+  supabase: SupabaseClientAny,
+  importId: string,
+  recordCount: number,
+  status: "parsed" | "failed",
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await (supabase as any)
+      .from("data_imports")
+      .update({
+        import_status: status,
+        import_completed_at: new Date().toISOString(),
+        record_count: recordCount,
+        import_metadata: metadata,
+      })
+      .eq("id", importId);
+  } catch (err) {
+    console.log("[parse-lab-data-edd] Failed to update data_imports record:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v5: Duplicate detection
+// ---------------------------------------------------------------------------
+interface DuplicateKey {
+  permit_number: string;
+  outfall_id: string;
+  sample_date: string;
+  sample_time: string | null;
+  parameter_canonical: string;
+}
+
+/**
+ * Load existing lab results to detect duplicates.
+ * Returns a Set of composite keys for fast lookup.
+ */
+async function loadExistingLabResults(
+  supabase: SupabaseClientAny,
+  permitNumbers: string[],
+  dateRange: { earliest: string; latest: string },
+): Promise<Set<string>> {
+  const duplicateKeys = new Set<string>();
+
+  if (permitNumbers.length === 0) return duplicateKeys;
+
+  try {
+    // First get permit IDs
+    const { data: permits } = await supabase
+      .from("npdes_permits")
+      .select("id, permit_number")
+      .in("permit_number", permitNumbers);
+
+    if (!permits || permits.length === 0) return duplicateKeys;
+
+    const permitMap = new Map(permits.map((p: { id: string; permit_number: string }) => [p.permit_number, p.id]));
+    const permitIds = permits.map((p: { id: string }) => p.id);
+
+    // Get sampling events in date range
+    const { data: events } = await supabase
+      .from("sampling_events")
+      .select(`
+        id,
+        outfall_id,
+        sample_date,
+        sample_time,
+        outfalls:outfall_id (permit_id)
+      `)
+      .gte("sample_date", dateRange.earliest)
+      .lte("sample_date", dateRange.latest);
+
+    if (!events || events.length === 0) return duplicateKeys;
+
+    // Filter to events for our permits
+    const relevantEvents = events.filter((e: { outfalls?: { permit_id: string } }) => {
+      // @ts-ignore
+      return e.outfalls?.permit_id && permitIds.includes(e.outfalls.permit_id);
+    });
+
+    if (relevantEvents.length === 0) return duplicateKeys;
+
+    const eventIds = relevantEvents.map((e: { id: string }) => e.id);
+
+    // Get lab results for these events
+    const { data: results } = await supabase
+      .from("lab_results")
+      .select(`
+        sampling_event_id,
+        parameter_id,
+        parameters:parameter_id (name)
+      `)
+      .in("sampling_event_id", eventIds) as { data: Array<{ sampling_event_id: string; parameter_id: string; parameters: { name: string } | null }> | null };
+
+    if (!results || results.length === 0) return duplicateKeys;
+
+    // Build lookup map from event_id to event details
+    type EventDetail = { outfall_id: string; sample_date: string; sample_time: string | null; permit_id: string | undefined };
+    const eventMap = new Map<string, EventDetail>(relevantEvents.map((e: { id: string; outfall_id: string; sample_date: string; sample_time: string | null; outfalls?: { permit_id: string } }) => [
+      e.id,
+      {
+        outfall_id: e.outfall_id,
+        sample_date: e.sample_date,
+        sample_time: e.sample_time,
+        permit_id: e.outfalls?.permit_id,
+      },
+    ]));
+
+    // Get outfall details
+    const outfallIds = [...new Set(relevantEvents.map((e: { outfall_id: string }) => e.outfall_id))];
+    const { data: outfalls } = await supabase
+      .from("outfalls")
+      .select("id, outfall_id, permit_id")
+      .in("id", outfallIds);
+
+    type OutfallDetail = { outfall_id: string; permit_id: string };
+    const outfallMap = new Map<string, OutfallDetail>(outfalls?.map((o: { id: string; outfall_id: string; permit_id: string }) => [
+      o.id,
+      { outfall_id: o.outfall_id, permit_id: o.permit_id },
+    ]) ?? []);
+
+    // Build reverse map: permit_id -> permit_number
+    const permitIdToNumber = new Map(permits.map((p: { id: string; permit_number: string }) => [p.id, p.permit_number]));
+
+    // Build duplicate keys
+    for (const result of results) {
+      const event = eventMap.get(result.sampling_event_id);
+      if (!event) continue;
+
+      const outfall = outfallMap.get(event.outfall_id);
+      if (!outfall) continue;
+
+      const permitNumber = permitIdToNumber.get(outfall.permit_id);
+      if (!permitNumber) continue;
+
+      const parameterName = result.parameters?.name ?? "";
+
+      const key = `${permitNumber}|${outfall.outfall_id}|${event.sample_date}|${event.sample_time ?? ""}|${parameterName}`;
+      duplicateKeys.add(key.toLowerCase());
+    }
+
+    console.log(`[parse-lab-data-edd] Loaded ${duplicateKeys.size} existing lab result keys for duplicate detection`);
+  } catch (err) {
+    console.log("[parse-lab-data-edd] Duplicate detection query failed:", err);
+  }
+
+  return duplicateKeys;
+}
 
 // ---------------------------------------------------------------------------
 // Hold time reference (days) — per 40 CFR Part 136
@@ -440,15 +818,35 @@ function parseTime(raw: string | null | undefined): string | null {
   return null;
 }
 
-/** Normalize a parameter name using the alias map. */
-function normalizeParameter(raw: string): string {
+/**
+ * v5: Normalize a parameter name using the database alias cache with PARAMETER_MAP fallback.
+ * Returns { canonical, parameterId } where parameterId is available for direct FK linking.
+ */
+function normalizeParameter(
+  raw: string,
+  aliasCache: ParameterAliasCache,
+): { canonical: string; parameterId: string | null } {
   const trimmed = raw.trim();
   const lower = trimmed.toLowerCase();
 
-  if (IGNORED_PARAMETERS.has(lower)) return "";
+  if (IGNORED_PARAMETERS.has(lower)) {
+    return { canonical: "", parameterId: null };
+  }
 
+  // First check database cache (v5 enhancement)
+  const cached = aliasCache.get(lower);
+  if (cached) {
+    return { canonical: cached.canonicalName, parameterId: cached.parameterId };
+  }
+
+  // Fallback to hardcoded PARAMETER_MAP (backwards compatibility)
   const canonical = PARAMETER_MAP[lower];
-  return canonical ?? trimmed; // Pass through unknown parameters as-is
+  if (canonical) {
+    return { canonical, parameterId: null };
+  }
+
+  // Pass through unknown parameters as-is
+  return { canonical: trimmed, parameterId: null };
 }
 
 /** Parse a lab value + qualifier into structured form. */
@@ -538,25 +936,51 @@ function normalizeOutfallId(raw: string): string {
   return s;
 }
 
-/** Fuzzy match an outfall ID against known outfalls. */
+/**
+ * v5: Fuzzy match an outfall ID against known outfalls.
+ * Returns match result with method for alias persistence.
+ */
+interface OutfallMatchResult {
+  outfallDbId: string;      // UUID from outfalls.id
+  canonicalId: string;      // Display ID like "001"
+  matchMethod: "exact" | "zero_strip" | "digits_only";
+}
+
 function fuzzyMatchOutfall(
   raw: string,
   knownOutfalls: Array<{ id: string; outfall_id: string }>,
-): string | null {
+  outfallAliasCache: OutfallAliasCache,
+): OutfallMatchResult | null {
   if (!raw || knownOutfalls.length === 0) return null;
+
+  const normalizedRaw = raw.toLowerCase().trim();
+
+  // v5: First check alias cache
+  const cached = outfallAliasCache.get(normalizedRaw);
+  if (cached) {
+    return {
+      outfallDbId: cached.outfallId,
+      canonicalId: cached.canonicalId,
+      matchMethod: cached.matchMethod,
+    };
+  }
 
   const normalized = normalizeOutfallId(raw);
 
   // Step 1: Exact match (case-insensitive)
   for (const o of knownOutfalls) {
-    if (o.outfall_id.toUpperCase() === normalized) return o.outfall_id;
+    if (o.outfall_id.toUpperCase() === normalized) {
+      return { outfallDbId: o.id, canonicalId: o.outfall_id, matchMethod: "exact" };
+    }
   }
 
   // Step 2: Match after stripping leading zeros (e.g., "001" ↔ "1")
   const numericPart = normalized.replace(/^0+/, "") || "0";
   for (const o of knownOutfalls) {
     const oNorm = o.outfall_id.toUpperCase().replace(/^0+/, "") || "0";
-    if (oNorm === numericPart) return o.outfall_id;
+    if (oNorm === numericPart) {
+      return { outfallDbId: o.id, canonicalId: o.outfall_id, matchMethod: "zero_strip" };
+    }
   }
 
   // Step 3: Extract digits only (e.g., "DO16" → "16", compare with "016")
@@ -564,13 +988,17 @@ function fuzzyMatchOutfall(
   if (digitsOnly) {
     for (const o of knownOutfalls) {
       const oDigits = o.outfall_id.replace(/[^0-9]/g, "");
-      if (oDigits === digitsOnly) return o.outfall_id;
+      if (oDigits === digitsOnly) {
+        return { outfallDbId: o.id, canonicalId: o.outfall_id, matchMethod: "digits_only" };
+      }
     }
     // Try without leading zeros
     const digitsNoZeros = digitsOnly.replace(/^0+/, "") || "0";
     for (const o of knownOutfalls) {
       const oDigitsNoZeros = o.outfall_id.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
-      if (oDigitsNoZeros === digitsNoZeros) return o.outfall_id;
+      if (oDigitsNoZeros === digitsNoZeros) {
+        return { outfallDbId: o.id, canonicalId: o.outfall_id, matchMethod: "digits_only" };
+      }
     }
   }
 
@@ -601,7 +1029,7 @@ function detectFormat(
 
 async function verifyAuth(
   req: Request,
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
 ): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
@@ -621,11 +1049,11 @@ async function verifyAuth(
 // ---------------------------------------------------------------------------
 
 async function markProcessing(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   queueId: string,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update({
       status: "processing",
@@ -640,7 +1068,7 @@ async function markProcessing(
 }
 
 async function markParsed(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   queueId: string,
   extractedData: ExtractedLabData,
   recordCount: number,
@@ -671,7 +1099,7 @@ async function markParsed(
     console.log("[parse-lab-data-edd] Auto-filled state_code:", singleState);
   }
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update(updateData)
     .eq("id", queueId);
@@ -682,12 +1110,12 @@ async function markParsed(
 }
 
 async function markFailed(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   queueId: string,
   errors: string[],
 ): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update({
       status: "failed",
@@ -805,11 +1233,11 @@ serve(async (req: Request) => {
 
   console.log("[parse-lab-data-edd] Processing queue_id:", queueId, "by user:", userId);
 
-  // 3. Fetch queue entry
+  // 3. Fetch queue entry (v5: added organization_id)
   const { data: queueEntry, error: fetchError } = await supabase
     .from("file_processing_queue")
     .select(
-      "id, storage_bucket, storage_path, file_name, file_size_bytes, file_category, state_code, status, uploaded_by",
+      "id, storage_bucket, storage_path, file_name, file_size_bytes, file_category, state_code, status, uploaded_by, organization_id",
     )
     .eq("id", queueId)
     .single();
@@ -855,7 +1283,26 @@ serve(async (req: Request) => {
   // 7. Mark as processing (triggers Realtime → frontend shows amber pulse)
   await markProcessing(supabase, queueId);
 
+  // v5: Initialize tracking variables
+  let dataImportId: string | null = null;
+  const organizationId = queueEntry.organization_id;
+
   try {
+    // v5: Load parameter aliases from database (with PARAMETER_MAP fallback)
+    console.log("[parse-lab-data-edd] v5: Loading parameter aliases...");
+    const parameterAliasCache = await loadParameterAliases(supabase);
+
+    // v5: Create data_imports tracking record
+    if (organizationId) {
+      dataImportId = await createDataImportRecord(
+        supabase,
+        organizationId,
+        queueEntry.file_name,
+        userId,
+        queueId,
+      );
+    }
+
     // 8. Download file from Storage
     console.log(
       "[parse-lab-data-edd] Downloading",
@@ -936,6 +1383,7 @@ serve(async (req: Request) => {
 
     let knownOutfalls: Array<{ id: string; outfall_id: string; permit_id: string }> = [];
     const permitNumberArr = [...permitNumbersInFile];
+    let permitMap = new Map<string, string>(); // permit_number -> permit_id
 
     if (permitNumberArr.length > 0) {
       // Look up permits
@@ -945,6 +1393,7 @@ serve(async (req: Request) => {
         .in("permit_number", permitNumberArr);
 
       if (permits && permits.length > 0) {
+        permitMap = new Map(permits.map((p: { id: string; permit_number: string }) => [p.permit_number, p.id]));
         const permitIds = permits.map((p: { id: string }) => p.id);
         const { data: outfalls } = await supabase
           .from("outfalls")
@@ -965,6 +1414,34 @@ serve(async (req: Request) => {
         : "No permits found in database — outfall matching skipped",
     );
 
+    // v5: Load outfall alias cache
+    let outfallAliasCache: OutfallAliasCache = new Map();
+    if (organizationId && hasOutfallData) {
+      const permitIds = [...permitMap.values()];
+      outfallAliasCache = await loadOutfallAliases(supabase, organizationId, permitIds);
+    }
+
+    // v5: Collect dates for duplicate detection (two-pass: first pass for dates)
+    const dateRangeForDupeCheck = { earliest: "9999-99-99", latest: "0000-00-00" };
+    for (const row of dataRows) {
+      const sampleDateRaw = (row[18] ?? "").trim();
+      const sampleDate = parseDate(sampleDateRaw);
+      if (sampleDate) {
+        if (sampleDate < dateRangeForDupeCheck.earliest) dateRangeForDupeCheck.earliest = sampleDate;
+        if (sampleDate > dateRangeForDupeCheck.latest) dateRangeForDupeCheck.latest = sampleDate;
+      }
+    }
+
+    // v5: Load existing lab results for duplicate detection
+    let existingLabResultKeys = new Set<string>();
+    if (dateRangeForDupeCheck.earliest !== "9999-99-99") {
+      existingLabResultKeys = await loadExistingLabResults(
+        supabase,
+        permitNumberArr,
+        dateRangeForDupeCheck,
+      );
+    }
+
     // 12. Process each row
     const records: ParsedRecord[] = [];
     const warnings: string[] = [...headerWarnings];
@@ -976,11 +1453,17 @@ serve(async (req: Request) => {
     const states = new Set<string>();
     const sites = new Set<string>();
     const labNames = new Set<string>();
-    const parameterCounts = new Map<string, { total: number; belowDet: number }>();
-    const outfallCounts = new Map<string, { matched: string | null; count: number }>();
+    // v5: Enhanced tracking
+    const parameterCounts = new Map<string, { total: number; belowDet: number; parameterId: string | null }>();
+    const outfallCounts = new Map<string, { matched: string | null; dbId: string | null; matchMethod: string | null; count: number }>();
     let skippedRows = 0;
+    let duplicateRows = 0;
+    let parametersResolved = 0;
+    let outfallsResolved = 0;
+    let outfallAliasesCreated = 0;
     const allDates: string[] = [];
     const unknownParameters = new Set<string>();
+    const newOutfallAliases: Array<{ alias: string; outfallId: string; permitId: string; matchMethod: "exact" | "zero_strip" | "digits_only" }> = [];
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -1014,15 +1497,21 @@ serve(async (req: Request) => {
       const qualifierRaw = (row[24] ?? "").trim();
       const commentsRaw = (row[25] ?? "").trim();
 
-      // Skip ignored parameters (e.g., "txt")
-      const paramCanonical = normalizeParameter(parameterRaw);
+      // v5: Skip ignored parameters using enhanced normalizer
+      const paramResult = normalizeParameter(parameterRaw, parameterAliasCache);
+      const paramCanonical = paramResult.canonical;
+      const paramId = paramResult.parameterId;
+
       if (paramCanonical === "" || IGNORED_PARAMETERS.has(parameterRaw.toLowerCase())) {
         skippedRows++;
         continue;
       }
 
-      // Track if parameter is unknown (not in our map)
-      if (!PARAMETER_MAP[parameterRaw.toLowerCase().trim()]) {
+      // v5: Track parameter resolution source
+      if (paramId) {
+        parametersResolved++;
+      } else if (!PARAMETER_MAP[parameterRaw.toLowerCase().trim()]) {
+        // Unknown parameter - not in alias cache OR fallback map
         unknownParameters.add(parameterRaw);
       }
 
@@ -1044,6 +1533,13 @@ serve(async (req: Request) => {
         continue;
       }
 
+      // v5: Duplicate detection
+      const dupeKey = `${permitNumber}|${outfallRaw}|${sampleDate ?? ""}|${sampleTime ?? ""}|${paramCanonical}`.toLowerCase();
+      const isDuplicate = existingLabResultKeys.has(dupeKey);
+      if (isDuplicate) {
+        duplicateRows++;
+      }
+
       // Parse value
       const parsed = parseValue(valueRaw, qualifierRaw);
 
@@ -1051,10 +1547,40 @@ serve(async (req: Request) => {
       const latitude = latStr ? parseFloat(latStr) : null;
       const longitude = lonStr ? parseFloat(lonStr) : null;
 
-      // Outfall fuzzy matching
+      // v5: Outfall fuzzy matching with alias cache
       let outfallMatched: string | null = null;
+      let outfallDbId: string | null = null;
+      let outfallMatchMethod: string | null = null;
+
       if (outfallRaw && hasOutfallData) {
-        outfallMatched = fuzzyMatchOutfall(outfallRaw, knownOutfalls);
+        const matchResult = fuzzyMatchOutfall(outfallRaw, knownOutfalls, outfallAliasCache);
+        if (matchResult) {
+          outfallMatched = matchResult.canonicalId;
+          outfallDbId = matchResult.outfallDbId;
+          outfallMatchMethod = matchResult.matchMethod;
+          outfallsResolved++;
+
+          // v5: Queue new alias for persistence if it was a fresh fuzzy match (not from cache)
+          const normalizedAlias = outfallRaw.toLowerCase().trim();
+          if (!outfallAliasCache.has(normalizedAlias) && organizationId) {
+            const permitId = permitMap.get(permitNumber);
+            if (permitId) {
+              // Check if we already queued this alias in this run
+              const alreadyQueued = newOutfallAliases.some(a =>
+                a.alias === normalizedAlias && a.permitId === permitId
+              );
+              if (!alreadyQueued) {
+                newOutfallAliases.push({
+                  alias: normalizedAlias,
+                  outfallId: outfallDbId,
+                  permitId,
+                  matchMethod: matchResult.matchMethod,
+                });
+                outfallAliasesCreated++;
+              }
+            }
+          }
+        }
       }
 
       // Hold time check
@@ -1078,17 +1604,22 @@ serve(async (req: Request) => {
       if (labName) labNames.add(labName);
       if (sampleDate) allDates.push(sampleDate);
 
-      // Parameter counts
-      const paramEntry = parameterCounts.get(paramCanonical) ?? { total: 0, belowDet: 0 };
+      // v5: Enhanced parameter counts with parameterId
+      const paramEntry = parameterCounts.get(paramCanonical) ?? { total: 0, belowDet: 0, parameterId: paramId };
       paramEntry.total++;
       if (parsed.belowDetection) paramEntry.belowDet++;
+      if (!paramEntry.parameterId && paramId) paramEntry.parameterId = paramId;
       parameterCounts.set(paramCanonical, paramEntry);
 
-      // Outfall counts
+      // v5: Enhanced outfall counts
       const outfallKey = outfallRaw || "(empty)";
-      const outfallEntry = outfallCounts.get(outfallKey) ?? { matched: outfallMatched, count: 0 };
+      const outfallEntry = outfallCounts.get(outfallKey) ?? { matched: outfallMatched, dbId: outfallDbId, matchMethod: outfallMatchMethod, count: 0 };
       outfallEntry.count++;
-      if (outfallMatched) outfallEntry.matched = outfallMatched;
+      if (outfallMatched) {
+        outfallEntry.matched = outfallMatched;
+        outfallEntry.dbId = outfallDbId;
+        outfallEntry.matchMethod = outfallMatchMethod;
+      }
       outfallCounts.set(outfallKey, outfallEntry);
 
       records.push({
@@ -1102,6 +1633,8 @@ serve(async (req: Request) => {
         sampler,
         outfall_raw: outfallRaw,
         outfall_matched: outfallMatched,
+        outfall_db_id: outfallDbId,
+        outfall_match_method: outfallMatchMethod,
         latitude: latitude && !isNaN(latitude) ? latitude : null,
         longitude: longitude && !isNaN(longitude) ? longitude : null,
         stream_name: streamName,
@@ -1110,6 +1643,7 @@ serve(async (req: Request) => {
         analysis_date: analysisDate,
         parameter_raw: parameterRaw,
         parameter_canonical: paramCanonical,
+        parameter_id: paramId,              // v5: Direct FK for import
         value: parsed.value,
         value_raw: parsed.raw,
         unit: unitRaw,
@@ -1118,6 +1652,7 @@ serve(async (req: Request) => {
         comments: commentsRaw || null,
         hold_time_days: holdTime.days,
         hold_time_compliant: holdTime.compliant,
+        is_duplicate: isDuplicate,          // v5: Duplicate detection
       });
     }
 
@@ -1155,6 +1690,28 @@ serve(async (req: Request) => {
       );
     }
 
+    // v5: Duplicate detection warning
+    if (duplicateRows > 0) {
+      warnings.push(
+        `${duplicateRows} duplicate record(s) detected — already exist in the database. These will be skipped during import.`,
+      );
+    }
+
+    // v5: Persist new outfall aliases (fire-and-forget)
+    if (newOutfallAliases.length > 0 && organizationId) {
+      console.log(`[parse-lab-data-edd] v5: Persisting ${newOutfallAliases.length} new outfall aliases`);
+      for (const alias of newOutfallAliases) {
+        await saveOutfallAlias(
+          supabase,
+          alias.alias,
+          alias.outfallId,
+          organizationId,
+          alias.permitId,
+          alias.matchMethod,
+        );
+      }
+    }
+
     // 14. Sort dates for range
     allDates.sort();
     const dateRange = {
@@ -1162,11 +1719,12 @@ serve(async (req: Request) => {
       latest: allDates[allDates.length - 1] ?? null,
     };
 
-    // 15. Build parameter and outfall summaries
+    // 15. Build parameter and outfall summaries (v5: include FK IDs)
     const parameterSummary = [...parameterCounts.entries()]
       .sort((a, b) => b[1].total - a[1].total)
       .map(([name, counts]) => ({
         canonical_name: name,
+        parameter_id: counts.parameterId,   // v5: Include FK for import
         sample_count: counts.total,
         below_detection_count: counts.belowDet,
       }));
@@ -1176,6 +1734,8 @@ serve(async (req: Request) => {
       .map(([name, data]) => ({
         raw_name: name,
         matched_id: data.matched,
+        outfall_db_id: data.dbId,           // v5: Include FK for import
+        match_method: data.matchMethod,     // v5: How matched
         sample_count: data.count,
       }));
 
@@ -1197,22 +1757,27 @@ serve(async (req: Request) => {
     ).size;
     const summaryText = `${records.length} lab results from ${uniqueSamples} sampling events across ${sites.size} site${sites.size !== 1 ? "s" : ""}. ${parameterCounts.size} parameters, ${[...outfallCounts.keys()].length} outfalls.`;
 
-    // 18. Build extracted_data
+    // 18. Build extracted_data (v5: enhanced tracking)
     const extractedData: ExtractedLabData = {
       document_type: "lab_data_edd",
       file_format: fileFormat,
+      parser_version: PARSER_VERSION,           // v5
       column_count: columnCount,
       total_rows: totalRows,
       parsed_rows: records.length,
       skipped_rows: skippedRows,
+      duplicate_rows: duplicateRows,            // v5
       permit_numbers: [...permitNumbers],
       states: [...states],
       sites: [...sites],
       date_range: dateRange,
       lab_names: [...labNames],
       parameters_found: parameterCounts.size,
+      parameters_resolved: parametersResolved,  // v5
       parameter_summary: parameterSummary,
       outfalls_found: outfallCounts.size,
+      outfalls_resolved: outfallsResolved,      // v5
+      outfall_aliases_created: outfallAliasesCreated, // v5
       outfall_summary: outfallSummary,
       warnings,
       validation_errors: validationErrors.slice(0, 50), // cap validation errors
@@ -1220,6 +1785,7 @@ serve(async (req: Request) => {
       records: storedRecords,
       records_truncated: recordsTruncated,
       summary: summaryText,
+      import_id: dataImportId,                        // v5: data_imports FK
     };
 
     // 19. Mark as parsed
@@ -1232,12 +1798,30 @@ serve(async (req: Request) => {
       warnings,
     );
 
+    // v5: Update data_imports record with final counts
+    if (dataImportId) {
+      await updateDataImportRecord(supabase, dataImportId, records.length, "parsed", {
+        parser_version: PARSER_VERSION,
+        queue_id: queueId,
+        permit_numbers: [...permitNumbers],
+        parameters_resolved: parametersResolved,
+        outfalls_resolved: outfallsResolved,
+        outfall_aliases_created: outfallAliasesCreated,
+        duplicate_rows: duplicateRows,
+        date_range: dateRange,
+      });
+    }
+
     console.log(
-      "[parse-lab-data-edd] Success:",
+      "[parse-lab-data-edd] v5 Success:",
       queueEntry.file_name,
       "| Rows parsed:", records.length,
       "| Parameters:", parameterCounts.size,
+      `(${parametersResolved} resolved)`,
       "| Outfalls:", outfallCounts.size,
+      `(${outfallsResolved} matched)`,
+      "| Duplicates:", duplicateRows,
+      "| New aliases:", outfallAliasesCreated,
       "| Warnings:", warnings.length,
     );
 
@@ -1247,6 +1831,15 @@ serve(async (req: Request) => {
     console.error("[parse-lab-data-edd] Failed:", queueEntry.file_name, errorStrings);
 
     await markFailed(supabase, queueId, errorStrings);
+
+    // v5: Update data_imports record on failure
+    if (dataImportId) {
+      await updateDataImportRecord(supabase, dataImportId, 0, "failed", {
+        parser_version: PARSER_VERSION,
+        queue_id: queueId,
+        error: errorStrings,
+      });
+    }
 
     // Return 200 — failure state delivered via Realtime, not HTTP response
     return jsonResponse({ success: true, message: "Processing failed — see queue status" });
