@@ -14,6 +14,20 @@ const CLAUDE_TIMEOUT_MS = 180_000;
 const MAX_CHUNK_CHARS = 1_600;
 const CHUNK_OVERLAP = 200;
 
+// Byte budget for serialized text BEFORE it reaches the chunker.
+// Capped to MAX_CHUNK_CHARS so lab_data always produces exactly 1 content chunk.
+// gte-small in Edge Runtime can handle 2 chunks (metadata + 1 content) but
+// OOMs at 3+ due to cumulative inference memory.
+const SUMMARY_BYTE_BUDGET = 1_500;
+// Threshold: extracted_data JSON above this size gets the summary serializer
+const LARGE_DOC_THRESHOLD = 5_000; // 5KB — conservative to stay within worker limits
+
+// Hard cap on chunks per invocation. gte-small in Edge Runtime OOMs at 3+.
+// Override only via env var (not request body) to prevent accidental overload.
+const MAX_CHUNKS_PER_DOC = parseInt(Deno.env.get("MAX_CHUNKS_PER_DOC") ?? "2", 10);
+
+const VERSION = "2026-02-11T01:00";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -96,10 +110,8 @@ async function resolveOrgId(
   authOrgId: string | null,
   queueEntry: { uploaded_by: string | null; document_id: string | null },
 ): Promise<string | null> {
-  // 1. From authenticated user
   if (authOrgId) return authOrgId;
 
-  // 3. From uploader's profile
   if (queueEntry.uploaded_by) {
     const { data } = await supabase
       .from("user_profiles")
@@ -109,7 +121,6 @@ async function resolveOrgId(
     if (data?.organization_id) return data.organization_id;
   }
 
-  // 4. From linked document
   if (queueEntry.document_id) {
     const { data } = await supabase
       .from("documents")
@@ -185,7 +196,6 @@ RULES:
       throw new Error("No text in Claude response");
     }
 
-    // Parse JSON from response — strip markdown fences if present
     let jsonText = textContent.text.trim();
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
@@ -199,14 +209,19 @@ RULES:
 }
 
 // ---------------------------------------------------------------------------
-// Spreadsheet text serialization (for lab data / CSV files)
+// Serializers — routed by doc type + size
 // ---------------------------------------------------------------------------
-function serializeExtractedData(extracted: Record<string, unknown>): PageText[] {
+
+/**
+ * Full-fidelity serializer for small docs (<100KB extracted_data).
+ * Serializes metadata, parameters, and up to 50 sample records.
+ */
+function serializeFullFidelity(extracted: Record<string, unknown>): string {
   const lines: string[] = [];
 
-  // Build readable text from extracted_data fields
   if (extracted.document_type) lines.push(`Document Type: ${extracted.document_type}`);
   if (extracted.permit_numbers) lines.push(`Permits: ${(extracted.permit_numbers as string[]).join(", ")}`);
+  if (extracted.permit_number) lines.push(`Permit: ${extracted.permit_number}`);
   if (extracted.states) lines.push(`States: ${(extracted.states as string[]).join(", ")}`);
   if (extracted.date_range) {
     const dr = extracted.date_range as { earliest?: string; latest?: string };
@@ -214,7 +229,6 @@ function serializeExtractedData(extracted: Record<string, unknown>): PageText[] 
   }
   if (extracted.summary) lines.push(`\nSummary: ${extracted.summary}`);
 
-  // Serialize parameter summary
   const params = extracted.parameter_summary as Array<{ canonical_name: string; sample_count: number }> | undefined;
   if (params?.length) {
     lines.push("\nParameters:");
@@ -223,7 +237,6 @@ function serializeExtractedData(extracted: Record<string, unknown>): PageText[] 
     }
   }
 
-  // Serialize records (first 50)
   const records = extracted.records as Array<Record<string, unknown>> | undefined;
   if (records?.length) {
     lines.push(`\nData Records (${records.length} total):`);
@@ -240,15 +253,122 @@ function serializeExtractedData(extracted: Record<string, unknown>): PageText[] 
     }
   }
 
-  return [{ page: 0, text: lines.join("\n") }];
+  return lines.join("\n");
+}
+
+/**
+ * Byte-budgeted summary serializer for large docs (lab data, etc.).
+ * Produces a searchable summary: metadata + parameters + sample records,
+ * hard-capped at byteBudget chars BEFORE reaching the chunker.
+ */
+function serializeSummary(extracted: Record<string, unknown>, byteBudget: number): string {
+  let used = 0;
+
+  function addLine(line: string): string | null {
+    if (used + line.length + 1 > byteBudget) return null;
+    used += line.length + 1;
+    return line;
+  }
+
+  const lines: string[] = [];
+
+  // Always include: doc type, permits, states, date range, summary
+  const header: Array<[string, unknown]> = [
+    ["Document Type", extracted.document_type],
+    ["Permits", extracted.permit_numbers ? (extracted.permit_numbers as string[]).join(", ") : extracted.permit_number],
+    ["States", extracted.states ? (extracted.states as string[]).join(", ") : null],
+  ];
+  for (const [label, val] of header) {
+    if (val) {
+      const l = addLine(`${label}: ${val}`);
+      if (l) lines.push(l);
+    }
+  }
+
+  if (extracted.date_range) {
+    const dr = extracted.date_range as { earliest?: string; latest?: string };
+    const l = addLine(`Date Range: ${dr.earliest ?? "?"} to ${dr.latest ?? "?"}`);
+    if (l) lines.push(l);
+  }
+
+  if (extracted.total_rows) {
+    const l = addLine(`Total Data Rows: ${extracted.total_rows}`);
+    if (l) lines.push(l);
+  }
+
+  if (extracted.summary) {
+    const l = addLine(`\nSummary: ${extracted.summary}`);
+    if (l) lines.push(l);
+  }
+
+  // Parameter summary — high search value, low byte cost
+  const params = extracted.parameter_summary as Array<{ canonical_name: string; sample_count: number }> | undefined;
+  if (params?.length) {
+    const paramHeader = addLine("\nParameters Monitored:");
+    if (paramHeader) {
+      lines.push(paramHeader);
+      for (const p of params) {
+        const l = addLine(`  ${p.canonical_name}: ${p.sample_count} samples`);
+        if (!l) break; // Budget exhausted
+        lines.push(l);
+      }
+    }
+  }
+
+  // Sample records — only if budget remains, add one at a time
+  const records = extracted.records as Array<Record<string, unknown>> | undefined;
+  if (records?.length && used < byteBudget * 0.8) {
+    const recHeader = addLine(`\nSample Records (${records.length} total):`);
+    if (recHeader) {
+      lines.push(recHeader);
+      for (const r of records) {
+        const parts = Object.entries(r)
+          .filter(([, v]) => v != null && v !== "")
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ");
+        const l = addLine(`  ${parts}`);
+        if (!l) {
+          lines.push(`  ... (${records.length} records total, budget-capped)`);
+          break;
+        }
+        lines.push(l);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Route to the right serializer based on doc type and extracted_data size.
+ * Returns capped text that is safe to feed to the chunker.
+ */
+function serializeExtractedData(
+  extracted: Record<string, unknown>,
+  category: string,
+): PageText[] {
+  const jsonSize = JSON.stringify(extracted).length;
+  const isLargeDoc = jsonSize > LARGE_DOC_THRESHOLD;
+  const isLabData = category === "lab_data";
+
+  let text: string;
+  if (isLabData || isLargeDoc) {
+    // Large lab data: byte-budgeted summary only
+    text = serializeSummary(extracted, SUMMARY_BYTE_BUDGET);
+    console.log(`[embed] ${category}: summary serializer (json=${jsonSize}, text=${text.length}, budget=${SUMMARY_BYTE_BUDGET})`);
+  } else {
+    // Small docs: full fidelity
+    text = serializeFullFidelity(extracted);
+    console.log(`[embed] ${category}: full serializer (json=${jsonSize}, text=${text.length})`);
+  }
+
+  return [{ page: 0, text }];
 }
 
 // ---------------------------------------------------------------------------
 // Metadata header chunk from extracted_data
 // ---------------------------------------------------------------------------
-function buildMetadataChunk(
-  queueEntry: QueueRow,
-): string {
+function buildMetadataChunk(queueEntry: QueueRow): string {
   const extracted = queueEntry.extracted_data;
   const lines: string[] = [];
 
@@ -265,8 +385,6 @@ function buildMetadataChunk(
     if (extracted.summary) lines.push(`Summary: ${extracted.summary}`);
     if (extracted.outfall_count) lines.push(`Outfalls: ${extracted.outfall_count}`);
     if (extracted.limit_count) lines.push(`Limits: ${extracted.limit_count}`);
-
-    // For lab data
     if (extracted.permit_numbers) {
       lines.push(`Permits: ${(extracted.permit_numbers as string[]).join(", ")}`);
     }
@@ -288,7 +406,6 @@ function chunkPageText(pages: PageText[]): Chunk[] {
     if (!text) continue;
 
     if (text.length <= MAX_CHUNK_CHARS) {
-      // Fits in one chunk
       chunks.push({
         index: chunkIndex++,
         text,
@@ -299,24 +416,19 @@ function chunkPageText(pages: PageText[]): Chunk[] {
       continue;
     }
 
-    // Split within page
     let offset = 0;
     while (offset < text.length) {
       let end = Math.min(offset + MAX_CHUNK_CHARS, text.length);
 
-      // If not at end, find a good split point
       if (end < text.length) {
-        // Try paragraph boundary
         const paraBreak = text.lastIndexOf("\n\n", end);
         if (paraBreak > offset + MAX_CHUNK_CHARS / 2) {
           end = paraBreak + 2;
         } else {
-          // Try sentence boundary
           const sentBreak = text.lastIndexOf(". ", end);
           if (sentBreak > offset + MAX_CHUNK_CHARS / 2) {
             end = sentBreak + 2;
           } else {
-            // Try word boundary
             const wordBreak = text.lastIndexOf(" ", end);
             if (wordBreak > offset + MAX_CHUNK_CHARS / 2) {
               end = wordBreak + 1;
@@ -336,10 +448,8 @@ function chunkPageText(pages: PageText[]): Chunk[] {
         });
       }
 
-      // Move forward with overlap
       offset = end - CHUNK_OVERLAP;
       if (offset >= text.length) break;
-      // Ensure we make progress
       if (offset <= (end - MAX_CHUNK_CHARS)) offset = end;
     }
   }
@@ -349,13 +459,21 @@ function chunkPageText(pages: PageText[]): Chunk[] {
 
 // ---------------------------------------------------------------------------
 // Embedding generation via Supabase AI (gte-small)
+// Session created once per invocation and reused across chunks.
 // ---------------------------------------------------------------------------
-async function generateEmbedding(
-  text: string,
-): Promise<number[]> {
-  // Use Supabase Edge Runtime's built-in AI session
-  // @ts-expect-error — Supabase.ai is available in Edge Runtime
-  const session = new Supabase.ai.Session("gte-small");
+// @ts-expect-error — Supabase.ai is available in Edge Runtime
+let aiSession: InstanceType<typeof Supabase.ai.Session> | null = null;
+
+function getAiSession() {
+  if (!aiSession) {
+    // @ts-expect-error — Supabase.ai is available in Edge Runtime
+    aiSession = new Supabase.ai.Session("gte-small");
+  }
+  return aiSession;
+}
+
+async function generateEmbedding(text: string): Promise<number[]> {
+  const session = getAiSession();
   const embedding = await session.run(text, { mean_pool: true, normalize: true });
   return Array.from(embedding);
 }
@@ -364,7 +482,6 @@ async function generateEmbedding(
 // Main handler
 // ---------------------------------------------------------------------------
 serve(async (req: Request) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -372,7 +489,6 @@ serve(async (req: Request) => {
   const headers = { ...corsHeaders, "Content-Type": "application/json" };
 
   try {
-    // Service-role client for all DB operations
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // 1. Validate auth
@@ -393,11 +509,14 @@ serve(async (req: Request) => {
       );
     }
 
-    // 3. Fetch queue entry
+    console.log(`[embed] v=${VERSION} stage=start queue_id=${queue_id}`);
+
+    // 3. Fetch queue entry (without extracted_data — loaded separately to
+    //    avoid WORKER_LIMIT on large lab data files with 3.5MB+ JSON)
     const { data: queueEntry, error: fetchError } = await supabase
       .from("file_processing_queue")
       .select(
-        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id, extracted_data",
+        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id",
       )
       .eq("id", queue_id)
       .single();
@@ -415,19 +534,33 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. Guard: only parsed entries
-    if (queueEntry.status !== "parsed") {
+    console.log(`[embed] stage=load_queue file=${queueEntry.file_name} category=${queueEntry.file_category}`);
+
+    // 3b. Load extracted_data via RPC (truncates records array for large docs)
+    const { data: extractedData } = await supabase.rpc(
+      "get_embedding_extracted_data",
+      { p_queue_id: queue_id, p_max_records: 20 },
+    );
+    const extractedBytes = extractedData ? JSON.stringify(extractedData).length : 0;
+    console.log(`[embed] stage=load_extracted size_bytes=${extractedBytes}`);
+    const entry: QueueRow = {
+      ...queueEntry,
+      extracted_data: (extractedData as Record<string, unknown>) ?? null,
+    };
+
+    // 4. Guard: only parsed or embedded (re-embed) entries
+    if (entry.status !== "parsed" && entry.status !== "embedded") {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Cannot generate embeddings for entry with status '${queueEntry.status}'. Expected 'parsed'.`,
+          error: `Cannot generate embeddings for entry with status '${entry.status}'. Expected 'parsed' or 'embedded'.`,
         }),
         { status: 409, headers },
       );
     }
 
     // 5. Resolve organization_id
-    const orgId = await resolveOrgId(supabase, auth.orgId, queueEntry);
+    const orgId = await resolveOrgId(supabase, auth.orgId, entry);
     if (!orgId) {
       return new Response(
         JSON.stringify({
@@ -439,32 +572,30 @@ serve(async (req: Request) => {
     }
 
     // 6. Delete existing chunks for idempotency
-    if (queueEntry.document_id) {
+    if (entry.document_id) {
       await supabase
         .from("document_chunks")
         .delete()
-        .eq("document_id", queueEntry.document_id);
+        .eq("document_id", entry.document_id);
     } else {
-      // Entries without document_id — delete by queue_entry_id
       await supabase
         .from("document_chunks")
         .delete()
-        .eq("queue_entry_id", queueEntry.id);
+        .eq("queue_entry_id", entry.id);
     }
 
-    // 7. Extract text — PDF vs spreadsheet
-    // Internal secret calls (backfill) skip Claude PDF extraction to stay within
-    // Edge Function timeout. extracted_data from the parse step is used instead.
+    // 7. Extract text — route by source type
     const isBackfill = !auth.userId;
     let pages: PageText[] = [];
     const isPdf =
-      queueEntry.file_name.toLowerCase().endsWith(".pdf") ||
-      queueEntry.file_category === "npdes_permit";
+      entry.file_name.toLowerCase().endsWith(".pdf") ||
+      entry.file_category === "npdes_permit";
+
     if (isPdf && !isBackfill) {
       // Full PDF extraction via Claude — only for frontend-triggered calls
       const { data: urlData, error: urlError } = await supabase.storage
-        .from(queueEntry.storage_bucket)
-        .createSignedUrl(queueEntry.storage_path, 300);
+        .from(entry.storage_bucket)
+        .createSignedUrl(entry.storage_path, 300);
 
       if (urlError || !urlData?.signedUrl) {
         return new Response(
@@ -477,26 +608,25 @@ serve(async (req: Request) => {
         pages = await extractPdfText(urlData.signedUrl);
       } catch (extractErr) {
         console.warn("PDF text extraction failed, falling back to extracted_data:", extractErr);
-        if (queueEntry.extracted_data) {
-          pages = serializeExtractedData(queueEntry.extracted_data);
+        if (entry.extracted_data) {
+          pages = serializeExtractedData(entry.extracted_data, entry.file_category);
         }
       }
-    } else if (queueEntry.extracted_data) {
-      // Backfill PDFs, spreadsheets, and other types — use extracted_data
-      pages = serializeExtractedData(queueEntry.extracted_data);
+    } else if (entry.extracted_data) {
+      // Backfill + spreadsheets: routed serializer (full vs summary)
+      pages = serializeExtractedData(entry.extracted_data, entry.file_category);
     }
 
-    if (pages.length === 0 && !queueEntry.extracted_data) {
+    if (pages.length === 0 && !entry.extracted_data) {
       return new Response(
         JSON.stringify({ success: false, error: "No text extractable from document" }),
         { status: 400, headers },
       );
     }
 
-    // 8. Build chunks
-    // Metadata header chunk (index 0)
-    const metadataText = buildMetadataChunk(queueEntry);
-    const allChunks: Chunk[] = [
+    // 8. Build chunks — text is already capped by the serializer
+    const metadataText = buildMetadataChunk(entry);
+    let allChunks: Chunk[] = [
       {
         index: 0,
         text: metadataText,
@@ -506,40 +636,62 @@ serve(async (req: Request) => {
       },
     ];
 
-    // Page content chunks
     if (pages.length > 0) {
       allChunks.push(...chunkPageText(pages));
     }
 
-    // 9. Generate embeddings for all chunks
+    // Hard cap: enforce MAX_CHUNKS_PER_DOC to prevent gte-small OOM
+    const preCapCount = allChunks.length;
+    const truncatedForEmbedding = preCapCount > MAX_CHUNKS_PER_DOC;
+    if (truncatedForEmbedding) {
+      allChunks = allChunks.slice(0, MAX_CHUNKS_PER_DOC);
+      console.log(`[embed] stage=cap precap=${preCapCount} postcap=${allChunks.length} max=${MAX_CHUNKS_PER_DOC}`);
+    }
+
+    // Diagnostic: log what we're about to embed
+    const totalTextBytes = allChunks.reduce((sum, c) => sum + c.chars, 0);
+    console.log(`[embed] stage=chunk chunks=${allChunks.length} text_bytes=${totalTextBytes}${truncatedForEmbedding ? ` (capped from ${preCapCount})` : ""}`);
+
+    // 9. Generate embeddings
+    console.log(`[embed] stage=embed provider=gte-small chunks=${allChunks.length}`);
     const chunkRows: Array<Record<string, unknown>> = [];
     for (const chunk of allChunks) {
       try {
+        console.log(`[embed] stage=embed_chunk idx=${chunk.index} chars=${chunk.chars}`);
         const embedding = await generateEmbedding(chunk.text);
         chunkRows.push({
-          document_id: queueEntry.document_id,
-          queue_entry_id: queueEntry.id,
+          document_id: entry.document_id,
+          queue_entry_id: entry.id,
           organization_id: orgId,
           chunk_index: chunk.index,
           chunk_text: chunk.text,
           chunk_chars: chunk.chars,
           source_page: chunk.sourcePage,
           source_section: chunk.sourceSection,
-          document_type: queueEntry.file_category,
-          state_code: queueEntry.state_code,
+          document_type: entry.file_category,
+          state_code: entry.state_code,
           permit_number:
-            (queueEntry.extracted_data?.permit_number as string) ?? null,
-          file_name: queueEntry.file_name,
+            (entry.extracted_data?.permit_number as string) ?? null,
+          file_name: entry.file_name,
           embedding: JSON.stringify(embedding),
         });
       } catch (embErr) {
-        console.warn(`Skipping chunk ${chunk.index}: embedding failed:`, embErr);
+        console.warn(`[embed] Chunk ${chunk.index} failed (${chunk.chars} chars):`, embErr);
       }
     }
 
     if (chunkRows.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "All embeddings failed" }),
+        JSON.stringify({
+          success: false,
+          error: "All embeddings failed",
+          diagnostics: {
+            doc_id: entry.id,
+            doc_type: entry.file_category,
+            chunks_attempted: allChunks.length,
+            text_bytes: totalTextBytes,
+          },
+        }),
         { status: 500, headers },
       );
     }
@@ -556,17 +708,23 @@ serve(async (req: Request) => {
       );
     }
 
-    // 11. Audit log
+    // 10b. Mark queue entry as embedded so backfill cursor can skip it
+    await supabase
+      .from("file_processing_queue")
+      .update({ status: "embedded" })
+      .eq("id", entry.id);
+
+    // 11. Audit log (frontend-triggered only)
     if (auth.userId) {
       await supabase.from("audit_log").insert({
         user_id: auth.userId,
         action: "generate_embedding",
         module: "document_search",
         table_name: "document_chunks",
-        record_id: queueEntry.document_id,
+        record_id: entry.document_id,
         description: JSON.stringify({
-          queue_id: queueEntry.id,
-          document_id: queueEntry.document_id,
+          queue_id: entry.id,
+          document_id: entry.document_id,
           chunk_count: chunkRows.length,
           page_count: pages.length,
           org_id: orgId,
@@ -576,19 +734,28 @@ serve(async (req: Request) => {
 
     // 12. Success
     const pageCount = new Set(pages.map((p) => p.page)).size;
+    console.log(`[embed] stage=done chunks=${chunkRows.length} pages=${pageCount}${truncatedForEmbedding ? ` truncated_from=${preCapCount}` : ""}`);
     return new Response(
       JSON.stringify({
         success: true,
-        documentId: queueEntry.document_id,
+        version: VERSION,
+        documentId: entry.document_id,
         chunkCount: chunkRows.length,
         pageCount,
+        truncated_for_embedding: truncatedForEmbedding || undefined,
+        precap_chunk_count: truncatedForEmbedding ? preCapCount : undefined,
+        max_chunks_per_doc: MAX_CHUNKS_PER_DOC,
       }),
       { status: 200, headers },
     );
   } catch (err) {
     console.error("generate-embeddings error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: (err as Error).message }),
+      JSON.stringify({
+        success: false,
+        error: (err as Error).message,
+        stack: (err as Error).stack?.split("\n").slice(0, 3).join(" | "),
+      }),
       { status: 500, headers },
     );
   }
