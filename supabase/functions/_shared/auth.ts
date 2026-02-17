@@ -3,8 +3,26 @@
  * Handles JWT verification and user context extraction.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClient = any;
+/**
+ * Minimal Supabase client interface for auth operations.
+ * This avoids importing full @supabase/supabase-js types while maintaining type safety.
+ */
+interface SupabaseClient {
+  auth: {
+    getUser: (token: string) => Promise<{
+      data: { user: { id: string; email?: string } | null };
+      error: Error | null;
+    }>;
+  };
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        single: () => Promise<{ data: Record<string, unknown> | null; error: Error | null }>;
+        maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: Error | null }>;
+      };
+    };
+  };
+}
 
 /**
  * Verify JWT token from request Authorization header.

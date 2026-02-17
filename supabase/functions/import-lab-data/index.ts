@@ -532,8 +532,8 @@ serve(async (req: Request) => {
     }
 
     // 12. Audit log — use 'bulk_process' action type which is in the CHECK constraint
-    // Fire-and-forget but log failures (Consent Decree requires audit trail)
-    const { error: auditError } = await supabase.from("audit_log").insert({
+    // CRITICAL: Consent Decree requires audit trail — retry on failure
+    const auditPayload = {
       user_id: userId,
       organization_id: organizationId,
       action: "bulk_process",
@@ -548,12 +548,33 @@ serve(async (req: Request) => {
         skipped_no_parameter: skippedNoParameter,
         import_id: importId,
       }),
-    });
+    };
 
-    if (auditError) {
-      // Log failure but don't fail the import — data is already committed
-      console.error("[import-lab-data] CRITICAL: Audit log failed:", auditError.message);
-      // TODO: Consider secondary logging mechanism (external service, file)
+    let auditSuccess = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error: auditError } = await supabase.from("audit_log").insert(auditPayload);
+      if (!auditError) {
+        auditSuccess = true;
+        break;
+      }
+      console.error(`[import-lab-data] Audit log attempt ${attempt}/3 failed:`, auditError.message);
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 500 * attempt)); // Backoff: 500ms, 1000ms
+      }
+    }
+
+    if (!auditSuccess) {
+      // Fallback: Log to queue metadata for later reconciliation
+      console.error("[import-lab-data] CRITICAL: All audit log attempts failed — writing to queue metadata");
+      await supabase
+        .from("file_processing_queue")
+        .update({
+          metadata: {
+            pending_audit_log: auditPayload,
+            audit_log_failed_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", queueId);
     }
 
     console.log(
