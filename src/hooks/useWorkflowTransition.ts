@@ -227,6 +227,7 @@ export function useWorkflowTransition() {
       };
 
       // Reopen to verification step
+      // Issue #3 Fix: Clear signature IDs as well as timestamps
       const { data, error: updateErr } = await supabase
         .from('corrective_actions')
         .update({
@@ -234,7 +235,9 @@ export function useWorkflowTransition() {
           workflow_step: 'verification',
           closed_date: null,
           closed_by: null,
+          responsible_person_id: null,
           responsible_person_signed_at: null,
+          approved_by_id: null,
           approved_by_signed_at: null,
           notes: `Reopened: ${reason}\n\n${ca.notes || ''}`.trim(),
           updated_at: new Date().toISOString(),
@@ -267,7 +270,9 @@ export function useWorkflowTransition() {
           newValues: {
             status: 'in_progress',
             workflow_step: 'verification',
+            responsible_person_id: null,
             responsible_person_signed_at: null,
+            approved_by_id: null,
             approved_by_signed_at: null,
           },
         }
@@ -288,6 +293,16 @@ export function useWorkflowTransition() {
     ): Promise<{ error: string | null }> => {
       if (!user) {
         return { error: 'Not authenticated' };
+      }
+
+      // Issue #1 Fix: Prevent same user from signing both roles
+      const ca = actions.find((a) => a.id === caId);
+      if (ca) {
+        const otherIdField =
+          type === 'responsible' ? 'approved_by_id' : 'responsible_person_id';
+        if (ca[otherIdField] === user.id) {
+          return { error: 'Cannot sign as both responsible person and approver' };
+        }
       }
 
       const field =
@@ -330,7 +345,7 @@ export function useWorkflowTransition() {
 
       return { error: null };
     },
-    [user, upsertAction, log]
+    [actions, user, upsertAction, log]
   );
 
   // -------------------------------------------------------------------------

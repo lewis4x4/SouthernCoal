@@ -121,6 +121,24 @@ async function fetchCorrectiveAction(
 }
 
 // ---------------------------------------------------------------------------
+// Text field helpers
+// ---------------------------------------------------------------------------
+const MAX_FIELD_LENGTH = 5000;
+
+/**
+ * Truncate text fields to prevent memory exhaustion from unbounded input.
+ */
+function truncateField(
+  value: string | null | undefined,
+  maxLen = MAX_FIELD_LENGTH
+): string | null | undefined {
+  if (!value) return value;
+  if (value.length <= maxLen) return value;
+  console.warn(`[generate-ca-pdf] Truncating field from ${value.length} to ${maxLen} chars`);
+  return value.slice(0, maxLen) + "... [truncated]";
+}
+
+// ---------------------------------------------------------------------------
 // PDF Generation — Document 2015-013 layout
 // ---------------------------------------------------------------------------
 async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
@@ -172,7 +190,8 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
     y -= 4;
 
     const text = value ?? "N/A";
-    const words = text.split(" ");
+    // Normalize whitespace: collapse tabs, newlines, multiple spaces into single space
+    const words = text.replace(/\s+/g, " ").trim().split(" ");
     let line = "";
     const charWidth = 5; // Approximate
 
@@ -236,7 +255,7 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
 
   // INCIDENT DETAIL
   drawHeader("INCIDENT DETAIL:");
-  drawMultiline("Description of Incident / Agency Action Taken", ca.description);
+  drawMultiline("Description of Incident / Agency Action Taken", truncateField(ca.description));
   y -= 4;
   drawField("Date Issued", ca.date_issued);
   drawField("Date Received", ca.date_received);
@@ -256,16 +275,16 @@ async function generatePdf(ca: CorrectiveActionRecord): Promise<Uint8Array> {
   y -= 4;
   drawMultiline(
     "Event(s)/procedure(s) that caused/contributed to the incident",
-    ca.contributing_factors
+    truncateField(ca.contributing_factors)
   );
-  drawMultiline("Root Cause", ca.root_cause);
-  drawMultiline("Immediate Mitigation/Abatement/Remedial Measures", ca.immediate_mitigation);
-  drawMultiline("Long Term Corrective / Preventive Action Taken", ca.preventive_action);
+  drawMultiline("Root Cause", truncateField(ca.root_cause));
+  drawMultiline("Immediate Mitigation/Abatement/Remedial Measures", truncateField(ca.immediate_mitigation));
+  drawMultiline("Long Term Corrective / Preventive Action Taken", truncateField(ca.preventive_action));
   drawMultiline(
     "Documents requiring revision as a result of this action",
-    ca.documents_requiring_revision
+    truncateField(ca.documents_requiring_revision)
   );
-  drawMultiline("Effectiveness of the action taken", ca.effectiveness_assessment);
+  drawMultiline("Effectiveness of the action taken", truncateField(ca.effectiveness_assessment));
   y -= sectionGap;
 
   // Signatures
@@ -425,6 +444,44 @@ serve(async (req: Request) => {
   if (!orgId || ca.organization_id !== orgId) {
     return new Response(
       JSON.stringify({ error: "Access denied to this corrective action" }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  // Issue #2 Fix: Verify user has role permission to generate PDFs
+  // Using service role client since user_role_assignments may not have SELECT RLS for own rows
+  const { data: roleData, error: roleError } = await supabase
+    .from("user_role_assignments")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("organization_id", orgId);
+
+  if (roleError) {
+    console.error("[generate-ca-pdf] Role check error:", roleError.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to verify permissions" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  const allowedRoles = [
+    "admin",
+    "executive",
+    "environmental_manager",
+    "site_manager",
+  ];
+  const userRoles = roleData?.map((r) => r.role) ?? [];
+  const hasPermission = userRoles.some((role) => allowedRoles.includes(role));
+
+  if (!hasPermission) {
+    return new Response(
+      JSON.stringify({ error: "Insufficient permissions to generate PDF" }),
       {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
