@@ -111,3 +111,122 @@ export type FileCategoryKey =
   | 'audit_report'
   | 'enforcement'
   | 'other';
+
+// ---------------------------------------------------------------------------
+// DMR Submissions (Migration 008)
+// ---------------------------------------------------------------------------
+
+/** Submission types for DMR reports */
+export type DmrSubmissionType =
+  | 'monthly'
+  | 'quarterly'
+  | 'annual'
+  | 'semi_annual';
+
+/** Status of a DMR submission */
+export type DmrSubmissionStatus =
+  | 'draft'
+  | 'pending_submission'
+  | 'submitted'
+  | 'accepted'
+  | 'rejected'
+  | 'amended';
+
+/** EPA NODI (No Data Indicator) codes */
+export type NodiCode =
+  | 'C'  // No Discharge
+  | '9'  // Conditional
+  | 'N'  // No Data
+  | 'B'  // Below Detection
+  | 'E'  // Estimate
+  | 'G'  // Greater Than
+  | 'K'  // Actual Value
+  | 'Q'  // Quantity
+  | 'R'  // Rejected
+  | 'T'  // Too numerous
+  | 'U'  // Unable to measure
+  | 'W'; // Waived
+
+/** DMR submission record */
+export interface DmrSubmission {
+  id: string;
+  organization_id: string;
+  permit_id: string;
+  monitoring_period_start: string;
+  monitoring_period_end: string;
+  submission_type: DmrSubmissionType;
+  status: DmrSubmissionStatus;
+  no_discharge: boolean;
+  nodi_code: NodiCode | null;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  submission_confirmation: string | null;
+  source_file_id: string | null;
+  import_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// DMR Line Items (Migration 008)
+// ---------------------------------------------------------------------------
+
+/** Statistical base for DMR measurements */
+export type DmrStatisticalBase =
+  | 'minimum'
+  | 'average'
+  | 'maximum'
+  | 'daily_maximum'
+  | 'weekly_average'
+  | 'monthly_average'
+  | 'instantaneous'
+  | 'sample_measurement';
+
+/** Limit type for permit limits */
+export type DmrLimitType =
+  | 'daily_max'
+  | 'weekly_avg'
+  | 'monthly_avg'
+  | 'instantaneous'
+  | 'report_only';
+
+/** DMR line item record — individual parameter measurement */
+export interface DmrLineItem {
+  id: string;
+  submission_id: string;
+  outfall_id: string;
+  parameter_id: string;
+  statistical_base: DmrStatisticalBase;
+  limit_value: number | null;
+  limit_unit: string | null;
+  limit_type: DmrLimitType | null;
+  measured_value: number | null;
+  measured_unit: string | null;
+  nodi_code: NodiCode | null;
+  is_exceedance: boolean;
+  exceedance_pct: number | null;
+  sample_count: number | null;
+  sample_frequency: string | null;
+  storet_code: string | null;
+  qualifier: string | null;
+  comments: string | null;
+  created_at: string;
+}
+
+/** DMR line item with joined relations for display */
+export interface DmrLineItemWithRelations extends DmrLineItem {
+  submission: {
+    permit_id: string;
+    monitoring_period_end: string;
+    status: DmrSubmissionStatus;
+  } | null;
+  outfall: {
+    outfall_id: string;
+    permit_id: string;
+  } | null;
+  parameter: {
+    name: string;
+    short_name: string | null;
+    storet_code: string | null;
+  } | null;
+}

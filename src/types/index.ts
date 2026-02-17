@@ -15,6 +15,15 @@ export type {
   ExtractionSource,
   PermitLimitReviewFields,
   FileCategoryKey,
+  // DMR types (migration 008)
+  DmrSubmissionType,
+  DmrSubmissionStatus,
+  NodiCode,
+  DmrSubmission,
+  DmrStatisticalBase,
+  DmrLimitType,
+  DmrLineItem,
+  DmrLineItemWithRelations,
 } from './database';
 
 // Obligations and compliance
