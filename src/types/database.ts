@@ -415,3 +415,146 @@ export interface ExtractedLabData {
   // Human-readable summary
   summary?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Extracted Parameter Sheet Types (from parse-parameter-sheet Edge Function)
+// ---------------------------------------------------------------------------
+
+/** Individual extracted limit from permit parameter sheet */
+export interface ExtractedLimit {
+  row_number: number;
+  outfall_number: string;
+  outfall_status: string;
+  parameter_raw: string;
+  parameter_id: string | null;
+  parameter_canonical: string | null;
+  limit_min: number | null;
+  limit_avg: number | null;
+  limit_max: number | null;
+  is_range: boolean;
+  range_min: number | null;
+  range_max: number | null;
+  unit: string;
+  frequency: string;
+  sample_type: string;
+  is_report_only: boolean;
+  is_not_constructed: boolean;
+  extraction_confidence: number;
+}
+
+/** Extracted outfall metadata from permit parameter sheet */
+export interface ExtractedOutfall {
+  outfall_number: string;
+  is_active: boolean;
+  status_notes: string | null;
+  limit_count: number;
+}
+
+/** Extracted permit data from parameter sheet tab */
+export interface ExtractedPermit {
+  permit_number: string;
+  tab_name: string;
+  subsidiary_name: string | null;
+  address: string | null;
+  outfalls: ExtractedOutfall[];
+  limits: ExtractedLimit[];
+}
+
+/**
+ * Extracted data envelope for npdes_permit parameter sheets
+ * Stored in file_processing_queue.extracted_data
+ * Contains both raw data for import AND summary fields for UI display
+ */
+export interface ExtractedParameterSheet {
+  document_type: 'parameter_sheet';
+  file_format: 'xlsx' | 'xls';
+  state_code: string;
+  total_tabs: number;
+  valid_permit_tabs: number;
+  skipped_tabs: string[];
+  permits: ExtractedPermit[];
+  summary: {
+    total_permits: number;
+    total_outfalls: number;
+    total_limits: number;
+    unmatched_parameters: string[];
+    not_constructed_outfalls: number;
+    report_only_limits: number;
+    matched_parameters: number;
+    unmatched_parameter_count: number;
+  };
+  warnings: string[];
+  validation_errors: Array<{
+    tab: string;
+    row: number;
+    column: string;
+    message: string;
+  }>;
+  limits_truncated: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Exceedance Types (Phase 3)
+// ---------------------------------------------------------------------------
+
+/** Severity levels for permit limit exceedances */
+export type ExceedanceSeverity = 'minor' | 'moderate' | 'major' | 'critical';
+
+/** Status of an exceedance investigation/resolution */
+export type ExceedanceStatus =
+  | 'open'
+  | 'acknowledged'
+  | 'under_investigation'
+  | 'resolved'
+  | 'false_positive';
+
+/** Exceedance record — auto-detected permit limit violation */
+export interface Exceedance {
+  id: string;
+  organization_id: string | null;
+  lab_result_id: string;
+  permit_limit_id: string;
+  outfall_id: string;
+  parameter_id: string;
+  sample_date: string;
+  result_value: number;
+  limit_value: number;
+  limit_type: string;
+  unit: string;
+  exceedance_pct: number | null;
+  severity: ExceedanceSeverity;
+  status: ExceedanceStatus;
+  corrective_action_id: string | null;
+  detected_at: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Exceedance with joined relations for display */
+export interface ExceedanceWithRelations extends Exceedance {
+  outfall: {
+    outfall_number: string;
+    permit_id: string;
+  } | null;
+  parameter: {
+    name: string;
+    short_name: string | null;
+  } | null;
+  lab_result: {
+    sampling_event_id: string;
+    unit: string | null;
+  } | null;
+  permit_limit: {
+    limit_type: string;
+    unit: string | null;
+  } | null;
+  corrective_action: {
+    id: string;
+    title: string;
+    status: string;
+  } | null;
+}

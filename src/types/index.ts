@@ -32,6 +32,16 @@ export type {
   // Parsed lab data types (from parse-lab-data-edd)
   ParsedLabRecord,
   ExtractedLabData,
+  // Parsed permit limits types (from parse-parameter-sheet)
+  ExtractedLimit,
+  ExtractedOutfall,
+  ExtractedPermit,
+  ExtractedParameterSheet,
+  // Exceedance types (Phase 3)
+  ExceedanceSeverity,
+  ExceedanceStatus,
+  Exceedance,
+  ExceedanceWithRelations,
 } from './database';
 
 // Obligations and compliance
