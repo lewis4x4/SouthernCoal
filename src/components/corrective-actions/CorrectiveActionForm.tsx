@@ -11,7 +11,29 @@ import {
   CA_PRIORITY_LABELS,
   SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
+  STEP_REQUIRED_FIELDS, // Issue #8 Fix: Import from single source of truth
 } from '@/types/corrective-actions';
+
+// -----------------------------------------------------------------------------
+// Validation Helpers
+// -----------------------------------------------------------------------------
+
+/** Trim all string values in form data */
+function validateFormData(data: Record<string, string>): Record<string, string> {
+  const validated: Record<string, string> = {};
+  for (const [key, value] of Object.entries(data)) {
+    validated[key] = value?.trim() ?? '';
+  }
+  return validated;
+}
+
+/** Convert field_name to "Field Name" for display */
+function formatFieldName(field: string): string {
+  return field
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 interface CorrectiveActionFormProps {
   action: CorrectiveAction;
@@ -53,9 +75,26 @@ export function CorrectiveActionForm({
 
   const handleSave = useCallback(async () => {
     if (!canEdit) return;
+
+    // Trim all values
+    const validatedData = validateFormData(formData);
+
+    // Check for empty required fields (exclude signature fields - handled via signature modal)
+    const signatureFields = ['responsible_person_signed_at', 'approved_by_signed_at'];
+    const requiredFields = (STEP_REQUIRED_FIELDS[step] || []).filter(
+      (f) => !signatureFields.includes(f)
+    );
+    const emptyRequired = requiredFields.filter((f) => !validatedData[f]);
+    if (emptyRequired.length > 0) {
+      toast.error('Missing required fields', {
+        description: emptyRequired.map(formatFieldName).join(', '),
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      const result = await updateStepData(action.id, step, formData);
+      const result = await updateStepData(action.id, step, validatedData);
       if (result.error) {
         console.error('Failed to save:', result.error);
         toast.error('Failed to save changes', {

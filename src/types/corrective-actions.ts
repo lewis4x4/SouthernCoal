@@ -254,13 +254,14 @@ export interface CAFilters {
 // ---------------------------------------------------------------------------
 // Step Requirements (what must be filled before advancing)
 // ---------------------------------------------------------------------------
+// Issue #8 Fix: Single source of truth for required fields (consolidates form and workflow validation)
 export const STEP_REQUIRED_FIELDS: Record<WorkflowStep, string[]> = {
-  identification: ['title', 'description', 'followup_assigned_to'],
+  identification: ['title', 'description', 'priority', 'followup_assigned_to'],
   root_cause_analysis: ['root_cause'],
   corrective_action_plan: ['immediate_mitigation'],
   preventive_action: ['preventive_action'],
   implementation: ['completed_date'],
-  verification: ['effectiveness_assessment', 'verified_by'],
+  verification: ['effectiveness_assessment', 'verified_by', 'verified_date'],
   closure: ['responsible_person_signed_at', 'approved_by_signed_at'],
 };
 

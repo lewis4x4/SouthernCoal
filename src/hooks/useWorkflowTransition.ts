@@ -9,7 +9,20 @@ import {
   getNextStep,
   type CorrectiveAction,
   type WorkflowStep,
+  type CAStatus,
 } from '@/types/corrective-actions';
+
+// Issue #7 Fix: Explicit status transitions for advanceStep
+// Note: 'closed' status is set by closeAction(), not advanceStep()
+const STATUS_TRANSITIONS: Record<WorkflowStep, CAStatus> = {
+  identification: 'open',
+  root_cause_analysis: 'in_progress',
+  corrective_action_plan: 'in_progress',
+  preventive_action: 'in_progress',
+  implementation: 'in_progress',
+  verification: 'completed',
+  closure: 'verified',
+};
 
 interface ValidationResult {
   valid: boolean;
@@ -89,17 +102,8 @@ export function useWorkflowTransition() {
         return { error: 'Already at final step' };
       }
 
-      // Determine new status based on step
-      let newStatus = ca.status;
-      if (ca.status === 'open' && nextStep !== 'identification') {
-        newStatus = 'in_progress';
-      }
-      if (nextStep === 'verification') {
-        newStatus = 'completed';
-      }
-      if (nextStep === 'closure') {
-        newStatus = 'verified';
-      }
+      // Determine new status based on next step (using explicit state machine)
+      const newStatus = STATUS_TRANSITIONS[nextStep] ?? ca.status;
 
       // Update in database
       const { data, error: updateErr } = await supabase
