@@ -63,9 +63,19 @@ export function CorrectiveActionSignature({
       setError(null);
 
       try {
-        // Verify password by attempting to sign in
+        // Get current session to verify we have the user's email
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.email) {
+          setError('No active session. Please refresh and try again.');
+          setVerifying(false);
+          return;
+        }
+
+        // Verify password by attempting reauthentication
+        // Note: signInWithPassword on an already-signed-in user refreshes the session
+        // but doesn't disrupt it - the user stays logged in
         const { error: authError } = await supabase.auth.signInWithPassword({
-          email: user.email,
+          email: session.user.email,
           password,
         });
 
@@ -76,7 +86,20 @@ export function CorrectiveActionSignature({
         }
 
         // Password verified — proceed with signature
-        await onConfirm();
+        // Wrap in try/catch to handle recording failures separately
+        try {
+          await onConfirm();
+          // Don't close modal here - parent's onConfirm handles that
+        } catch (confirmErr) {
+          console.error('Signature recording error:', confirmErr);
+          setError(
+            confirmErr instanceof Error
+              ? confirmErr.message
+              : 'Failed to record signature. Please try again.'
+          );
+          // Don't close modal on recording error - let user retry
+          return;
+        }
       } catch (err) {
         console.error('Signature verification error:', err);
         setError('Verification failed. Please try again.');
@@ -84,7 +107,8 @@ export function CorrectiveActionSignature({
         setVerifying(false);
       }
     },
-    [user?.email, password, onConfirm]
+    // Issue #10 Fix: Depend on user object, not just user?.email (primitive)
+    [user, password, onConfirm]
   );
 
   if (!open || !type) return null;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -60,6 +60,19 @@ export function CorrectiveActionDetail({
   const [closing, setClosing] = useState(false);
   const [reopening, setReopening] = useState(false);
 
+  // Issue #9 Fix: Sync activeStep when action.workflow_step changes (e.g., from Realtime update)
+  useEffect(() => {
+    setActiveStep(action.workflow_step);
+  }, [action.workflow_step]);
+
+  // Mount guard for async state updates
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const validation = validateStep(action);
   const isAtClosure = action.workflow_step === 'closure';
   const isClosed = action.status === 'closed';
@@ -68,6 +81,7 @@ export function CorrectiveActionDetail({
   const handleAdvance = async () => {
     setAdvancing(true);
     const result = await advanceStep(action.id);
+    if (!isMountedRef.current) return;
     setAdvancing(false);
     if (result.error) {
       console.error('Failed to advance:', result.error);
@@ -81,6 +95,7 @@ export function CorrectiveActionDetail({
   const handleClose = async () => {
     setClosing(true);
     const result = await closeAction(action.id);
+    if (!isMountedRef.current) return;
     setClosing(false);
     if (result.error) {
       console.error('Failed to close:', result.error);
@@ -94,6 +109,7 @@ export function CorrectiveActionDetail({
   const handleReopen = async () => {
     setReopening(true);
     const result = await reopenAction(action.id, 'Reopened for review');
+    if (!isMountedRef.current) return;
     setReopening(false);
     if (result.error) {
       console.error('Failed to reopen:', result.error);
