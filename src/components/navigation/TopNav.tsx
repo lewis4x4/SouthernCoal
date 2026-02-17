@@ -88,8 +88,9 @@ export function TopNav() {
           </Link>
 
           {/* Nav Links — grouped with dividers */}
-          <div className="flex items-center gap-1">
-            {NAV_GROUPS.map((group, groupIdx) => (
+          <div className="flex min-w-0 flex-1 items-center justify-center overflow-x-auto scrollbar-hide mx-4">
+            <div className="flex items-center gap-1">
+              {NAV_GROUPS.map((group, groupIdx) => (
               <div key={groupIdx} className="flex items-center">
                 {groupIdx > 0 && (
                   <div className="mx-1.5 h-6 border-l border-white/[0.08]" />
@@ -118,6 +119,7 @@ export function TopNav() {
                 </div>
               </div>
             ))}
+            </div>
           </div>
 
           {/* Right side: Role + User + Sign out */}
