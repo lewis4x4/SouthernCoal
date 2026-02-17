@@ -70,12 +70,14 @@ export const useCorrectiveActionsStore = create<CorrectiveActionsStore>()(
       // Data actions
       setActions: (actions) => set({ actions, loading: false, error: null }),
 
+      // Issue #4 Fix: Merge instead of replace to preserve JOINed fields
       upsertAction: (action) =>
         set((s) => {
           const idx = s.actions.findIndex((a) => a.id === action.id);
           if (idx >= 0) {
             const updated = [...s.actions];
-            updated[idx] = action;
+            // Merge new data with existing to preserve JOINed fields (site_name, assigned_to_name, etc.)
+            updated[idx] = { ...s.actions[idx], ...action };
             return { actions: updated };
           }
           return { actions: [action, ...s.actions] };

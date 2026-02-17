@@ -16,8 +16,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   site_manager: [
     'view', 'upload', 'export', 'command_palette', 'search',
-    // CA: Can view, edit assigned, sign as responsible
-    'ca_view', 'ca_edit', 'ca_sign_responsible', 'ca_generate_pdf',
+    // CA: Can view, edit assigned, advance workflow, sign as responsible, reopen
+    // Issue #5 Fix: Added ca_advance_workflow and ca_reopen so site managers can complete assigned CAs
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
   ],
   environmental_manager: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
