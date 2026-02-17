@@ -1,4 +1,5 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -23,6 +24,8 @@ export function useCorrectiveActions() {
     actions,
     filters,
     activities,
+    loading,
+    error,
     setActions,
     upsertAction,
     setActivities,
@@ -31,8 +34,8 @@ export function useCorrectiveActions() {
   } = useCorrectiveActionsStore();
 
   const loadingRef = useRef(false);
-  const [loading, setLoadingState] = useState(true);
-  const [error, setErrorState] = useState<string | null>(null);
+  // Use ref to always get latest fetchActions in Realtime callback
+  const fetchActionsRef = useRef<(() => Promise<void>) | null>(null);
 
   // -------------------------------------------------------------------------
   // Fetch all CAs for the user's organization
@@ -40,9 +43,8 @@ export function useCorrectiveActions() {
   const fetchActions = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    setLoadingState(true);
     setLoading(true);
-    setErrorState(null);
+    setError(null);
 
     const { data, error: fetchErr } = await supabase
       .from('corrective_actions')
@@ -63,9 +65,8 @@ export function useCorrectiveActions() {
 
     if (fetchErr) {
       console.error('[useCorrectiveActions] Fetch error:', fetchErr.message);
-      setErrorState(fetchErr.message);
       setError(fetchErr.message);
-      setLoadingState(false);
+      setLoading(false);
       return;
     }
 
@@ -87,8 +88,13 @@ export function useCorrectiveActions() {
     }));
 
     setActions(mapped);
-    setLoadingState(false);
+    setLoading(false);
   }, [setActions, setLoading, setError]);
+
+  // Keep ref updated for Realtime callback to avoid stale closure
+  useEffect(() => {
+    fetchActionsRef.current = fetchActions;
+  }, [fetchActions]);
 
   // -------------------------------------------------------------------------
   // Fetch activities (audit trail) for a specific CA
@@ -105,6 +111,7 @@ export function useCorrectiveActions() {
 
       if (fetchErr) {
         console.warn('[useCorrectiveActions] Failed to fetch activities:', fetchErr.message);
+        toast.error('Failed to load activity history');
         return;
       }
 
@@ -197,14 +204,17 @@ export function useCorrectiveActions() {
     }
   }, [user?.id, fetchActions]);
 
+  // Issue #13 Fix: Use useMemo for channel name - recalculates on user change (logout/login)
+  const channelName = useMemo(
+    () => `ca-changes-${user?.id ?? 'anon'}`,
+    [user?.id]
+  );
+
   // -------------------------------------------------------------------------
   // Realtime subscription
   // -------------------------------------------------------------------------
   useEffect(() => {
     if (!user) return;
-
-    // Create unique channel name to prevent stale listeners
-    const channelName = `ca-changes-${user.id}-${Date.now()}`;
 
     const channel = supabase
       .channel(channelName)
@@ -219,8 +229,9 @@ export function useCorrectiveActions() {
           console.log('[useCorrectiveActions] Realtime event:', payload.eventType);
 
           // Refetch to get JOINed data (Realtime only sends raw row)
+          // Use ref to avoid stale closure
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            fetchActions();
+            fetchActionsRef.current?.();
           } else if (payload.eventType === 'DELETE' && payload.old) {
             const deletedId = (payload.old as { id: string }).id;
             useCorrectiveActionsStore.getState().removeAction(deletedId);
@@ -235,7 +246,7 @@ export function useCorrectiveActions() {
         supabase.removeChannel(channel);
       });
     };
-  }, [user?.id, fetchActions]);
+  }, [user?.id, channelName]); // Issue #13: Include channelName in deps
 
   // -------------------------------------------------------------------------
   // Derived data

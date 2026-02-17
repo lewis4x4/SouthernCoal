@@ -177,7 +177,8 @@ export function useWorkflowTransition() {
         .from('corrective_actions')
         .update({
           status: 'closed',
-          closed_date: new Date().toISOString().split('T')[0],
+          // Issue #12 Fix: Use full timestamp for consistency with other date fields
+          closed_date: new Date().toISOString(),
           closed_by: user?.id,
           updated_at: new Date().toISOString(),
         })

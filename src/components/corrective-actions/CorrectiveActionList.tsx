@@ -62,7 +62,8 @@ export function CorrectiveActionList({ actions, loading }: Props) {
     if (aOverdue && !bOverdue) return -1;
     if (!aOverdue && bOverdue) return 1;
     if (a.due_date && b.due_date) {
-      return a.due_date.localeCompare(b.due_date);
+      // Issue #11 Fix: Use Date comparison instead of localeCompare for correct sorting
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     }
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });

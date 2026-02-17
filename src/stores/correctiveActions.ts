@@ -83,10 +83,16 @@ export const useCorrectiveActionsStore = create<CorrectiveActionsStore>()(
           return { actions: [action, ...s.actions] };
         }),
 
+      // Issue #15 Fix: Also clear activities when removing action to prevent orphans
       removeAction: (id) =>
-        set((s) => ({
-          actions: s.actions.filter((a) => a.id !== id),
-        })),
+        set((s) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { [id]: _, ...remainingActivities } = s.activities;
+          return {
+            actions: s.actions.filter((a) => a.id !== id),
+            activities: remainingActivities,
+          };
+        }),
 
       setSelectedId: (id) => set({ selectedId: id }),
 
