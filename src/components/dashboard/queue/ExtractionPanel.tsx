@@ -3,8 +3,9 @@ import { toast } from 'sonner';
 import { useVerificationStore } from '@/stores/verification';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useObligationGeneration } from '@/hooks/useObligationGeneration';
+import { useLabDataImport } from '@/hooks/useLabDataImport';
 import { VerificationBadge } from './VerificationBadge';
-import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus } from 'lucide-react';
+import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus, Upload, Loader2 } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { VerificationStatus } from '@/stores/verification';
 
@@ -82,6 +83,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   if (data.document_type === 'lab_data_edd') {
     return (
       <LabDataExtractionPanel
+        entry={entry}
         data={data as unknown as ExtractedLabData}
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
@@ -348,6 +350,7 @@ interface ExtractedLabData {
 }
 
 interface LabDataExtractionPanelProps {
+  entry: QueueEntry;
   data: ExtractedLabData;
   verificationStatus: VerificationStatus;
   onVerify: () => void;
@@ -356,6 +359,7 @@ interface LabDataExtractionPanelProps {
 }
 
 function LabDataExtractionPanel({
+  entry,
   data,
   verificationStatus,
   onVerify,
@@ -364,6 +368,8 @@ function LabDataExtractionPanel({
 }: LabDataExtractionPanelProps) {
   const [showWarnings, setShowWarnings] = useState(false);
   const [showHoldTime, setShowHoldTime] = useState(false);
+  const { importLabData, isImporting } = useLabDataImport();
+  const { can } = usePermissions();
 
   const unmatchedOutfalls = data.outfall_summary.filter((o) => !o.matched_id);
   const dateRange = data.date_range.earliest && data.date_range.latest
@@ -586,19 +592,42 @@ function LabDataExtractionPanel({
         </p>
       )}
 
-      {/* Approve & Import — disabled placeholder for two-step workflow */}
-      <div className="mt-4 pt-3 border-t border-white/[0.06]">
-        <button
-          disabled
-          className="px-4 py-2 text-xs font-medium rounded-lg bg-white/[0.03] text-text-muted border border-white/[0.06] cursor-not-allowed opacity-50"
-          title="Import verified lab data into compliance tables (coming soon)"
-        >
-          Approve & Import (Coming Soon)
-        </button>
-        <p className="text-[10px] text-text-muted mt-1.5">
-          Domain table imports will be enabled in a future update. Data is safely stored in extracted_data.
-        </p>
-      </div>
+      {/* Approve & Import — moves parsed data to domain tables */}
+      {entry.status === 'parsed' && can('process') && (
+        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+          <button
+            onClick={() => importLabData(entry.id)}
+            disabled={isImporting(entry.id)}
+            className="px-4 py-2 text-xs font-medium rounded-lg bg-green-500/15 text-green-300 border border-green-500/20 hover:bg-green-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Import verified lab data into sampling_events and lab_results tables"
+          >
+            {isImporting(entry.id) ? (
+              <>
+                <Loader2 size={12} className="inline mr-1.5 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Upload size={12} className="inline mr-1.5" />
+                Approve & Import
+              </>
+            )}
+          </button>
+          <p className="text-[10px] text-text-muted mt-1.5">
+            Imports {data.parsed_rows.toLocaleString()} records to sampling_events and lab_results tables
+          </p>
+        </div>
+      )}
+
+      {/* Already imported indicator */}
+      {entry.status === 'imported' && (
+        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+          <div className="flex items-center gap-2 text-xs text-green-300">
+            <CheckCircle2 size={14} />
+            <span>Data successfully imported to domain tables</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

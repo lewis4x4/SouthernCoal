@@ -24,6 +24,11 @@ export type {
   DmrLimitType,
   DmrLineItem,
   DmrLineItemWithRelations,
+  // Lab data types (migration 009)
+  SamplingEvent,
+  SamplingEventWithRelations,
+  LabResult,
+  LabResultWithRelations,
 } from './database';
 
 // Obligations and compliance

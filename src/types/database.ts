@@ -230,3 +230,68 @@ export interface DmrLineItemWithRelations extends DmrLineItem {
     storet_code: string | null;
   } | null;
 }
+
+// ---------------------------------------------------------------------------
+// Sampling Events (Migration 009)
+// ---------------------------------------------------------------------------
+
+/** Sampling event — one per outfall × date × time */
+export interface SamplingEvent {
+  id: string;
+  organization_id: string;
+  outfall_id: string;
+  sample_date: string;
+  sample_time: string | null;
+  sampler_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  stream_name: string | null;
+  lab_name: string | null;
+  import_id: string | null;
+  source_file_id: string | null;
+  created_at: string;
+}
+
+/** Sampling event with joined relations for display */
+export interface SamplingEventWithRelations extends SamplingEvent {
+  outfall: {
+    outfall_id: string;
+    permit_id: string;
+  } | null;
+  organization: {
+    name: string;
+  } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Lab Results (Migration 009)
+// ---------------------------------------------------------------------------
+
+/** Lab result — individual parameter measurement */
+export interface LabResult {
+  id: string;
+  sampling_event_id: string;
+  parameter_id: string;
+  result_value: number | null;
+  unit: string | null;
+  below_detection: boolean;
+  qualifier: string | null;
+  analysis_date: string | null;
+  hold_time_days: number | null;
+  hold_time_compliant: boolean | null;
+  import_id: string | null;
+  raw_parameter_name: string | null;
+  raw_value: string | null;
+  row_number: number | null;
+  created_at: string;
+}
+
+/** Lab result with joined relations for display */
+export interface LabResultWithRelations extends LabResult {
+  sampling_event: SamplingEvent | null;
+  parameter: {
+    name: string;
+    short_name: string | null;
+    storet_code: string | null;
+  } | null;
+}
