@@ -244,3 +244,53 @@ export const FILENAME_PATTERNS: ClassificationPattern[] = [
   { regex: /\baudit|ems\b/i, field: 'category', value: 'audit_report' },
   { regex: /\benforcement|nov|penalty|violation\b/i, field: 'category', value: 'enforcement' },
 ];
+
+// =============================================================================
+// Priority Queue — Tier Configuration
+// =============================================================================
+
+export type PriorityTier = 1 | 2 | 3;
+
+export const TIER_LABELS: Record<PriorityTier, string> = {
+  1: 'TIER 1 — Critical Blockers',
+  2: 'TIER 2 — Actionable Now',
+  3: 'TIER 3 — Parallel Track',
+};
+
+export const TIER_DESCRIPTIONS: Record<PriorityTier, string> = {
+  1: 'Only Tom/SCC can unblock these tasks',
+  2: 'Tasks you can work on immediately',
+  3: 'Both ownership or mixed dependencies',
+};
+
+export const TIER_COLORS: Record<PriorityTier, string> = {
+  1: 'bg-red-500/10 text-red-400 border-red-500/20',
+  2: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  3: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+};
+
+export const TIER_ICONS: Record<PriorityTier, string> = {
+  1: 'AlertTriangle',
+  2: 'Zap',
+  3: 'GitBranch',
+};
+
+// =============================================================================
+// Handoff Source Types
+// =============================================================================
+
+export const HANDOFF_SOURCE_LABELS: Record<string, string> = {
+  email: 'Email',
+  text: 'Text Message',
+  call: 'Call Notes',
+  document: 'Document',
+  paste: 'Pasted Content',
+};
+
+export const HANDOFF_SOURCE_ICONS: Record<string, string> = {
+  email: 'Mail',
+  text: 'MessageSquare',
+  call: 'Phone',
+  document: 'FileText',
+  paste: 'Clipboard',
+};

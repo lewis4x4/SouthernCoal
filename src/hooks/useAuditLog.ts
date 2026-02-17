@@ -47,7 +47,15 @@ type AuditAction =
   | 'corrective_action_closed'
   | 'corrective_action_reopened'
   | 'corrective_action_pdf_generated'
-  | 'corrective_action_exported';
+  | 'corrective_action_exported'
+  // Handoff workflow
+  | 'handoff_processed'
+  | 'handoff_applied'
+  | 'handoff_bulk_applied'
+  | 'handoff_conflict_resolved'
+  | 'handoff_rollback'
+  | 'handoff_discarded'
+  | 'priority_queue_generated';
 
 export type { AuditAction };
 

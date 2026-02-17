@@ -1,13 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, ChevronDown, ChevronRight, X, Sparkles, Link2 } from 'lucide-react';
+import { Map, ChevronDown, ChevronRight, X, Sparkles, Link2, FileText, Zap, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRoadmapTasks } from '@/hooks/useRoadmapTasks';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useHandoffStore } from '@/stores/handoff';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
+import {
+  HandoffInputPanel,
+  HandoffPreviewPanel,
+  WhatsNextQueue,
+  PhaseProgressSnapshot,
+} from '@/components/roadmap';
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -16,6 +23,42 @@ import {
   PHASE_LABELS,
 } from '@/types/roadmap';
 import type { RoadmapTask, RoadmapStatus, OwnerType } from '@/types/roadmap';
+
+// ─── View Tab Component ─────────────────────────────────────────────────────
+
+function ViewTab({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  badge,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ElementType;
+  label: string;
+  badge?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+        active
+          ? 'bg-blue-500/20 text-blue-400'
+          : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]'
+      )}
+    >
+      <Icon size={16} />
+      {label}
+      {badge && (
+        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
 
 // ─── Filters ────────────────────────────────────────────────────────────────
 
@@ -507,6 +550,9 @@ export function RoadmapPage() {
   const { tasks, loading, updateStatus, updateNotes, refresh } = useRoadmapTasks();
   const role = getEffectiveRole();
 
+  // View state
+  const { activeView, setActiveView, status: handoffStatus } = useHandoffStore();
+
   // Filters
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('all');
@@ -579,42 +625,85 @@ export function RoadmapPage() {
             </p>
           </div>
         </div>
+
+        {/* View Tabs */}
+        <div className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+          <ViewTab
+            active={activeView === 'tasks'}
+            onClick={() => setActiveView('tasks')}
+            icon={List}
+            label="Tasks"
+          />
+          <ViewTab
+            active={activeView === 'handoff'}
+            onClick={() => setActiveView('handoff')}
+            icon={FileText}
+            label="Handoff"
+            badge={handoffStatus === 'previewing' ? '!' : undefined}
+          />
+          <ViewTab
+            active={activeView === 'whats_next'}
+            onClick={() => setActiveView('whats_next')}
+            icon={Zap}
+            label="What's Next"
+          />
+        </div>
       </div>
 
-      {/* Stats */}
-      <StatsBar tasks={tasks} />
+      {/* View-specific content */}
+      {activeView === 'tasks' && (
+        <>
+          {/* Stats */}
+          <StatsBar tasks={tasks} />
 
-      {/* Filters */}
-      <FilterBar
-        phase={phaseFilter} setPhase={setPhaseFilter}
-        status={statusFilter} setStatus={setStatusFilter}
-        owner={ownerFilter} setOwner={setOwnerFilter}
-        sections={availableSections} section={sectionFilter} setSection={setSectionFilter}
-      />
+          {/* Filters */}
+          <FilterBar
+            phase={phaseFilter} setPhase={setPhaseFilter}
+            status={statusFilter} setStatus={setStatusFilter}
+            owner={ownerFilter} setOwner={setOwnerFilter}
+            sections={availableSections} section={sectionFilter} setSection={setSectionFilter}
+          />
 
-      {/* Phase Accordions */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+          {/* Phase Accordions */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+            </div>
+          ) : phases.length === 0 ? (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center text-sm text-text-muted">
+              No tasks match the current filters.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {phases.map(([phase, phaseTasks]) => (
+                <PhaseAccordion
+                  key={phase}
+                  phase={phase}
+                  tasks={phaseTasks}
+                  allTasks={tasks}
+                  expanded={expandedPhases.has(phase)}
+                  onToggle={() => togglePhase(phase)}
+                  onSelectTask={setSelectedTask}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeView === 'handoff' && (
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
+          <HandoffInputPanel />
         </div>
-      ) : phases.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center text-sm text-text-muted">
-          No tasks match the current filters.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {phases.map(([phase, phaseTasks]) => (
-            <PhaseAccordion
-              key={phase}
-              phase={phase}
-              tasks={phaseTasks}
-              allTasks={tasks}
-              expanded={expandedPhases.has(phase)}
-              onToggle={() => togglePhase(phase)}
-              onSelectTask={setSelectedTask}
-            />
-          ))}
-        </div>
+      )}
+
+      {activeView === 'whats_next' && (
+        <>
+          <PhaseProgressSnapshot />
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
+            <WhatsNextQueue />
+          </div>
+        </>
       )}
 
       {/* Task Detail Drawer */}
@@ -643,6 +732,9 @@ export function RoadmapPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Handoff Preview Panel (overlay) */}
+      <HandoffPreviewPanel />
     </div>
   );
 }
