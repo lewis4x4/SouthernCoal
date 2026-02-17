@@ -26,6 +26,8 @@ export default defineConfig({
           'vendor-state': ['zustand'],
           // Virtualization — used in large lists
           'vendor-virtual': ['@tanstack/react-virtual'],
+          // Recharts — large charting library, used by SearchObservabilityPage
+          'vendor-charts': ['recharts'],
         },
       },
     },

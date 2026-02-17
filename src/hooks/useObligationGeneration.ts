@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 
@@ -19,6 +19,7 @@ interface GenerateResult {
  */
 export function useObligationGeneration() {
   const [generating, setGenerating] = useState(false);
+  const generatingRef = useRef(false);
   const { log } = useAuditLog();
 
   const generateDMRSchedule = useCallback(
@@ -31,7 +32,9 @@ export function useObligationGeneration() {
     }): Promise<GenerateResult> => {
       const { queueId, permitNumber, state, effectiveDate, expirationDate } = opts;
 
-      if (generating) return { generated: 0, error: 'Already generating' };
+      // Use ref for guard to avoid stale closure
+      if (generatingRef.current) return { generated: 0, error: 'Already generating' };
+      generatingRef.current = true;
       setGenerating(true);
 
       try {
@@ -43,6 +46,7 @@ export function useObligationGeneration() {
           .ilike('description', `%${permitNumber}%`);
 
         if (count && count > 0) {
+          generatingRef.current = false;
           setGenerating(false);
           return { generated: 0, error: `DMR obligations already exist for permit ${permitNumber}` };
         }
@@ -52,6 +56,7 @@ export function useObligationGeneration() {
         const deadlines = generateDeadlines(effectiveDate, expirationDate, frequency);
 
         if (deadlines.length === 0) {
+          generatingRef.current = false;
           setGenerating(false);
           return { generated: 0, error: 'No deadlines generated (check date range)' };
         }
@@ -75,6 +80,7 @@ export function useObligationGeneration() {
           .insert(rows);
 
         if (insertError) {
+          generatingRef.current = false;
           setGenerating(false);
           return { generated: 0, error: `Insert failed: ${insertError.message}` };
         }
@@ -88,15 +94,17 @@ export function useObligationGeneration() {
           date_range: `${effectiveDate} to ${expirationDate}`,
         });
 
+        generatingRef.current = false;
         setGenerating(false);
         return { generated: rows.length, error: null };
       } catch (err) {
+        generatingRef.current = false;
         setGenerating(false);
         const message = err instanceof Error ? err.message : 'Unknown error';
         return { generated: 0, error: message };
       }
     },
-    [generating, log],
+    [log],
   );
 
   return { generateDMRSchedule, generating };
