@@ -76,25 +76,31 @@ export function useAuditLog() {
     (action: AuditAction, details?: Record<string, unknown>, entity?: AuditEntity) => {
       if (!user) return;
 
-      // Fire-and-forget — catch + warn, never block UI
-      supabase
-        .from('audit_log')
-        .insert({
-          user_id: user.id,
-          organization_id: profile?.organization_id ?? null,
-          action,
-          module: entity?.module ?? 'frontend',
-          table_name: entity?.tableName ?? 'ui_action',
-          record_id: entity?.recordId ?? null,
-          old_values: entity?.oldValues ?? null,
-          new_values: entity?.newValues ?? null,
-          description: details ? JSON.stringify(details) : null,
-          created_at: new Date().toISOString(),
-        })
+      // Fire-and-forget — wrap in Promise to ensure .catch() is available
+      Promise.resolve(
+        supabase
+          .from('audit_log')
+          .insert({
+            user_id: user.id,
+            organization_id: profile?.organization_id ?? null,
+            action,
+            module: entity?.module ?? 'frontend',
+            table_name: entity?.tableName ?? 'ui_action',
+            record_id: entity?.recordId ?? null,
+            old_values: entity?.oldValues ?? null,
+            new_values: entity?.newValues ?? null,
+            description: details ? JSON.stringify(details) : null,
+            created_at: new Date().toISOString(),
+          }),
+      )
         .then(({ error }) => {
           if (error) {
             console.warn('[audit] Failed to log action:', action, error.message);
           }
+        })
+        .catch((err: unknown) => {
+          // Network error or other exception — log and continue
+          console.warn('[audit] Exception during log:', action, err);
         });
     },
     [user, profile],

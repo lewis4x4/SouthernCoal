@@ -232,24 +232,30 @@ export interface DmrLineItemWithRelations extends DmrLineItem {
 }
 
 // ---------------------------------------------------------------------------
-// Sampling Events (Migration 009)
+// Sampling Events (existing table)
 // ---------------------------------------------------------------------------
 
 /** Sampling event — one per outfall × date × time */
 export interface SamplingEvent {
   id: string;
-  organization_id: string;
   outfall_id: string;
+  site_id: string | null;
+  sampled_by: string | null;
   sample_date: string;
   sample_time: string | null;
-  sampler_name: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  stream_name: string | null;
+  sample_type: string | null;
+  field_notes: string | null;
+  weather_conditions: string | null;
+  chain_of_custody_id: string | null;
   lab_name: string | null;
-  import_id: string | null;
-  source_file_id: string | null;
+  lab_received_date: string | null;
+  status: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
+  updated_at: string;
+  precipitation_event_id: string | null;
+  is_precipitation_sample: boolean | null;
+  precipitation_inches_24hr: number | null;
 }
 
 /** Sampling event with joined relations for display */
@@ -258,13 +264,14 @@ export interface SamplingEventWithRelations extends SamplingEvent {
     outfall_id: string;
     permit_id: string;
   } | null;
-  organization: {
+  site: {
     name: string;
+    organization_id: string;
   } | null;
 }
 
 // ---------------------------------------------------------------------------
-// Lab Results (Migration 009)
+// Lab Results (existing table)
 // ---------------------------------------------------------------------------
 
 /** Lab result — individual parameter measurement */
@@ -273,17 +280,23 @@ export interface LabResult {
   sampling_event_id: string;
   parameter_id: string;
   result_value: number | null;
+  result_text: string | null;
   unit: string | null;
-  below_detection: boolean;
+  detection_limit: number | null;
+  is_non_detect: boolean | null;
   qualifier: string | null;
-  analysis_date: string | null;
-  hold_time_days: number | null;
-  hold_time_compliant: boolean | null;
-  import_id: string | null;
-  raw_parameter_name: string | null;
-  raw_value: string | null;
-  row_number: number | null;
+  analyzed_date: string | null;
+  method: string | null;
   created_at: string;
+  updated_at: string;
+  quantification_limit: number | null;
+  minimum_level: number | null;
+  method_detection_limit: number | null;
+  hold_time_met: boolean | null;
+  lab_qc_passed: boolean | null;
+  duplicate_rpd: number | null;
+  sample_matrix: string | null;
+  import_id: string | null;
 }
 
 /** Lab result with joined relations for display */

@@ -596,10 +596,12 @@ function LabDataExtractionPanel({
       {entry.status === 'parsed' && can('process') && (
         <div className="mt-4 pt-3 border-t border-white/[0.06]">
           <button
+            type="button"
             onClick={() => importLabData(entry.id)}
             disabled={isImporting(entry.id)}
+            aria-busy={isImporting(entry.id)}
+            aria-label={isImporting(entry.id) ? 'Importing lab data...' : 'Approve and import lab data to database'}
             className="px-4 py-2 text-xs font-medium rounded-lg bg-green-500/15 text-green-300 border border-green-500/20 hover:bg-green-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Import verified lab data into sampling_events and lab_results tables"
           >
             {isImporting(entry.id) ? (
               <>

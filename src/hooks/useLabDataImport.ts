@@ -57,6 +57,9 @@ export function useLabDataImport() {
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
+        // Notify user that import is starting
+        toast.info(`Importing ${entry.file_name}...`);
+
         // Import can take longer than parsing — use 30s timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30_000);

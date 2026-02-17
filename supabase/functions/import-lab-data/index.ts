@@ -73,12 +73,17 @@ interface ExtractedLabData {
 }
 
 // ---------------------------------------------------------------------------
-// Auth verification
+// Auth verification with organization context
 // ---------------------------------------------------------------------------
+interface AuthResult {
+  userId: string;
+  organizationId: string;
+}
+
 async function verifyAuth(
   req: Request,
   supabase: SupabaseClient,
-): Promise<string | null> {
+): Promise<AuthResult | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
@@ -89,7 +94,23 @@ async function verifyAuth(
   } = await supabase.auth.getUser(token);
 
   if (error || !user) return null;
-  return user.id;
+
+  // Get user's organization membership
+  const { data: profile, error: profileError } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile?.organization_id) {
+    console.error("[import-lab-data] User has no organization:", user.id);
+    return null;
+  }
+
+  return {
+    userId: user.id,
+    organizationId: profile.organization_id,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -143,11 +164,12 @@ serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // 1. Verify JWT
-  const userId = await verifyAuth(req, supabase);
-  if (!userId) {
+  // 1. Verify JWT and get user's organization
+  const auth = await verifyAuth(req, supabase);
+  if (!auth) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
+  const { userId, organizationId: userOrgId } = auth;
 
   // 2. Parse request body
   let queueId: string;
@@ -218,6 +240,18 @@ serve(async (req: Request) => {
     );
   }
 
+  // 7. SECURITY: Verify user belongs to queue entry's organization
+  if (organizationId !== userOrgId) {
+    console.error(
+      "[import-lab-data] Org mismatch: user org", userOrgId,
+      "!= queue org", organizationId
+    );
+    return jsonResponse(
+      { success: false, error: "Access denied: queue entry belongs to different organization" },
+      403,
+    );
+  }
+
   const importId = extractedData.import_id;
 
   console.log(
@@ -228,7 +262,7 @@ serve(async (req: Request) => {
   );
 
   try {
-    // 7. Group records by sampling event
+    // 8. Group records by sampling event
     const eventGroups = groupByEvent(extractedData.records);
 
     if (eventGroups.size === 0) {
@@ -243,6 +277,57 @@ serve(async (req: Request) => {
 
     console.log("[import-lab-data] Grouped into", eventGroups.size, "sampling events");
 
+    // 9. SECURITY: Validate all outfalls belong to user's organization
+    const outfallIds = [...new Set(
+      extractedData.records
+        .map(r => r.outfall_db_id)
+        .filter((id): id is string => !!id)
+    )];
+
+    if (outfallIds.length > 0) {
+      // Query outfalls via their permits to verify org ownership
+      const { data: validOutfalls, error: outfallError } = await supabase
+        .from("outfalls")
+        .select("id, npdes_permits!inner(organization_id)")
+        .in("id", outfallIds);
+
+      if (outfallError) {
+        console.error("[import-lab-data] Failed to validate outfalls:", outfallError.message);
+        return jsonResponse(
+          { success: false, error: "Failed to validate outfall ownership" },
+          500,
+        );
+      }
+
+      // Check each outfall belongs to user's org
+      const invalidOutfalls = validOutfalls?.filter(
+        (o: { npdes_permits: { organization_id: string } }) =>
+          o.npdes_permits?.organization_id !== userOrgId
+      );
+
+      if (invalidOutfalls && invalidOutfalls.length > 0) {
+        console.error(
+          "[import-lab-data] Cross-org outfall access attempt:",
+          invalidOutfalls.map((o: { id: string }) => o.id)
+        );
+        return jsonResponse(
+          { success: false, error: "Access denied: some outfalls belong to different organization" },
+          403,
+        );
+      }
+
+      // Verify all referenced outfalls exist
+      const foundIds = new Set(validOutfalls?.map((o: { id: string }) => o.id) ?? []);
+      const missingOutfalls = outfallIds.filter(id => !foundIds.has(id));
+      if (missingOutfalls.length > 0) {
+        console.error("[import-lab-data] Unknown outfall IDs:", missingOutfalls);
+        return jsonResponse(
+          { success: false, error: `Unknown outfall IDs: ${missingOutfalls.join(", ")}` },
+          400,
+        );
+      }
+    }
+
     let totalEventsCreated = 0;
     let totalResultsCreated = 0;
     let skippedNoParameter = 0;
@@ -256,29 +341,47 @@ serve(async (req: Request) => {
       // Get first record for event metadata
       const firstRecord = records[0];
 
-      // Upsert sampling_event
-      const eventData = {
-        organization_id: organizationId,
-        outfall_id: outfallId,
-        sample_date: sampleDate,
-        sample_time: sampleTime || null,
-        sampler_name: firstRecord.sampler || null,
-        latitude: firstRecord.latitude,
-        longitude: firstRecord.longitude,
-        stream_name: firstRecord.stream_name || null,
-        lab_name: firstRecord.lab_name || null,
-        import_id: importId,
-        source_file_id: queueId,
-      };
-
-      const { data: event, error: eventError } = await supabase
+      // Check if sampling_event already exists for this outfall+date+time
+      const { data: existingEvent } = await supabase
         .from("sampling_events")
-        .upsert(eventData, {
-          onConflict: "outfall_id,sample_date,sample_time",
-          ignoreDuplicates: false,
-        })
         .select("id")
-        .single();
+        .eq("outfall_id", outfallId)
+        .eq("sample_date", sampleDate)
+        .eq("sample_time", sampleTime || null)
+        .maybeSingle();
+
+      let event: { id: string } | null = existingEvent;
+
+      if (!existingEvent) {
+        // Create new sampling_event using existing table schema
+        const eventData = {
+          outfall_id: outfallId,
+          sample_date: sampleDate,
+          sample_time: sampleTime || null,
+          lab_name: firstRecord.lab_name || null,
+          status: "imported",
+          metadata: {
+            import_id: importId,
+            source_file_id: queueId,
+            sampler: firstRecord.sampler || null,
+            latitude: firstRecord.latitude,
+            longitude: firstRecord.longitude,
+            stream_name: firstRecord.stream_name || null,
+          },
+        };
+
+        const { data: newEvent, error: eventError } = await supabase
+          .from("sampling_events")
+          .insert(eventData)
+          .select("id")
+          .single();
+
+        if (eventError) {
+          console.error("[import-lab-data] Failed to insert sampling_event:", eventError.message);
+          continue;
+        }
+        event = newEvent;
+      }
 
       if (eventError) {
         console.error("[import-lab-data] Failed to upsert sampling_event:", eventError.message);
@@ -301,33 +404,52 @@ serve(async (req: Request) => {
           sampling_event_id: event.id,
           parameter_id: record.parameter_id,
           result_value: record.value,
+          result_text: record.value_raw || null,
           unit: record.unit || null,
-          below_detection: record.below_detection,
+          is_non_detect: record.below_detection,
           qualifier: record.data_qualifier,
-          analysis_date: record.analysis_date,
-          hold_time_days: record.hold_time_days,
-          hold_time_compliant: record.hold_time_compliant,
+          analyzed_date: record.analysis_date,
+          hold_time_met: record.hold_time_compliant,
           import_id: importId,
-          raw_parameter_name: record.parameter_raw,
-          raw_value: record.value_raw,
-          row_number: record.row_number,
         });
       }
 
       if (resultsToInsert.length > 0) {
-        const { data: results, error: resultsError } = await supabase
+        // Check for existing results to avoid duplicates
+        const parameterIds = resultsToInsert.map(r => r.parameter_id);
+        const { data: existingResults } = await supabase
           .from("lab_results")
-          .upsert(resultsToInsert, {
-            onConflict: "sampling_event_id,parameter_id",
-            ignoreDuplicates: false,
-          })
-          .select("id");
+          .select("parameter_id")
+          .eq("sampling_event_id", event.id)
+          .in("parameter_id", parameterIds);
 
-        if (resultsError) {
-          console.error("[import-lab-data] Failed to insert lab_results:", resultsError.message);
-        } else if (results) {
-          totalResultsCreated += results.length;
-          importedResultIds.push(...results.map((r: { id: string }) => r.id));
+        const existingParamIds = new Set(
+          existingResults?.map((r: { parameter_id: string }) => r.parameter_id) ?? []
+        );
+
+        // Filter out duplicates
+        const newResults = resultsToInsert.filter(
+          r => !existingParamIds.has(r.parameter_id)
+        );
+
+        if (newResults.length > 0) {
+          const { data: results, error: resultsError } = await supabase
+            .from("lab_results")
+            .insert(newResults)
+            .select("id");
+
+          if (resultsError) {
+            console.error("[import-lab-data] Failed to insert lab_results:", resultsError.message);
+          } else if (results) {
+            totalResultsCreated += results.length;
+            importedResultIds.push(...results.map((r: { id: string }) => r.id));
+          }
+        }
+
+        // Count skipped duplicates
+        const skippedDupes = resultsToInsert.length - newResults.length;
+        if (skippedDupes > 0) {
+          console.log(`[import-lab-data] Skipped ${skippedDupes} duplicate results for event ${event.id}`);
         }
       }
     }
@@ -363,21 +485,22 @@ serve(async (req: Request) => {
         .eq("id", importId);
     }
 
-    // 11. Audit log
+    // 12. Audit log — use 'bulk_process' action type which is in the CHECK constraint
     await supabase.from("audit_log").insert({
       user_id: userId,
       organization_id: organizationId,
-      action: "lab_data_imported",
+      action: "bulk_process",
       module: "import",
-      entity_type: "file_processing_queue",
-      entity_id: queueId,
-      details: {
+      table_name: "lab_results",
+      record_id: queueId,
+      description: JSON.stringify({
+        action_type: "lab_data_imported",
         file_name: queueEntry.file_name,
         sampling_events_created: totalEventsCreated,
         lab_results_created: totalResultsCreated,
         skipped_no_parameter: skippedNoParameter,
         import_id: importId,
-      },
+      }),
     });
 
     console.log(
