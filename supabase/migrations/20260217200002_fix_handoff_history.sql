@@ -32,14 +32,14 @@ ALTER TABLE handoff_history ADD COLUMN IF NOT EXISTS ai_extraction JSONB;
 
 -- Generate handoff_id for existing records that don't have one
 -- Format: HO-YYYY-MM-DD-NNN where NNN is sequence within that day
-UPDATE handoff_history
-SET handoff_id = 'HO-' || to_char(created_at, 'YYYY-MM-DD') || '-' ||
-    LPAD(
-      (ROW_NUMBER() OVER (PARTITION BY date_trunc('day', created_at) ORDER BY created_at))::text,
-      3,
-      '0'
-    )
-WHERE handoff_id IS NULL;
+-- Using CTE because window functions aren't allowed directly in UPDATE
+WITH numbered AS (
+  SELECT id, 'HO-' || to_char(created_at, 'YYYY-MM-DD') || '-' ||
+    LPAD((ROW_NUMBER() OVER (PARTITION BY date_trunc('day', created_at) ORDER BY created_at))::text, 3, '0') AS new_id
+  FROM handoff_history
+  WHERE handoff_id IS NULL
+)
+UPDATE handoff_history h SET handoff_id = n.new_id FROM numbered n WHERE h.id = n.id;
 
 -- Create index for querying by handoff_id
 CREATE UNIQUE INDEX IF NOT EXISTS idx_handoff_history_handoff_id

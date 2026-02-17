@@ -20,6 +20,9 @@ const DEFAULT_ACCEPTED_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
   'text/csv',
+  'text/markdown',
+  'text/x-markdown',
+  'text/plain', // Some systems report .md as text/plain
 ];
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -57,7 +60,7 @@ export function HandoffDropZone({
 
       // Check MIME type
       if (!accept.includes(file.type)) {
-        return 'File type not supported. Please upload PNG, JPEG, PDF, or Excel files.';
+        return 'File type not supported. Please upload PNG, JPEG, PDF, Excel, CSV, or Markdown files.';
       }
 
       return null;
@@ -210,7 +213,7 @@ export function HandoffDropZone({
             <span className="text-cyan-400 hover:underline">browse</span>
           </p>
           <p className="text-xs text-text-muted">
-            PNG, JPEG, PDF, Excel up to 25MB
+            PNG, JPEG, PDF, Excel, CSV, Markdown up to 25MB
           </p>
         </div>
       </div>
