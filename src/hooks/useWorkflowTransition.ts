@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useCorrectiveActionsStore } from '@/stores/correctiveActions';
 import {
   WORKFLOW_STEPS,
@@ -36,6 +37,7 @@ interface ValidationResult {
 export function useWorkflowTransition() {
   const { user } = useAuth();
   const { log } = useAuditLog();
+  const { can } = usePermissions();
   const { actions, upsertAction } = useCorrectiveActionsStore();
 
   // -------------------------------------------------------------------------
@@ -83,6 +85,11 @@ export function useWorkflowTransition() {
   // -------------------------------------------------------------------------
   const advanceStep = useCallback(
     async (caId: string): Promise<{ error: string | null }> => {
+      // RBAC check: require ca_advance_workflow permission
+      if (!can('ca_advance_workflow')) {
+        return { error: 'You do not have permission to advance workflow steps' };
+      }
+
       const ca = actions.find((a) => a.id === caId);
       if (!ca) {
         return { error: 'Corrective action not found' };
@@ -146,7 +153,7 @@ export function useWorkflowTransition() {
 
       return { error: null };
     },
-    [actions, validateStep, upsertAction, log]
+    [actions, validateStep, upsertAction, log, can]
   );
 
   // -------------------------------------------------------------------------
@@ -154,6 +161,11 @@ export function useWorkflowTransition() {
   // -------------------------------------------------------------------------
   const closeAction = useCallback(
     async (caId: string): Promise<{ error: string | null }> => {
+      // RBAC check: require ca_advance_workflow permission (closing is final step advancement)
+      if (!can('ca_advance_workflow')) {
+        return { error: 'You do not have permission to close corrective actions' };
+      }
+
       const ca = actions.find((a) => a.id === caId);
       if (!ca) {
         return { error: 'Corrective action not found' };
@@ -208,7 +220,7 @@ export function useWorkflowTransition() {
 
       return { error: null };
     },
-    [actions, validateStep, upsertAction, user, log]
+    [actions, validateStep, upsertAction, user, log, can]
   );
 
   // -------------------------------------------------------------------------
@@ -216,6 +228,11 @@ export function useWorkflowTransition() {
   // -------------------------------------------------------------------------
   const reopenAction = useCallback(
     async (caId: string, reason: string): Promise<{ error: string | null }> => {
+      // RBAC check: require ca_reopen permission
+      if (!can('ca_reopen')) {
+        return { error: 'You do not have permission to reopen corrective actions' };
+      }
+
       const ca = actions.find((a) => a.id === caId);
       if (!ca) {
         return { error: 'Corrective action not found' };
@@ -285,7 +302,7 @@ export function useWorkflowTransition() {
 
       return { error: null };
     },
-    [actions, upsertAction, log]
+    [actions, upsertAction, log, can]
   );
 
   // -------------------------------------------------------------------------
@@ -298,6 +315,12 @@ export function useWorkflowTransition() {
     ): Promise<{ error: string | null }> => {
       if (!user) {
         return { error: 'Not authenticated' };
+      }
+
+      // RBAC check: require appropriate signature permission based on type
+      const requiredPermission = type === 'responsible' ? 'ca_sign_responsible' : 'ca_sign_approver';
+      if (!can(requiredPermission)) {
+        return { error: `You do not have permission to sign as ${type}` };
       }
 
       // Issue #1 Fix: Prevent same user from signing both roles
@@ -350,7 +373,7 @@ export function useWorkflowTransition() {
 
       return { error: null };
     },
-    [actions, user, upsertAction, log]
+    [actions, user, upsertAction, log, can]
   );
 
   // -------------------------------------------------------------------------

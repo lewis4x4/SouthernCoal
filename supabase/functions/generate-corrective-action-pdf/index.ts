@@ -453,9 +453,10 @@ serve(async (req: Request) => {
 
   // Issue #2 Fix: Verify user has role permission to generate PDFs
   // Using service role client since user_role_assignments may not have SELECT RLS for own rows
+  // Note: user_role_assignments has role_id FK, so we JOIN to roles table for name
   const { data: roleData, error: roleError } = await supabase
     .from("user_role_assignments")
-    .select("role")
+    .select("roles(name)")
     .eq("user_id", userId)
     .eq("organization_id", orgId);
 
@@ -476,7 +477,11 @@ serve(async (req: Request) => {
     "environmental_manager",
     "site_manager",
   ];
-  const userRoles = roleData?.map((r) => r.role) ?? [];
+  // Extract role names from JOINed data, filtering out nulls
+  const userRoles = roleData?.flatMap((r) => {
+    const roleName = (r as { roles?: { name?: string } })?.roles?.name;
+    return roleName ? [roleName] : [];
+  }) ?? [];
   const hasPermission = userRoles.some((role) => allowedRoles.includes(role));
 
   if (!hasPermission) {
