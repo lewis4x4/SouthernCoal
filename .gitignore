@@ -18,3 +18,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Deno
+deno.lock
+
+# Supabase
+supabase/.temp/
