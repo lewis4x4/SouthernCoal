@@ -168,7 +168,11 @@ export function CorrectiveActionList({ actions, loading }: Props) {
                       overdue && 'bg-red-500/[0.03] border-l-2 border-l-red-500/40'
                     )}
                   >
-                    <td className="px-4 py-3 font-mono text-sm text-text-secondary">
+                    {/* Issue #17 Fix: Add title for full ID tooltip on hover */}
+                    <td
+                      className="px-4 py-3 font-mono text-sm text-text-secondary"
+                      title={ca.id}
+                    >
                       {ca.id.slice(0, 8).toUpperCase()}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-primary max-w-[250px] truncate">

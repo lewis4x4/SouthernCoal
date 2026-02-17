@@ -34,7 +34,9 @@ export function CorrectiveActionSignature({
       setPassword('');
       setError(null);
       // Focus input after modal animates
-      setTimeout(() => inputRef.current?.focus(), 100);
+      // Issue #18 Fix: Store timer ID for cleanup
+      const timerId = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(timerId);
     }
   }, [open]);
 
