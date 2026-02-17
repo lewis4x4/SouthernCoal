@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, getFreshToken } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useRoadmapTasks } from '@/hooks/useRoadmapTasks';
 import {
@@ -16,6 +17,7 @@ import type {
   PriorityTask,
   WhatsNextQueue,
   HandoffEvidence,
+  AIExtractionResult,
 } from '@/types/handoff';
 import type { RoadmapTask, RoadmapStatus } from '@/types/roadmap';
 
@@ -29,6 +31,7 @@ import type { RoadmapTask, RoadmapStatus } from '@/types/roadmap';
 // ---------------------------------------------------------------------------
 export function useHandoffProcessing() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { log } = useAuditLog();
   const { tasks, updateStatus, refresh } = useRoadmapTasks();
   const {
@@ -42,6 +45,80 @@ export function useHandoffProcessing() {
     addToHistory,
   } = useHandoffStore();
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  /**
+   * Upload a file attachment to the handoff-attachments bucket
+   * Uses org-scoped path: {org_id}/{YYYY-MM-DD}/{timestamp}_{filename}
+   */
+  const uploadAttachment = useCallback(
+    async (file: File): Promise<string> => {
+      if (!user) {
+        throw new Error('Must be logged in to upload');
+      }
+
+      if (!profile?.organization_id) {
+        throw new Error('User must belong to an organization to upload');
+      }
+
+      setIsUploading(true);
+
+      try {
+        const dateStr = new Date().toISOString().split('T')[0];
+        const fileName = `${profile.organization_id}/${dateStr}/${Date.now()}_${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('handoff-attachments')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(`Upload failed: ${uploadError.message}`);
+        }
+
+        log('handoff_attachment_uploaded', {
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          storage_path: fileName,
+        });
+
+        return fileName;
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [user, profile, log]
+  );
+
+  /**
+   * Process handoff with AI when file attached
+   */
+  const processWithAI = useCallback(
+    async (input: HandoffInput): Promise<AIExtractionResult> => {
+      const token = await getFreshToken();
+
+      const { data, error } = await supabase.functions.invoke('process-handoff', {
+        body: {
+          handoff_input_id: input.id,
+          attachment_path: input.attachment_path,
+          raw_content: input.raw_content,
+          file_mime_type: input.file_mime_type,
+        },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (error) {
+        throw new Error(`AI processing failed: ${error.message}`);
+      }
+
+      return data as AIExtractionResult;
+    },
+    []
+  );
+
   /**
    * Process raw input through AI extraction
    */
@@ -51,9 +128,44 @@ export function useHandoffProcessing() {
       setError(null);
 
       try {
-        // For MVP, we'll simulate AI extraction with a structured approach
-        // In production, this would call a Claude API Edge Function
-        const result = await extractTaskUpdates(input, tasks);
+        let result: HandoffExtractionResult;
+
+        // Use AI processing for file attachments
+        if (input.attachment_path) {
+          const aiResult = await processWithAI(input);
+
+          if (!aiResult.success) {
+            throw new Error(aiResult.error || 'AI processing failed');
+          }
+
+          // Convert AI result to HandoffExtractionResult format
+          result = {
+            input_id: input.id,
+            task_updates: aiResult.task_matches.map((match) => ({
+              task_id: match.task_number,
+              db_id: match.task_id,
+              new_status: (match.proposed_status as RoadmapStatus) ?? 'in_progress',
+              extracted_answer: match.matched_text,
+              details: match.proposed_notes,
+              confidence: match.match_confidence >= 0.8 ? 'high' : match.match_confidence >= 0.5 ? 'medium' : 'low',
+              extraction_notes: match.reasoning,
+            })),
+            new_questions: [],
+            resolved_questions: [],
+            still_outstanding: [],
+            summary: `AI extracted ${aiResult.task_matches.length} task match(es) from ${input.file_name ?? 'file'}`,
+            raw_ai_response: aiResult.extracted_text,
+            processed_at: new Date().toISOString(),
+          };
+
+          toast.success(`AI found ${aiResult.task_matches.length} task match(es)`, {
+            description: `Processed in ${aiResult.processing_time_ms}ms`,
+          });
+        } else {
+          // For text-only input, use pattern matching
+          result = await extractTaskUpdates(input, tasks);
+          toast.success(`Extracted ${result.task_updates.length} task update(s)`);
+        }
 
         setExtractionResult(result);
         addToHistory(input);
@@ -64,16 +176,16 @@ export function useHandoffProcessing() {
           source_type: input.source_type,
           source_from: input.source_from,
           task_updates_count: result.task_updates.length,
+          has_attachment: !!input.attachment_path,
         });
-
-        toast.success(`Extracted ${result.task_updates.length} task update(s)`);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Extraction failed';
         setError(message);
+        setStatus('error');
         toast.error(message);
       }
     },
-    [tasks, setStatus, setError, setExtractionResult, addToHistory, log]
+    [tasks, setStatus, setError, setExtractionResult, addToHistory, log, processWithAI]
   );
 
   /**
@@ -301,6 +413,8 @@ export function useHandoffProcessing() {
     processHandoff,
     applyUpdates,
     recalculatePriorityQueue,
+    uploadAttachment,
+    isUploading,
   };
 }
 

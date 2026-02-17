@@ -2,7 +2,7 @@ import type { RoadmapStatus, OwnerType } from './roadmap';
 
 // ─── Source Types ────────────────────────────────────────────────────────────
 
-export type HandoffSourceType = 'email' | 'text' | 'call' | 'document' | 'paste';
+export type HandoffSourceType = 'email' | 'text' | 'call' | 'document' | 'paste' | 'file';
 
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
@@ -14,6 +14,10 @@ export interface HandoffInput {
   source_from?: string;
   source_reference?: string;
   created_at: string;
+  // File attachment fields
+  attachment_path?: string | null;
+  file_name?: string | null;
+  file_mime_type?: string | null;
 }
 
 // ─── Extraction Result Types ─────────────────────────────────────────────────
@@ -164,4 +168,61 @@ export interface ResolvedTask {
   source_from: string;
   source_reference: string;
   answer?: string;
+}
+
+// ─── AI Task Matching Types ─────────────────────────────────────────────────
+
+export interface AITaskMatch {
+  task_id: string;
+  task_number: string;
+  task_title: string;
+  match_confidence: number;
+  proposed_status?: RoadmapStatus;
+  proposed_notes?: string;
+  matched_text: string;
+  requires_review: boolean;
+  reasoning?: string;
+}
+
+export interface AIExtractionResult {
+  success: boolean;
+  handoff_id?: string;
+  extracted_text: string;
+  task_matches: AITaskMatch[];
+  unmatched_items: string[];
+  extraction_confidence: number;
+  ai_reasoning?: string;
+  processing_time_ms: number;
+  error?: string;
+}
+
+// ─── Handoff History Types ──────────────────────────────────────────────────
+
+export type HandoffHistoryStatus = 'pending_review' | 'approved' | 'rejected' | 'partial';
+
+export interface HandoffHistoryRecord {
+  id: string;
+  user_id: string;
+  organization_id?: string;
+  input_source_type: HandoffSourceType;
+  raw_content?: string;
+  attachment_path?: string;
+  file_name?: string;
+  file_mime_type?: string;
+  source_date?: string;
+  extracted_text?: string;
+  task_matches: AITaskMatch[];
+  unmatched_items: string[];
+  match_count: number;
+  extraction_confidence?: number;
+  ai_reasoning?: string;
+  processing_time_ms?: number;
+  status: HandoffHistoryStatus;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  review_notes?: string;
+  applied_task_ids: string[];
+  applied_at?: string;
+  created_at: string;
+  updated_at: string;
 }

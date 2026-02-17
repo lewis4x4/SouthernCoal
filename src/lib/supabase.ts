@@ -16,3 +16,19 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
   },
 });
+
+/**
+ * Get a fresh JWT token for Edge Function calls.
+ * Refreshes the session if needed before returning the access token.
+ */
+export async function getFreshToken(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error || !data.session) {
+    // Redirect to login if session is invalid
+    window.location.href = '/login?reason=session_expired';
+    throw new Error('No valid session');
+  }
+
+  return data.session.access_token;
+}

@@ -12,6 +12,7 @@ import {
 import { useHandoffStore } from '@/stores/handoff';
 import { useHandoffProcessing } from '@/hooks/useHandoffProcessing';
 import { GlassButton } from '@/components/ui/GlassButton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { STATUS_COLORS, STATUS_LABELS } from '@/types/roadmap';
 import type { ExtractionConfidence } from '@/types/handoff';
 
@@ -40,6 +41,8 @@ export function HandoffPreviewPanel() {
 
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [confirmApplyAll, setConfirmApplyAll] = useState(false);
+  const [confirmApplySelected, setConfirmApplySelected] = useState(false);
 
   const handleToggleSelect = useCallback((index: number) => {
     setSelectedIndices((prev) => {
@@ -67,6 +70,7 @@ export function HandoffPreviewPanel() {
 
   const handleApplySelected = useCallback(async () => {
     if (!extractionResult || !currentInput) return;
+    setConfirmApplySelected(false);
     await applyUpdates(
       extractionResult.task_updates,
       currentInput,
@@ -78,6 +82,7 @@ export function HandoffPreviewPanel() {
 
   const handleApplyAll = useCallback(async () => {
     if (!extractionResult || !currentInput) return;
+    setConfirmApplyAll(false);
     await applyUpdates(extractionResult.task_updates, currentInput);
     closePreview();
     setExtractionResult(null);
@@ -327,7 +332,7 @@ export function HandoffPreviewPanel() {
           </button>
           <div className="flex gap-3">
             <GlassButton
-              onClick={handleApplySelected}
+              onClick={() => setConfirmApplySelected(true)}
               disabled={selectedIndices.size === 0 || isApplying}
               variant="ghost"
             >
@@ -335,7 +340,7 @@ export function HandoffPreviewPanel() {
               Apply Selected ({selectedIndices.size})
             </GlassButton>
             <GlassButton
-              onClick={handleApplyAll}
+              onClick={() => setConfirmApplyAll(true)}
               disabled={task_updates.length === 0 || isApplying}
               variant="primary"
             >
@@ -344,6 +349,28 @@ export function HandoffPreviewPanel() {
             </GlassButton>
           </div>
         </div>
+
+        {/* Confirmation Dialogs */}
+        <ConfirmDialog
+          open={confirmApplySelected}
+          title="Apply Selected Updates"
+          message={`This will update ${selectedIndices.size} selected roadmap task(s). This action cannot be undone. Are you sure you want to proceed?`}
+          confirmLabel="Apply Selected"
+          cancelLabel="Cancel"
+          variant="warning"
+          onConfirm={handleApplySelected}
+          onCancel={() => setConfirmApplySelected(false)}
+        />
+        <ConfirmDialog
+          open={confirmApplyAll}
+          title="Apply All Updates"
+          message={`This will update all ${task_updates.length} roadmap task(s) from this extraction. This action cannot be undone. Are you sure you want to proceed?`}
+          confirmLabel="Apply All"
+          cancelLabel="Cancel"
+          variant="warning"
+          onConfirm={handleApplyAll}
+          onCancel={() => setConfirmApplyAll(false)}
+        />
       </motion.div>
     </AnimatePresence>
   );

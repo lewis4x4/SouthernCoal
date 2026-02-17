@@ -55,7 +55,12 @@ type AuditAction =
   | 'handoff_conflict_resolved'
   | 'handoff_rollback'
   | 'handoff_discarded'
-  | 'priority_queue_generated';
+  | 'handoff_rejected'
+  | 'handoff_single_match_applied'
+  | 'handoff_attachment_uploaded'
+  | 'priority_queue_generated'
+  // Reporting
+  | 'roadmap_report_exported';
 
 export type { AuditAction };
 

@@ -285,6 +285,7 @@ export const HANDOFF_SOURCE_LABELS: Record<string, string> = {
   call: 'Call Notes',
   document: 'Document',
   paste: 'Pasted Content',
+  file: 'File Upload',
 };
 
 export const HANDOFF_SOURCE_ICONS: Record<string, string> = {
@@ -293,4 +294,5 @@ export const HANDOFF_SOURCE_ICONS: Record<string, string> = {
   call: 'Phone',
   document: 'FileText',
   paste: 'Clipboard',
+  file: 'Upload',
 };

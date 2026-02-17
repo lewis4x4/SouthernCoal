@@ -12,6 +12,7 @@ import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvi
 import {
   HandoffInputPanel,
   HandoffPreviewPanel,
+  HandoffHistoryPanel,
   WhatsNextQueue,
   PhaseProgressSnapshot,
 } from '@/components/roadmap';
@@ -692,8 +693,11 @@ export function RoadmapPage() {
       )}
 
       {activeView === 'handoff' && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
-          <HandoffInputPanel />
+        <div className="space-y-6">
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
+            <HandoffInputPanel />
+          </div>
+          <HandoffHistoryPanel />
         </div>
       )}
 
