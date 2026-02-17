@@ -341,8 +341,11 @@ function parseCSVLine(line: string): string[] {
 function parseNetDmrCsv(
   content: string,
   fileName: string,
-  storetToParameterId: Map<string, string>,
+  _storetToParameterId: Map<string, string>,
 ): { rows: NetDmrRow[]; warnings: string[] } {
+  // Reserved for future STORET code lookup implementation
+  void _storetToParameterId;
+
   const warnings: string[] = [];
   const rows: NetDmrRow[] = [];
 

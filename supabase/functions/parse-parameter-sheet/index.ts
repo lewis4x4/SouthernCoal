@@ -16,6 +16,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_LIMITS_IN_EXTRACTED = 10_000; // Cap limits stored in extracted_data JSONB
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for state validation
 const VALID_STATES = ["AL", "KY", "TN", "VA", "WV"];
 
 // WV permit number pattern: WV followed by 7 digits
@@ -89,11 +90,7 @@ interface ExtractedParameterSheet {
   limits_truncated: boolean;
 }
 
-interface ParameterAlias {
-  alias: string;
-  parameter_id: string;
-  parameter_name: string;
-}
+// ParameterAlias type removed - using inline types in loadParameterAliases
 
 // ---------------------------------------------------------------------------
 // Utility Functions

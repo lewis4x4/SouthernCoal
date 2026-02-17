@@ -32,7 +32,6 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
         setIsDragging(true);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -44,7 +43,6 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
         setIsDragging(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -104,7 +102,6 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
         toast.success(`${staged.length} file${staged.length > 1 ? 's' : ''} staged for upload.`);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [addFiles, classify, can],
   );
 

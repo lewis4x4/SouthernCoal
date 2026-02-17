@@ -153,7 +153,7 @@ export function usePermissions() {
     }
 
     fetchAssignments();
-    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, NOT user object (token refresh creates new reference)
   }, [user?.id]);
 
   /**

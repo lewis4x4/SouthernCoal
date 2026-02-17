@@ -202,6 +202,7 @@ export function useCorrectiveActions() {
     if (user) {
       fetchActions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to user.id, not user object
   }, [user?.id, fetchActions]);
 
   // Issue #13 Fix: Use useMemo for channel name - recalculates on user change (logout/login)
@@ -246,6 +247,7 @@ export function useCorrectiveActions() {
         supabase.removeChannel(channel);
       });
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to user.id, not user object
   }, [user?.id, channelName]); // Issue #13: Include channelName in deps
 
   // -------------------------------------------------------------------------

@@ -82,7 +82,7 @@ export function useRealtimeQueue() {
     console.log('[queue] initial fetch:', { count: allEntries.length });
     setEntries(allEntries);
     initialLoadDone.current = true;
-    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
   }, [user?.id, setEntries]);
 
   /**
@@ -109,7 +109,7 @@ export function useRealtimeQueue() {
         upsertEntry(entry);
       }
     }
-    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
   }, [user?.id, upsertEntry]);
 
   // Initial fetch — full paginated load once
@@ -151,7 +151,7 @@ export function useRealtimeQueue() {
     return () => {
       supabase.removeChannel(channel);
     };
-    // Depend on user.id, NOT user object — token refresh creates new reference but same user
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
   }, [user?.id, upsertEntry]);
 
   // Heartbeat: lightweight fetch for active entries only (every 2 min)

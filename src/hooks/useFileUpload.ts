@@ -302,6 +302,7 @@ export function useFileUpload() {
         toast.error(`Failed to upload ${stagedFile.fileName}: ${message}`);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- computeHash is stable (uses getWorker)
     [profile, getWorker],
   );
 

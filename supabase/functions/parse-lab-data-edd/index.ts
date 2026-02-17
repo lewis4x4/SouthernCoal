@@ -398,6 +398,7 @@ async function saveOutfallAlias(
   matchMethod: "exact" | "zero_strip" | "digits_only",
 ): Promise<void> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
     await (supabase as any)
       .from("outfall_aliases")
       .upsert({
@@ -420,19 +421,7 @@ async function saveOutfallAlias(
 // ---------------------------------------------------------------------------
 // v5: Data imports tracking
 // ---------------------------------------------------------------------------
-interface DataImportRecord {
-  id: string;
-  organization_id: string;
-  file_name: string;
-  file_category: string;
-  source_system: string;
-  import_status: string;
-  import_started_at: string;
-  imported_by: string;
-  record_count: number;
-  import_metadata: Record<string, unknown>;
-  can_rollback: boolean;
-}
+// DataImportRecord type removed - using inline types for upsert
 
 /**
  * Create a data_imports record to track this parsing operation.
@@ -446,6 +435,7 @@ async function createDataImportRecord(
   queueId: string,
 ): Promise<string | null> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
     const { data, error } = await (supabase as any)
       .from("data_imports")
       .insert({
@@ -490,6 +480,7 @@ async function updateDataImportRecord(
   metadata: Record<string, unknown>,
 ): Promise<void> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
     await (supabase as any)
       .from("data_imports")
       .update({
@@ -507,13 +498,7 @@ async function updateDataImportRecord(
 // ---------------------------------------------------------------------------
 // v5: Duplicate detection
 // ---------------------------------------------------------------------------
-interface DuplicateKey {
-  permit_number: string;
-  outfall_id: string;
-  sample_date: string;
-  sample_time: string | null;
-  parameter_canonical: string;
-}
+// DuplicateKey type removed - using string composite keys directly
 
 /**
  * Load existing lab results to detect duplicates.
@@ -537,7 +522,6 @@ async function loadExistingLabResults(
 
     if (!permits || permits.length === 0) return duplicateKeys;
 
-    const permitMap = new Map(permits.map((p: { id: string; permit_number: string }) => [p.permit_number, p.id]));
     const permitIds = permits.map((p: { id: string }) => p.id);
 
     // Get sampling events in date range
@@ -557,7 +541,7 @@ async function loadExistingLabResults(
 
     // Filter to events for our permits
     const relevantEvents = events.filter((e: { outfalls?: { permit_id: string } }) => {
-      // @ts-ignore
+      // @ts-expect-error - Supabase join type inference
       return e.outfalls?.permit_id && permitIds.includes(e.outfalls.permit_id);
     });
 
@@ -1053,6 +1037,7 @@ async function markProcessing(
   queueId: string,
 ): Promise<void> {
   const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
   const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update({
@@ -1099,6 +1084,7 @@ async function markParsed(
     console.log("[parse-lab-data-edd] Auto-filled state_code:", singleState);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
   const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update(updateData)
@@ -1115,6 +1101,7 @@ async function markFailed(
   errors: string[],
 ): Promise<void> {
   const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deno Supabase client type
   const { error } = await (supabase as any)
     .from("file_processing_queue")
     .update({
