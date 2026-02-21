@@ -18,17 +18,31 @@ export function useFtsData() {
     if (!error && data) setUploads(data);
   }, [setUploads]);
 
-  // ── Fetch violations with filters ──
+  // ── Fetch violations with filters (paginated — Supabase caps at 1000 rows per request) ──
   const fetchViolations = useCallback(async () => {
-    let query = supabase.from('fts_violations').select('*');
-    if (filters.year) query = query.eq('monitoring_year', filters.year);
-    if (filters.quarter) query = query.eq('monitoring_quarter', filters.quarter);
-    if (filters.state) query = query.eq('state', filters.state);
-    if (filters.dnrSearch) query = query.ilike('dnr_number', `%${filters.dnrSearch}%`);
-    query = query.order('monitoring_year', { ascending: true }).order('monitoring_month', { ascending: true }).limit(5000);
+    const PAGE_SIZE = 1000;
+    const allData: FtsViolation[] = [];
+    let from = 0;
 
-    const { data, error } = await query.returns<FtsViolation[]>();
-    if (!error && data) setViolations(data);
+    while (true) {
+      let query = supabase.from('fts_violations').select('*');
+      if (filters.year) query = query.eq('monitoring_year', filters.year);
+      if (filters.quarter) query = query.eq('monitoring_quarter', filters.quarter);
+      if (filters.state) query = query.eq('state', filters.state);
+      if (filters.dnrSearch) query = query.ilike('dnr_number', `%${filters.dnrSearch}%`);
+      query = query
+        .order('monitoring_year', { ascending: true })
+        .order('monitoring_month', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      const { data, error } = await query.returns<FtsViolation[]>();
+      if (error || !data || data.length === 0) break;
+      allData.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    setViolations(allData);
   }, [filters, setViolations]);
 
   // ── Fetch monthly totals ──
@@ -81,29 +95,34 @@ export function useFtsData() {
   }, [upsertUpload, fetchViolations, fetchMonthlyTotals]);
 
   // ── Compute KPIs ──
-  // KPIs operate on the already-filtered violations array (year/quarter/state from store)
+  // Financial KPIs use monthlyTotals (small dataset, no row-limit issues).
+  // Violation-level KPIs use the paginated violations array.
   const kpis = useMemo((): FtsKpis => {
-    // Determine year context: use the filter year, or the latest year in the data
-    const years = [...new Set(violations.map((v) => v.monitoring_year))].sort((a, b) => b - a);
-    const effectiveYear = filters.year ?? years[0] ?? new Date().getFullYear();
+    // Determine year context from monthly totals (always complete)
+    const mtYears = [...new Set(monthlyTotals.map((t) => t.monitoring_year))].sort((a, b) => b - a);
+    const effectiveYear = filters.year ?? mtYears[0] ?? new Date().getFullYear();
 
-    // Determine the quarter context from filtered data or current date
-    const quarters = [...new Set(violations.map((v) => v.monitoring_quarter))].sort((a, b) => b - a);
-    const latestQuarter = quarters[0] ?? Math.ceil((new Date().getMonth() + 1) / 3);
+    // Determine latest quarter from monthly totals
+    const mtQuarters = [...new Set(
+      monthlyTotals
+        .filter((t) => t.monitoring_year === effectiveYear)
+        .map((t) => t.monitoring_quarter),
+    )].sort((a, b) => b - a);
+    const latestQuarter = filters.quarter ?? mtQuarters[0] ?? Math.ceil((new Date().getMonth() + 1) / 3);
 
-    const totalYtd = violations
-      .filter((v) => v.monitoring_year === effectiveYear)
-      .reduce((s, v) => s + v.penalty_amount, 0);
+    // ── Financial KPIs from monthlyTotals (guaranteed complete) ──
+    const ytdTotals = monthlyTotals.filter(
+      (t) => t.monitoring_year === effectiveYear && t.state !== 'TN',
+    );
+    const totalYtd = ytdTotals.reduce((s, t) => s + t.total_penalties, 0);
 
-    const qViolations = filters.quarter
-      ? violations
-      : violations.filter((v) => v.monitoring_quarter === latestQuarter);
-    const currentQuarter = qViolations.reduce((s, v) => s + v.penalty_amount, 0);
+    const qTotals = ytdTotals.filter((t) => t.monitoring_quarter === latestQuarter);
+    const currentQuarterAmt = qTotals.reduce((s, t) => s + t.total_penalties, 0);
 
-    // Worst state this quarter
+    // Worst state (from quarter totals)
     const stateMap = new Map<string, number>();
-    for (const v of qViolations) {
-      stateMap.set(v.state, (stateMap.get(v.state) ?? 0) + v.penalty_amount);
+    for (const t of qTotals) {
+      stateMap.set(t.state, (stateMap.get(t.state) ?? 0) + t.total_penalties);
     }
     let worstState: FtsKpis['worstState'] = null;
     let maxAmt = 0;
@@ -113,14 +132,16 @@ export function useFtsData() {
         worstState = {
           state,
           amount,
-          percentage: currentQuarter > 0 ? (amount / currentQuarter) * 100 : 0,
+          percentage: currentQuarterAmt > 0 ? (amount / currentQuarterAmt) * 100 : 0,
         };
       }
     }
 
-    // Violation counts
+    // ── Violation-level KPIs from paginated violations array ──
     const cat1Count = violations.filter((v) => v.penalty_category === 1).length;
     const cat2Count = violations.filter((v) => v.penalty_category === 2).length;
+    const total = violations.length;
+    const repeatOffenderRate = total > 0 ? (cat2Count / total) * 100 : 0;
 
     // Most penalized permit
     const permitMap = new Map<string, { state: string; amount: number; count: number }>();
@@ -139,10 +160,6 @@ export function useFtsData() {
         mostPenalized = { dnr: key.split('::')[1] ?? key, ...val };
       }
     }
-
-    // Repeat offender rate (Cat 2 / total)
-    const total = violations.length;
-    const repeatOffenderRate = total > 0 ? (cat2Count / total) * 100 : 0;
 
     // MoM change from monthlyTotals
     const months = [...new Set(monthlyTotals.map((t) => `${t.monitoring_year}-${String(t.monitoring_month).padStart(2, '0')}`))].sort().reverse();
@@ -169,7 +186,7 @@ export function useFtsData() {
     return {
       totalYtd,
       ytdYear: effectiveYear,
-      currentQuarter,
+      currentQuarter: currentQuarterAmt,
       currentQuarterNum: latestQuarter,
       worstState,
       violationCount: total,
@@ -179,7 +196,7 @@ export function useFtsData() {
       repeatOffenderRate,
       momChange,
     };
-  }, [violations, monthlyTotals, filters.quarter]);
+  }, [violations, monthlyTotals, filters.year, filters.quarter]);
 
   return {
     uploads,
