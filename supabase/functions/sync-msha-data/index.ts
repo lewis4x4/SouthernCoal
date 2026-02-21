@@ -79,10 +79,10 @@ serve(async (req) => {
     await supabase.from("audit_log").insert({
       action: "external_sync_failed",
       module: "external_data",
-      metadata: {
+      description: JSON.stringify({
         source: "msha",
         reason: "MSHA_MINE_ID_MAP env var not set. Contact admin to configure mine IDs.",
-      },
+      }),
     });
 
     return new Response(

@@ -1,0 +1,204 @@
+State,NPDES_ID,Has_EPA_Data,Facility_Name,Permit_Status,Compliance_Status,DMR_Records,Violations,Issue
+AL,AL0062693,YES,MINE NO. 2,Admin Continued,No Violation Identified,593,48,
+AL,AL0072991,YES,HENAGAR MINE,Terminated,Terminated Permit,0,0,
+AL,AL0073920,YES,MINE NO. 1,Terminated,Terminated Permit,0,0,
+AL,AL0073962,YES,GLADE PREPARATION PLANT,Effective,No Violation Identified,924,72,
+AL,AL0078026,YES,MINE NO. 3,Terminated,Terminated Permit,0,0,
+AL,AL0078867,YES,POORE MINE,Admin Continued,No Violation Identified,0,0,
+AL,AL0080071,YES,CRANE CENTRAL MINE,Effective,No Violation Identified,778,92,
+KY,KY0094510,YES,KENTUCKY FUEL CORP (860-8020),Effective,Violation Identified,900,188,
+KY,KY0106151,YES,A & G COAL CORP (867-0498),Effective,SNC,3167,2933,
+KY,KYGE40000,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40094,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40246,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40398,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40646,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40649,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40652,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40659,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40670,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40695,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40710,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40714,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40721,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40722,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40725,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40740,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40759,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40840,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40853,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40869,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40874,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40875,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40894,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40899,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40904,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40923,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40925,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40958,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40964,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40967,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40976,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40977,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40979,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40992,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40998,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE40999,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE41143,NO,,,,0,0,General permit - not tracked individually in ECHO
+KY,KYGE41174,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TN0043222,YES,BALDWIN LOADOUT TIPPLE,Expired,No Violation Identified,376,17,
+TN,TN0046647,YES,S & H MINING INC. - DEEP MINE 2,Terminated,No Violation Identified,0,0,
+TN,TN0049964,YES,PREMIUM COAL - BALDWIN PLANT/REFUSE IMPOUNDMENT 3,Effective,SNC,1716,56,
+TN,TN0051918,YES,PREMIUM COAL COMPANY INC.,Expired,Violation Identified,1042,5,
+TN,TN0052531,YES,S & H MINING INC.,Terminated,Terminated Permit,0,0,
+TN,TN0052965,YES,PREMIUM COAL COMPANY INC,Terminated,Violation Identified,0,0,
+TN,TN0063592,YES,PREMIUM COAL - REFUSE AREA 2,Terminated,No Violation Identified,0,0,
+TN,TN0069159,YES,PREMIUM COAL MINE 5A,Terminated,Violation Identified,0,0,
+TN,TN0069175,YES,NATIONAL COAL LLC - MINE 3B,Effective,SNC,738,27,
+TN,TN0071307,YES,PREMIUM COAL - AREA #18,Terminated,No Violation Identified,0,0,
+TN,TN0071803,YES,NATIONAL COAL LLC,Terminated,Unknown,0,0,
+TN,TN0072168,YES,S & H MINING INC. - DEEP MINE 11,Expired,No Violation Identified,608,0,
+TN,TN0072419,YES,S & H MINING INC. - DEEP MINE 12,Terminated,No Violation Identified,0,0,
+TN,TN0072729,YES,NATIONAL COAL LLC,Terminated,No Violation Identified,0,0,
+TN,TN0076180,YES,NATIONAL COAL LLC - DEEP MINE #10,Terminated,No Violation Identified,0,0,
+TN,TN0076368,YES,PREMIUM COAL - REFUSE AREA #3,Terminated,No Violation Identified,0,0,
+TN,TN0076376,YES,PREMIUM COAL/NATIONAL COAL - MINE 7,Expired,SNC,587,42,
+TN,TN0079120,YES,NATIONAL COAL LLC,Terminated,Terminated Permit,0,0,
+TN,TN0079294,YES,PREMIUM COAL - MINE 3,Effective,SNC,360,0,
+TN,TN0079308,YES,PREMIUM COAL - MINE 4,Terminated,Terminated Permit,0,0,
+TN,TN0079502,YES,NATIONAL COAL LLC - MINE 14,Terminated,Terminated Permit,136,0,
+TN,TN0079529,YES,PREMIUM COAL - AREA #19,Terminated,No Violation Identified,0,0,
+TN,TN0079561,YES,DEEP MINE 15,Expired,No Violation Identified,16,0,
+TN,TN0079570,YES,PREMIUM COAL - AREA #20,Terminated,No Violation Identified,0,0,
+TN,TNR059841,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059842,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059843,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059844,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059845,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059846,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059847,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059848,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059849,NO,,,,0,0,General permit - not tracked individually in ECHO
+TN,TNR059850,NO,,,,0,0,General permit - not tracked individually in ECHO
+VA,VA0082058,NO,,,,0,0,Wrong match - Washington District Elementary (school) not SCC
+VA,VA0080877,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081554,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081742,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081800,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081824,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081905,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081914,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081916,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081917,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081918,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081949,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081953,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081954,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081975,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081991,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0081992,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082003,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082028,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082042,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082047,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082048,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082051,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082052,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082053,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082054,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082057,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082059,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082066,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082068,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082069,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082070,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082071,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082072,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082073,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082074,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082075,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082076,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082077,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082078,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082079,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA0082094,NO,,,,0,0,DMLR permit ID - need federal NPDES mapping
+VA,VA1007571,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1101916,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1101975,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1102003,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1102042,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1102051,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1202075,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1302069,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1602068,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+VA,VA1602072,NO,,,,0,0,DMLR permit ID (raw format) - need federal NPDES mapping
+WV,WV0052531,YES,SENECA MINE,Expired,SNC,3849,1783,
+WV,WV0060216,YES,KEYSTONE NO.1 DEEP MINE PREP PLANT,Effective,SNC,2279,861,
+WV,WV0062961,YES,COAL MOUNTAIN VALLEY FILL NO. 2,Effective,SNC,2095,78,
+WV,WV0065048,YES,ORCHARD COAL LOADOUT,Effective,SNC,3563,1137,
+WV,WV0081742,YES,MINE (cross-ref from VA doc),,,0,0,Cross-state reference in VA document
+WV,WV0090000,YES,NO. 50 MINE,Expired,SNC,0,0,
+WV,WV0091952,YES,BISHOP COMPLEX,Admin Continued,SNC,4357,2473,
+WV,WV0097446,YES,SEWLL SEAM MINE NO. 1,Expired,SNC,0,0,
+WV,WV0400311,NO,,,,0,0,Old WV permit format - not in ECHO
+WV,WV1005481,YES,MINE NO. 3 6 & 7,Admin Continued,SNC,6178,3223,
+WV,WV1005774,YES,ROLFE 6A MINE,Effective,SNC,1777,650,
+WV,WV1005944,YES,DEEP MINE NO. 66,Admin Continued,SNC,2931,1883,
+WV,WV1005952,YES,MINE NO. 1,Effective,SNC,2316,1046,
+WV,WV1005979,YES,DEEP MINES 37 39 LOADOUT AND HAULROADS,Effective,SNC,3077,945,
+WV,WV1005987,YES,HAULROAD UO45700 U062400 DEEP MINES,Effective,SNC,2274,668,
+WV,WV1005995,YES,BLUESTONE COAL CORPORATION,Expired,SNC,2622,461,
+WV,WV1006070,YES,DEEP MINE NO. 14,Effective,SNC,1816,638,
+WV,WV1006304,YES,RED FOX SURFACE MINE,Expired,SNC,18657,9742,
+WV,WV1006347,YES,MINE NO. 32,Effective,SNC,2720,380,
+WV,WV1006479,YES,MINE 35 & 36,Effective,SNC,4429,1317,
+WV,WV1006614,YES,NO. 33 33A DEEP MINES AND HAUL ROAD,Effective,SNC,3084,996,
+WV,WV1006681,YES,DOUBLE E NO. 1 MINE,Effective,SNC,4767,115,
+WV,WV1008552,YES,DEEP MINE 41,Effective,SNC,2775,1063,
+WV,WV1008803,YES,MINE #42,Expired,SNC,2108,1081,
+WV,WV1008838,YES,DEEP MINE NO. 44,Effective,SNC,2343,1282,
+WV,WV1012045,YES,DEEP MINE 46,Expired,SNC,738,204,
+WV,WV1012088,YES,MINE NO. 47,Effective,SNC,1943,813,
+WV,WV1012312,YES,MINE NO. 48 & 49,Expired,SNC,2221,1041,
+WV,WV1015389,YES,TAMS NO. 1 SURFACE MINE,Expired,SNC,0,0,
+WV,WV1016539,YES,COAL MOUNTAIN NO.1 SURFACE MINE,Effective,SNC,0,0,
+WV,WV1018663,YES,DEEP MINE NO 58,Effective,SNC,2682,1542,
+WV,WV1018698,YES,NO. 57 MINE,Effective,Violation Identified,2861,677,
+WV,WV1018701,YES,DEEP MINE NO. 56,Expired,SNC,2130,683,
+WV,WV1018736,YES,PAYNE BRANCH SURFACE MINE,Effective,SNC,7957,3956,
+WV,WV1018752,YES,MINE NO. 59,Expired,SNC,1916,790,
+WV,WV1018779,YES,PINNACLE RIDGE SURFACE MINE,Expired,SNC,12186,8220,
+WV,WV1018809,YES,WESLEY NO. 2,Expired,SNC,2391,1275,
+WV,WV1018833,YES,NO. 63 & 64 MINES,Expired,SNC,2403,675,
+WV,WV1018965,YES,SEWELL SEAM MINE NO. 2,Admin Continued,SNC,23403,16385,
+WV,WV1020366,YES,WV 3 SURFACE MINE & HAULROAD,Expired,SNC,15441,9639,
+WV,WV1021061,YES,CONTOUR AND AUGER NO. 1 MINE,Admin Continued,No Violation Identified,1668,1668,
+WV,WV1021079,YES,CONTOUR NO. 2,Admin Continued,SNC,12740,7426,
+WV,WV1021095,YES,DEEP MINE NO. 65,Admin Continued,SNC,5208,2759,
+WV,WV1021117,YES,MILL CREEK MINE,Expired,No Violation Identified,272,272,
+WV,WV1021249,YES,PUNCHEONCAMP THIN SEAM MINE,Admin Continued,SNC,8404,3475,
+WV,WV1021281,YES,PUNCHEONCAMP THIN SEAM MINE NO. 2,Expired,SNC,2757,1156,
+WV,WV1021338,YES,BIG BRANCH HIGHWALL MINE (POCA. NO. 12),Admin Continued,SNC,14091,7794,
+WV,WV1021451,YES,BENS CREEK NO. 1 MINE,Admin Continued; Tracking Off,Unknown,0,0,
+WV,WV1022580,YES,LAUREL CREEK NO. 1 SURFACE MINE,Effective,SNC,5455,4494,
+WV,WV1022652,YES,BALD KNOB SURFACE MINE,Effective,SNC,4744,2842,
+WV,WV1023781,YES,SPIDER RIDGE DEEP MINE,Expired,SNC,5418,3272,
+WV,WV1024078,YES,MCDONALD FORK SURFACE MINE,Effective,SNC,0,0,DMRs failed - compute limit (facility data landed)
+WV,WV1024116,YES,MINE #45 AND MINE #50,Expired,No Violation Identified,2128,431,
+WV,WV1024124,YES,MINE NO. 53,Expired,SNC,1790,1103,
+WV,WV1024132,YES,NO. 55 MINE NO. 12 SEAM AUGER,Expired,SNC,3847,3097,
+WV,WV1024159,YES,MINE #39 AND #40,Expired,SNC,2487,621,
+WV,WV1024167,YES,MINE #52,Effective,SNC,847,327,
+WV,WV1024230,YES,ECKMANN LOADOUT,Effective,SNC,1892,393,
+WV,WV1024361,YES,EAST GULF HAULROAD,Expired; Tracking Off,Unknown,0,0,
+WV,WV1024442,YES,EAST GULF SURFACE MINE,Expired,SNC,8248,2898,
+WV,WV1025911,YES,BISHOP WV SURFACE MINE,Admin Continued,No Violation Identified,744,744,
+WV,WV1025929,YES,BIG CREEK SURFACE MINE,Expired,SNC,9206,5026,
+WV,WV1026003,YES,BELCHER BRANCH DEEP MINE,Expired,SNC,5703,1929,
+WV,WV1026488,YES,THREE MARIE HIGHWALL MINE,Expired,SNC,14200,4985,
+WV,WV1026861,YES,GILBERT SEAM DEEP MINE,Effective,Unknown,447,447,
+WV,WV1027867,YES,GILBERT SEAM HAULROAD,Expired; Tracking Partially Off,Unknown,0,0,
+WV,WV1027891,YES,WHITBY SURFACE MINE,Admin Continued,No Violation Identified,4798,4798,
+WV,WV1027913,YES,WHITBY DEEP MINE,Expired,No Violation Identified,556,556,
+WV,WV1028324,YES,VALLS CREEK DEEP MINE,Effective,SNC,1608,624,
+WV,WVS-4001-07,NO,,,,0,0,Stormwater permit format - not individual NPDES

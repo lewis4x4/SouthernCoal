@@ -42,9 +42,10 @@ const CARDS = [
 
 interface Props {
   counts: SeverityCounts;
+  loading?: boolean;
 }
 
-export function DiscrepancySummaryCards({ counts }: Props) {
+export function DiscrepancySummaryCards({ counts, loading }: Props) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {CARDS.map(({ key, label, icon: Icon, spotlightColor, valueColor }) => (
@@ -54,10 +55,14 @@ export function DiscrepancySummaryCards({ counts }: Props) {
               <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
                 {label}
               </p>
-              <AnimatedCounter
-                value={counts[key]}
-                className={`text-2xl font-semibold ${valueColor} mt-1 block`}
-              />
+              {loading ? (
+                <div className="mt-1 h-8 w-16 animate-pulse rounded bg-white/[0.06]" />
+              ) : (
+                <AnimatedCounter
+                  value={counts[key]}
+                  className={`text-2xl font-semibold ${valueColor} mt-1 block`}
+                />
+              )}
             </div>
             <Icon size={20} className="text-text-muted" />
           </div>

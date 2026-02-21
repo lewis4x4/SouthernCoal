@@ -36,6 +36,16 @@ const ECHO_SKIP_PATTERNS = [
   /^TNR059\d{3}$/, // TN stormwater general permits
 ];
 
+// Valid US state codes for NPDES permits (all 50 + DC + territories)
+const VALID_STATES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
+  "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
+  "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
+  "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR",
+  "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "VI", "WA",
+  "WV", "WI", "WY", "AS", "GU", "MP",
+]);
+
 interface AuthResult {
   authorized: boolean;
   userId: string | null;
@@ -99,7 +109,7 @@ function normalizeNpdesId(rawValue: string, stateCode: string | null): Normalize
   let normalized = cleaned;
   if (/^\d+$/.test(cleaned)) {
     const state = (stateCode || "").trim().toUpperCase();
-    if (!/^[A-Z]{2}$/.test(state)) {
+    if (!/^[A-Z]{2}$/.test(state) || !VALID_STATES.has(state)) {
       return { normalized: null, reason: "missing_state_prefix" };
     }
     normalized = `${state}${cleaned}`;
@@ -234,30 +244,83 @@ interface DmrRecord {
   exceedance_pct: number | null;
 }
 
+// Convert EPA date "31-OCT-22" → "2022-10-31"
+function parseEpaDate(raw: string | null | undefined): string | null {
+  if (!raw || typeof raw !== "string") return null;
+  const months: Record<string, string> = {
+    JAN: "01", FEB: "02", MAR: "03", APR: "04", MAY: "05", JUN: "06",
+    JUL: "07", AUG: "08", SEP: "09", OCT: "10", NOV: "11", DEC: "12",
+  };
+  const m = raw.match(/^(\d{1,2})-([A-Z]{3})-(\d{2,4})$/i);
+  if (!m) return null;
+  const day = m[1].padStart(2, "0");
+  const mon = months[m[2].toUpperCase()];
+  if (!mon) return null;
+  let year = m[3];
+  if (year.length === 2) year = Number(year) > 50 ? `19${year}` : `20${year}`;
+  return `${year}-${mon}-${day}`;
+}
+
 function parseDmrData(data: Record<string, unknown>, npdesId: string): DmrRecord[] {
   try {
     const results = data?.Results as Record<string, unknown> | undefined;
-    // ECHO effluent API returns data under different possible keys
-    const rows = (results?.EFFRows || results?.Rows || results?.EffluentChart || []) as Record<string, unknown>[];
-    if (!Array.isArray(rows) || rows.length === 0) return [];
+    if (!results) return [];
 
-    return rows.map((r) => ({
-      npdes_id: npdesId,
-      outfall: r.PipeID || r.ExternalOutfallNmbr || null,
-      parameter_code: r.ParameterCode || r.PollutantCode || null,
-      parameter_desc: r.ParameterDesc || r.PollutantDesc || null,
-      statistical_base: r.StatisticalBaseShortDesc || r.MonitoringLocationDesc || null,
-      monitoring_period_start: r.MonitoringPeriodStartDate || null,
-      monitoring_period_end: r.MonitoringPeriodEndDate || null,
-      limit_value: r.LimitValueNmbr != null ? Number(r.LimitValueNmbr) : null,
-      limit_unit: r.LimitUnitDesc || r.LimitValueStandardUnits || null,
-      dmr_value: r.DMRValueNmbr != null ? Number(r.DMRValueNmbr) : null,
-      dmr_unit: r.DMRUnitDesc || r.DMRValueStandardUnits || null,
-      nodi_code: r.NODICode || null,
-      violation_code: r.ViolationCode || null,
-      violation_desc: r.ViolationDesc || null,
-      exceedance_pct: r.ExceedancePct != null ? Number(r.ExceedancePct) : null,
-    })) as DmrRecord[];
+    // ECHO effluent API nests data: Results.PermFeatures[].Parameters[].DischargeMonitoringReports[]
+    const permFeatures = results.PermFeatures as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(permFeatures) || permFeatures.length === 0) return [];
+
+    const records: DmrRecord[] = [];
+
+    for (const feat of permFeatures) {
+      const outfall = String(feat.PermFeatureNmbr || "");
+      const params = feat.Parameters as Array<Record<string, unknown>> | undefined;
+      if (!Array.isArray(params)) continue;
+
+      for (const param of params) {
+        const paramCode = String(param.ParameterCode || "");
+        const paramDesc = String(param.ParameterDesc || "");
+        const statBase = param.StatisticalBaseCode
+          ? String(param.MonitoringLocationDesc || "")
+          : null;
+
+        const dmrs = param.DischargeMonitoringReports as Array<Record<string, unknown>> | undefined;
+        if (!Array.isArray(dmrs)) continue;
+
+        for (const dmr of dmrs) {
+          const dmrVal = dmr.DMRValueNmbr != null ? Number(dmr.DMRValueNmbr) : null;
+          const limitVal = dmr.LimitValueNmbr != null ? Number(dmr.LimitValueNmbr) : null;
+          const viols = dmr.NPDESViolations as Array<Record<string, unknown>> | undefined;
+          const hasViolation = Array.isArray(viols) && viols.length > 0;
+          const exceedPct = dmr.ExceedencePct != null ? Number(dmr.ExceedencePct) : null;
+
+          // Only store records with a reported value, a violation, or an exceedance
+          if (dmrVal == null && !hasViolation && exceedPct == null) continue;
+
+          const firstViol = hasViolation ? viols![0] : null;
+
+          records.push({
+            npdes_id: npdesId,
+            outfall: outfall || null,
+            parameter_code: paramCode || null,
+            parameter_desc: paramDesc || null,
+            statistical_base: String(dmr.StatisticalBaseDesc || statBase || ""),
+            monitoring_period_start: null, // Not provided per-DMR in this structure
+            monitoring_period_end: parseEpaDate(dmr.MonitoringPeriodEndDate as string),
+            limit_value: isNaN(limitVal as number) ? null : limitVal,
+            limit_unit: (dmr.LimitUnitDesc || null) as string | null,
+            dmr_value: isNaN(dmrVal as number) ? null : dmrVal,
+            dmr_unit: (dmr.DMRUnitDesc || null) as string | null,
+            nodi_code: (dmr.NODICode || null) as string | null,
+            violation_code: firstViol ? String(firstViol.ViolationCode || "") : null,
+            violation_desc: firstViol ? String(firstViol.ViolationDesc || "") : null,
+            exceedance_pct: isNaN(exceedPct as number) ? null : exceedPct,
+          });
+        }
+      }
+    }
+
+    return records;
   } catch (err) {
     console.error(`Error parsing DMR data for ${npdesId}:`, err);
     return [];
@@ -637,7 +700,7 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   // 5. Audit log
   // -----------------------------------------------------------------------
-  await supabase.from("audit_log").insert({
+  const { error: auditErr } = await supabase.from("audit_log").insert({
     user_id: auth.userId,
     organization_id: orgId,
     action: errors.length === permits.length ? "external_sync_failed" : "external_sync_completed",
@@ -661,13 +724,14 @@ serve(async (req) => {
       role: auth.role,
     }),
   });
+  if (auditErr) console.error("Audit log insert failed:", auditErr.message);
 
   // -----------------------------------------------------------------------
   // 6. Trigger discrepancy detection
   // -----------------------------------------------------------------------
   try {
     const detectUrl = `${SUPABASE_URL}/functions/v1/detect-discrepancies`;
-    await fetch(detectUrl, {
+    const resp = await fetch(detectUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -680,6 +744,9 @@ serve(async (req) => {
         triggered_by: auth.userId,
       }),
     });
+    if (!resp.ok) {
+      console.error(`detect-discrepancies auto-trigger failed: ${resp.status} ${resp.statusText}`);
+    }
   } catch (err) {
     console.error("Failed to trigger discrepancy detection:", err);
     // Non-fatal — sync data is still saved

@@ -9,6 +9,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 
+// Safety cap: max rows fetched per paginated loop (500 pages × 1000 rows = 500K)
+const MAX_PAGINATION_ITERATIONS = 500;
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
@@ -82,24 +85,61 @@ async function detectEchoDiscrepancies(
   // -----------------------------------------------------------------------
   // Rule 1: Permit status mismatch
   // Compare external_echo_facilities.permit_status vs npdes_permits.status
+  // Batch-fetch all data up front to avoid N+1 queries
   // -----------------------------------------------------------------------
-  const { data: echoFacilities } = await supabase
-    .from("external_echo_facilities")
-    .select("id, npdes_id, permit_status, compliance_status, qtrs_in_nc")
+
+  // 1a. Paginate external facilities (PostgREST max-rows = 1000)
+  const echoFacilities: Array<{ id: string; npdes_id: string; permit_status: string | null; compliance_status: string | null; qtrs_in_nc: number | null }> = [];
+  let facOffset = 0;
+  const FAC_PAGE = 1000;
+  let hasMoreFacs = true;
+  let facIterations = 0;
+  while (hasMoreFacs && facIterations < MAX_PAGINATION_ITERATIONS) {
+    const { data: facPage } = await supabase
+      .from("external_echo_facilities")
+      .select("id, npdes_id, permit_status, compliance_status, qtrs_in_nc")
+      .eq("organization_id", orgId)
+      .order("id")
+      .range(facOffset, facOffset + FAC_PAGE - 1);
+    const rows = facPage || [];
+    echoFacilities.push(...rows);
+    hasMoreFacs = rows.length === FAC_PAGE;
+    facOffset += FAC_PAGE;
+    facIterations++;
+  }
+  if (facIterations >= MAX_PAGINATION_ITERATIONS) {
+    console.warn(`Facility pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations, ${echoFacilities.length} rows)`);
+  }
+
+  // 1b. Batch-fetch all internal permits for this org (avoids N+1)
+  const { data: internalPermits } = await supabase
+    .from("npdes_permits")
+    .select("id, permit_number, status")
     .eq("organization_id", orgId);
 
-  for (const facility of echoFacilities || []) {
-    // Check if permit exists internally
-    const { data: internalPermit } = await supabase
-      .from("npdes_permits")
-      .select("id, status")
-      .eq("organization_id", orgId)
-      .eq("permit_number", facility.npdes_id)
-      .limit(1)
-      .maybeSingle();
+  const permitByNpdes = new Map<string, { id: string; status: string | null }>();
+  for (const p of internalPermits || []) {
+    if (p.permit_number) {
+      permitByNpdes.set(String(p.permit_number).toUpperCase(), { id: p.id, status: p.status });
+    }
+  }
+
+  // 1c. Batch-fetch exceedance counts per npdes_id for SNC check
+  const { data: exceedanceCounts } = await supabase
+    .from("exceedances")
+    .select("npdes_id")
+    .eq("organization_id", orgId);
+
+  const npdesWithExceedances = new Set<string>();
+  for (const e of exceedanceCounts || []) {
+    if (e.npdes_id) npdesWithExceedances.add(String(e.npdes_id).toUpperCase());
+  }
+
+  // 1d. Compare in-memory
+  for (const facility of echoFacilities) {
+    const internalPermit = permitByNpdes.get(String(facility.npdes_id).toUpperCase());
 
     if (internalPermit && facility.permit_status) {
-      // Normalize for comparison
       const extStatus = String(facility.permit_status).toLowerCase().trim();
       const intStatus = String(internalPermit.status || "").toLowerCase().trim();
 
@@ -130,13 +170,9 @@ async function detectEchoDiscrepancies(
       facility.compliance_status &&
       String(facility.compliance_status).toLowerCase().includes("snc")
     ) {
-      // Check if we have any exceedance for this permit
-      const { count: excCount } = await supabase
-        .from("exceedances")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId);
+      const hasExceedance = npdesWithExceedances.has(String(facility.npdes_id).toUpperCase());
 
-      if ((excCount ?? 0) === 0) {
+      if (!hasExceedance) {
         discrepancies.push({
           organization_id: orgId,
           npdes_id: facility.npdes_id,
@@ -159,35 +195,54 @@ async function detectEchoDiscrepancies(
 
   // -----------------------------------------------------------------------
   // Rule 2: ECHO violation not tracked internally
+  // Paginated fetch — PostgREST defaults to 1000 rows without explicit limit
   // -----------------------------------------------------------------------
-  const { data: echoDmrsWithViolations } = await supabase
-    .from("external_echo_dmrs")
-    .select("id, npdes_id, outfall, parameter_code, parameter_desc, violation_code, violation_desc, monitoring_period_end, exceedance_pct, dmr_value, limit_value")
-    .eq("organization_id", orgId)
-    .not("violation_code", "is", null);
+  const PAGE_SIZE = 1000; // PostgREST max-rows default
+  let violOffset = 0;
+  let hasMoreViolations = true;
+  let violIterations = 0;
 
-  for (const dmr of echoDmrsWithViolations || []) {
-    discrepancies.push({
-      organization_id: orgId,
-      npdes_id: dmr.npdes_id,
-      mine_id: null,
-      source: "echo",
-      discrepancy_type: "missing_internal",
-      severity: assignSeverity("missing_internal", { violation_code: dmr.violation_code }),
-      description: `ECHO violation (${dmr.violation_code}: ${dmr.violation_desc || "N/A"}) for ${dmr.npdes_id} outfall ${dmr.outfall || "?"}, parameter ${dmr.parameter_desc || dmr.parameter_code || "?"} — not tracked in internal exceedances`,
-      internal_value: null,
-      external_value: `${dmr.violation_code}: DMR=${dmr.dmr_value}, Limit=${dmr.limit_value}`,
-      internal_source_table: "exceedances",
-      internal_source_id: null,
-      external_source_id: dmr.id,
-      monitoring_period_start: null,
-      monitoring_period_end: dmr.monitoring_period_end,
-    });
+  while (hasMoreViolations && violIterations < MAX_PAGINATION_ITERATIONS) {
+    const { data: echoDmrsWithViolations } = await supabase
+      .from("external_echo_dmrs")
+      .select("id, npdes_id, outfall, parameter_code, parameter_desc, violation_code, violation_desc, monitoring_period_end, exceedance_pct, dmr_value, limit_value")
+      .eq("organization_id", orgId)
+      .not("violation_code", "is", null)
+      .order("id")
+      .range(violOffset, violOffset + PAGE_SIZE - 1);
+
+    const rows = echoDmrsWithViolations || [];
+    for (const dmr of rows) {
+      discrepancies.push({
+        organization_id: orgId,
+        npdes_id: dmr.npdes_id,
+        mine_id: null,
+        source: "echo",
+        discrepancy_type: "missing_internal",
+        severity: assignSeverity("missing_internal", { violation_code: dmr.violation_code }),
+        description: `ECHO violation (${dmr.violation_code}: ${dmr.violation_desc || "N/A"}) for ${dmr.npdes_id} outfall ${dmr.outfall || "?"}, parameter ${dmr.parameter_desc || dmr.parameter_code || "?"} — not tracked in internal exceedances`,
+        internal_value: null,
+        external_value: `${dmr.violation_code}: DMR=${dmr.dmr_value}, Limit=${dmr.limit_value}`,
+        internal_source_table: "exceedances",
+        internal_source_id: null,
+        external_source_id: dmr.id,
+        monitoring_period_start: null,
+        monitoring_period_end: dmr.monitoring_period_end,
+      });
+    }
+
+    hasMoreViolations = rows.length === PAGE_SIZE;
+    violOffset += PAGE_SIZE;
+    violIterations++;
+  }
+  if (violIterations >= MAX_PAGINATION_ITERATIONS) {
+    console.warn(`Violation pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations)`);
   }
 
   // -----------------------------------------------------------------------
   // Rule 3: DMR value mismatch >10%
   // Compare external_echo_dmrs vs dmr_line_items (if populated)
+  // Batch-fetch internal DMRs to avoid N+1 queries
   // -----------------------------------------------------------------------
   const { count: dmrCount } = await supabase
     .from("dmr_submissions")
@@ -195,47 +250,104 @@ async function detectEchoDiscrepancies(
     .eq("organization_id", orgId);
 
   if ((dmrCount ?? 0) > 0) {
-    // Internal DMR data exists — compare values
-    const { data: echoDmrs } = await supabase
-      .from("external_echo_dmrs")
-      .select("id, npdes_id, outfall, parameter_code, parameter_desc, monitoring_period_end, dmr_value, limit_value, limit_unit")
-      .eq("organization_id", orgId)
-      .not("dmr_value", "is", null);
-
-    for (const ext of echoDmrs || []) {
-      // Try to find matching internal DMR line item
-      const { data: intDmr } = await supabase
+    // Pre-fetch internal DMR line items with joins through FKs.
+    // dmr_line_items uses FK references (parameter_id, outfall_id, dmr_submission_id)
+    // rather than denormalized columns. We join through dmr_submissions → npdes_permits
+    // and water_quality_parameters to build composite match keys.
+    // Key: "npdes_id:outfall:storet_code:period_end" for accurate cross-reference.
+    const intDmrMap = new Map<string, { id: string; reported_value: number }>();
+    let intOffset = 0;
+    let hasMoreInt = true;
+    let intIterations = 0;
+    while (hasMoreInt && intIterations < MAX_PAGINATION_ITERATIONS) {
+      const { data: intPage } = await supabase
         .from("dmr_line_items")
-        .select("id, reported_value")
-        .eq("organization_id", orgId)
-        .eq("parameter_code", ext.parameter_code)
-        .limit(1)
-        .maybeSingle();
+        .select(`
+          id, concentration_avg, quantity_avg,
+          outfalls!inner(outfall_number),
+          water_quality_parameters!inner(storet_code),
+          dmr_submissions!inner(reporting_period_end, npdes_permits!inner(permit_number))
+        `)
+        .order("id")
+        .range(intOffset, intOffset + PAGE_SIZE - 1);
+      const intRows = (intPage || []) as Array<Record<string, unknown>>;
+      for (const row of intRows) {
+        const sub = row.dmr_submissions as Record<string, unknown> | null;
+        const permit = sub?.npdes_permits as Record<string, unknown> | null;
+        const param = row.water_quality_parameters as Record<string, unknown> | null;
+        const outfall = row.outfalls as Record<string, unknown> | null;
 
-      if (intDmr && intDmr.reported_value != null && ext.dmr_value != null) {
-        const diff = Math.abs(intDmr.reported_value - ext.dmr_value);
-        const base = Math.max(Math.abs(intDmr.reported_value), Math.abs(ext.dmr_value), 0.0001);
-        const pctDiff = (diff / base) * 100;
+        const npdesId = String(permit?.permit_number || "").toUpperCase();
+        const storetCode = String(param?.storet_code || "");
+        const outfallNum = String(outfall?.outfall_number || "");
+        const periodEnd = String(sub?.reporting_period_end || "");
+        const reportedValue = (row.concentration_avg as number) ?? (row.quantity_avg as number);
 
-        if (pctDiff > 10) {
-          discrepancies.push({
-            organization_id: orgId,
-            npdes_id: ext.npdes_id,
-            mine_id: null,
-            source: "echo",
-            discrepancy_type: "value_mismatch",
-            severity: assignSeverity("value_mismatch", { exceedance_pct: pctDiff }),
-            description: `DMR value mismatch (${pctDiff.toFixed(1)}%) for ${ext.npdes_id} ${ext.parameter_desc || ext.parameter_code}: internal=${intDmr.reported_value} vs ECHO=${ext.dmr_value}`,
-            internal_value: String(intDmr.reported_value),
-            external_value: String(ext.dmr_value),
-            internal_source_table: "dmr_line_items",
-            internal_source_id: intDmr.id,
-            external_source_id: ext.id,
-            monitoring_period_start: null,
-            monitoring_period_end: ext.monitoring_period_end,
-          });
+        if (!npdesId || !storetCode || reportedValue == null) continue;
+
+        const key = `${npdesId}:${outfallNum}:${storetCode}:${periodEnd}`;
+        if (!intDmrMap.has(key)) {
+          intDmrMap.set(key, { id: row.id as string, reported_value: reportedValue });
         }
       }
+      hasMoreInt = intRows.length === PAGE_SIZE;
+      intOffset += PAGE_SIZE;
+      intIterations++;
+    }
+    if (intIterations >= MAX_PAGINATION_ITERATIONS) {
+      console.warn(`Internal DMR pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations)`);
+    }
+
+    // Paginate external DMRs with values
+    let extOffset = 0;
+    let hasMoreExt = true;
+    let extIterations = 0;
+    while (hasMoreExt && extIterations < MAX_PAGINATION_ITERATIONS) {
+      const { data: echoDmrs } = await supabase
+        .from("external_echo_dmrs")
+        .select("id, npdes_id, outfall, parameter_code, parameter_desc, monitoring_period_end, dmr_value, limit_value, limit_unit")
+        .eq("organization_id", orgId)
+        .not("dmr_value", "is", null)
+        .order("id")
+        .range(extOffset, extOffset + PAGE_SIZE - 1);
+
+      const extRows = echoDmrs || [];
+      for (const ext of extRows) {
+        // Build composite key matching the internal map structure
+        const key = `${String(ext.npdes_id).toUpperCase()}:${ext.outfall || ""}:${ext.parameter_code || ""}:${ext.monitoring_period_end || ""}`;
+        const intDmr = intDmrMap.get(key);
+
+        if (intDmr && intDmr.reported_value != null && ext.dmr_value != null) {
+          const diff = Math.abs(intDmr.reported_value - ext.dmr_value);
+          const base = Math.max(Math.abs(intDmr.reported_value), Math.abs(ext.dmr_value), 0.0001);
+          const pctDiff = (diff / base) * 100;
+
+          if (pctDiff > 10) {
+            discrepancies.push({
+              organization_id: orgId,
+              npdes_id: ext.npdes_id,
+              mine_id: null,
+              source: "echo",
+              discrepancy_type: "value_mismatch",
+              severity: assignSeverity("value_mismatch", { exceedance_pct: pctDiff }),
+              description: `DMR value mismatch (${pctDiff.toFixed(1)}%) for ${ext.npdes_id} ${ext.parameter_desc || ext.parameter_code}: internal=${intDmr.reported_value} vs ECHO=${ext.dmr_value}`,
+              internal_value: String(intDmr.reported_value),
+              external_value: String(ext.dmr_value),
+              internal_source_table: "dmr_line_items",
+              internal_source_id: intDmr.id,
+              external_source_id: ext.id,
+              monitoring_period_start: null,
+              monitoring_period_end: ext.monitoring_period_end,
+            });
+          }
+        }
+      }
+      hasMoreExt = extRows.length === PAGE_SIZE;
+      extOffset += PAGE_SIZE;
+      extIterations++;
+    }
+    if (extIterations >= MAX_PAGINATION_ITERATIONS) {
+      console.warn(`External DMR pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations)`);
     }
   }
 
@@ -299,38 +411,45 @@ serve(async (req) => {
   }
   // MSHA detection will be added when sync pipeline is implemented
 
-  // Dedup and insert
+  // Batch insert via RPC — handles partial unique index dedup in SQL
   let inserted = 0;
   let skippedDupes = 0;
   let insertErrors = 0;
 
-  for (const d of discrepancies) {
+  // Filter out rows missing external_source_id
+  const valid = discrepancies.filter((d) => {
     if (!d.external_source_id) {
       insertErrors++;
-      console.error("Skipping discrepancy with missing external_source_id:", d);
-      continue;
+      return false;
     }
+    return true;
+  });
 
-    const { error: insertErr } = await supabase
-      .from("discrepancy_reviews")
-      .insert({ ...d, status: "pending" });
+  const BATCH_SIZE = 500;
 
-    if (insertErr) {
-      const code = (insertErr as { code?: string }).code;
-      if (code === "23505") {
-        skippedDupes++;
-        continue;
-      }
-      insertErrors++;
-      console.error("Failed to insert discrepancy:", insertErr.message, "code=", code);
-    } else {
-      inserted++;
+  for (let i = 0; i < valid.length; i += BATCH_SIZE) {
+    const batch = valid.slice(i, i + BATCH_SIZE);
+
+    const { data: result, error: rpcErr } = await supabase.rpc(
+      "batch_insert_discrepancies",
+      { rows: batch },
+    );
+
+    if (rpcErr) {
+      console.error(`Batch RPC error (offset ${i}):`, rpcErr.message);
+      insertErrors += batch.length;
+    } else if (result) {
+      const r = typeof result === "string" ? JSON.parse(result) : result;
+      inserted += r.inserted || 0;
+      skippedDupes += r.skipped || 0;
     }
   }
 
-  // Audit log
-  await supabase.from("audit_log").insert({
-    user_id: triggeredBy,
+  // Audit log — validate triggeredBy as UUID before using as user_id FK
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const validUserId = triggeredBy && uuidRegex.test(triggeredBy) ? triggeredBy : null;
+  const { error: auditErr } = await supabase.from("audit_log").insert({
+    user_id: validUserId,
     organization_id: orgId,
     action: "discrepancy_detected",
     module: "external_data",
@@ -345,6 +464,7 @@ serve(async (req) => {
       triggered_by: triggeredBy || "system",
     }),
   });
+  if (auditErr) console.error("Audit log insert failed:", auditErr.message);
 
   console.log(
     `Discrepancy detection: ${discrepancies.length} found, ${inserted} inserted, ${skippedDupes} skipped (dupes), ${insertErrors} insert errors`,

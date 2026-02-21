@@ -63,7 +63,7 @@ export function ReviewQueuePage() {
       )}
 
       {/* Summary cards */}
-      <DiscrepancySummaryCards counts={counts} />
+      <DiscrepancySummaryCards counts={counts} loading={loading} />
 
       {/* Loading */}
       {loading && rows.length === 0 ? (

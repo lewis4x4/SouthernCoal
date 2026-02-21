@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import type { DiscrepancyRow, DiscrepancySeverity } from '@/stores/reviewQueue';
 
@@ -34,13 +35,22 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
   const [showDismiss, setShowDismiss] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const [customDismissText, setCustomDismissText] = useState('');
+
   async function handleAction(status: 'reviewed' | 'dismissed' | 'escalated' | 'resolved') {
     setBusy(true);
     const extra: { review_notes?: string; dismiss_reason?: string } = {};
     if (notes) extra.review_notes = notes;
-    if (status === 'dismissed' && dismissReason) extra.dismiss_reason = dismissReason;
-    await onAction(d.id, status, extra);
+    if (status === 'dismissed' && dismissReason) {
+      extra.dismiss_reason = dismissReason === 'Other' && customDismissText
+        ? `Other: ${customDismissText}`
+        : dismissReason;
+    }
+    const err = await onAction(d.id, status, extra);
     setBusy(false);
+    if (err) {
+      toast.error(`Action failed: ${err}`);
+    }
   }
 
   return (
@@ -133,6 +143,15 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
                 </option>
               ))}
             </select>
+            {dismissReason === 'Other' && (
+              <input
+                type="text"
+                value={customDismissText}
+                onChange={(e) => setCustomDismissText(e.target.value)}
+                placeholder="Describe reason..."
+                className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20"
+              />
+            )}
           </div>
         )}
 
@@ -167,7 +186,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
                 }
                 handleAction('dismissed');
               }}
-              disabled={busy || (showDismiss && !dismissReason)}
+              disabled={busy || (showDismiss && !dismissReason) || (showDismiss && dismissReason === 'Other' && !customDismissText.trim())}
               className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-white/[0.06] disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}

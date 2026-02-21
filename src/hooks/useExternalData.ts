@@ -41,45 +41,57 @@ export function useExternalData(npdesId?: string, mineId?: string) {
   const [dmrSummary, setDmrSummary] = useState<EchoDmrSummary | null>(null);
   const [mshaInspections, setMshaInspections] = useState<MshaInspection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchEcho = useCallback(async () => {
     if (!npdesId) return;
     setLoading(true);
+    setError(null);
 
-    const { data: facility } = await supabase
+    const { data: facility, error: facErr } = await supabase
       .from('external_echo_facilities')
       .select('*')
       .eq('npdes_id', npdesId)
       .limit(1)
       .maybeSingle();
 
+    if (facErr) {
+      setError(facErr.message);
+      setLoading(false);
+      return;
+    }
+
     setEchoFacility(facility as EchoFacility | null);
 
     if (facility) {
-      const { count: total } = await supabase
-        .from('external_echo_dmrs')
-        .select('id', { count: 'exact', head: true })
-        .eq('npdes_id', npdesId);
+      const [totalRes, violRes, latestRes] = await Promise.all([
+        supabase
+          .from('external_echo_dmrs')
+          .select('id', { count: 'exact', head: true })
+          .eq('npdes_id', npdesId),
+        supabase
+          .from('external_echo_dmrs')
+          .select('id', { count: 'exact', head: true })
+          .eq('npdes_id', npdesId)
+          .not('violation_code', 'is', null),
+        supabase
+          .from('external_echo_dmrs')
+          .select('monitoring_period_end')
+          .eq('npdes_id', npdesId)
+          .order('monitoring_period_end', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      const { count: withViolations } = await supabase
-        .from('external_echo_dmrs')
-        .select('id', { count: 'exact', head: true })
-        .eq('npdes_id', npdesId)
-        .not('violation_code', 'is', null);
-
-      const { data: latest } = await supabase
-        .from('external_echo_dmrs')
-        .select('monitoring_period_end')
-        .eq('npdes_id', npdesId)
-        .order('monitoring_period_end', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      setDmrSummary({
-        total: total ?? 0,
-        withViolations: withViolations ?? 0,
-        latestPeriod: latest?.monitoring_period_end ?? null,
-      });
+      if (totalRes.error || violRes.error || latestRes.error) {
+        setError(totalRes.error?.message || violRes.error?.message || latestRes.error?.message || 'Failed to fetch DMR summary');
+      } else {
+        setDmrSummary({
+          total: totalRes.count ?? 0,
+          withViolations: violRes.count ?? 0,
+          latestPeriod: latestRes.data?.monitoring_period_end ?? null,
+        });
+      }
     }
 
     setLoading(false);
@@ -88,13 +100,20 @@ export function useExternalData(npdesId?: string, mineId?: string) {
   const fetchMsha = useCallback(async () => {
     if (!mineId) return;
     setLoading(true);
+    setError(null);
 
-    const { data } = await supabase
+    const { data, error: mshaErr } = await supabase
       .from('external_msha_inspections')
       .select('*')
       .eq('mine_id', mineId)
       .order('inspection_date', { ascending: false })
       .limit(20);
+
+    if (mshaErr) {
+      setError(mshaErr.message);
+      setLoading(false);
+      return;
+    }
 
     setMshaInspections((data || []) as MshaInspection[]);
     setLoading(false);
@@ -108,5 +127,5 @@ export function useExternalData(npdesId?: string, mineId?: string) {
     fetchMsha();
   }, [fetchMsha]);
 
-  return { echoFacility, dmrSummary, mshaInspections, loading, refetchEcho: fetchEcho, refetchMsha: fetchMsha };
+  return { echoFacility, dmrSummary, mshaInspections, loading, error, refetchEcho: fetchEcho, refetchMsha: fetchMsha };
 }

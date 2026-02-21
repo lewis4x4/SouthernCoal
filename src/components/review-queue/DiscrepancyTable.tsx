@@ -137,7 +137,10 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
               <tr
                 key={row.id}
                 onClick={() => onSelect(row.id)}
-                className="cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(row.id); } }}
+                tabIndex={0}
+                role="row"
+                className="cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] focus:bg-white/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/30"
               >
                 <td className="px-4 py-3 font-mono text-xs text-text-primary">
                   {row.npdes_id || row.mine_id || '—'}

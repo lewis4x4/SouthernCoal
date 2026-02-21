@@ -29,7 +29,9 @@ export interface DiscrepancyRow {
   escalated_to: string | null;
   escalated_at: string | null;
   resolved_at: string | null;
+  recurrence_count: number;
   created_at: string;
+  updated_at: string;
 }
 
 interface ReviewQueueFilters {
