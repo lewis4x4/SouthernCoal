@@ -432,21 +432,26 @@ serve(async (req) => {
 
     console.log(`[process-handoff] Created handoff history record: ${handoffId} (${historyRecord.id})`);
 
-    // Step 7: Audit log with enhanced details
-    await supabase.from("audit_log").insert({
-      action: "handoff_processed",
+    // Step 7: Audit log
+    const { error: auditErr } = await supabase.from("audit_log").insert({
+      action: "bulk_process",
       user_id: user.id,
-      details: {
+      organization_id: resolvedOrgId,
+      module: "handoff",
+      table_name: "handoff_history",
+      record_id: historyRecord.id,
+      description: JSON.stringify({
+        action_type: "handoff_processed",
         handoff_id: handoffId,
-        record_id: historyRecord.id,
         match_count: taskMatches.length,
         unmatched_count: unmatchedItems.length,
         has_attachment: !!body.attachment_path,
         source_type: body.source_type,
         source_from: body.source_from,
         processing_time_ms: Date.now() - startTime,
-      },
+      }),
     });
+    if (auditErr) console.error("[process-handoff] Audit log failed:", auditErr.message);
 
     const response: ProcessResponse = {
       success: true,

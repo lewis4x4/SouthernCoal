@@ -755,6 +755,6 @@ serve(async (req: Request) => {
 
     await markFailed(supabase, queueId, errorStrings);
 
-    return jsonResponse({ success: true, message: "Processing failed — see queue status" });
+    return jsonResponse({ success: false, error: errorStrings[0], message: "Processing failed — see queue status" }, 500);
   }
 });

@@ -234,12 +234,31 @@ serve(async (req: Request) => {
     return jsonResponse({ success: false, error: "Queue entry not found" }, 404);
   }
 
-  // 4. Validate status
+  // 4. Validate status + optimistic lock: atomically claim this entry
   if (queueEntry.status !== "parsed") {
     return jsonResponse(
       {
         success: false,
         error: `Cannot import entry with status '${queueEntry.status}'. Expected 'parsed'.`,
+      },
+      409,
+    );
+  }
+
+  // Optimistic lock: attempt to set status to 'importing' only if still 'parsed'
+  const { data: lockResult, error: lockError } = await supabase
+    .from("file_processing_queue")
+    .update({ status: "processing", updated_at: new Date().toISOString() })
+    .eq("id", queueId)
+    .eq("status", "parsed")
+    .select("id")
+    .single();
+
+  if (lockError || !lockResult) {
+    return jsonResponse(
+      {
+        success: false,
+        error: "Import already in progress for this entry (concurrent request detected)",
       },
       409,
     );
