@@ -6,6 +6,8 @@ type BadgeVariant =
   | 'processing'
   | 'parsed'
   | 'imported'
+  | 'embedded'
+  | 'embedding_failed'
   | 'failed'
   | 'uploading'
   | 'unreviewed'
@@ -27,6 +29,8 @@ const VARIANT_STYLES: Record<BadgeVariant, string> = {
     'bg-[rgba(245,158,11,0.15)] text-[#fbbf24] border-[rgba(245,158,11,0.2)] animate-pulse-glow-amber',
   parsed: 'bg-[rgba(6,182,212,0.15)] text-[#67e8f9] border-[rgba(6,182,212,0.2)]',
   imported: 'bg-[rgba(16,185,129,0.15)] text-[#6ee7b7] border-[rgba(16,185,129,0.2)]',
+  embedded: 'bg-[rgba(16,185,129,0.15)] text-[#6ee7b7] border-[rgba(16,185,129,0.2)]',
+  embedding_failed: 'bg-[rgba(245,158,11,0.15)] text-[#fbbf24] border-[rgba(245,158,11,0.2)]',
   failed: 'bg-[rgba(239,68,68,0.15)] text-[#fca5a5] border-[rgba(239,68,68,0.2)]',
   uploading:
     'bg-[rgba(139,92,246,0.15)] text-[#c4b5fd] border-[rgba(139,92,246,0.2)] animate-pulse-glow-violet',

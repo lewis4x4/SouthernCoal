@@ -67,8 +67,10 @@ export function useComplianceMatrix(): MatrixData {
           cell.status = 'failed';
         } else if (entry.status === 'processing' && cell.status !== 'failed') {
           cell.status = 'processing';
+        } else if (entry.status === 'embedding_failed' && cell.status !== 'failed') {
+          cell.status = 'failed';
         } else if (
-          (entry.status === 'imported' || entry.status === 'parsed') &&
+          (entry.status === 'imported' || entry.status === 'parsed' || entry.status === 'embedded') &&
           cell.status !== 'failed' &&
           cell.status !== 'processing'
         ) {
@@ -105,8 +107,8 @@ export function useComplianceMatrix(): MatrixData {
           }
         }
 
-        // Awaiting review: imported + unreviewed (v6 5d)
-        if (entry.status === 'imported') {
+        // Awaiting review: imported/embedded + unreviewed (v6 5d)
+        if (entry.status === 'imported' || entry.status === 'embedded') {
           const vStatus = verificationStatuses[entry.id];
           if (!vStatus || vStatus === 'unreviewed') {
             awaitingReview++;

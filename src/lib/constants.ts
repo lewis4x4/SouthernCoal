@@ -190,6 +190,8 @@ export const FILE_STATUSES = [
   'processing',
   'parsed',
   'imported',
+  'embedded',
+  'embedding_failed',
   'failed',
 ] as const;
 
