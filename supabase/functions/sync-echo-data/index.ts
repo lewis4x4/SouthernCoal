@@ -65,29 +65,39 @@ async function validateAuth(
     return { authorized: true, userId: null, orgId: null, role: "system" };
   }
 
-  // Path 2: User JWT (frontend "Sync Now")
+  // Path 2: Service role JWT (pg_net, admin scripts)
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return denied;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.role === "service_role") {
+        return { authorized: true, userId: null, orgId: null, role: "system" };
+      }
+    } catch { /* not a valid JWT, fall through */ }
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return denied;
+    // Path 3: User JWT (frontend "Sync Now")
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return denied;
 
-  // Check user role + org
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role, organization_id")
-    .eq("id", user.id)
-    .single();
+    // Check user role + org
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role, organization_id")
+      .eq("id", user.id)
+      .single();
 
-  if (!profile?.role || !ALLOWED_ROLES.includes(profile.role)) return denied;
+    if (!profile?.role || !ALLOWED_ROLES.includes(profile.role)) return denied;
 
-  return {
-    authorized: true,
-    userId: user.id,
-    orgId: profile.organization_id || null,
-    role: profile.role,
-  };
+    return {
+      authorized: true,
+      userId: user.id,
+      orgId: profile.organization_id || null,
+      role: profile.role,
+    };
+  }
+
+  return denied;
 }
 
 // ---------------------------------------------------------------------------
@@ -612,6 +622,20 @@ serve(async (req) => {
       }
 
       if (dmrRecords.length > 0) {
+        // Deduplicate DMR records by conflict key before batching.
+        // ECHO can return duplicate rows (same outfall + parameter + stat base + period end)
+        // which causes "ON CONFLICT DO UPDATE cannot affect row a second time" errors.
+        const dedupMap = new Map<string, DmrRecord>();
+        for (const dmr of dmrRecords) {
+          const key = `${dmr.outfall}|${dmr.parameter_code}|${dmr.statistical_base}|${dmr.monitoring_period_end}`;
+          dedupMap.set(key, dmr); // last write wins
+        }
+        const uniqueDmrs = Array.from(dedupMap.values());
+        const dedupDropped = dmrRecords.length - uniqueDmrs.length;
+        if (dedupDropped > 0) {
+          console.log(`${permit.npdes_id}: deduped ${dedupDropped} duplicate DMR rows (${dmrRecords.length} → ${uniqueDmrs.length})`);
+        }
+
         // Look up facility ID for FK
         const { data: facility } = await supabase
           .from("external_echo_facilities")
@@ -621,8 +645,8 @@ serve(async (req) => {
           .single();
 
         // Batch upsert in chunks of 50
-        for (let i = 0; i < dmrRecords.length; i += 50) {
-          const batch = dmrRecords.slice(i, i + 50).map((dmr) => ({
+        for (let i = 0; i < uniqueDmrs.length; i += 50) {
+          const batch = uniqueDmrs.slice(i, i + 50).map((dmr) => ({
             organization_id: permit.organization_id,
             facility_id: facility?.id || null,
             npdes_id: dmr.npdes_id,

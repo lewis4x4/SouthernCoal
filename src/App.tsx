@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { LoginPage } from '@/pages/LoginPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — code splitting for ~40% bundle reduction
@@ -40,7 +41,11 @@ function PageLoader() {
  * Wrapper for lazy-loaded pages with Suspense boundary
  */
 function LazyPage({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export function App() {

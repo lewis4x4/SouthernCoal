@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useUploadStore } from '@/stores/upload';
@@ -30,6 +30,14 @@ export function useFileUpload() {
       );
     }
     return workerRef.current;
+  }, []);
+
+  // Terminate Web Worker on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
   }, []);
 
   /**

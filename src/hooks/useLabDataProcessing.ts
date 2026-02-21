@@ -131,8 +131,12 @@ export function useLabDataProcessing() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
       try {
-        // Wait for the FULL response (up to 160s) — ensures Edge Function finishes
+        // Wait for the FULL response — ensures Edge Function finishes
         // and releases its DB connection before we start the next one.
+        // 180s timeout prevents indefinite hangs on batch processing.
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 180_000);
+
         const response = await fetch(
           `${supabaseUrl}/functions/v1/parse-lab-data-edd`,
           {
@@ -142,8 +146,10 @@ export function useLabDataProcessing() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ queue_id: entry.id }),
+            signal: controller.signal,
           },
         );
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -153,8 +159,13 @@ export function useLabDataProcessing() {
           toast.success(`Parsed ${entry.file_name} (${i + 1}/${queued.length})`);
         }
       } catch (err) {
-        console.error(`[lab-data] Error processing ${entry.file_name}:`, err);
-        toast.error(`Error processing ${entry.file_name}`);
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          console.warn(`[lab-data] Timeout processing ${entry.file_name} — continuing batch`);
+          toast.warning(`${entry.file_name} timed out (still processing server-side)`);
+        } else {
+          console.error(`[lab-data] Error processing ${entry.file_name}:`, err);
+          toast.error(`Error processing ${entry.file_name}`);
+        }
       }
 
       // Brief pause between files

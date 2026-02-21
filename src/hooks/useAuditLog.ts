@@ -116,7 +116,7 @@ export function useAuditLog() {
           console.warn('[audit] Exception during log:', action, err);
         });
     },
-    [user, profile],
+    [user?.id, profile?.organization_id],
   );
 
   return { log };

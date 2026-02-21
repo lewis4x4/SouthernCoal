@@ -196,6 +196,7 @@ export function SmartStaging() {
                   onClick={() => removeFile(file.id)}
                   className="p-1 rounded text-text-muted hover:text-status-failed transition-colors"
                   title="Remove from staging"
+                  aria-label="Remove from staging"
                 >
                   <X size={14} />
                 </button>

@@ -87,10 +87,10 @@ export const useUploadStore = create<UploadStore>((set, get) => ({
 
   getQueuePosition: (fileId) => {
     let position = 0;
-    get().activeUploads.forEach((u) => {
+    for (const [, u] of get().activeUploads) {
+      if (u.fileId === fileId) break;
       if (u.status === 'pending') position++;
-      if (u.fileId === fileId) return;
-    });
+    }
     return position;
   },
 }));

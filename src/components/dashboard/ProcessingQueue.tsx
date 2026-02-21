@@ -100,6 +100,7 @@ export function ProcessingQueue() {
             onClick={() => refetch()}
             className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
             title="Refresh queue"
+            aria-label="Refresh queue"
           >
             <RefreshCw size={14} />
           </button>

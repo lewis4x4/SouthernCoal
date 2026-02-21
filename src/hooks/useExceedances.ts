@@ -114,6 +114,10 @@ export function useExceedances(filters?: ExceedanceFilters): UseExceedancesRetur
     fetchExceedances();
   }, [fetchExceedances]);
 
+  // Stable ref for fetchExceedances — prevents subscription churn on filter changes
+  const fetchRef = useRef(fetchExceedances);
+  fetchRef.current = fetchExceedances;
+
   // Realtime subscription for exceedances in user's org
   const lastEventRef = useRef<number>(Date.now());
 
@@ -133,9 +137,9 @@ export function useExceedances(filters?: ExceedanceFilters): UseExceedancesRetur
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           lastEventRef.current = Date.now();
 
-          // Refresh on any change
+          // Refresh on any change — uses ref to avoid re-subscribing on filter changes
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-            fetchExceedances();
+            fetchRef.current();
           }
         },
       )
@@ -144,7 +148,7 @@ export function useExceedances(filters?: ExceedanceFilters): UseExceedancesRetur
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.organization_id, fetchExceedances]);
+  }, [profile?.organization_id]);
 
   /**
    * Acknowledge an exceedance (changes status to 'acknowledged')
