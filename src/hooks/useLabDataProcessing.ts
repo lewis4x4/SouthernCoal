@@ -4,10 +4,28 @@ import { supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
+/** EDD marker columns — if a row contains all three, it's likely an EDD header row. */
+const EDD_MARKERS = ['permit', 'parameter', 'value'] as const;
+
+/**
+ * Check if a row of strings contains EDD header markers.
+ * Normalizes each cell (lowercase, trim, collapse whitespace) before matching.
+ */
+function rowHasEddHeaders(row: string[]): boolean {
+  if (!row || row.length < 15) return false;
+  const normalized = row.map((c) => String(c ?? '').toLowerCase().trim().replace(/[\s_]+/g, ' '));
+  const joined = normalized.join(' ');
+  return EDD_MARKERS.every((marker) => joined.includes(marker));
+}
+
 /**
  * Pre-parse XLSX/XLS file client-side to avoid SheetJS memory crash in Edge Functions.
  * SheetJS is ~30MB loaded — exceeds the 256MB Edge Function memory limit when combined
  * with file data. Browser has no such constraint, so we parse here and send rows as JSON.
+ *
+ * Scans ALL sheets in the workbook looking for EDD headers (permit, parameter, value).
+ * Lab reports commonly have a summary/cover sheet first with EDD data on a later sheet.
+ * Falls back to the first sheet if no EDD sheet is found.
  */
 async function clientSideParseExcel(
   entry: QueueEntry,
@@ -34,16 +52,47 @@ async function clientSideParseExcel(
     throw new Error('No worksheet found in this file.');
   }
 
-  const firstSheetName = workbook.SheetNames[0]!;
-  const sheet = workbook.Sheets[firstSheetName]!;
-  const rows: string[][] = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    raw: false,
-    defval: '',
-  });
+  // Scan all sheets looking for EDD headers — lab reports often have cover sheets first
+  let bestSheet: string | null = null;
+  let bestRows: string[][] | null = null;
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]!;
+    const rows: string[][] = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      raw: false,
+      defval: '',
+    });
+
+    // Check first 25 rows for EDD markers
+    const maxScan = Math.min(rows.length, 25);
+    for (let i = 0; i < maxScan; i++) {
+      if (rowHasEddHeaders(rows[i]!)) {
+        console.log(`[lab-data] EDD headers found on sheet "${sheetName}" at row ${i + 1}`);
+        bestSheet = sheetName;
+        bestRows = rows;
+        break;
+      }
+    }
+
+    if (bestSheet) break;
+  }
+
+  // Fall back to first sheet if no EDD sheet found
+  if (!bestRows) {
+    console.warn(
+      `[lab-data] No EDD headers found in any sheet — using first sheet "${workbook.SheetNames[0]}"`,
+    );
+    const fallbackSheet = workbook.Sheets[workbook.SheetNames[0]!]!;
+    bestRows = XLSX.utils.sheet_to_json(fallbackSheet, {
+      header: 1,
+      raw: false,
+      defval: '',
+    });
+  }
 
   return {
-    pre_parsed_rows: rows,
+    pre_parsed_rows: bestRows,
     file_format: entry.file_name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'xls',
   };
 }
