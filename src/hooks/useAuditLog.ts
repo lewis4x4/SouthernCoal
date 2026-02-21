@@ -60,7 +60,12 @@ type AuditAction =
   | 'handoff_attachment_uploaded'
   | 'priority_queue_generated'
   // Reporting
-  | 'roadmap_report_exported';
+  | 'roadmap_report_exported'
+  // FTS Penalties
+  | 'fts_upload'
+  | 'fts_parse_completed'
+  | 'fts_export_csv'
+  | 'fts_filter_change';
 
 export type { AuditAction };
 

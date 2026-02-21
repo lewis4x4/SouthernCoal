@@ -67,3 +67,12 @@ export type {
   DocumentSearchResponse,
   ComplianceSearchResponse,
 } from './search';
+
+// FTS Penalties
+export type {
+  FtsUpload,
+  FtsViolation,
+  FtsMonthlyTotal,
+  FtsKpis,
+  FtsFilters,
+} from './fts';

@@ -14,12 +14,14 @@ import {
   FileEdit,
   Map,
   ShieldAlert,
+  DollarSign,
   Pin,
   PinOff,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useFtsNavBadge } from '@/hooks/useFtsNavBadge';
 
 const ROLE_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -50,6 +52,7 @@ const NAV_GROUPS = [
       { label: 'Obligations', href: '/obligations', icon: ClipboardList },
       { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
       { label: 'Monitoring', href: '/monitoring', icon: Activity },
+      { label: 'Failure to Sample', href: '/compliance/failure-to-sample', icon: DollarSign },
       { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert },
       { label: 'Actions', href: '/corrective-actions', icon: ClipboardCheck },
     ],
@@ -99,6 +102,7 @@ export function Sidebar() {
 
   const role = getEffectiveRole();
   const roleLabel = ROLE_LABELS[role] ?? role;
+  const ftsBadge = useFtsNavBadge();
 
   // Persist pin state and dispatch event for AppShell to listen
   useEffect(() => {
@@ -183,7 +187,14 @@ export function Sidebar() {
                   >
                     <Icon className="h-5 w-5 shrink-0" />
                     {isExpanded && (
-                      <span className="whitespace-nowrap">{item.label}</span>
+                      <>
+                        <span className="whitespace-nowrap">{item.label}</span>
+                        {item.href === '/compliance/failure-to-sample' && ftsBadge && (
+                          <span className="ml-auto inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-400">
+                            {ftsBadge}
+                          </span>
+                        )}
+                      </>
                     )}
                   </Link>
                 );

@@ -25,6 +25,7 @@ const SearchObservabilityPage = lazy(() => import('@/pages/SearchObservabilityPa
 const ReviewQueuePage = lazy(() => import('@/pages/ReviewQueuePage').then(m => ({ default: m.ReviewQueuePage })));
 const CorrectiveActionsPage = lazy(() => import('@/pages/CorrectiveActionsPage').then(m => ({ default: m.CorrectiveActionsPage })));
 const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDetailPage').then(m => ({ default: m.CorrectiveActionDetailPage })));
+const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -205,6 +206,18 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <LazyPage><SearchPage /></LazyPage>
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Failure to Sample Penalties */}
+        <Route
+          path="/compliance/failure-to-sample"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <LazyPage><FailureToSamplePage /></LazyPage>
               </AppShell>
             </AuthGuard>
           }
