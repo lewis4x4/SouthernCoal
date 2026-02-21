@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useComplianceMatrix, type MatrixCellStatus } from '@/hooks/useComplianceMatrix';
 import { useQueueStore } from '@/stores/queue';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -60,7 +60,7 @@ export function ComplianceMatrix() {
     }
   }
 
-  function exportMatrix(format: ExportFormat) {
+  const exportMatrix = useCallback((format: ExportFormat) => {
     const headers = ['State', ...CATEGORIES.map((c) => c.matrixLabel), 'Progress'];
     const rows: string[][] = [];
 
@@ -97,7 +97,14 @@ export function ComplianceMatrix() {
     a.download = `compliance-matrix.${format === 'csv' ? 'csv' : 'md'}`;
     a.click();
     URL.revokeObjectURL(url);
-  }
+  }, [cells, stateProgress, log]);
+
+  // Listen for CommandPalette export trigger
+  useEffect(() => {
+    const handler = () => exportMatrix('csv');
+    document.addEventListener('export-matrix-csv', handler);
+    return () => document.removeEventListener('export-matrix-csv', handler);
+  }, [exportMatrix]);
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">

@@ -5,6 +5,7 @@ import { useQueueStore } from '@/stores/queue';
 import { useStagingStore } from '@/stores/staging';
 import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
+import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES, CATEGORIES } from '@/lib/constants';
 import {
@@ -27,7 +28,9 @@ export function CommandPalette() {
   const { can } = usePermissions();
   const setFilters = useQueueStore((s) => s.setFilters);
   const clearAll = useStagingStore((s) => s.clearAll);
-  const { processAllQueued } = usePermitProcessing();
+  const { processAllQueued, retryFailed: retryPermit } = usePermitProcessing();
+  const { retryFailed: retryLabData } = useLabDataProcessing();
+  const entries = useQueueStore((s) => s.entries);
   const { log } = useAuditLog();
 
   // Cmd+K listener
@@ -166,7 +169,11 @@ export function CommandPalette() {
                   value="retry all failed"
                   onSelect={() =>
                     runAction('retry_all_failed', () => {
-                      // TODO: wire retryAllFailed when bulk retry is implemented
+                      const failed = entries.filter((e) => e.status === 'failed');
+                      for (const entry of failed) {
+                        if (entry.file_category === 'npdes_permit') retryPermit(entry.id);
+                        else if (entry.file_category === 'lab_data') retryLabData(entry.id);
+                      }
                     })
                   }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
@@ -180,7 +187,7 @@ export function CommandPalette() {
                   value="export matrix csv"
                   onSelect={() =>
                     runAction('export_matrix_csv', () => {
-                      // TODO: trigger matrix CSV export from here
+                      document.dispatchEvent(new CustomEvent('export-matrix-csv'));
                     })
                   }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
