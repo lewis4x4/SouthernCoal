@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, getFreshToken } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
@@ -28,17 +28,8 @@ export function usePermitProcessing() {
     });
 
     try {
-      // Refresh the JWT before each Edge Function call
-      let session = (await supabase.auth.getSession()).data.session;
-      if (!session) {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshed.session) {
-          window.location.href = '/login?reason=session_expired';
-          return;
-        }
-        session = refreshed.session;
-      }
-
+      // Get a guaranteed-fresh token (proactive refresh if <60s to expiry)
+      const accessToken = await getFreshToken();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
       // Fire with 10s timeout — just long enough to catch immediate HTTP errors.
@@ -52,7 +43,7 @@ export function usePermitProcessing() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ queue_id: queueId }),
@@ -117,17 +108,8 @@ export function usePermitProcessing() {
         processing_started_at: new Date().toISOString(),
       });
 
-      // Refresh session before each call
-      let session = (await supabase.auth.getSession()).data.session;
-      if (!session) {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshed.session) {
-          window.location.href = '/login?reason=session_expired';
-          return;
-        }
-        session = refreshed.session;
-      }
-
+      // Get a guaranteed-fresh token before each call
+      const accessToken = await getFreshToken();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
       try {
@@ -142,7 +124,7 @@ export function usePermitProcessing() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ queue_id: entry.id }),
