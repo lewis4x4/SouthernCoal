@@ -8,17 +8,10 @@ import {
   Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { formatDollars } from '@/lib/format';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import type { FtsKpis } from '@/types/fts';
-
-const formatDollars = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 interface Props {
   kpis: FtsKpis;
@@ -44,7 +37,7 @@ export function FtsKpiCards({ kpis }: Props) {
                   {formatDollars(kpis.totalYtd)}
                 </p>
                 <p className="text-[10px] text-text-muted mt-1">
-                  Year to Date · {new Date().getFullYear()}
+                  Year to Date · {kpis.ytdYear}
                 </p>
               </div>
               <DollarSign size={20} className={isHighRisk ? 'text-red-400' : 'text-slate-400'} />
@@ -58,7 +51,7 @@ export function FtsKpiCards({ kpis }: Props) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
-              Q{kpis.currentQuarterNum} {new Date().getFullYear()}
+              Q{kpis.currentQuarterNum} {kpis.ytdYear}
             </p>
             <p className="text-2xl font-semibold text-text-primary mt-1 font-mono">
               {formatDollars(kpis.currentQuarter)}

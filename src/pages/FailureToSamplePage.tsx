@@ -53,7 +53,7 @@ function filterByTimeRange(totals: FtsMonthlyTotal[], range: TimeRange): FtsMont
 export function FailureToSamplePage() {
   const { uploads, violations, monthlyTotals, kpis } = useFtsData();
   const { filters, setFilters, resetFilters } = useFtsStore();
-  const [timeRange, setTimeRange] = useState<TimeRange>('current_quarter');
+  const [timeRange, setTimeRange] = useState<TimeRange>('all_time');
 
   const filteredTotals = useMemo(() => filterByTimeRange(monthlyTotals, timeRange), [monthlyTotals, timeRange]);
 
@@ -117,7 +117,7 @@ export function FailureToSamplePage() {
             <option value="VA">Virginia</option>
           </select>
 
-          {(filters.year !== currentYear || filters.quarter || filters.state) && (
+          {(filters.year || filters.quarter || filters.state) && (
             <button
               onClick={resetFilters}
               className="text-[10px] text-text-muted hover:text-text-secondary"

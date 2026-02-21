@@ -46,6 +46,7 @@ export interface FtsMonthlyTotal {
 
 export interface FtsKpis {
   totalYtd: number;
+  ytdYear: number;
   currentQuarter: number;
   currentQuarterNum: number;
   worstState: { state: string; amount: number; percentage: number } | null;

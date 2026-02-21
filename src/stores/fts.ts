@@ -18,7 +18,7 @@ interface FtsState {
 }
 
 const DEFAULT_FILTERS: FtsFilters = {
-  year: new Date().getFullYear(),
+  year: null,
   quarter: null,
   state: null,
   dnrSearch: '',

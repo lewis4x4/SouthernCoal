@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MONTH_ABBR } from '@/lib/constants';
 import { useFtsStore } from '@/stores/fts';
 import type { FtsUpload, FtsViolation, FtsMonthlyTotal, FtsKpis } from '@/types/fts';
 
@@ -12,8 +13,9 @@ export function useFtsData() {
     const { data, error } = await supabase
       .from('fts_uploads')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (!error && data) setUploads(data as FtsUpload[]);
+      .order('created_at', { ascending: false })
+      .returns<FtsUpload[]>();
+    if (!error && data) setUploads(data);
   }, [setUploads]);
 
   // ── Fetch violations with filters ──
@@ -25,8 +27,8 @@ export function useFtsData() {
     if (filters.dnrSearch) query = query.ilike('dnr_number', `%${filters.dnrSearch}%`);
     query = query.order('monitoring_year', { ascending: true }).order('monitoring_month', { ascending: true }).limit(5000);
 
-    const { data, error } = await query;
-    if (!error && data) setViolations(data as FtsViolation[]);
+    const { data, error } = await query.returns<FtsViolation[]>();
+    if (!error && data) setViolations(data);
   }, [filters, setViolations]);
 
   // ── Fetch monthly totals ──
@@ -35,8 +37,8 @@ export function useFtsData() {
     if (filters.year) query = query.eq('monitoring_year', filters.year);
     query = query.order('monitoring_month', { ascending: true }).limit(1000);
 
-    const { data, error } = await query;
-    if (!error && data) setMonthlyTotals(data as FtsMonthlyTotal[]);
+    const { data, error } = await query.returns<FtsMonthlyTotal[]>();
+    if (!error && data) setMonthlyTotals(data);
   }, [filters.year, setMonthlyTotals]);
 
   // ── Refetch all ──
@@ -81,13 +83,16 @@ export function useFtsData() {
   // ── Compute KPIs ──
   // KPIs operate on the already-filtered violations array (year/quarter/state from store)
   const kpis = useMemo((): FtsKpis => {
+    // Determine year context: use the filter year, or the latest year in the data
+    const years = [...new Set(violations.map((v) => v.monitoring_year))].sort((a, b) => b - a);
+    const effectiveYear = filters.year ?? years[0] ?? new Date().getFullYear();
+
     // Determine the quarter context from filtered data or current date
     const quarters = [...new Set(violations.map((v) => v.monitoring_quarter))].sort((a, b) => b - a);
     const latestQuarter = quarters[0] ?? Math.ceil((new Date().getMonth() + 1) / 3);
 
-    const currentYear = new Date().getFullYear();
     const totalYtd = violations
-      .filter((v) => v.monitoring_year === currentYear)
+      .filter((v) => v.monitoring_year === effectiveYear)
       .reduce((s, v) => s + v.penalty_amount, 0);
 
     const qViolations = filters.quarter
@@ -140,7 +145,6 @@ export function useFtsData() {
     const repeatOffenderRate = total > 0 ? (cat2Count / total) * 100 : 0;
 
     // MoM change from monthlyTotals
-    const MONTH_ABBR = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const months = [...new Set(monthlyTotals.map((t) => `${t.monitoring_year}-${String(t.monitoring_month).padStart(2, '0')}`))].sort().reverse();
     let momChange: FtsKpis['momChange'] = null;
     if (months.length >= 2) {
@@ -164,6 +168,7 @@ export function useFtsData() {
 
     return {
       totalYtd,
+      ytdYear: effectiveYear,
       currentQuarter,
       currentQuarterNum: latestQuarter,
       worstState,

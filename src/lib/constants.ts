@@ -298,3 +298,21 @@ export const HANDOFF_SOURCE_ICONS: Record<string, string> = {
   paste: 'Clipboard',
   file: 'Upload',
 };
+
+// =============================================================================
+// Month Names — 1-indexed (index 0 is empty string placeholder)
+// =============================================================================
+
+/** Full month names, 1-indexed (index 0 is empty string placeholder) */
+export const MONTH_NAMES: string[] = [
+  '', // index 0 unused — months are 1-indexed
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** 3-letter month abbreviations, 1-indexed (index 0 is empty string placeholder) */
+export const MONTH_ABBR: string[] = [
+  '', // index 0 unused — months are 1-indexed
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];

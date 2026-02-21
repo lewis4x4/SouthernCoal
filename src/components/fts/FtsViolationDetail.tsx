@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, MapPin, FileText, History, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { MONTH_ABBR } from '@/lib/constants';
+import { formatDollars } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { FtsViolation } from '@/types/fts';
-
-const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const STATE_LABELS: Record<string, string> = {
   KY: 'Kentucky',
@@ -22,14 +22,6 @@ const STATE_COLORS: Record<string, string> = {
   TN: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
   AL: 'bg-orange-500/15 border-orange-500/30 text-orange-400',
 };
-
-const formatDollars = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 interface Props {
   violation: FtsViolation | null;
@@ -66,6 +58,9 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
 
     setLoading(true);
 
+    // Rolling 3-year window: current year + 2 prior years
+    const minYear = violation.monitoring_year - 2;
+
     // Fetch same-outfall history
     const fetchHistory = supabase
       .from('fts_violations')
@@ -74,9 +69,10 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
       .eq('outfall_number', violation.outfall_number)
       .eq('state', violation.state)
       .neq('id', violation.id)
+      .gte('monitoring_year', minYear)
       .order('monitoring_year', { ascending: false })
       .order('monitoring_month', { ascending: false })
-      .limit(20);
+      .limit(200);
 
     // Fetch permit-level summary
     const fetchPermit = supabase
@@ -84,7 +80,8 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
       .select('outfall_number, penalty_category, penalty_amount')
       .eq('dnr_number', violation.dnr_number)
       .eq('state', violation.state)
-      .limit(1000);
+      .gte('monitoring_year', minYear)
+      .limit(200);
 
     Promise.all([fetchHistory, fetchPermit]).then(([histRes, permitRes]) => {
       if (!histRes.error && histRes.data) {
@@ -165,7 +162,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                   <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
                     <p className="text-[10px] text-text-muted mb-1">Period</p>
                     <p className="text-sm font-medium text-text-primary font-mono">
-                      {MONTH_NAMES[violation.monitoring_month]} {violation.monitoring_year}
+                      {MONTH_ABBR[violation.monitoring_month]} {violation.monitoring_year}
                     </p>
                   </div>
                   <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
@@ -243,7 +240,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                 <div className="flex items-center gap-2 mb-3">
                   <History size={14} className="text-text-muted" />
                   <h4 className="text-xs font-semibold uppercase tracking-widest text-text-muted">
-                    Outfall History
+                    Outfall History (Last 3 Years)
                   </h4>
                   <span className="text-[10px] text-text-muted font-mono">
                     {violation.outfall_number} @ {violation.dnr_number}
@@ -266,7 +263,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-text-secondary font-mono">
-                            {MONTH_NAMES[h.monitoring_month]} {h.monitoring_year}
+                            {MONTH_ABBR[h.monitoring_month]} {h.monitoring_year}
                           </span>
                           <span
                             className={cn(
@@ -293,7 +290,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                 <div className="flex items-center gap-2 mb-3">
                   <BarChart3 size={14} className="text-text-muted" />
                   <h4 className="text-xs font-semibold uppercase tracking-widest text-text-muted">
-                    Permit Summary
+                    Permit Summary (Last 3 Years)
                   </h4>
                   <span className="text-[10px] text-text-muted font-mono">
                     {violation.dnr_number}

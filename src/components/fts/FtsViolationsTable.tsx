@@ -2,12 +2,13 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Download, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { MONTH_ABBR } from '@/lib/constants';
+import { formatDollars } from '@/lib/format';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { FtsViolationDetail } from '@/components/fts/FtsViolationDetail';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { FtsViolation } from '@/types/fts';
 
-const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ROW_HEIGHT = 48;
 const STATE_TABS = ['All', 'KY', 'WV', 'VA'] as const;
 const STATE_LABELS: Record<string, string> = {
@@ -16,14 +17,6 @@ const STATE_LABELS: Record<string, string> = {
   WV: 'West Virginia',
   VA: 'Virginia',
 };
-
-const formatDollars = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 type SortField = 'monitoring_month' | 'state' | 'dnr_number' | 'outfall_number' | 'penalty_category' | 'penalty_amount';
 type SortDir = 'asc' | 'desc';
@@ -81,7 +74,7 @@ export function FtsViolationsTable({ violations }: Props) {
   const exportCsv = useCallback(() => {
     const headers = ['Month', 'Quarter', 'Year', 'State', 'DNR Number', 'Outfall', 'Category', 'Penalty', 'Notes'];
     const rows = filtered.map((v) => [
-      MONTH_NAMES[v.monitoring_month],
+      MONTH_ABBR[v.monitoring_month],
       `Q${v.monitoring_quarter}`,
       v.monitoring_year,
       v.state,
@@ -208,7 +201,7 @@ export function FtsViolationsTable({ violations }: Props) {
                 }}
               >
                 <span className="w-16 text-xs text-text-secondary font-mono">
-                  {MONTH_NAMES[v.monitoring_month]} {v.monitoring_year}
+                  {MONTH_ABBR[v.monitoring_month]} {v.monitoring_year}
                 </span>
                 <span className="w-12 text-xs text-text-secondary">{v.state}</span>
                 <span className="flex-1 min-w-0 text-xs text-text-primary font-mono truncate">

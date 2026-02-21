@@ -27,7 +27,12 @@ export function useFtsNavBadge(): string | null {
         .gte('monitoring_month', qStart)
         .lte('monitoring_month', qEnd);
 
-      if (error || !data) return;
+      if (error || !data) {
+        if (error && import.meta.env.DEV) {
+          console.warn('[useFtsNavBadge] Failed to fetch quarterly total for nav badge:', error.message);
+        }
+        return;
+      }
 
       const total = data
         .filter((r) => r.state !== 'TN')
