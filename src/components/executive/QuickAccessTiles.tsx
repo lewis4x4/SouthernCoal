@@ -26,7 +26,7 @@ const TILES = [
   {
     title: 'View Penalties',
     description: 'Failure to Sample penalty tracking and trends',
-    href: '/compliance/fts',
+    href: '/compliance/failure-to-sample',
     icon: DollarSign,
     gradient: 'from-red-600 to-red-500',
   },

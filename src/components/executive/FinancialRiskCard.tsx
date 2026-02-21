@@ -243,7 +243,7 @@ export function FinancialRiskCard() {
 
           {/* Link to FTS Page */}
           <Link
-            to="/compliance/fts"
+            to="/compliance/failure-to-sample"
             className="flex items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
           >
             View Full Penalty Breakdown
