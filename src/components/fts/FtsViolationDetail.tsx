@@ -123,10 +123,10 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-screen w-full max-w-md z-[91] overflow-y-auto bg-crystal-surface border-l border-white/[0.08] shadow-2xl"
+            className="fixed inset-y-0 right-0 w-full max-w-md z-[91] flex flex-col bg-crystal-surface border-l border-white/[0.08] shadow-2xl"
           >
-            {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-crystal-surface/95 backdrop-blur-xl">
+            {/* Header — flex-shrink-0 keeps it pinned */}
+            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-crystal-surface">
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
@@ -149,7 +149,8 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
               </button>
             </div>
 
-            <div className="p-5 space-y-6">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto p-5 pb-16 space-y-6">
               {/* Section 1: Monitoring Period */}
               <section>
                 <div className="flex items-center gap-2 mb-3">
@@ -256,31 +257,40 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                   </div>
                 ) : (
                   <div className="rounded-lg border border-white/[0.08] overflow-hidden">
-                    {history.map((h) => (
-                      <div
-                        key={h.id}
-                        className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-text-secondary font-mono">
-                            {MONTH_ABBR[h.monitoring_month]} {h.monitoring_year}
-                          </span>
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold border',
-                              h.penalty_category === 1
-                                ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                                : 'bg-red-500/10 border-red-500/20 text-red-400',
-                            )}
-                          >
-                            Cat {h.penalty_category}
+                    <div className="max-h-64 overflow-y-auto">
+                      {history.map((h) => (
+                        <div
+                          key={h.id}
+                          className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-text-secondary font-mono">
+                              {MONTH_ABBR[h.monitoring_month]} {h.monitoring_year}
+                            </span>
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold border',
+                                h.penalty_category === 1
+                                  ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                                  : 'bg-red-500/10 border-red-500/20 text-red-400',
+                              )}
+                            >
+                              Cat {h.penalty_category}
+                            </span>
+                          </div>
+                          <span className="text-xs font-mono text-text-primary">
+                            {formatDollars(h.penalty_amount)}
                           </span>
                         </div>
-                        <span className="text-xs font-mono text-text-primary">
-                          {formatDollars(h.penalty_amount)}
-                        </span>
+                      ))}
+                    </div>
+                    {history.length > 6 && (
+                      <div className="px-4 py-1.5 border-t border-white/[0.06] bg-white/[0.02]">
+                        <p className="text-[10px] text-text-muted text-center">
+                          {history.length} entries — scroll for more
+                        </p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </section>

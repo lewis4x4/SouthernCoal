@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Upload, ClipboardList, FileText, Activity } from 'lucide-react';
+import { Upload, ClipboardList, FileText, Activity, DollarSign } from 'lucide-react';
 
 const TILES = [
   {
@@ -24,6 +24,13 @@ const TILES = [
     gradient: 'from-emerald-600 to-emerald-500',
   },
   {
+    title: 'View Penalties',
+    description: 'Failure to Sample penalty tracking and trends',
+    href: '/compliance/fts',
+    icon: DollarSign,
+    gradient: 'from-red-600 to-red-500',
+  },
+  {
     title: 'Check Alerts',
     description: 'Monitor exceedances and real-time violations',
     href: '/monitoring',
@@ -37,7 +44,7 @@ export function QuickAccessTiles() {
     <div>
       <h2 className="mb-4 text-lg font-semibold text-text-primary">Quick Access</h2>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {TILES.map((tile) => {
           const Icon = tile.icon;
 

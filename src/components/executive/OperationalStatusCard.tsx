@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, FileCheck, Droplet, Calendar, AlertCircle } from 'lucide-react';
+import { Building2, FileCheck, Droplet, Calendar, AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
@@ -13,20 +13,29 @@ interface StatRow {
 }
 
 export function OperationalStatusCard() {
-  const [dbStats, setDbStats] = useState<{ orgCount: number; permitCount: number; outfallCount: number } | null>(null);
+  const [dbStats, setDbStats] = useState<{
+    orgCount: number;
+    permitCount: number;
+    outfallCount: number;
+    violationCount: number;
+    ftsQuarters: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const queueEntries = useQueueStore((s) => s.entries);
 
-  // DB counts — fetch ONCE on mount with slight delay to avoid connection burst
-  // (FinancialRiskCard + ActionQueueCard fire first, this waits 300ms)
   useEffect(() => {
     let cancelled = false;
 
     const timer = setTimeout(async () => {
-      const [orgsRes, permitsRes, outfallsRes] = await Promise.all([
+      const [orgsRes, permitsRes, outfallsRes, violationsRes, ftsUploadsRes] = await Promise.all([
         supabase.from('organizations').select('id', { count: 'exact', head: true }),
         supabase.from('permits').select('id', { count: 'exact', head: true }),
         supabase.from('outfalls').select('id', { count: 'exact', head: true }),
+        supabase.from('fts_violations').select('id', { count: 'exact', head: true }),
+        supabase
+          .from('fts_uploads')
+          .select('id')
+          .eq('parse_status', 'completed'),
       ]);
 
       if (cancelled) return;
@@ -35,6 +44,8 @@ export function OperationalStatusCard() {
         orgCount: orgsRes.count ?? 0,
         permitCount: permitsRes.count ?? 0,
         outfallCount: outfallsRes.count ?? 0,
+        violationCount: violationsRes.count ?? 0,
+        ftsQuarters: ftsUploadsRes.data?.length ?? 0,
       });
       setLoading(false);
     }, 300);
@@ -42,7 +53,6 @@ export function OperationalStatusCard() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
-  // Queue stats — derived from store, no DB call
   const processingCount = queueEntries.filter(
     (e) => e.status === 'processing' || e.status === 'queued',
   ).length;
@@ -51,6 +61,8 @@ export function OperationalStatusCard() {
   const orgCount = dbStats?.orgCount ?? 0;
   const permitCount = dbStats?.permitCount ?? 0;
   const outfallCount = dbStats?.outfallCount ?? 0;
+  const violationCount = dbStats?.violationCount ?? 0;
+  const ftsQuarters = dbStats?.ftsQuarters ?? 0;
 
   const stats: StatRow[] = [
     {
@@ -59,6 +71,13 @@ export function OperationalStatusCard() {
       subtext: '5 states (AL, KY, TN, VA, WV)',
       icon: Building2,
       status: 'good',
+    },
+    {
+      label: 'FTS Violations',
+      value: violationCount.toLocaleString(),
+      subtext: ftsQuarters > 0 ? `${ftsQuarters} quarter${ftsQuarters !== 1 ? 's' : ''} processed` : 'Upload penalty files to populate',
+      icon: AlertTriangle,
+      status: violationCount > 1000 ? 'critical' : violationCount > 0 ? 'warning' : 'good',
     },
     {
       label: 'Permits Uploaded',
@@ -105,7 +124,7 @@ export function OperationalStatusCard() {
 
       <div className="space-y-3">
         {loading
-          ? Array.from({ length: 5 }).map((_, i) => (
+          ? Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="h-[72px] animate-pulse rounded-lg border border-white/[0.04] bg-white/[0.02]"

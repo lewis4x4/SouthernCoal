@@ -1,117 +1,153 @@
-import { useEffect, useState } from 'react';
-import { DollarSign, AlertTriangle } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { DollarSign, TrendingUp, TrendingDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { formatDollars } from '@/lib/format';
+import { MONTH_ABBR } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
+import type { FtsMonthlyTotal } from '@/types/fts';
 import type { PenaltyTier } from '@/types/obligations';
 
-interface TierData {
+interface ObligationTier {
   count: number;
   amount: number;
 }
 
-interface PenaltyData {
-  total: number;
-  tier1: TierData;
-  tier2: TierData;
-  tier3: TierData;
-  escalatingIn48h: number;
-}
-
-const EMPTY: PenaltyData = {
-  total: 0,
-  tier1: { count: 0, amount: 0 },
-  tier2: { count: 0, amount: 0 },
-  tier3: { count: 0, amount: 0 },
-  escalatingIn48h: 0,
+const STATE_BAR_COLORS: Record<string, string> = {
+  WV: 'bg-emerald-500',
+  KY: 'bg-blue-500',
+  VA: 'bg-purple-500',
+  AL: 'bg-orange-500',
+  TN: 'bg-amber-500',
 };
 
 export function FinancialRiskCard() {
-  const [data, setData] = useState<PenaltyData>(EMPTY);
+  const [monthlyTotals, setMonthlyTotals] = useState<FtsMonthlyTotal[]>([]);
+  const [obligations, setObligations] = useState<{ tier1: ObligationTier; tier2: ObligationTier; tier3: ObligationTier; total: number }>({
+    tier1: { count: 0, amount: 0 },
+    tier2: { count: 0, amount: 0 },
+    tier3: { count: 0, amount: 0 },
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetch() {
-      const { data: rows, error } = await supabase
-        .from('consent_decree_obligations')
-        .select('id, next_due_date, status, days_at_risk, penalty_tier, accrued_penalty')
-        .in('status', ['pending', 'in_progress', 'overdue']);
+    async function fetchData() {
+      const [ftsRes, obligRes] = await Promise.all([
+        supabase
+          .from('fts_monthly_totals')
+          .select('*')
+          .order('monitoring_year', { ascending: true })
+          .order('monitoring_month', { ascending: true })
+          .limit(1000)
+          .returns<FtsMonthlyTotal[]>(),
+        supabase
+          .from('consent_decree_obligations')
+          .select('id, penalty_tier, accrued_penalty')
+          .in('status', ['pending', 'in_progress', 'overdue']),
+      ]);
 
       if (cancelled) return;
 
-      if (error || !rows) {
-        console.error('[dashboard] Failed to fetch obligations:', error?.message);
-        setLoading(false);
-        return;
-      }
+      if (ftsRes.data) setMonthlyTotals(ftsRes.data);
 
-      const tier1: TierData = { count: 0, amount: 0 };
-      const tier2: TierData = { count: 0, amount: 0 };
-      const tier3: TierData = { count: 0, amount: 0 };
-      let escalating = 0;
-      const now = new Date();
+      if (obligRes.data) {
+        const tier1: ObligationTier = { count: 0, amount: 0 };
+        const tier2: ObligationTier = { count: 0, amount: 0 };
+        const tier3: ObligationTier = { count: 0, amount: 0 };
 
-      for (const row of rows) {
-        const penaltyTier = (row.penalty_tier as PenaltyTier) ?? 'none';
-        const accrued = (row.accrued_penalty as number) ?? 0;
-
-        if (penaltyTier === 'tier_1') {
-          tier1.count++;
-          tier1.amount += accrued;
-        } else if (penaltyTier === 'tier_2') {
-          tier2.count++;
-          tier2.amount += accrued;
-        } else if (penaltyTier === 'tier_3') {
-          tier3.count++;
-          tier3.amount += accrued;
-        } else if (row.next_due_date) {
-          // Not yet overdue — check if escalating within 48h
-          const due = new Date(row.next_due_date as string);
-          const daysUntil = Math.floor((due.getTime() - now.getTime()) / 86_400_000);
-          if (daysUntil >= -2 && daysUntil <= 0) escalating++;
+        for (const row of obligRes.data) {
+          const tier = (row.penalty_tier as PenaltyTier) ?? 'none';
+          const accrued = (row.accrued_penalty as number) ?? 0;
+          if (tier === 'tier_1') { tier1.count++; tier1.amount += accrued; }
+          else if (tier === 'tier_2') { tier2.count++; tier2.amount += accrued; }
+          else if (tier === 'tier_3') { tier3.count++; tier3.amount += accrued; }
         }
+
+        setObligations({
+          tier1,
+          tier2,
+          tier3,
+          total: tier1.amount + tier2.amount + tier3.amount,
+        });
       }
 
-      setData({
-        total: tier1.amount + tier2.amount + tier3.amount,
-        tier1,
-        tier2,
-        tier3,
-        escalatingIn48h: escalating,
-      });
       setLoading(false);
     }
 
-    fetch();
+    fetchData();
     return () => { cancelled = true; };
   }, []);
 
-  const riskLevel =
-    data.tier3.count > 0
-      ? 'critical'
-      : data.tier2.count > 0
-        ? 'high'
-        : data.tier1.count > 0
-          ? 'medium'
-          : 'low';
+  // Compute FTS KPIs from monthly totals
+  const ftsKpis = useMemo(() => {
+    if (monthlyTotals.length === 0) return null;
+
+    // Determine effective year (latest year in data)
+    const years = [...new Set(monthlyTotals.map((t) => t.monitoring_year))].sort((a, b) => b - a);
+    const effectiveYear = years[0]!;
+
+    // YTD (exclude TN — always $0)
+    const ytdRows = monthlyTotals.filter(
+      (t) => t.monitoring_year === effectiveYear && t.state !== 'TN',
+    );
+    const totalYtd = ytdRows.reduce((s, t) => s + t.total_penalties, 0);
+
+    // Current quarter
+    const quarters = [...new Set(ytdRows.map((t) => t.monitoring_quarter))].sort((a, b) => b - a);
+    const currentQ = quarters[0] ?? 1;
+    const qRows = ytdRows.filter((t) => t.monitoring_quarter === currentQ);
+    const currentQuarterAmt = qRows.reduce((s, t) => s + t.total_penalties, 0);
+
+    // State breakdown (YTD)
+    const stateMap = new Map<string, number>();
+    for (const t of ytdRows) {
+      stateMap.set(t.state, (stateMap.get(t.state) ?? 0) + t.total_penalties);
+    }
+    const stateBreakdown = [...stateMap.entries()]
+      .map(([state, amount]) => ({
+        state,
+        amount,
+        percentage: totalYtd > 0 ? (amount / totalYtd) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // MoM change
+    const monthKeys = [...new Set(
+      monthlyTotals
+        .filter((t) => t.state !== 'TN')
+        .map((t) => `${t.monitoring_year}-${String(t.monitoring_month).padStart(2, '0')}`),
+    )].sort().reverse();
+
+    let momChange: { percentage: number; priorMonth: string } | null = null;
+    if (monthKeys.length >= 2) {
+      const [lYear, lMonth] = monthKeys[0]!.split('-').map(Number) as [number, number];
+      const [pYear, pMonth] = monthKeys[1]!.split('-').map(Number) as [number, number];
+      const latestTotal = monthlyTotals
+        .filter((t) => t.monitoring_year === lYear && t.monitoring_month === lMonth && t.state !== 'TN')
+        .reduce((s, t) => s + t.total_penalties, 0);
+      const priorTotal = monthlyTotals
+        .filter((t) => t.monitoring_year === pYear && t.monitoring_month === pMonth && t.state !== 'TN')
+        .reduce((s, t) => s + t.total_penalties, 0);
+      if (priorTotal > 0) {
+        momChange = {
+          percentage: ((latestTotal - priorTotal) / priorTotal) * 100,
+          priorMonth: MONTH_ABBR[pMonth] ?? '',
+        };
+      }
+    }
+
+    return { totalYtd, effectiveYear, currentQuarterAmt, currentQ, stateBreakdown, momChange };
+  }, [monthlyTotals]);
+
+  const hasObligationRisk = obligations.total > 0;
 
   return (
-    <div
-      className={cn(
-        'group relative overflow-hidden rounded-2xl border p-6 transition-all',
-        riskLevel === 'critical' && 'border-red-500/50 bg-red-950/20',
-        riskLevel === 'high' && 'border-orange-500/50 bg-orange-950/20',
-        riskLevel === 'medium' && 'border-yellow-500/50 bg-yellow-950/20',
-        riskLevel === 'low' && 'border-emerald-500/30 bg-emerald-950/10',
-      )}
-    >
-      {riskLevel === 'critical' && (
-        <div className="absolute inset-0 animate-pulse rounded-2xl border-2 border-red-500/30" />
-      )}
-
+    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium text-text-secondary">Financial Risk</h3>
           <p className="mt-0.5 text-xs text-text-muted">Consent Decree Penalties</p>
@@ -121,29 +157,111 @@ export function FinancialRiskCard() {
         </div>
       </div>
 
-      {/* Total */}
-      <div className="mb-6">
-        <div className={cn('text-4xl font-bold', loading && 'animate-pulse text-text-muted')}>
-          {loading ? '...' : `$${data.total.toLocaleString()}`}
+      {loading ? (
+        <div className="space-y-3">
+          <div className="h-12 animate-pulse rounded-lg bg-white/[0.04]" />
+          <div className="h-8 animate-pulse rounded-lg bg-white/[0.04]" />
+          <div className="h-24 animate-pulse rounded-lg bg-white/[0.04]" />
         </div>
-        <div className="mt-1 text-sm text-text-muted">Total Accrued Penalties</div>
-      </div>
+      ) : ftsKpis ? (
+        <div className="space-y-5">
+          {/* YTD Total — hero number */}
+          <div>
+            <div className="text-4xl font-bold text-text-primary">
+              {formatDollars(ftsKpis.totalYtd)}
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-sm text-text-muted">
+                YTD {ftsKpis.effectiveYear} Penalties
+              </span>
+              {ftsKpis.momChange && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                    ftsKpis.momChange.percentage > 0
+                      ? 'bg-red-500/10 text-red-400'
+                      : 'bg-emerald-500/10 text-emerald-400',
+                  )}
+                >
+                  {ftsKpis.momChange.percentage > 0 ? (
+                    <TrendingUp size={10} />
+                  ) : (
+                    <TrendingDown size={10} />
+                  )}
+                  {Math.abs(ftsKpis.momChange.percentage).toFixed(0)}% vs {ftsKpis.momChange.priorMonth}
+                </span>
+              )}
+            </div>
+          </div>
 
-      {/* Tier Breakdown */}
-      <div className="space-y-2.5">
-        <TierRow label="Tier 1 (1–14 days)" color="yellow" tier={data.tier1} loading={loading} />
-        <TierRow label="Tier 2 (15–30 days)" color="orange" tier={data.tier2} loading={loading} />
-        <TierRow label="Tier 3 (31+ days)" color="red" tier={data.tier3} loading={loading} />
-      </div>
+          {/* Current Quarter */}
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted">
+                Q{ftsKpis.currentQ} {ftsKpis.effectiveYear}
+              </span>
+              <span className="text-lg font-bold text-text-primary font-mono">
+                {formatDollars(ftsKpis.currentQuarterAmt)}
+              </span>
+            </div>
+          </div>
 
-      {/* Escalation Warning */}
-      {data.escalatingIn48h > 0 && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-950/10 p-3">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
-          <span className="text-xs text-red-400">
-            {data.escalatingIn48h} obligation{data.escalatingIn48h > 1 ? 's' : ''} escalating
-            within 48h
-          </span>
+          {/* State Breakdown */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+              By State
+            </p>
+            {ftsKpis.stateBreakdown.map((s) => (
+              <div key={s.state} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-text-secondary">{s.state}</span>
+                  <span className="font-mono text-text-primary">{formatDollars(s.amount)}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/[0.06]">
+                  <div
+                    className={cn('h-full rounded-full transition-all', STATE_BAR_COLORS[s.state] ?? 'bg-white/30')}
+                    style={{ width: `${Math.max(s.percentage, 1)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Obligation Risk (if any) */}
+          {hasObligationRisk && (
+            <div className="rounded-lg border border-orange-500/20 bg-orange-950/10 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle size={12} className="text-orange-400" />
+                <span className="text-xs font-semibold text-orange-400">At-Risk Obligations</span>
+              </div>
+              <p className="text-xs text-text-muted">
+                {obligations.tier1.count + obligations.tier2.count + obligations.tier3.count} obligations accruing{' '}
+                {formatDollars(obligations.total)} in penalties
+              </p>
+            </div>
+          )}
+
+          {/* Link to FTS Page */}
+          <Link
+            to="/compliance/fts"
+            className="flex items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+          >
+            View Full Penalty Breakdown
+            <ChevronRight size={14} />
+          </Link>
+        </div>
+      ) : (
+        /* No FTS data — show original consent decree view */
+        <div className="space-y-4">
+          <div className="text-4xl font-bold text-text-primary">
+            {formatDollars(obligations.total)}
+          </div>
+          <div className="mt-1 text-sm text-text-muted">Total Accrued Penalties</div>
+          <div className="space-y-2.5">
+            <TierRow label="Tier 1 (1–14 days)" color="yellow" tier={obligations.tier1} />
+            <TierRow label="Tier 2 (15–30 days)" color="orange" tier={obligations.tier2} />
+            <TierRow label="Tier 3 (31+ days)" color="red" tier={obligations.tier3} />
+          </div>
         </div>
       )}
     </div>
@@ -154,12 +272,10 @@ function TierRow({
   label,
   color,
   tier,
-  loading,
 }: {
   label: string;
   color: 'yellow' | 'orange' | 'red';
-  tier: TierData;
-  loading: boolean;
+  tier: ObligationTier;
 }) {
   const colors = {
     yellow: 'border-yellow-500/20 bg-yellow-950/10 text-yellow-400',
@@ -172,10 +288,10 @@ function TierRow({
       <div>
         <div className="text-xs">{label}</div>
         <div className="mt-0.5 text-sm text-slate-300">
-          {loading ? '...' : `${tier.count} obligation${tier.count !== 1 ? 's' : ''}`}
+          {tier.count} obligation{tier.count !== 1 ? 's' : ''}
         </div>
       </div>
-      <div className="text-lg font-bold">{loading ? '...' : `$${tier.amount.toLocaleString()}`}</div>
+      <div className="text-lg font-bold">{formatDollars(tier.amount)}</div>
     </div>
   );
 }
