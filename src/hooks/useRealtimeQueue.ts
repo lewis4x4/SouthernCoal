@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, getFreshToken } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import { useAuth } from './useAuth';
 import type { QueueEntry } from '@/types/queue';
@@ -11,13 +11,12 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
  */
 async function triggerEmbeddings(queueId: string) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const accessToken = await getFreshToken();
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     await fetch(`${supabaseUrl}/functions/v1/generate-embeddings`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ queue_id: queueId }),

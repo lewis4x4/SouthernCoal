@@ -18,33 +18,23 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 /**
- * Get a fresh JWT token for Edge Function calls.
- * Proactively refreshes if token expires within 60 seconds (v6 Section 11).
+ * Get a guaranteed-fresh JWT token for Edge Function calls.
+ *
+ * Why refreshSession() instead of getSession():
+ * getSession() reads from memory/localStorage WITHOUT server validation.
+ * The cached access_token can be stale (rotated by autoRefreshToken,
+ * invalidated server-side, or desynchronized from the JWT secret).
+ * refreshSession() always hits the Supabase auth server and returns
+ * a brand-new access_token guaranteed to pass gateway verify_jwt.
  */
 export async function getFreshToken(): Promise<string> {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const { data: refreshed, error } = await supabase.auth.refreshSession();
 
-  if (error || !session) {
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !refreshed.session) {
-      window.location.href = '/login?reason=session_expired';
-      throw new Error('Session expired');
-    }
-    return refreshed.session.access_token;
+  if (error || !refreshed.session) {
+    // Refresh token itself is expired — user must re-authenticate
+    window.location.href = '/login?reason=session_expired';
+    throw new Error('Session expired — please log in again');
   }
 
-  const expiresAt = session.expires_at ?? 0;
-  const now = Math.floor(Date.now() / 1000);
-  const REFRESH_THRESHOLD = 60;
-
-  if (expiresAt - now < REFRESH_THRESHOLD) {
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !refreshed.session) {
-      window.location.href = '/login?reason=refresh_failed';
-      throw new Error('Token refresh failed');
-    }
-    return refreshed.session.access_token;
-  }
-
-  return session.access_token;
+  return refreshed.session.access_token;
 }
