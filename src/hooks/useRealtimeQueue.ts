@@ -166,7 +166,9 @@ export function useRealtimeQueue() {
       );
 
       if (timeSinceLastEvent >= HEARTBEAT_INTERVAL && hasActiveEntries) {
-        heartbeatFetch();
+        heartbeatFetch().catch((err) => {
+          console.error('[queue] Heartbeat fetch error:', err);
+        });
       }
     }, HEARTBEAT_INTERVAL);
 

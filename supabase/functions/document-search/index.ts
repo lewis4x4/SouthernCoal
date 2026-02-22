@@ -128,6 +128,9 @@ async function synthesizeAnswer(
     )
     .join("\n\n---\n\n");
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000); // 30s max
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -161,7 +164,10 @@ Provide your answer with [Source N] citations:`,
         },
       ],
     }),
+    signal: controller.signal,
   });
+
+  clearTimeout(timeout);
 
   const result = await response.json();
   if (!response.ok) {
@@ -260,7 +266,12 @@ serve(async (req: Request) => {
     let answer: string | null = null;
 
     if (mode === "answer" && matchedChunks.length > 0) {
-      answer = await synthesizeAnswer(query, matchedChunks);
+      try {
+        answer = await synthesizeAnswer(query, matchedChunks);
+      } catch (synthErr) {
+        console.warn("[document-search] Synthesis failed, returning chunks only:", synthErr);
+        answer = "Answer synthesis timed out. Please review the document excerpts below.";
+      }
     }
 
     // 7. Audit log

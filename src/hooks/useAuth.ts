@@ -25,6 +25,9 @@ export function useAuth() {
         loading: false,
         isAuthenticated: !!session,
       });
+    }).catch((err) => {
+      console.error('[auth] Failed to fetch session:', err);
+      setState((prev) => ({ ...prev, loading: false }));
     });
 
     const {

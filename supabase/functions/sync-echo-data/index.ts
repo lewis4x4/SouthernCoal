@@ -66,34 +66,52 @@ async function validateAuth(
   }
 
   // Path 2: Service role JWT (pg_net, admin scripts)
+  // Verify via Supabase auth — never trust decoded payload without signature check
   const authHeader = req.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      if (payload.role === "service_role") {
-        return { authorized: true, userId: null, orgId: null, role: "system" };
-      }
-    } catch { /* not a valid JWT, fall through */ }
 
-    // Path 3: User JWT (frontend "Sync Now")
+    // Check if this is the actual service role key (exact match, not JWT decode)
+    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+      return { authorized: true, userId: null, orgId: null, role: "system" };
+    }
+
+    // Path 3: User JWT (frontend "Sync Now") — verify signature via Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return denied;
 
-    // Check user role + org
+    // Get org from user_profiles
     const { data: profile } = await supabase
       .from("user_profiles")
-      .select("role, organization_id")
+      .select("organization_id")
       .eq("id", user.id)
       .single();
 
-    if (!profile?.role || !ALLOWED_ROLES.includes(profile.role)) return denied;
+    if (!profile?.organization_id) return denied;
+
+    // Get role from user_role_assignments (user_profiles has no role column)
+    const { data: roleData } = await supabase
+      .from("user_role_assignments")
+      .select("roles(name)")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    const userRole = (
+      roleData?.roles &&
+      typeof roleData.roles === "object" &&
+      "name" in roleData.roles
+    )
+      ? (roleData.roles as { name: string }).name
+      : null;
+
+    if (!userRole || !ALLOWED_ROLES.includes(userRole)) return denied;
 
     return {
       authorized: true,
       userId: user.id,
-      orgId: profile.organization_id || null,
-      role: profile.role,
+      orgId: profile.organization_id,
+      role: userRole,
     };
   }
 

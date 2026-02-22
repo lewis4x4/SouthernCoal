@@ -29,7 +29,7 @@ export function OperationalStatusCard() {
     const timer = setTimeout(async () => {
       const [orgsRes, permitsRes, outfallsRes, violationsRes, ftsUploadsRes] = await Promise.all([
         supabase.from('organizations').select('id', { count: 'exact', head: true }),
-        supabase.from('permits').select('id', { count: 'exact', head: true }),
+        supabase.from('npdes_permits').select('id', { count: 'exact', head: true }),
         supabase.from('outfalls').select('id', { count: 'exact', head: true }),
         supabase.from('fts_violations').select('id', { count: 'exact', head: true }),
         supabase

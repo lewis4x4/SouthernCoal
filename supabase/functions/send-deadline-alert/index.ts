@@ -48,6 +48,30 @@ serve(async (req) => {
       });
     }
 
+    // Verify user has appropriate role (admin, environmental_manager, or executive)
+    const { data: roleData } = await supabase
+      .from("user_role_assignments")
+      .select("roles(name)")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    const userRole = (
+      roleData?.roles &&
+      typeof roleData.roles === "object" &&
+      "name" in roleData.roles
+    )
+      ? (roleData.roles as { name: string }).name
+      : null;
+
+    const ALLOWED_ROLES = ["admin", "environmental_manager", "executive"];
+    if (!userRole || !ALLOWED_ROLES.includes(userRole)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body: RequestBody = await req.json();
     const {
       obligation_name,
@@ -59,6 +83,15 @@ serve(async (req) => {
 
     if (!recipient_email || !obligation_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipient_email)) {
+      return new Response(JSON.stringify({ error: "Invalid email address" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
