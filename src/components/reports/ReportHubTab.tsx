@@ -6,11 +6,9 @@ import { ReportProgressModal } from './ReportProgressModal';
 import { useReportDefinitions, TIER_LABELS } from '@/hooks/useReportDefinitions';
 import { useReportGeneration } from '@/hooks/useReportGeneration';
 import type { ReportDefinitionWithAccess } from '@/hooks/useReportDefinitions';
-import { Loader2, FileText, Lock, Unlock } from 'lucide-react';
 
 export function ReportHubTab() {
-  const { definitions, accessible, unlocked, locked, byTier, loading } =
-    useReportDefinitions();
+  const { definitions, byTier, loading } = useReportDefinitions();
   const { generate, download, reset, job, generating } = useReportGeneration();
   const [configReport, setConfigReport] = useState<ReportDefinitionWithAccess | null>(null);
 
@@ -34,8 +32,27 @@ export function ReportHubTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-12 animate-pulse mt-6 pb-12">
+        <div className="space-y-4">
+          <div className="h-5 w-32 rounded bg-white/[0.04] mb-4" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <SpotlightCard key={i} className="h-32 bg-white/[0.02]" spotlightColor="transparent">
+                <div />
+              </SpotlightCard>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="h-5 w-40 rounded bg-white/[0.04] mb-4" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {[1, 2].map((i) => (
+              <SpotlightCard key={i} className="h-32 bg-white/[0.02]" spotlightColor="transparent">
+                <div />
+              </SpotlightCard>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -44,73 +61,22 @@ export function ReportHubTab() {
 
   return (
     <div className="space-y-6">
-      {/* Health Bar */}
-      <div className="grid grid-cols-3 gap-3">
-        <SpotlightCard
-          spotlightColor="rgba(16, 185, 129, 0.08)"
-          className="p-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-green-500/10 p-2">
-              <Unlock className="h-4 w-4 text-green-400" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-text-muted">Available Now</p>
-              <p className="text-2xl font-bold text-green-400">{unlocked.length}</p>
-            </div>
-          </div>
-        </SpotlightCard>
-
-        <SpotlightCard
-          spotlightColor="rgba(245, 158, 11, 0.08)"
-          className="p-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-amber-500/10 p-2">
-              <Lock className="h-4 w-4 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-text-muted">Locked</p>
-              <p className="text-2xl font-bold text-amber-400">{locked.length}</p>
-            </div>
-          </div>
-        </SpotlightCard>
-
-        <SpotlightCard
-          spotlightColor="rgba(168, 85, 247, 0.08)"
-          className="p-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-purple-500/10 p-2">
-              <FileText className="h-4 w-4 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-text-muted">Your Access</p>
-              <p className="text-2xl font-bold text-purple-400">
-                {accessible.length}
-                <span className="text-sm font-normal text-text-muted">/{definitions.length}</span>
-              </p>
-            </div>
-          </div>
-        </SpotlightCard>
-      </div>
-
       {/* Tier Sections */}
       {tiers.map((tier) => {
         const tierReports = byTier(tier);
         if (tierReports.length === 0) return null;
 
         return (
-          <div key={tier} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-text-secondary">
+          <div key={tier} className="mb-12">
+            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-white/[0.04] bg-gradient-to-r from-transparent via-white/[0.02] to-transparent bg-[length:200%_1px] bg-no-repeat bg-bottom">
+              <h2 className="text-sm font-semibold text-text-secondary tracking-wide">
                 Tier {tier}: {TIER_LABELS[tier]}
               </h2>
-              <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-text-muted">
+              <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[10px] text-text-muted">
                 {tierReports.length}
               </span>
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {tierReports.map((report) => (
                 <ReportCard
                   key={report.id}

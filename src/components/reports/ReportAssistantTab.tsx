@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Sparkles, Play, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useReportAssistant } from '@/hooks/useReportAssistant';
@@ -20,6 +20,15 @@ export function ReportAssistantTab() {
   const { analyze, result, loading, clear } = useReportAssistant();
   const { generate, download, reset, job, generating } = useReportGeneration();
   const { definitions } = useReportDefinitions();
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Debounced typing effect
+  useEffect(() => {
+    if (!query) return;
+    setIsTyping(true);
+    const t = setTimeout(() => setIsTyping(false), 800);
+    return () => clearTimeout(t);
+  }, [query]);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -47,7 +56,12 @@ export function ReportAssistantTab() {
       {/* Search Bar */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <Sparkles className="h-4 w-4 text-purple-400" />
+          <div className="relative">
+            <Sparkles className={`h-4 w-4 text-purple-400 transition-all ${isTyping ? 'scale-110' : ''}`} />
+            {isTyping && (
+              <div className="absolute inset-0 rounded-full animate-ping bg-purple-500/40" />
+            )}
+          </div>
           <span className="font-medium">AI Report Assistant</span>
         </div>
         <div className="relative">
@@ -162,28 +176,34 @@ export function ReportAssistantTab() {
                           <p className="mt-1 text-[11px] text-text-muted">
                             {suggestion.description}
                           </p>
-                          <p className="mt-1 text-[10px] text-purple-400">
-                            {suggestion.reason}
-                          </p>
-
-                          {/* Inferred Config */}
-                          {Object.keys(suggestion.inferred_config).length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {suggestion.inferred_config.states?.map((s) => (
-                                <span
-                                  key={s}
-                                  className="rounded bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-mono text-purple-400"
-                                >
-                                  {s}
+                          {/* Reason & Config (Reasoning Chain) */}
+                          <details className="mt-3 text-[10px] font-mono group cursor-pointer">
+                            <summary className="flex items-center gap-1.5 text-text-muted hover:text-text-secondary w-fit mb-1.5 transition-colors select-none">
+                              <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
+                              View AI Reasoning
+                            </summary>
+                            <div className="flex flex-col gap-1.5 pl-3 border-l border-white/[0.08] ml-1 mt-1.5 py-0.5">
+                              <div className="flex gap-2">
+                                <span className={suggestion.confidence === 'high' ? 'text-emerald-400' : 'text-amber-400'}>
+                                  ✓ Pattern match: {suggestion.reason}
                                 </span>
-                              ))}
+                              </div>
+                              {suggestion.inferred_config.states && (
+                                <div className="flex gap-2">
+                                  <span className="text-emerald-400">
+                                    ✓ Entity context: User Region [{suggestion.inferred_config.states.join(', ')}] applied
+                                  </span>
+                                </div>
+                              )}
                               {suggestion.inferred_config.date_from && (
-                                <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-mono text-blue-400">
-                                  {suggestion.inferred_config.date_from} → {suggestion.inferred_config.date_to}
-                                </span>
+                                <div className="flex gap-2">
+                                  <span className="text-blue-400">
+                                    ± Date inference: "{query}" → {suggestion.inferred_config.date_from} to {suggestion.inferred_config.date_to}
+                                  </span>
+                                </div>
                               )}
                             </div>
-                          )}
+                          </details>
                         </div>
 
                         <button
@@ -194,11 +214,10 @@ export function ReportAssistantTab() {
                             )
                           }
                           disabled={suggestion.is_locked || generating}
-                          className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                            suggestion.is_locked
-                              ? 'bg-white/[0.03] text-text-muted cursor-not-allowed'
-                              : 'bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 active:scale-95'
-                          }`}
+                          className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${suggestion.is_locked
+                            ? 'bg-white/[0.03] text-text-muted cursor-not-allowed'
+                            : 'bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 active:scale-95'
+                            }`}
                         >
                           {suggestion.is_locked ? (
                             <>

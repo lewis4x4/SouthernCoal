@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Play, Mail, Download, Loader2 } from 'lucide-react';
+import { X, Play, Mail, Download, Loader2, Settings2 } from 'lucide-react';
 import type { ReportDefinitionWithAccess } from '@/hooks/useReportDefinitions';
 
 interface ReportConfigDrawerProps {
@@ -21,12 +21,19 @@ export function ReportConfigDrawer({
   onGenerate,
   generating,
 }: ReportConfigDrawerProps) {
-  const [format, setFormat] = useState<'csv' | 'pdf' | 'both'>('csv');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [format, setFormat] = useState<'csv' | 'pdf' | 'both'>('pdf'); // default to executive PDF
+
+  // Smart Defaults
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date('2026-02-15'); // T-7 days from 2026-02-22 mock
+    return d.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState('2026-02-22');
+  const [selectedStates, setSelectedStates] = useState<string[]>(['WV', 'KY']); // Executive default regions
+
   const [deliveryDownload, setDeliveryDownload] = useState(true);
   const [deliveryEmail, setDeliveryEmail] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const toggleState = (st: string) => {
     setSelectedStates((prev) =>
@@ -77,20 +84,19 @@ export function ReportConfigDrawer({
               const available =
                 f === 'both'
                   ? report.formats_available.includes('csv') &&
-                    report.formats_available.includes('pdf')
+                  report.formats_available.includes('pdf')
                   : report.formats_available.includes(f);
               return (
                 <button
                   key={f}
                   onClick={() => setFormat(f)}
                   disabled={!available}
-                  className={`rounded-lg px-4 py-2 text-xs font-medium uppercase transition-all ${
-                    format === f
-                      ? 'bg-primary/15 text-primary border border-primary/30'
-                      : available
-                        ? 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
-                        : 'bg-white/[0.02] text-text-muted/50 border border-white/[0.04] cursor-not-allowed'
-                  }`}
+                  className={`rounded-lg px-4 py-2 text-xs font-medium uppercase transition-all ${format === f
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : available
+                      ? 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
+                      : 'bg-white/[0.02] text-text-muted/50 border border-white/[0.04] cursor-not-allowed'
+                    }`}
                 >
                   {f}
                 </button>
@@ -99,54 +105,66 @@ export function ReportConfigDrawer({
           </div>
         </div>
 
-        {/* Date Range */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-text-secondary">
-            Date Range <span className="text-text-muted font-normal">(optional)</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-text-muted block mb-1">From</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
-              />
+        {showAdvanced && (
+          <div className="space-y-6 pt-2 border-t border-white/[0.04] mt-2 animate-in slide-in-from-top-2 opacity-0 fade-in fill-mode-forwards duration-300">
+            {/* Date Range */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-text-secondary">
+                Date Range <span className="text-text-muted font-normal">(Smart Default: Last 7 Days)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-text-muted block mb-1">From</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-text-muted block mb-1">To</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] text-text-muted block mb-1">To</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
 
-        {/* State Filter */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-text-secondary">
-            State Filter <span className="text-text-muted font-normal">(optional — all states if none selected)</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {STATES.map((st) => (
-              <button
-                key={st}
-                onClick={() => toggleState(st)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  selectedStates.includes(st)
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+            {/* State Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-text-secondary">
+                Region Filter <span className="text-text-muted font-normal">(Smart Default: Your Assigned Regions)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {STATES.map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => toggleState(st)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${selectedStates.includes(st)
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
+                      }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Advanced Toggle */}
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-2 text-xs font-medium text-text-muted hover:text-text-secondary transition-colors"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          {showAdvanced ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
+        </button>
 
         {/* Delivery */}
         <div className="space-y-3">
@@ -179,11 +197,10 @@ export function ReportConfigDrawer({
         <button
           onClick={handleGenerate}
           disabled={generating || (!deliveryDownload && !deliveryEmail)}
-          className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
-            generating
-              ? 'bg-primary/10 text-primary/60 cursor-wait'
-              : 'bg-primary/15 text-primary hover:bg-primary/25 active:scale-[0.98]'
-          }`}
+          className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${generating
+            ? 'bg-primary/10 text-primary/60 cursor-wait'
+            : 'bg-primary/15 text-primary hover:bg-primary/25 active:scale-[0.98]'
+            }`}
         >
           {generating ? (
             <>

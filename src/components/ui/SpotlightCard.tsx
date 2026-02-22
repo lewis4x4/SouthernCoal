@@ -39,7 +39,7 @@ export function SpotlightCard({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        'relative rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden',
+        'relative rounded-2xl border border-white/[0.08] bg-white/[0.01] backdrop-blur-2xl overflow-hidden',
         'shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)]',
         className,
       )}
@@ -47,6 +47,8 @@ export function SpotlightCard({
         background: `radial-gradient(600px circle at var(--x, 50%) var(--y, 50%), ${spotlightColor}, transparent 40%)`,
       }}
     >
+      {/* Noise Overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url('/noise.png')" }} />
       <div className="relative z-10">{children}</div>
     </div>
   );
