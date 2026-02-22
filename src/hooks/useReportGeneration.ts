@@ -65,7 +65,10 @@ export function useReportGeneration() {
         const resp = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-status?job_id=${jobId}`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
           },
         );
 
@@ -128,6 +131,7 @@ export function useReportGeneration() {
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
             },
             body: JSON.stringify({
               report_key: reportKey,
