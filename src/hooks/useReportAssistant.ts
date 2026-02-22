@@ -143,7 +143,7 @@ const REPORT_PATTERNS: { patterns: RegExp[]; report_keys: string[]; config_hints
 function inferStateFilter(query: string): Record<string, unknown> {
   const states: string[] = [];
   if (/\bwv\b|west\s*virginia/i.test(query)) states.push('WV');
-  if (/\bva\b|virginia(?!\s*west)/i.test(query)) states.push('VA');
+  if (/\bva\b|(?<!\bwest\s)virginia/i.test(query)) states.push('VA');
   if (/\bky\b|kentucky/i.test(query)) states.push('KY');
   if (/\btn\b|tennessee/i.test(query)) states.push('TN');
   if (/\bal\b|alabama/i.test(query)) states.push('AL');
@@ -172,18 +172,26 @@ function inferDateRange(query: string): Record<string, unknown> {
   return {};
 }
 
-// Cache report definitions
-let cachedDefs: Map<string, { report_key: string; report_number: number; title: string; description: string; tier: number; priority: string; is_locked: boolean }> | null = null;
+// Cache report definitions with 5-minute TTL
+type ReportDefEntry = { report_key: string; report_number: number; title: string; description: string; tier: number; priority: string; is_locked: boolean };
+let cachedDefs: Map<string, ReportDefEntry> | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function getReportDefs() {
-  if (cachedDefs) return cachedDefs;
-  const { data } = await supabase
+  if (cachedDefs && Date.now() - cacheTimestamp < CACHE_TTL_MS) return cachedDefs;
+  const { data, error } = await supabase
     .from('report_definitions')
     .select('report_key, report_number, title, description, tier, priority, is_locked');
+  if (error || !data || data.length === 0) {
+    // Don't cache empty/failed results — return existing cache or empty map
+    return cachedDefs ?? new Map<string, ReportDefEntry>();
+  }
   cachedDefs = new Map();
-  for (const d of data ?? []) {
+  for (const d of data) {
     cachedDefs.set(d.report_key, d);
   }
+  cacheTimestamp = Date.now();
   return cachedDefs;
 }
 
@@ -242,7 +250,7 @@ export function useReportAssistant() {
     setResult(assistantResult);
     setLoading(false);
 
-    log('filter_change', {
+    log('report_assistant_query', {
       action: 'ai_report_assistant_query',
       query,
       suggestions_count: suggestions.length,
@@ -276,10 +284,16 @@ export function useReportAssistant() {
           }),
         },
       );
+
+      if (!resp.ok) {
+        setGenerating(false);
+        return { success: false, error: `Server error: ${resp.status} ${resp.statusText}` };
+      }
+
       const data = await resp.json();
       setGenerating(false);
 
-      log('filter_change', {
+      log('report_assistant_query', {
         action: 'ai_report_assistant_generate',
         report_key: reportKey,
         success: data.success,

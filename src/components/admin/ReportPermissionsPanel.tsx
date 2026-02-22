@@ -63,7 +63,7 @@ export function ReportPermissionsPanel({ reportDef }: Props) {
       } else {
         setGrantedRoles((prev) => prev.filter((r) => r !== role));
         toast.success(`Revoked ${ROLE_LABELS[role]} access`);
-        log('filter_change', {
+        log('report_permission_changed', {
           report_key: reportDef.report_key,
           action: 'revoke_report_permission',
           role,
@@ -78,7 +78,7 @@ export function ReportPermissionsPanel({ reportDef }: Props) {
       } else {
         setGrantedRoles((prev) => [...prev, role]);
         toast.success(`Granted ${ROLE_LABELS[role]} access`);
-        log('filter_change', {
+        log('report_permission_changed', {
           report_key: reportDef.report_key,
           action: 'grant_report_permission',
           role,

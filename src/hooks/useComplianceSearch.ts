@@ -56,6 +56,9 @@ export function useComplianceSearch() {
           }
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/compliance-search`,
           {
@@ -71,11 +74,19 @@ export function useComplianceSearch() {
               maxResults: 50,
               reviewMode: overrideReviewMode ?? reviewMode,
             }),
+            signal: controller.signal,
           },
         );
 
+        clearTimeout(timeoutId);
+
         if (response.status === 429) {
           setError('Please wait a moment before searching again.');
+          return null;
+        }
+
+        if (!response.ok) {
+          setError(`Search failed (${response.status})`);
           return null;
         }
 
@@ -99,6 +110,10 @@ export function useComplianceSearch() {
 
         return data;
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Search timed out. Please try a shorter query.');
+          return null;
+        }
         const message = err instanceof Error ? err.message : 'Search failed';
         setError(message);
         return null;

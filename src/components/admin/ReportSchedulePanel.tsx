@@ -85,7 +85,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
       } else {
         toast.success('Schedule updated');
         setSchedule((prev) => prev ? { ...prev, cron_expression: cronExpr, timezone, is_active: isActive } : null);
-        log('filter_change', {
+        log('report_schedule_changed', {
           report_key: reportDef.report_key,
           action: 'update_report_schedule',
           cron: cronExpr,
@@ -113,7 +113,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
       } else if (data) {
         toast.success('Schedule created');
         setSchedule(data);
-        log('filter_change', {
+        log('report_schedule_changed', {
           report_key: reportDef.report_key,
           action: 'create_report_schedule',
           cron: cronExpr,
@@ -138,7 +138,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
       setSchedule(null);
       setCronExpr('0 7 * * 1');
       setIsActive(false);
-      log('filter_change', {
+      log('report_schedule_changed', {
         report_key: reportDef.report_key,
         action: 'delete_report_schedule',
       });

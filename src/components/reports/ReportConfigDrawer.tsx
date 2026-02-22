@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Play, Mail, Download, Loader2, Settings2 } from 'lucide-react';
 import type { ReportDefinitionWithAccess } from '@/hooks/useReportDefinitions';
 
@@ -34,6 +34,15 @@ export function ReportConfigDrawer({
   const [deliveryDownload, setDeliveryDownload] = useState(true);
   const [deliveryEmail, setDeliveryEmail] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const toggleState = (st: string) => {
     setSelectedStates((prev) =>

@@ -67,7 +67,18 @@ type AuditAction =
   | 'fts_export_csv'
   | 'fts_filter_change'
   // ECHO Coverage
-  | 'echo_sync_manual_trigger';
+  | 'echo_sync_manual_trigger'
+  // Report Engine
+  | 'report_generated'
+  | 'report_template_created'
+  | 'report_template_updated'
+  | 'report_template_deleted'
+  | 'report_template_run'
+  | 'report_assistant_query'
+  | 'report_permission_changed'
+  | 'report_schedule_changed'
+  | 'report_recipient_changed'
+  | 'data_quality_status_changed';
 
 export type { AuditAction };
 

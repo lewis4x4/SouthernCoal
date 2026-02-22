@@ -20,10 +20,12 @@ export interface GeneratedReport {
 export function useReportHistory(limit = 50) {
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    setError(null);
+    const { data, error: fetchError } = await supabase
       .from('generated_reports')
       .select(`
         id,
@@ -42,8 +44,9 @@ export function useReportHistory(limit = 50) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error('[useReportHistory] Failed:', error.message);
+    if (fetchError) {
+      console.error('[useReportHistory] Failed:', fetchError.message);
+      setError(fetchError.message);
       setLoading(false);
       return;
     }
@@ -75,5 +78,5 @@ export function useReportHistory(limit = 50) {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { reports, loading, refetch: fetchHistory };
+  return { reports, loading, error, refetch: fetchHistory };
 }

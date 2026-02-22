@@ -61,7 +61,7 @@ export function DataQualityPanel() {
     } else {
       setPermits((prev) => prev.filter((p) => p.id !== permit.id));
       toast.success(`${permit.permit_number} marked as ${resolution}`);
-      log('filter_change', {
+      log('data_quality_status_changed', {
         action: 'permit_status_resolution',
         permit_number: permit.permit_number,
         resolution,

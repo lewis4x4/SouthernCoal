@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Download, CheckCircle, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
 
 interface ReportProgressModalProps {
@@ -22,14 +23,29 @@ export function ReportProgressModal({
   onClose,
 }: ReportProgressModalProps) {
   const flagCount = dataQualityFlags ? Object.keys(dataQualityFlags).length : 0;
+  const isInProgress = status === 'pending' || status === 'generating';
+
+  // Escape key to close (only when not in progress)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isInProgress) onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, isInProgress]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-crystal-base/95 backdrop-blur-xl p-8 shadow-2xl">
-        {/* Close */}
+        {/* Close (disabled while in progress) */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-text-primary transition-colors"
+          disabled={isInProgress}
+          className={`absolute top-4 right-4 rounded-lg p-1.5 transition-colors ${
+            isInProgress
+              ? 'text-text-muted/30 cursor-not-allowed'
+              : 'text-text-muted hover:bg-white/[0.06] hover:text-text-primary'
+          }`}
         >
           <X className="h-4 w-4" />
         </button>
@@ -97,13 +113,16 @@ export function ReportProgressModal({
             )}
             <button
               onClick={onClose}
+              disabled={isInProgress}
               className={`flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
-                status === 'complete' && downloadUrl
-                  ? 'bg-white/[0.04] text-text-muted hover:bg-white/[0.06] border border-white/[0.06]'
-                  : 'flex-1 bg-white/[0.04] text-text-secondary hover:bg-white/[0.06] border border-white/[0.06]'
+                isInProgress
+                  ? 'flex-1 bg-white/[0.02] text-text-muted/50 border border-white/[0.04] cursor-not-allowed'
+                  : status === 'complete' && downloadUrl
+                    ? 'bg-white/[0.04] text-text-muted hover:bg-white/[0.06] border border-white/[0.06]'
+                    : 'flex-1 bg-white/[0.04] text-text-secondary hover:bg-white/[0.06] border border-white/[0.06]'
               }`}
             >
-              {status === 'pending' || status === 'generating' ? 'Cancel' : 'Close'}
+              {isInProgress ? 'Generating...' : 'Close'}
             </button>
           </div>
         </div>

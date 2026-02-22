@@ -75,7 +75,7 @@ export function ReportRecipientsPanel({ reportDef }: Props) {
       setRecipients((prev) => [...prev, data]);
       setNewEmail('');
       toast.success(`Added ${email}`);
-      log('filter_change', {
+      log('report_recipient_changed', {
         report_key: reportDef.report_key,
         action: 'add_report_recipient',
         email,
@@ -94,7 +94,7 @@ export function ReportRecipientsPanel({ reportDef }: Props) {
     } else {
       setRecipients((prev) => prev.filter((r) => r.id !== id));
       toast.success(`Removed ${email}`);
-      log('filter_change', {
+      log('report_recipient_changed', {
         report_key: reportDef.report_key,
         action: 'remove_report_recipient',
         email,

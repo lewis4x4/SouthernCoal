@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { usePermissions } from './usePermissions';
 
@@ -59,6 +59,12 @@ export function useReportDefinitions() {
       return;
     }
 
+    if (permsResult.error) {
+      setError(permsResult.error.message);
+      setLoading(false);
+      return;
+    }
+
     const permittedIds = new Set(
       (permsResult.data ?? []).map((p) => p.report_definition_id),
     );
@@ -81,9 +87,9 @@ export function useReportDefinitions() {
     [definitions],
   );
 
-  const accessible = definitions.filter((d) => d.has_access);
-  const unlocked = definitions.filter((d) => !d.is_locked);
-  const locked = definitions.filter((d) => d.is_locked);
+  const accessible = useMemo(() => definitions.filter((d) => d.has_access), [definitions]);
+  const unlocked = useMemo(() => definitions.filter((d) => !d.is_locked), [definitions]);
+  const locked = useMemo(() => definitions.filter((d) => d.is_locked), [definitions]);
 
   return {
     definitions,

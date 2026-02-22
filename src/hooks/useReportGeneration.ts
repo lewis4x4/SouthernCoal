@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { getFreshToken } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 import { toast } from 'sonner';
@@ -33,49 +33,79 @@ export function useReportGeneration() {
   const [job, setJob] = useState<GenerationJob | null>(null);
   const [generating, setGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reportKeyRef = useRef<string>('');
+  const pollingInFlight = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    pollingInFlight.current = false;
   }, []);
+
+  // Clean up on unmount — prevents leaked intervals
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
 
   const pollStatus = useCallback(
     async (jobId: string) => {
-      const token = await getFreshToken();
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-status?job_id=${jobId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const data = await resp.json();
+      // Prevent concurrent polls from accumulating
+      if (pollingInFlight.current) return;
+      pollingInFlight.current = true;
 
-      if (data.status === 'complete' || data.status === 'failed') {
-        stopPolling();
-        setGenerating(false);
+      try {
+        const token = await getFreshToken();
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-status?job_id=${jobId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
-        const updated: GenerationJob = {
-          job_id: jobId,
-          report_key: job?.report_key ?? '',
-          status: data.status,
-          download_url: data.download_url,
-          row_count: data.row_count,
-          data_quality_flags: data.data_quality_flags,
-          error_message: data.error_message,
-          completed_at: data.completed_at,
-        };
-        setJob(updated);
-
-        if (data.status === 'complete') {
-          toast.success(`Report ready — ${data.row_count ?? 0} rows`);
-        } else {
-          toast.error(`Report failed: ${data.error_message ?? 'Unknown error'}`);
+        if (!resp.ok) {
+          console.error(`[useReportGeneration] Poll failed: ${resp.status} ${resp.statusText}`);
+          pollingInFlight.current = false;
+          return;
         }
+
+        const data = await resp.json();
+
+        if (data.status === 'complete' || data.status === 'failed') {
+          stopPolling();
+          setGenerating(false);
+
+          const updated: GenerationJob = {
+            job_id: jobId,
+            report_key: reportKeyRef.current,
+            status: data.status,
+            download_url: data.download_url,
+            row_count: data.row_count,
+            data_quality_flags: data.data_quality_flags,
+            error_message: data.error_message,
+            completed_at: data.completed_at,
+          };
+          setJob(updated);
+
+          if (data.status === 'complete') {
+            toast.success(`Report ready — ${data.row_count ?? 0} rows`);
+          } else {
+            toast.error(`Report failed: ${data.error_message ?? 'Unknown error'}`);
+          }
+        }
+      } catch (err) {
+        console.error('[useReportGeneration] Poll error:', err);
+      } finally {
+        pollingInFlight.current = false;
       }
     },
-    [job?.report_key, stopPolling],
+    [stopPolling],
   );
 
   const generate = useCallback(
@@ -87,6 +117,7 @@ export function useReportGeneration() {
     ): Promise<GenerationJob | null> => {
       setGenerating(true);
       stopPolling();
+      reportKeyRef.current = reportKey;
 
       try {
         const token = await getFreshToken();
@@ -107,6 +138,12 @@ export function useReportGeneration() {
           },
         );
 
+        if (!resp.ok) {
+          setGenerating(false);
+          toast.error(`Server error: ${resp.status} ${resp.statusText}`);
+          return null;
+        }
+
         const data = await resp.json();
 
         if (!data.success) {
@@ -122,7 +159,7 @@ export function useReportGeneration() {
         };
         setJob(newJob);
 
-        log('filter_change', {
+        log('report_generated', {
           action: 'report_generation_started',
           report_key: reportKey,
           job_id: data.job_id,
@@ -136,7 +173,7 @@ export function useReportGeneration() {
         }, 3000);
 
         // Also do an immediate check after 1s
-        setTimeout(() => pollStatus(data.job_id), 1000);
+        timeoutRef.current = setTimeout(() => pollStatus(data.job_id), 1000);
 
         return newJob;
       } catch (err) {

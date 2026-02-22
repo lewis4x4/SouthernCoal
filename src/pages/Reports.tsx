@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { FileText, LayoutGrid, History, Sparkles, Unlock, Lock } from 'lucide-react';
+import { FileText, LayoutGrid, History, Sparkles, Unlock, Lock, Layers } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useReportDefinitions } from '@/hooks/useReportDefinitions';
 import { ReportHubTab } from '@/components/reports/ReportHubTab';
 import { ReportHistoryTab } from '@/components/reports/ReportHistoryTab';
 import { ReportAssistantTab } from '@/components/reports/ReportAssistantTab';
+import { ReportBuilderTab } from '@/components/reports/ReportBuilderTab';
 
-type Tab = 'hub' | 'history' | 'assistant';
+type Tab = 'hub' | 'builder' | 'history' | 'assistant';
 
 export function Reports() {
   const [tab, setTab] = useState<Tab>('hub');
@@ -88,6 +89,7 @@ export function Reports() {
       <div className="flex gap-1 rounded-xl bg-white/[0.03] p-1 border border-white/[0.06]">
         {[
           { key: 'hub' as Tab, label: 'Report Hub', icon: LayoutGrid },
+          { key: 'builder' as Tab, label: 'My Templates', icon: Layers },
           { key: 'assistant' as Tab, label: 'AI Assistant', icon: Sparkles },
           { key: 'history' as Tab, label: 'History', icon: History },
         ].map(({ key, label, icon: Icon }) => (
@@ -95,8 +97,8 @@ export function Reports() {
             key={key}
             onClick={() => setTab(key)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${tab === key
-                ? 'bg-white/[0.08] text-text-primary'
-                : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]'
+              ? 'bg-white/[0.08] text-text-primary'
+              : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]'
               }`}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -107,6 +109,7 @@ export function Reports() {
 
       {/* Tab Content */}
       {tab === 'hub' && <ReportHubTab />}
+      {tab === 'builder' && <ReportBuilderTab />}
       {tab === 'assistant' && <ReportAssistantTab />}
       {tab === 'history' && <ReportHistoryTab />}
     </div>
