@@ -65,7 +65,9 @@ type AuditAction =
   | 'fts_upload'
   | 'fts_parse_completed'
   | 'fts_export_csv'
-  | 'fts_filter_change';
+  | 'fts_filter_change'
+  // ECHO Coverage
+  | 'echo_sync_manual_trigger';
 
 export type { AuditAction };
 

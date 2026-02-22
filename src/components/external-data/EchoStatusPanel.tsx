@@ -49,7 +49,7 @@ function ComplianceBadge({ status }: { status: string | null }) {
 }
 
 export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
-  const { echoFacility, dmrSummary, loading, refetchEcho } = useExternalData(npdesId);
+  const { echoFacility, dmrSummary, echoLoading, dmrLoading, refetchEcho } = useExternalData(npdesId);
 
   const f = echoFacility as EchoFacility | null;
   const dmr = dmrSummary as EchoDmrSummary | null;
@@ -63,17 +63,17 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
         </div>
         <button
           onClick={refetchEcho}
-          disabled={loading}
+          disabled={echoLoading}
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
           title="Refresh ECHO data"
         >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {echoLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
 
       {!f ? (
         <p className="text-xs text-text-muted py-4 text-center">
-          {loading ? 'Loading...' : 'No ECHO data synced for this permit'}
+          {echoLoading ? 'Loading...' : 'No ECHO data synced for this permit'}
         </p>
       ) : (
         <div className="space-y-0">
@@ -99,6 +99,15 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
           <Field label="Effective" value={f.permit_effective_date} />
           <Field label="Expires" value={f.permit_expiration_date} />
 
+          {dmrLoading && !dmr && (
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">DMR Data</p>
+              <div className="flex items-center justify-center py-3">
+                <Loader2 size={14} className="animate-spin text-text-muted" />
+                <span className="ml-2 text-xs text-text-muted">Loading DMR summary...</span>
+              </div>
+            </div>
+          )}
           {dmr && (
             <div className="mt-3 pt-3 border-t border-white/[0.06]">
               <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">DMR Data</p>

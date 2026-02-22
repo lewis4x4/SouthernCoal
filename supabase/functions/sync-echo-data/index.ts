@@ -452,6 +452,34 @@ serve(async (req) => {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // 1b. Apply NPDES ID overrides (e.g., VA DMLR → federal NPDES mapping)
+  // -----------------------------------------------------------------------
+  const { data: overrideRows } = await supabase
+    .from("npdes_id_overrides")
+    .select("organization_id, state_code, source_permit_id, npdes_id");
+
+  let overridesApplied = 0;
+  if (overrideRows && overrideRows.length > 0) {
+    for (const ov of overrideRows) {
+      const sourceKey = ov.source_permit_id.trim().toUpperCase();
+
+      // If the source permit ID was in our raw set but failed normalization
+      // or wasn't in the map, add it now with the override NPDES ID
+      if (!permitMap.has(ov.npdes_id.trim().toUpperCase())) {
+        permitMap.set(ov.npdes_id.trim().toUpperCase(), {
+          organization_id: ov.organization_id,
+          npdes_id: ov.npdes_id.trim().toUpperCase(),
+          state_code: ov.state_code,
+        });
+        overridesApplied++;
+        // Remove from skipped sets since the override resolves them
+        permitsSkippedInvalidSet.delete(sourceKey);
+      }
+    }
+    console.log(`Applied ${overridesApplied} NPDES ID overrides (${overrideRows.length} total in table)`);
+  }
+
   const eligiblePermits = Array.from(permitMap.values()).sort((a, b) =>
     a.npdes_id.localeCompare(b.npdes_id),
   );
@@ -483,6 +511,7 @@ serve(async (req) => {
         permits_skipped_pattern: permitsSkippedPatternSet.size,
         permits_skipped_invalid: permitsSkippedInvalidSet.size,
         permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+        overrides_applied: overridesApplied,
         selected_npdes_ids: permits.map((p) => p.npdes_id),
         run_tag: runTag,
       }),
@@ -502,6 +531,7 @@ serve(async (req) => {
         permits_skipped_pattern: permitsSkippedPatternSet.size,
         permits_skipped_invalid: permitsSkippedInvalidSet.size,
         permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+        overrides_applied: overridesApplied,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -709,6 +739,7 @@ serve(async (req) => {
         permits_skipped_pattern: permitsSkippedPatternSet.size,
         permits_skipped_invalid: permitsSkippedInvalidSet.size,
         permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+        overrides_applied: overridesApplied,
         facility_empty_responses: facilityEmptyResponses,
         dmr_empty_responses: dmrEmptyResponses,
         offset,
@@ -740,6 +771,7 @@ serve(async (req) => {
       permits_skipped_pattern: permitsSkippedPatternSet.size,
       permits_skipped_invalid: permitsSkippedInvalidSet.size,
       permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+      overrides_applied: overridesApplied,
       facility_empty_responses: facilityEmptyResponses,
       dmr_empty_responses: dmrEmptyResponses,
       errors_count: errors.length,
@@ -791,6 +823,7 @@ serve(async (req) => {
       permits_skipped_pattern: permitsSkippedPatternSet.size,
       permits_skipped_invalid: permitsSkippedInvalidSet.size,
       permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
+      overrides_applied: overridesApplied,
       facility_empty_responses: facilityEmptyResponses,
       dmr_empty_responses: dmrEmptyResponses,
       batchSize: permits.length,

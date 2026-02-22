@@ -26,6 +26,7 @@ const ReviewQueuePage = lazy(() => import('@/pages/ReviewQueuePage').then(m => (
 const CorrectiveActionsPage = lazy(() => import('@/pages/CorrectiveActionsPage').then(m => ({ default: m.CorrectiveActionsPage })));
 const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDetailPage').then(m => ({ default: m.CorrectiveActionDetailPage })));
 const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
+const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m => ({ default: m.ExternalDataPage })));
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -230,6 +231,18 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <LazyPage><ReviewQueuePage /></LazyPage>
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* External Data — ECHO Sync Coverage */}
+        <Route
+          path="/compliance/external-data"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <LazyPage><ExternalDataPage /></LazyPage>
               </AppShell>
             </AuthGuard>
           }

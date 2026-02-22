@@ -40,12 +40,17 @@ export function useExternalData(npdesId?: string, mineId?: string) {
   const [echoFacility, setEchoFacility] = useState<EchoFacility | null>(null);
   const [dmrSummary, setDmrSummary] = useState<EchoDmrSummary | null>(null);
   const [mshaInspections, setMshaInspections] = useState<MshaInspection[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [echoLoading, setEchoLoading] = useState(false);
+  const [dmrLoading, setDmrLoading] = useState(false);
+  const [mshaLoading, setMshaLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Backward-compatible aggregate loading flag */
+  const loading = echoLoading || dmrLoading || mshaLoading;
 
   const fetchEcho = useCallback(async () => {
     if (!npdesId) return;
-    setLoading(true);
+    setEchoLoading(true);
     setError(null);
 
     const { data: facility, error: facErr } = await supabase
@@ -57,13 +62,16 @@ export function useExternalData(npdesId?: string, mineId?: string) {
 
     if (facErr) {
       setError(facErr.message);
-      setLoading(false);
+      setEchoLoading(false);
       return;
     }
 
     setEchoFacility(facility as EchoFacility | null);
+    setEchoLoading(false);
 
     if (facility) {
+      setDmrLoading(true);
+
       const [totalRes, violRes, latestRes] = await Promise.all([
         supabase
           .from('external_echo_dmrs')
@@ -92,14 +100,14 @@ export function useExternalData(npdesId?: string, mineId?: string) {
           latestPeriod: latestRes.data?.monitoring_period_end ?? null,
         });
       }
-    }
 
-    setLoading(false);
+      setDmrLoading(false);
+    }
   }, [npdesId]);
 
   const fetchMsha = useCallback(async () => {
     if (!mineId) return;
-    setLoading(true);
+    setMshaLoading(true);
     setError(null);
 
     const { data, error: mshaErr } = await supabase
@@ -111,12 +119,12 @@ export function useExternalData(npdesId?: string, mineId?: string) {
 
     if (mshaErr) {
       setError(mshaErr.message);
-      setLoading(false);
+      setMshaLoading(false);
       return;
     }
 
     setMshaInspections((data || []) as MshaInspection[]);
-    setLoading(false);
+    setMshaLoading(false);
   }, [mineId]);
 
   useEffect(() => {
@@ -127,5 +135,5 @@ export function useExternalData(npdesId?: string, mineId?: string) {
     fetchMsha();
   }, [fetchMsha]);
 
-  return { echoFacility, dmrSummary, mshaInspections, loading, error, refetchEcho: fetchEcho, refetchMsha: fetchMsha };
+  return { echoFacility, dmrSummary, mshaInspections, loading, echoLoading, dmrLoading, mshaLoading, error, refetchEcho: fetchEcho, refetchMsha: fetchMsha };
 }

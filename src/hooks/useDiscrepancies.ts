@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { DiscrepancyRow, DiscrepancySeverity, DiscrepancyStatus } from '@/stores/reviewQueue';
 
@@ -18,6 +19,7 @@ export function useDiscrepancies() {
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<SeverityCounts>({ critical: 0, high: 0, medium: 0, low: 0 });
   const [totalCount, setTotalCount] = useState(0);
+  const { user } = useAuth();
   const { log } = useAuditLog();
   const abortRef = useRef<AbortController | null>(null);
 
@@ -108,6 +110,7 @@ export function useDiscrepancies() {
 
       if (status === 'reviewed' || status === 'dismissed') {
         updates.reviewed_at = now;
+        updates.reviewed_by = user?.id ?? null;
       }
       if (status === 'dismissed' && extra?.dismiss_reason) {
         updates.dismiss_reason = extra.dismiss_reason;
@@ -115,8 +118,13 @@ export function useDiscrepancies() {
       if (extra?.review_notes) {
         updates.review_notes = extra.review_notes;
       }
+      if (status === 'escalated') {
+        updates.escalated_at = now;
+        updates.reviewed_by = user?.id ?? null;
+      }
       if (status === 'resolved') {
         updates.resolved_at = now;
+        updates.reviewed_by = user?.id ?? null;
       }
 
       const { error: updateErr } = await supabase

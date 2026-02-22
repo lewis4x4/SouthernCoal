@@ -17,6 +17,7 @@ import {
   DollarSign,
   Pin,
   PinOff,
+  Satellite,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,6 +55,7 @@ const NAV_GROUPS = [
       { label: 'Monitoring', href: '/monitoring', icon: Activity },
       { label: 'Failure to Sample', href: '/compliance/failure-to-sample', icon: DollarSign },
       { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert },
+      { label: 'ECHO Data', href: '/compliance/external-data', icon: Satellite },
       { label: 'Actions', href: '/corrective-actions', icon: ClipboardCheck },
     ],
     activeColor: 'bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/5',
