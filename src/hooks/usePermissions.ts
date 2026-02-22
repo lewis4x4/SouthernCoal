@@ -101,7 +101,7 @@ export function usePermissions() {
 
       fetchingRef.current = false;
 
-      console.log('[permissions] raw response:', { data, error, userId: user!.id });
+      if (import.meta.env.DEV) console.log('[permissions] raw response:', { data, error, userId: user!.id });
 
       if (error || !data) {
         console.error('[permissions] Failed to fetch role assignments:', error?.message);

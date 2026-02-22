@@ -51,7 +51,7 @@ export function useUserProfile() {
         orgName = orgData?.name ?? null;
       }
 
-      console.log('[profile] Loaded:', { id: data.id, org: orgName });
+      if (import.meta.env.DEV) console.log('[profile] Loaded:', { id: data.id, org: orgName });
 
       setState({
         profile: {

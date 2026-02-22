@@ -109,10 +109,16 @@ function ninetyDaysAgo(): string {
   return d.toISOString().split("T")[0];
 }
 
+const CSV_INJECTION_RE = /^[=+\-@\t\r]/;
+
 function escapeCsv(v: unknown): string {
   if (v === null || v === undefined) return "";
-  const s = String(v);
-  return s.includes(",") || s.includes('"') || s.includes("\n")
+  let s = String(v);
+  // Neutralize CSV formula injection (=, +, -, @, tab, cr)
+  if (CSV_INJECTION_RE.test(s)) {
+    s = `'${s}`;
+  }
+  return s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("'")
     ? `"${s.replace(/"/g, '""')}"`
     : s;
 }
@@ -127,6 +133,33 @@ function makeFlags(rows: unknown[][]): Record<string, unknown> {
   const flags: Record<string, unknown> = {};
   if (rows.length >= MAX_ROWS) flags.row_limit_hit = true;
   return flags;
+}
+
+// ── Input Validation ────────────────────────────────────────────────────────
+const VALID_STATES = new Set(["AL", "KY", "TN", "VA", "WV"]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ALLOWED_FORMATS = new Set(["csv"]);
+
+function sanitizeConfig(cfg: Config): Config {
+  const clean: Config = {};
+  if (cfg.date_from && typeof cfg.date_from === "string" && ISO_DATE_RE.test(cfg.date_from) && !isNaN(Date.parse(cfg.date_from))) {
+    clean.date_from = cfg.date_from;
+  }
+  if (cfg.date_to && typeof cfg.date_to === "string" && ISO_DATE_RE.test(cfg.date_to) && !isNaN(Date.parse(cfg.date_to))) {
+    clean.date_to = cfg.date_to;
+  }
+  if (Array.isArray(cfg.states)) {
+    clean.states = cfg.states
+      .filter((s): s is string => typeof s === "string" && VALID_STATES.has(s.toUpperCase()))
+      .map((s) => s.toUpperCase());
+  }
+  if (Array.isArray(cfg.org_ids)) {
+    clean.org_ids = cfg.org_ids.filter(
+      (id): id is string => typeof id === "string" && UUID_RE.test(id),
+    );
+  }
+  return clean;
 }
 
 // ── Report #1: Permit Inventory ──────────────────────────────────────────────
@@ -374,6 +407,9 @@ async function rptEchoDmrSummary(
 }
 
 // ── Report #7: Consent Decree Obligations ────────────────────────────────────
+// SYSTEM-WIDE: Single Consent Decree (Case 7:16-cv-00462-GEC) applies to SCC
+// parent + all 26 subsidiaries. No org filter needed. If multi-tenant beyond
+// SCC is added, this table MUST be org-scoped.
 async function rptConsentDecree(
   sb: SB,
   _orgIds: string[],
@@ -580,6 +616,8 @@ async function rptFilePipeline(
 }
 
 // ── Report #13: Regulatory Deadline Tracker ──────────────────────────────────
+// SYSTEM-WIDE: regulatory_deadlines is shared reference data across all states.
+// Filtered by state only, not org. If multi-tenant beyond SCC is added, scope.
 async function rptRegulatoryDeadlines(
   sb: SB,
   _orgIds: string[],
@@ -936,10 +974,12 @@ Deno.serve(async (req: Request) => {
   }
 
   const reportKey = body.report_key as string;
-  const format = (body.format as string) ?? "csv";
-  const config = (body.config as Config) ?? {};
+  const format = ALLOWED_FORMATS.has(body.format as string) ? (body.format as string) : "csv";
+  const config = sanitizeConfig((body.config as Config) ?? {});
 
-  if (!reportKey) return json({ error: "report_key required" }, 400);
+  if (!reportKey || typeof reportKey !== "string") {
+    return json({ error: "report_key required" }, 400);
+  }
 
   // 3. Validate report definition
   const { data: reportDef } = await sb
@@ -948,7 +988,7 @@ Deno.serve(async (req: Request) => {
     .eq("report_key", reportKey)
     .single();
 
-  if (!reportDef) return json({ error: `Unknown report: ${reportKey}` }, 400);
+  if (!reportDef) return json({ error: "Unknown report key" }, 400);
   if (reportDef.is_locked) {
     return json(
       { error: "Report unavailable — prerequisite data not yet uploaded" },
@@ -986,7 +1026,7 @@ Deno.serve(async (req: Request) => {
   // 5. Check registry
   const reportFn = REGISTRY[reportKey];
   if (!reportFn) {
-    return json({ error: `Report not implemented: ${reportKey}` }, 400);
+    return json({ error: "Report not implemented" }, 400);
   }
 
   // 6. Create job row
@@ -1068,12 +1108,18 @@ Deno.serve(async (req: Request) => {
         }),
         created_at: new Date().toISOString(),
       })
-      .then(() => {})
-      .catch(() => {});
+      .then(({ error: auditErr }) => {
+        if (auditErr) console.warn("[generate-report] Audit log failed:", auditErr.message);
+      })
+      .catch((err: unknown) => {
+        console.warn("[generate-report] Audit log exception:", err);
+      });
 
     return json({ success: true, job_id: jobId });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Report generation failed";
+    const rawMsg = err instanceof Error ? err.message : "Report generation failed";
+    // Truncate to prevent schema info leakage in stored error
+    const message = rawMsg.length > 500 ? rawMsg.slice(0, 500) : rawMsg;
     console.error("[generate-report] Error:", message);
 
     // Update job as failed
@@ -1086,7 +1132,7 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", jobId);
 
-    // Still return success with job_id — frontend polls and sees failure
-    return json({ success: true, job_id: jobId });
+    // Return job_id so frontend can poll and see the failure state
+    return json({ success: false, job_id: jobId, error: "Report generation failed" });
   }
 });

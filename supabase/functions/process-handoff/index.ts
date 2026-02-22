@@ -366,18 +366,14 @@ serve(async (req) => {
       }
     }
 
-    // Step 4: Get user's organization ID
-    const orgId = body.organization_id;
-    let resolvedOrgId = orgId;
-
-    if (!resolvedOrgId) {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id")
-        .eq("id", user.id)
-        .single();
-      resolvedOrgId = profile?.organization_id;
-    }
+    // Step 4: Get user's organization ID — always resolve from authenticated
+    // user's profile. Never trust client-supplied org_id (cross-org write risk).
+    const { data: orgProfile } = await supabase
+      .from("user_profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+    const resolvedOrgId = orgProfile?.organization_id;
 
     // Step 5: Generate human-readable handoff ID
     const handoffId = await generateHandoffId(supabase);

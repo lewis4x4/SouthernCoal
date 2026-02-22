@@ -21,6 +21,16 @@ interface RequestBody {
   recipient_email: string;
 }
 
+/** Prevent HTML injection in email templates */
+function escapeHtml(v: string | number): string {
+  return String(v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -107,30 +117,30 @@ serve(async (req) => {
     }
 
     const tierLabel = TIER_LABELS[penalty_tier] ?? "Alert";
-    const subject = `[SCC Compliance] ${tierLabel}: ${obligation_name}`;
+    const subject = `[SCC Compliance] ${tierLabel}: ${escapeHtml(obligation_name)}`;
 
     const htmlBody = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #1a1a2e; color: #f1f5f9; border-radius: 12px; padding: 24px; border: 1px solid ${penalty_tier === 'tier_3' ? '#ef4444' : penalty_tier === 'tier_2' ? '#f97316' : '#eab308'}40;">
           <h2 style="margin: 0 0 16px; color: ${penalty_tier === 'tier_3' ? '#ef4444' : penalty_tier === 'tier_2' ? '#f97316' : '#eab308'};">
-            ${tierLabel}
+            ${escapeHtml(tierLabel)}
           </h2>
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Obligation</td>
-              <td style="padding: 8px 0; color: #f1f5f9; font-weight: 600;">${obligation_name}</td>
+              <td style="padding: 8px 0; color: #f1f5f9; font-weight: 600;">${escapeHtml(obligation_name)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Days Overdue</td>
-              <td style="padding: 8px 0; color: #ef4444; font-weight: 700;">${days_late}</td>
+              <td style="padding: 8px 0; color: #ef4444; font-weight: 700;">${escapeHtml(days_late)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Accrued Penalty</td>
-              <td style="padding: 8px 0; color: #f97316; font-weight: 700;">$${accrued_penalty.toLocaleString()}</td>
+              <td style="padding: 8px 0; color: #f97316; font-weight: 700;">$${escapeHtml(accrued_penalty.toLocaleString())}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Penalty Tier</td>
-              <td style="padding: 8px 0; color: #f1f5f9;">${tierLabel}</td>
+              <td style="padding: 8px 0; color: #f1f5f9;">${escapeHtml(tierLabel)}</td>
             </tr>
           </table>
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #334155;">
