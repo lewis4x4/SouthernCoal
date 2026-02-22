@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Settings, ScrollText, Shield, Bell, MapPin } from 'lucide-react';
+import { Settings, ScrollText, Shield, Bell, MapPin, FileText } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 const ADMIN_CARDS = [
@@ -17,6 +17,14 @@ const ADMIN_CARDS = [
     href: '/admin/access-control',
     icon: Shield,
     color: 'rgba(59, 130, 246, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Report Administration',
+    description: 'Manage 30 report definitions — role permissions, schedules, recipients, data quality.',
+    href: '/admin/reports',
+    icon: FileText,
+    color: 'rgba(245, 158, 11, 0.08)',
     ready: true,
   },
   {

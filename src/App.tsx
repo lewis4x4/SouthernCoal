@@ -27,6 +27,7 @@ const CorrectiveActionsPage = lazy(() => import('@/pages/CorrectiveActionsPage')
 const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDetailPage').then(m => ({ default: m.CorrectiveActionDetailPage })));
 const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
 const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m => ({ default: m.ExternalDataPage })));
+const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -159,6 +160,18 @@ export function App() {
             <AuthGuard>
               <AppShell>
                 <LazyPage><AuditLogPage /></LazyPage>
+              </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Report Administration */}
+        <Route
+          path="/admin/reports"
+          element={
+            <AuthGuard>
+              <AppShell>
+                <LazyPage><AdminReportsPage /></LazyPage>
               </AppShell>
             </AuthGuard>
           }
