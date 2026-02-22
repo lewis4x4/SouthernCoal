@@ -80,7 +80,8 @@ export function SearchObservabilityPage() {
     const { data: distinctDocs } = await supabase
       .from('document_chunks')
       .select('document_id')
-      .not('document_id', 'is', null);
+      .not('document_id', 'is', null)
+      .limit(10000);
 
     const docsWithChunks = new Set((distinctDocs || []).map((d: { document_id: string }) => d.document_id)).size;
 

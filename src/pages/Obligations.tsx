@@ -35,7 +35,8 @@ export function Obligations() {
       const { data, error } = await supabase
         .from('consent_decree_obligations')
         .select('*')
-        .order('next_due_date', { ascending: true });
+        .order('next_due_date', { ascending: true })
+        .returns<Obligation[]>();
 
       if (error || !data) {
         console.error('[obligations] Failed to fetch:', error?.message);
@@ -43,7 +44,7 @@ export function Obligations() {
         return;
       }
 
-      setObligations(data as unknown as Obligation[]);
+      setObligations(data);
       setLoading(false);
     }
 

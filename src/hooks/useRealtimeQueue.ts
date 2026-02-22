@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase, getFreshToken } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import { useAuth } from './useAuth';
+import { useUserProfile } from './useUserProfile';
 import type { QueueEntry } from '@/types/queue';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -40,6 +41,7 @@ const HEARTBEAT_INTERVAL = 120_000; // 2 minutes (reduced from 30s to ease conne
  */
 export function useRealtimeQueue() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { setEntries, upsertEntry } = useQueueStore();
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const lastEventRef = useRef<number>(Date.now());
@@ -116,18 +118,19 @@ export function useRealtimeQueue() {
     fetchAllEntries();
   }, [fetchAllEntries]);
 
-  // Realtime subscription
+  // Realtime subscription — org-scoped when profile is loaded
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile?.organization_id) return;
 
     const channel = supabase
-      .channel('queue-changes')
+      .channel(`queue-changes:${profile.organization_id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'file_processing_queue',
+          filter: `organization_id=eq.${profile.organization_id}`,
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           lastEventRef.current = Date.now();
@@ -150,8 +153,8 @@ export function useRealtimeQueue() {
     return () => {
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
-  }, [user?.id, upsertEntry]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on stable IDs, not objects
+  }, [user?.id, profile?.organization_id, upsertEntry]);
 
   // Heartbeat: lightweight fetch for active entries only (every 2 min)
   useEffect(() => {

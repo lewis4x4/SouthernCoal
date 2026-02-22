@@ -31,13 +31,18 @@ export const STATE_MAP: Record<string, string> = {
   WV: 'West_Virginia',
 };
 
+/** Strip path separators, null bytes, and leading dots to prevent path traversal. */
+function sanitizeFileName(name: string): string {
+  return name.replace(/[/\\]/g, '_').replace(/\0/g, '').replace(/^\.+/, '');
+}
+
 function stateScoped(opts: { stateCode?: string; fileName: string; hashPrefix: string }): string {
   const folder = opts.stateCode ? STATE_MAP[opts.stateCode] ?? opts.stateCode : 'Unassigned';
-  return `${folder}/${opts.hashPrefix}_${opts.fileName}`;
+  return `${folder}/${opts.hashPrefix}_${sanitizeFileName(opts.fileName)}`;
 }
 
 function flat(opts: { fileName: string; hashPrefix: string }): string {
-  return `${opts.hashPrefix}_${opts.fileName}`;
+  return `${opts.hashPrefix}_${sanitizeFileName(opts.fileName)}`;
 }
 
 export const CATEGORIES: CategoryConfig[] = [

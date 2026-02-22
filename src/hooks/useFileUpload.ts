@@ -182,7 +182,10 @@ export function useFileUpload() {
         // Update staged file with hash
         useStagingStore.getState().updateFile(stagedFile.id, { hashHex });
 
-        // 3. Check for duplicates (tenant-scoped when possible)
+        // 3. Get fresh auth token BEFORE any server calls (prevents stale-token edge cases)
+        await getFreshToken();
+
+        // 4. Check for duplicates (tenant-scoped when possible)
         const isDuplicate = await checkDuplicate(
           hashHex,
           categoryConfig.bucket,
@@ -193,9 +196,6 @@ export function useFileUpload() {
           toast.warning('This file has already been uploaded (matching file hash).');
           return;
         }
-
-        // 4. Get fresh auth token (ensures session is valid for storage upload)
-        await getFreshToken();
 
         // 5. Build storage path
         const storagePath = categoryConfig.buildPath({
