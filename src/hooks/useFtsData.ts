@@ -81,8 +81,8 @@ export function useFtsData() {
               payload.eventType === 'UPDATE' &&
               (payload.new as Record<string, unknown>).parse_status === 'completed'
             ) {
-              fetchViolations();
-              fetchMonthlyTotals();
+              fetchViolations().catch((err) => console.error('[fts] Realtime violation refetch failed:', err));
+              fetchMonthlyTotals().catch((err) => console.error('[fts] Realtime totals refetch failed:', err));
             }
           }
         },

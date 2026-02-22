@@ -378,12 +378,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    source = body.source || "echo";
-    orgId = body.organization_id || null;
-    syncLogId = body.sync_log_id || null;
-    triggeredBy = body.triggered_by || null;
+    if (typeof body.source === "string") source = body.source;
+    if (typeof body.organization_id === "string") orgId = body.organization_id;
+    if (typeof body.sync_log_id === "string") syncLogId = body.sync_log_id;
+    if (typeof body.triggered_by === "string") triggeredBy = body.triggered_by;
   } catch {
-    // Defaults
+    // Defaults on parse failure
   }
 
   // If no org specified, get the first one that has external data

@@ -131,20 +131,21 @@ async function synthesizeAnswer(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000); // 30s max
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: `You are a compliance document analysis assistant for Southern Coal Corporation, operating under NPDES permit oversight and a federal Clean Water Act Consent Decree (Case 7:16-cv-00462-GEC, W.D. Virginia). Subject to EPA, MSHA, OSMRE, and state DEP regulations across AL, KY, TN, VA, WV. Your job is to answer questions using ONLY the document excerpts provided below.
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2048,
+        messages: [
+          {
+            role: "user",
+            content: `You are a compliance document analysis assistant for Southern Coal Corporation, operating under NPDES permit oversight and a federal Clean Water Act Consent Decree (Case 7:16-cv-00462-GEC, W.D. Virginia). Subject to EPA, MSHA, OSMRE, and state DEP regulations across AL, KY, TN, VA, WV. Your job is to answer questions using ONLY the document excerpts provided below.
 
 RULES:
 1. Only use information from the provided excerpts. Do not hallucinate or add information not present.
@@ -161,24 +162,25 @@ ${excerpts}
 QUESTION: ${query}
 
 Provide your answer with [Source N] citations:`,
-        },
-      ],
-    }),
-    signal: controller.signal,
-  });
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
 
-  clearTimeout(timeout);
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${result.error?.message ?? response.status}`);
+    }
 
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(`Claude API error: ${result.error?.message ?? response.status}`);
+    const textContent = result.content?.find(
+      (b: { type: string }) => b.type === "text",
+    );
+
+    return textContent?.text ?? "Unable to generate answer.";
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const textContent = result.content?.find(
-    (b: { type: string }) => b.type === "text",
-  );
-
-  return textContent?.text ?? "Unable to generate answer.";
 }
 
 // ---------------------------------------------------------------------------

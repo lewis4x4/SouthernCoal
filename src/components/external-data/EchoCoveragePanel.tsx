@@ -83,7 +83,7 @@ export function EchoCoveragePanel() {
   }
 
   const sortedFacilities = useMemo(() => {
-    let filtered = stateFilter === 'all'
+    const filtered = stateFilter === 'all'
       ? facilities
       : facilities.filter((f) => f.state_code === stateFilter);
 

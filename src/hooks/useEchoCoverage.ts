@@ -64,7 +64,7 @@ export function useEchoCoverage() {
 
     // Fetch DMR counts per facility
     const facilityIds = facRows.map((f) => f.id);
-    let dmrCounts: Record<string, number> = {};
+    const dmrCounts: Record<string, number> = {};
 
     if (facilityIds.length > 0) {
       const { data: dmrData } = await supabase

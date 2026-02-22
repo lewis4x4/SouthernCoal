@@ -101,6 +101,9 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
       }
 
       setLoading(false);
+    }).catch((err) => {
+      console.error('[fts-violation] Detail fetch failed:', err);
+      setLoading(false);
     });
   }, [violation]);
 

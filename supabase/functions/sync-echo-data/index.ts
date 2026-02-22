@@ -157,10 +157,13 @@ function shouldSkipEcho(npdesId: string): boolean {
 async function fetchWithRetry(
   url: string,
   retries = MAX_RETRIES,
+  timeoutMs = 30_000,
 ): Promise<Response | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const resp = await fetch(url);
+      const resp = await fetch(url, { signal: controller.signal });
       if (resp.ok) return resp;
       if (resp.status === 429 || resp.status === 503) {
         const backoff = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
@@ -171,9 +174,15 @@ async function fetchWithRetry(
       console.error(`ECHO API error: ${resp.status} for ${url}`);
       return null;
     } catch (err) {
-      console.error(`ECHO fetch error (attempt ${attempt + 1}):`, err);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        console.error(`ECHO API timeout after ${timeoutMs}ms (attempt ${attempt + 1}): ${url}`);
+      } else {
+        console.error(`ECHO fetch error (attempt ${attempt + 1}):`, err);
+      }
       if (attempt === retries - 1) return null;
       await sleep(Math.pow(2, attempt + 1) * 1000);
+    } finally {
+      clearTimeout(timeout);
     }
   }
   return null;

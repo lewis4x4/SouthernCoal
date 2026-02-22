@@ -125,14 +125,17 @@ export function useFtsUpload() {
         const token = await getFreshToken();
 
         // Reset status to pending
-        await supabase
+        const { error: updateErr } = await supabase
           .from('fts_uploads')
           .update({ parse_status: 'pending', parse_error: null, updated_at: new Date().toISOString() })
           .eq('id', uploadId);
+        if (updateErr) throw new Error(`Failed to reset upload: ${updateErr.message}`);
 
         // Delete old violations + totals (CASCADE would handle on upload delete, but we're re-parsing)
-        await supabase.from('fts_violations').delete().eq('upload_id', uploadId);
-        await supabase.from('fts_monthly_totals').delete().eq('upload_id', uploadId);
+        const { error: delVErr } = await supabase.from('fts_violations').delete().eq('upload_id', uploadId);
+        if (delVErr) throw new Error(`Failed to delete violations: ${delVErr.message}`);
+        const { error: delTErr } = await supabase.from('fts_monthly_totals').delete().eq('upload_id', uploadId);
+        if (delTErr) throw new Error(`Failed to delete totals: ${delTErr.message}`);
 
         // Re-invoke parser
         await supabase.functions.invoke('parse-fts-excel', {

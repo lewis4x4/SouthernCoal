@@ -753,8 +753,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: (err as Error).message,
-        stack: (err as Error).stack?.split("\n").slice(0, 3).join(" | "),
+        error: "Embedding generation failed. Please try again or contact support.",
       }),
       { status: 500, headers },
     );
