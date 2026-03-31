@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import type { FieldMeasurementRecord, FieldVisitListItem, OutletInspectionRecord } from '@/types';
 
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
@@ -37,6 +38,14 @@ export type FieldOutboundOp =
       latitude: number;
       longitude: number;
       enqueuedAt: string;
+    }
+  | {
+      kind: 'coc_primary_upsert';
+      id: string;
+      visitId: string;
+      containerText: string;
+      preservativeConfirmed: boolean;
+      enqueuedAt: string;
     };
 
 function isMeasurementInsertOp(
@@ -53,6 +62,19 @@ function isMeasurementInsertOp(
 
 function isNullableString(v: unknown): v is string | null {
   return typeof v === 'string' || v === null;
+}
+
+function isCocPrimaryUpsertOp(
+  o: Record<string, unknown>,
+): o is Extract<FieldOutboundOp, { kind: 'coc_primary_upsert' }> {
+  return (
+    o.kind === 'coc_primary_upsert' &&
+    typeof o.id === 'string' &&
+    typeof o.visitId === 'string' &&
+    typeof o.containerText === 'string' &&
+    typeof o.preservativeConfirmed === 'boolean' &&
+    typeof o.enqueuedAt === 'string'
+  );
 }
 
 function isFieldVisitStartOp(
@@ -97,6 +119,7 @@ function isOutboundOp(v: unknown): v is FieldOutboundOp {
   if (k === 'field_measurement_insert') return isMeasurementInsertOp(o);
   if (k === 'outlet_inspection_upsert') return isOutletInspectionUpsertOp(o);
   if (k === 'field_visit_start') return isFieldVisitStartOp(o);
+  if (k === 'coc_primary_upsert') return isCocPrimaryUpsertOp(o);
   return false;
 }
 
@@ -217,6 +240,24 @@ export function enqueueFieldVisitStart(params: {
   return writeQueue(queue);
 }
 
+export function enqueueCocPrimaryUpsert(params: {
+  id: string;
+  visitId: string;
+  containerText: string;
+  preservativeConfirmed: boolean;
+}): boolean {
+  const queue = readQueue();
+  queue.push({
+    kind: 'coc_primary_upsert',
+    id: params.id,
+    visitId: params.visitId,
+    containerText: params.containerText,
+    preservativeConfirmed: params.preservativeConfirmed,
+    enqueuedAt: new Date().toISOString(),
+  });
+  return writeQueue(queue);
+}
+
 function getLatestPendingStartForVisit(
   visitId: string,
 ): Extract<FieldOutboundOp, { kind: 'field_visit_start' }> | null {
@@ -239,6 +280,50 @@ export function mergeVisitWithQueuedStart<V extends FieldVisitListItem>(visit: V
     started_latitude: pending.latitude,
     started_longitude: pending.longitude,
   };
+}
+
+function getLatestPendingCocForVisit(
+  visitId: string,
+): Extract<FieldOutboundOp, { kind: 'coc_primary_upsert' }> | null {
+  const ops = readQueue().filter(
+    (op): op is Extract<FieldOutboundOp, { kind: 'coc_primary_upsert' }> =>
+      op.kind === 'coc_primary_upsert' && op.visitId === visitId,
+  );
+  if (ops.length === 0) return null;
+  return ops[ops.length - 1]!;
+}
+
+/** Replace server CoC row with latest queued primary-container upsert for detail UI. */
+export function mergeMeasurementsWithQueuedCoc(
+  visitId: string,
+  userId: string | null,
+  measurements: FieldMeasurementRecord[],
+): FieldMeasurementRecord[] {
+  const pending = getLatestPendingCocForVisit(visitId);
+  if (!pending) return measurements;
+  const withoutCoc = measurements.filter(
+    (m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+  );
+  const row: FieldMeasurementRecord = {
+    id: `local-${pending.id}`,
+    field_visit_id: visitId,
+    parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+    measured_value: null,
+    measured_text: pending.containerText,
+    unit: null,
+    measured_at: pending.enqueuedAt,
+    metadata: {
+      preservative_confirmed: pending.preservativeConfirmed,
+      source: 'field_visit_coc_v1',
+      outbound_queue_id: pending.id,
+      pending_sync: true,
+    },
+    created_by: userId ?? '',
+    created_at: pending.enqueuedAt,
+  };
+  return [...withoutCoc, row].sort((a, b) =>
+    (b.measured_at ?? '').localeCompare(a.measured_at ?? ''),
+  );
 }
 
 export function optimisticMeasurementsFromQueue(
@@ -341,6 +426,40 @@ export async function processFieldOutboundQueue(
             })
             .eq('id', op.visitId);
           if (error) throw new Error(error.message);
+        } else if (op.kind === 'coc_primary_upsert') {
+          const metadata = {
+            preservative_confirmed: op.preservativeConfirmed,
+            source: 'field_visit_coc_v1',
+          };
+          const { data: existing, error: selectError } = await client
+            .from('field_measurements')
+            .select('id')
+            .eq('field_visit_id', op.visitId)
+            .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
+            .maybeSingle();
+          if (selectError) throw new Error(selectError.message);
+          if (existing?.id) {
+            const { error } = await client
+              .from('field_measurements')
+              .update({
+                measured_text: op.containerText,
+                measured_value: null,
+                unit: null,
+                metadata,
+              })
+              .eq('id', existing.id);
+            if (error) throw new Error(error.message);
+          } else {
+            const { error } = await client.from('field_measurements').insert({
+              field_visit_id: op.visitId,
+              parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+              measured_text: op.containerText,
+              measured_value: null,
+              unit: null,
+              metadata,
+            });
+            if (error) throw new Error(error.message);
+          }
         }
         const next = queue.slice(1);
         if (!writeQueue(next)) {

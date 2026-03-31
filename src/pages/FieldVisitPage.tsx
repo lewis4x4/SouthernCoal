@@ -271,8 +271,16 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      await saveCocPrimaryContainer(detail.visit.id, cocContainerId, cocPreservativeConfirmed);
-      toast.success('Chain of custody record saved');
+      const { queued } = await saveCocPrimaryContainer(
+        detail.visit.id,
+        cocContainerId,
+        cocPreservativeConfirmed,
+      );
+      toast.success(
+        queued
+          ? 'Chain of custody saved on this device; will upload when you are back online'
+          : 'Chain of custody record saved',
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save chain of custody');
     } finally {
@@ -315,7 +323,17 @@ export function FieldVisitPage() {
     try {
       setSaving(true);
       if (outcome === 'sample_collected') {
-        await saveCocPrimaryContainer(detail.visit.id, cocContainerId, cocPreservativeConfirmed);
+        const { queued } = await saveCocPrimaryContainer(
+          detail.visit.id,
+          cocContainerId,
+          cocPreservativeConfirmed,
+        );
+        if (queued) {
+          toast.error(
+            'Chain of custody is saved on this device. Connect to the network to complete this visit.',
+          );
+          return;
+        }
       }
       const result = await completeVisit(detail.visit, {
         outcome,

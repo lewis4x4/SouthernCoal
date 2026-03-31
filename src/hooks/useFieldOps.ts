@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
+  enqueueCocPrimaryUpsert,
   enqueueFieldMeasurementInsert,
   enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
   getFieldOutboundQueueLength,
+  mergeMeasurementsWithQueuedCoc,
   mergeOutletInspectionWithQueue,
   mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
@@ -165,9 +167,10 @@ export function useFieldOps() {
 
     const serverMeasurements = (measurementRes.data ?? []) as FieldMeasurementRecord[];
     const optimistic = optimisticMeasurementsFromQueue(visitId, userId);
-    const measurements = [...optimistic, ...serverMeasurements].sort((a, b) =>
+    const mergedMeasurements = [...optimistic, ...serverMeasurements].sort((a, b) =>
       (b.measured_at ?? '').localeCompare(a.measured_at ?? ''),
     );
+    const measurements = mergeMeasurementsWithQueuedCoc(visitId, userId, mergedMeasurements);
 
     const serverInspection = (inspectionRes.data as OutletInspectionRecord | null) ?? null;
     const inspection = mergeOutletInspectionWithQueue(visitId, serverInspection, userId);
@@ -545,10 +548,36 @@ export function useFieldOps() {
     visitId: string,
     containerId: string,
     preservativeConfirmed: boolean,
-  ) => {
+  ): Promise<{ queued: boolean }> => {
     const text = containerId.trim();
     if (!text) {
       throw new Error('Primary container ID is required');
+    }
+
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    if (offline) {
+      const opId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      const ok = enqueueCocPrimaryUpsert({
+        id: opId,
+        visitId,
+        containerText: text,
+        preservativeConfirmed,
+      });
+      if (!ok) throw new Error('Could not save offline — storage blocked or full');
+
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visitId) return prev;
+        return {
+          ...prev,
+          measurements: mergeMeasurementsWithQueuedCoc(visitId, userId, prev.measurements),
+        };
+      });
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { queued: true };
     }
 
     const metadata = {
@@ -591,7 +620,8 @@ export function useFieldOps() {
     }
 
     await loadVisitDetails(visitId);
-  }, [loadVisitDetails]);
+    return { queued: false };
+  }, [loadVisitDetails, userId]);
 
   const recordEvidenceAsset = useCallback(async (input: {
     fieldVisitId: string;

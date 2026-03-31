@@ -1,13 +1,17 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FieldVisitListItem } from '@/types';
+import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import type { FieldMeasurementRecord } from '@/types';
 import {
+  enqueueCocPrimaryUpsert,
   enqueueFieldMeasurementInsert,
   enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
   getFieldOutboundQueue,
   getFieldOutboundQueueLength,
   getPendingMeasurementInsertsForVisit,
+  mergeMeasurementsWithQueuedCoc,
   mergeOutletInspectionWithQueue,
   mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
@@ -177,6 +181,97 @@ describe('fieldOutboundQueue', () => {
     expect(merged.visit_status).toBe('in_progress');
     expect(merged.started_latitude).toBe(1);
     expect(merged.started_longitude).toBe(2);
+  });
+
+  it('mergeMeasurementsWithQueuedCoc replaces server CoC row', () => {
+    const serverCoc: FieldMeasurementRecord = {
+      id: 'db-coc',
+      field_visit_id: 'v1',
+      parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+      measured_text: 'OLD',
+      measured_value: null,
+      unit: null,
+      measured_at: '2026-01-01T00:00:00.000Z',
+      metadata: {},
+      created_by: 'u',
+      created_at: '2026-01-01T00:00:00.000Z',
+    };
+    const ph: FieldMeasurementRecord = {
+      id: 'm1',
+      field_visit_id: 'v1',
+      parameter_name: 'pH',
+      measured_text: null,
+      measured_value: 7,
+      unit: null,
+      measured_at: '2026-01-02T00:00:00.000Z',
+      metadata: {},
+      created_by: 'u',
+      created_at: '2026-01-02T00:00:00.000Z',
+    };
+    expect(mergeMeasurementsWithQueuedCoc('v1', 'u', [serverCoc, ph])).toEqual([serverCoc, ph]);
+    enqueueCocPrimaryUpsert({
+      id: 'c1',
+      visitId: 'v1',
+      containerText: 'NEW-JAR',
+      preservativeConfirmed: true,
+    });
+    const merged = mergeMeasurementsWithQueuedCoc('v1', 'u', [serverCoc, ph]);
+    expect(merged.some((m) => m.measured_text === 'OLD')).toBe(false);
+    const coc = merged.find((m) => m.parameter_name === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER);
+    expect(coc?.measured_text).toBe('NEW-JAR');
+    expect(coc?.metadata?.preservative_confirmed).toBe(true);
+  });
+
+  it('processFieldOutboundQueue processes coc_primary_upsert insert', async () => {
+    enqueueCocPrimaryUpsert({
+      id: 'c1',
+      visitId: 'v1',
+      containerText: 'JAR-9',
+      preservativeConfirmed: true,
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn(() => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({ maybeSingle }),
+        }),
+      }),
+      insert,
+      update: () => ({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+    }));
+    const fake = { from } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.failed).toBeNull();
+    expect(result.processed).toBe(1);
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it('processFieldOutboundQueue processes coc_primary_upsert update', async () => {
+    localStorage.clear();
+    enqueueCocPrimaryUpsert({
+      id: 'c2',
+      visitId: 'v1',
+      containerText: 'JAR-UPD',
+      preservativeConfirmed: false,
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'existing-row' }, error: null });
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    const insert = vi.fn();
+    const from = vi.fn(() => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({ maybeSingle }),
+        }),
+      }),
+      insert,
+      update: () => ({ eq: updateEq }),
+    }));
+    const fake = { from } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.failed).toBeNull();
+    expect(insert).not.toHaveBeenCalled();
+    expect(updateEq).toHaveBeenCalledWith('id', 'existing-row');
   });
 
   it('processFieldOutboundQueue processes field_visit_start', async () => {
