@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound } from 'lucide-react';
+import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFieldOps } from '@/hooks/useFieldOps';
+import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
 import type { FieldVisitListItem } from '@/types';
 
 const MANAGER_ROLES = ['site_manager', 'environmental_manager', 'executive', 'admin'];
@@ -26,7 +27,7 @@ export function FieldDispatchPage() {
 
   const { permits, outfalls, users, visits, loading, createVisit } = useFieldOps();
 
-  const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today'>('all');
+  const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today' | 'overdue'>('all');
   const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
 
   const [permitId, setPermitId] = useState('');
@@ -50,6 +51,9 @@ export function FieldDispatchPage() {
     }
     if (queueFilter === 'today') {
       list = list.filter((visit) => visit.scheduled_date === todayStr);
+    }
+    if (queueFilter === 'overdue') {
+      list = list.filter((visit) => visitIsOpenOverdue(visit, todayStr));
     }
     const sorted = [...list];
     if (queueSort === 'route_order') {
@@ -216,7 +220,7 @@ export function FieldDispatchPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-medium text-text-muted">Queue</span>
           <div className="flex flex-wrap gap-2">
-            {(['all', 'mine', 'today'] as const).map((key) => (
+            {(['all', 'mine', 'today', 'overdue'] as const).map((key) => (
               <button
                 key={key}
                 type="button"
@@ -227,7 +231,13 @@ export function FieldDispatchPage() {
                     : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
                 }`}
               >
-                {key === 'all' ? 'All' : key === 'mine' ? 'My assignments' : 'Today'}
+                {key === 'all'
+                  ? 'All'
+                  : key === 'mine'
+                    ? 'My assignments'
+                    : key === 'today'
+                      ? 'Today'
+                      : 'Overdue open'}
               </button>
             ))}
           </div>
@@ -283,6 +293,12 @@ export function FieldDispatchPage() {
                       {visit.route_stop_sequence != null && (
                         <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
                           Stop {visit.route_stop_sequence}
+                        </span>
+                      )}
+                      {visitIsOpenOverdue(visit, todayStr) && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-500/35 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-200">
+                          <AlertTriangle className="h-3 w-3" />
+                          Overdue
                         </span>
                       )}
                     </div>
