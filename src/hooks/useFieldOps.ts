@@ -26,6 +26,7 @@ interface DispatchVisitInput {
   assignedTo: string;
   scheduledDate: string;
   fieldNotes?: string;
+  samplingCalendarId?: string;
 }
 
 interface CoordinateInput {
@@ -251,6 +252,7 @@ export function useFieldOps() {
       assigned_by: userId,
       scheduled_date: input.scheduledDate,
       field_notes: input.fieldNotes ?? null,
+      sampling_calendar_id: input.samplingCalendarId ?? null,
     };
 
     const { data, error } = await supabase

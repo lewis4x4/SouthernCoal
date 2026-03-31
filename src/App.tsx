@@ -30,10 +30,12 @@ const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDe
 const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
 const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m => ({ default: m.ExternalDataPage })));
 const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
+const FieldSchedulePage = lazy(() => import('@/pages/FieldSchedulePage').then(m => ({ default: m.FieldSchedulePage })));
 const FieldDispatchPage = lazy(() => import('@/pages/FieldDispatchPage').then(m => ({ default: m.FieldDispatchPage })));
 const FieldVisitPage = lazy(() => import('@/pages/FieldVisitPage').then(m => ({ default: m.FieldVisitPage })));
 const GovernanceIssuesPage = lazy(() => import('@/pages/GovernanceIssuesPage').then(m => ({ default: m.GovernanceIssuesPage })));
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
+const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
 
 /**
@@ -269,6 +271,32 @@ export function App() {
         />
 
         {/* Field queue and dispatch */}
+        <Route
+          path="/field/schedule"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_SCHEDULE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldSchedulePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/sampling"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_SCHEDULE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldSchedulePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
         <Route
           path="/field/dispatch"
           element={

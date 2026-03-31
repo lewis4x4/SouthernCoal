@@ -2,6 +2,10 @@ export type FieldVisitStatus = 'assigned' | 'in_progress' | 'completed' | 'cance
 export type FieldVisitOutcome = 'sample_collected' | 'no_discharge' | 'access_issue';
 export type GovernanceIssueType = 'access_issue' | 'potential_force_majeure';
 export type GovernanceIssueStatus = 'open' | 'under_review' | 'decision_recorded' | 'closed';
+export type SamplingFrequencyCode = 'weekly' | 'monthly' | 'semi_monthly' | 'manual' | 'rain_event';
+export type SamplingCalendarStatus = 'pending' | 'completed' | 'overdue' | 'skipped';
+export type SamplingDispatchStatus = 'ready' | 'dispatched' | 'in_progress' | 'completed' | 'skipped' | 'exception';
+export type SamplingCalendarAdjustmentType = 'manual_entry' | 'rain_event' | 'skip' | 'reschedule' | 'makeup';
 
 export interface FieldOpsUser {
   id: string;
@@ -46,6 +50,7 @@ export interface FieldVisitRecord {
   potential_force_majeure: boolean;
   potential_force_majeure_notes: string | null;
   linked_sampling_event_id: string | null;
+  sampling_calendar_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -172,6 +177,97 @@ export interface GovernanceIssueEventRecord {
 export interface CompleteFieldVisitResult {
   linked_sampling_event_id: string | null;
   governance_issue_id: string | null;
+}
+
+export interface ParameterOption {
+  id: string;
+  name: string;
+  short_name: string;
+  default_unit: string | null;
+}
+
+export interface SamplingScheduleRecord {
+  id: string;
+  organization_id: string;
+  permit_id: string;
+  outfall_id: string;
+  parameter_id: string;
+  frequency_code: string;
+  frequency_description: string | null;
+  sample_type: string;
+  min_days_between_samples: number | null;
+  max_samples_per_period: number | null;
+  period_type: string | null;
+  seasonal_restriction: string | null;
+  condition_restriction: string | null;
+  route_zone: string | null;
+  default_assigned_to: string | null;
+  schedule_anchor_date: string | null;
+  preferred_day_of_week: number | null;
+  preferred_day_of_month: number | null;
+  secondary_day_of_month: number | null;
+  instructions: string | null;
+  source: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SamplingScheduleListItem extends SamplingScheduleRecord {
+  permit_number: string | null;
+  outfall_number: string | null;
+  parameter_name: string | null;
+  default_assigned_to_name: string | null;
+}
+
+export interface SamplingCalendarRecord {
+  id: string;
+  organization_id: string;
+  schedule_id: string;
+  outfall_id: string;
+  parameter_id: string;
+  scheduled_date: string;
+  window_start: string | null;
+  window_end: string | null;
+  status: SamplingCalendarStatus;
+  dispatch_status: SamplingDispatchStatus;
+  current_field_visit_id: string | null;
+  sampling_event_id: string | null;
+  skip_reason: string | null;
+  override_reason: string | null;
+  route_zone: string | null;
+  default_assigned_to: string | null;
+  source_calendar_id: string | null;
+  reminder_sent: boolean | null;
+  overdue_alert_sent: boolean | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SamplingCalendarListItem extends SamplingCalendarRecord {
+  permit_id: string;
+  permit_number: string | null;
+  outfall_number: string | null;
+  parameter_name: string | null;
+  frequency_code: string | null;
+  sample_type: string | null;
+  instructions: string | null;
+  default_assigned_to_name: string | null;
+  current_field_visit_status: FieldVisitStatus | null;
+  current_field_visit_outcome: FieldVisitOutcome | null;
+}
+
+export interface SamplingCalendarAdjustmentRecord {
+  id: string;
+  organization_id: string;
+  calendar_id: string;
+  adjustment_type: SamplingCalendarAdjustmentType;
+  prior_scheduled_date: string | null;
+  new_scheduled_date: string | null;
+  reason: string;
+  metadata: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
 }
 
 export interface FieldVisitDetails {

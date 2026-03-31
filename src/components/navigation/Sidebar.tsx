@@ -19,6 +19,7 @@ import {
   Pin,
   PinOff,
   Satellite,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,6 +54,7 @@ type NavGroup = {
 };
 
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
+const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
 
 const NAV_GROUPS: NavGroup[] = [
@@ -69,6 +71,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Field Ops',
     items: [
+      { label: 'Sampling Calendar', href: '/field/schedule', icon: CalendarDays, roles: FIELD_SCHEDULE_ROLES },
       { label: 'Field Queue', href: '/field/dispatch', icon: MapPin, roles: FIELD_ROUTE_ROLES },
       { label: 'Governance', href: '/governance/issues', icon: ShieldAlert, roles: GOVERNANCE_ROUTE_ROLES },
     ],
