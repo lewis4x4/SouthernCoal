@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Camera, CheckCircle2, Droplets, MapPin, ShieldAlert, Waves, Wind } from 'lucide-react';
+import { Camera, CheckCircle2, Droplets, MapPin, Package, ShieldAlert, Waves, Wind } from 'lucide-react';
 import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
+import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
 
 function deadlineToneClass(tone: GovernanceDeadlineTone) {
@@ -49,6 +50,7 @@ export function FieldVisitPage() {
     startVisit,
     saveInspection,
     addMeasurement,
+    saveCocPrimaryContainer,
     recordEvidenceAsset,
     completeVisit,
   } = useFieldOps();
@@ -66,6 +68,8 @@ export function FieldVisitPage() {
   const [measurementValue, setMeasurementValue] = useState('');
   const [measurementText, setMeasurementText] = useState('');
   const [measurementUnit, setMeasurementUnit] = useState('');
+  const [cocContainerId, setCocContainerId] = useState('');
+  const [cocPreservativeConfirmed, setCocPreservativeConfirmed] = useState(false);
   const [weatherConditions, setWeatherConditions] = useState('');
   const [fieldNotes, setFieldNotes] = useState('');
   const [outcome, setOutcome] = useState<FieldVisitOutcome>('sample_collected');
@@ -127,11 +131,22 @@ export function FieldVisitPage() {
     setContactAttempted(detail.accessIssue?.contact_attempted ?? false);
     setContactName(detail.accessIssue?.contact_name ?? '');
     setContactOutcome(detail.accessIssue?.contact_outcome ?? '');
+    const cocRow = detail.measurements.find(
+      (m) => m.parameter_name === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+    );
+    setCocContainerId(cocRow?.measured_text ?? '');
+    setCocPreservativeConfirmed(Boolean(cocRow?.metadata?.preservative_confirmed));
   }, [detail]);
 
   const photoCount = useMemo(
     () => detail?.evidence.filter((asset) => asset.evidence_type === 'photo').length ?? 0,
     [detail?.evidence],
+  );
+  const generalMeasurements = useMemo(
+    () =>
+      detail?.measurements.filter((m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) ??
+      [],
+    [detail?.measurements],
   );
   const visitLocked = detail?.visit.visit_status === 'completed';
 
@@ -202,6 +217,11 @@ export function FieldVisitPage() {
       return;
     }
 
+    if (measurementName.trim() === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) {
+      toast.error('Use the Chain of custody section to record the primary container ID');
+      return;
+    }
+
     try {
       setSaving(true);
       await addMeasurement(detail.visit.id, {
@@ -222,6 +242,28 @@ export function FieldVisitPage() {
     }
   }
 
+  async function handleSaveCoc() {
+    if (!detail || visitLocked) return;
+    if (!cocContainerId.trim()) {
+      toast.error('Enter a primary container ID');
+      return;
+    }
+    if (!cocPreservativeConfirmed) {
+      toast.error('Confirm bottle / preservative match before saving');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await saveCocPrimaryContainer(detail.visit.id, cocContainerId, cocPreservativeConfirmed);
+      toast.success('Chain of custody record saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save chain of custody');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleCompletion() {
     if (!detail) return;
 
@@ -231,6 +273,17 @@ export function FieldVisitPage() {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       toast.error('Completion latitude and longitude are required');
       return;
+    }
+
+    if (outcome === 'sample_collected') {
+      if (!cocContainerId.trim()) {
+        toast.error('Record primary container ID before completing a sample-collected visit');
+        return;
+      }
+      if (!cocPreservativeConfirmed) {
+        toast.error('Confirm bottle / preservative match before completing');
+        return;
+      }
     }
 
     if (outcome === 'no_discharge' && photoCount < 1) {
@@ -245,6 +298,9 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
+      if (outcome === 'sample_collected') {
+        await saveCocPrimaryContainer(detail.visit.id, cocContainerId, cocPreservativeConfirmed);
+      }
       const result = await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude, longitude },
@@ -536,6 +592,53 @@ export function FieldVisitPage() {
             </button>
           </SpotlightCard>
 
+          {(outcome === 'sample_collected' || detail.visit.outcome === 'sample_collected') && (
+            <SpotlightCard className="p-6">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-cyan-300" />
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                  Chain of custody (collection)
+                </h2>
+              </div>
+              <p className="mt-2 text-sm text-text-secondary">
+                Primary container ID and preservative confirmation are required before you can complete a
+                sample-collected visit. Stored as a field measurement for audit.
+              </p>
+
+              <label className="mt-4 block space-y-2">
+                <span className="text-xs font-medium text-text-muted">Primary container ID</span>
+                <input
+                  value={cocContainerId}
+                  onChange={(e) => setCocContainerId(e.target.value)}
+                  disabled={visitLocked}
+                  placeholder="e.g. bottle label / cooler slot ID"
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                />
+              </label>
+
+              <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={cocPreservativeConfirmed}
+                  onChange={(e) => setCocPreservativeConfirmed(e.target.checked)}
+                  disabled={visitLocked}
+                />
+                Bottle and preservative match the parameters scheduled for this sample
+              </label>
+
+              {!visitLocked && (
+                <button
+                  type="button"
+                  onClick={handleSaveCoc}
+                  disabled={saving}
+                  className="mt-4 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
+                >
+                  Save chain of custody
+                </button>
+              )}
+            </SpotlightCard>
+          )}
+
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
               <Droplets className="h-4 w-4 text-cyan-300" />
@@ -584,7 +687,7 @@ export function FieldVisitPage() {
             </button>
 
             <div className="mt-4 space-y-2">
-              {detail.measurements.map((measurement) => (
+              {generalMeasurements.map((measurement) => (
                 <div key={measurement.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
                   <div className="font-medium text-text-primary">{measurement.parameter_name}</div>
                   <div className="mt-1 text-text-secondary">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -365,6 +366,58 @@ export function useFieldOps() {
     await loadVisitDetails(visitId);
   }, [loadVisitDetails]);
 
+  const saveCocPrimaryContainer = useCallback(async (
+    visitId: string,
+    containerId: string,
+    preservativeConfirmed: boolean,
+  ) => {
+    const text = containerId.trim();
+    if (!text) {
+      throw new Error('Primary container ID is required');
+    }
+
+    const metadata = {
+      preservative_confirmed: preservativeConfirmed,
+      source: 'field_visit_coc_v1',
+    };
+
+    const { data: existing, error: selectError } = await supabase
+      .from('field_measurements')
+      .select('id')
+      .eq('field_visit_id', visitId)
+      .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
+      .maybeSingle();
+
+    if (selectError) throw new Error(selectError.message);
+
+    if (existing?.id) {
+      const { error } = await supabase
+        .from('field_measurements')
+        .update({
+          measured_text: text,
+          measured_value: null,
+          unit: null,
+          metadata,
+        })
+        .eq('id', existing.id);
+
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from('field_measurements').insert({
+        field_visit_id: visitId,
+        parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+        measured_text: text,
+        measured_value: null,
+        unit: null,
+        metadata,
+      });
+
+      if (error) throw new Error(error.message);
+    }
+
+    await loadVisitDetails(visitId);
+  }, [loadVisitDetails]);
+
   const recordEvidenceAsset = useCallback(async (input: {
     fieldVisitId: string;
     storagePath: string;
@@ -451,6 +504,7 @@ export function useFieldOps() {
     startVisit,
     saveInspection,
     addMeasurement,
+    saveCocPrimaryContainer,
     recordEvidenceAsset,
     completeVisit,
   };
