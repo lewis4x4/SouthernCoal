@@ -14,6 +14,7 @@ import {
   FileEdit,
   Map,
   MapPin,
+  Route,
   ShieldAlert,
   DollarSign,
   Pin,
@@ -72,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Field Ops',
     items: [
       { label: 'Sampling Calendar', href: '/field/schedule', icon: CalendarDays, roles: FIELD_SCHEDULE_ROLES },
+      { label: "Today's route", href: '/field/route', icon: Route, roles: FIELD_ROUTE_ROLES },
       { label: 'Field Queue', href: '/field/dispatch', icon: MapPin, roles: FIELD_ROUTE_ROLES },
       { label: 'Governance', href: '/governance/issues', icon: ShieldAlert, roles: GOVERNANCE_ROUTE_ROLES },
     ],

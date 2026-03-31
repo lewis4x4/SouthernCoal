@@ -32,6 +32,7 @@ const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m =>
 const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
 const FieldSchedulePage = lazy(() => import('@/pages/FieldSchedulePage').then(m => ({ default: m.FieldSchedulePage })));
 const FieldDispatchPage = lazy(() => import('@/pages/FieldDispatchPage').then(m => ({ default: m.FieldDispatchPage })));
+const FieldRouteTodayPage = lazy(() => import('@/pages/FieldRouteTodayPage').then(m => ({ default: m.FieldRouteTodayPage })));
 const FieldVisitPage = lazy(() => import('@/pages/FieldVisitPage').then(m => ({ default: m.FieldVisitPage })));
 const GovernanceIssuesPage = lazy(() => import('@/pages/GovernanceIssuesPage').then(m => ({ default: m.GovernanceIssuesPage })));
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
@@ -304,6 +305,19 @@ export function App() {
               <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
                 <AppShell>
                   <LazyPage><FieldDispatchPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/field/route"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldRouteTodayPage /></LazyPage>
                 </AppShell>
               </RoleGuard>
             </AuthGuard>

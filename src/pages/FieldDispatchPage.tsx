@@ -104,8 +104,16 @@ export function FieldDispatchPage() {
             Manual dispatch for WV field work and the live queue of executable field visits. Route-dispatched visits show stop order for daily worklists.
           </p>
         </div>
-        <div className="rounded-xl bg-cyan-500/10 p-3">
-          <Route className="h-6 w-6 text-cyan-300" />
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <Link
+            to="/field/route"
+            className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
+          >
+            Today&apos;s route
+          </Link>
+          <div className="rounded-xl bg-cyan-500/10 p-3">
+            <Route className="h-6 w-6 text-cyan-300" />
+          </div>
         </div>
       </div>
 
