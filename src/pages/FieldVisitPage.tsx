@@ -48,6 +48,7 @@ export function FieldVisitPage() {
     detail,
     detailLoading,
     loading: fieldQueueLoading,
+    outboundPendingCount,
     loadVisitDetails,
     refresh: refreshFieldQueue,
     startVisit,
@@ -227,7 +228,7 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      await addMeasurement(detail.visit.id, {
+      const { queued } = await addMeasurement(detail.visit.id, {
         parameterName: measurementName.trim(),
         measuredValue: measurementValue ? Number(measurementValue) : undefined,
         measuredText: measurementText.trim() || undefined,
@@ -237,7 +238,11 @@ export function FieldVisitPage() {
       setMeasurementValue('');
       setMeasurementText('');
       setMeasurementUnit('');
-      toast.success('Field measurement added');
+      toast.success(
+        queued
+          ? 'Saved on this device; will upload when you are back online'
+          : 'Field measurement added',
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to add field measurement');
     } finally {
@@ -370,6 +375,7 @@ export function FieldVisitPage() {
       {id && (
         <FieldDataSyncBar
           loading={fieldQueueLoading || detailLoading}
+          pendingOutboundCount={outboundPendingCount}
           onRefresh={async () => {
             await Promise.all([refreshFieldQueue(), loadVisitDetails(id)]);
           }}

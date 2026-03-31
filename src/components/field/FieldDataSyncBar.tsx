@@ -5,12 +5,14 @@ type Props = {
   /** True while server fetch for this surface is in flight */
   loading: boolean;
   onRefresh: () => Promise<void>;
+  /** Field mutations waiting to upload after reconnect (Phase 4 outbound queue) */
+  pendingOutboundCount?: number;
 };
 
 /**
  * Phase 3 sync visibility: browser online/offline, last successful load time, manual refresh.
  */
-export function FieldDataSyncBar({ loading, onRefresh }: Props) {
+export function FieldDataSyncBar({ loading, onRefresh, pendingOutboundCount = 0 }: Props) {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [manualBusy, setManualBusy] = useState(false);
   const [online, setOnline] = useState(
@@ -54,9 +56,14 @@ export function FieldDataSyncBar({ loading, onRefresh }: Props) {
       })
     : '—';
 
+  const pendingLabel =
+    pendingOutboundCount > 0
+      ? `${pendingOutboundCount} field ${pendingOutboundCount === 1 ? 'entry' : 'entries'} waiting to upload. `
+      : '';
+
   const statusText = online
-    ? `Online. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`
-    : `Offline, data may be stale. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`;
+    ? `${pendingLabel}Online. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`
+    : `${pendingLabel}Offline, data may be stale. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`;
 
   return (
     <div
@@ -79,6 +86,11 @@ export function FieldDataSyncBar({ loading, onRefresh }: Props) {
           {online ? 'Online' : 'Offline — shown data may be stale'}
         </span>
         <span className="text-text-muted" aria-hidden>
+          {pendingOutboundCount > 0 ? (
+            <span className="mr-2 font-medium text-amber-200/95">
+              {pendingOutboundCount} pending upload{pendingOutboundCount === 1 ? '' : 's'}
+            </span>
+          ) : null}
           Last updated{' '}
           <span className="font-medium text-text-primary">{timeLabel}</span>
           {busy ? ' (syncing…)' : ''}

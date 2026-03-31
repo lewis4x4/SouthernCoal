@@ -66,7 +66,7 @@ export function FieldRouteTodayPage() {
   const role = getEffectiveRole();
   const canSeeOrgWide = MANAGER_ROLES.includes(role);
 
-  const { visits, loading, refresh } = useFieldOps();
+  const { visits, loading, outboundPendingCount, refresh } = useFieldOps();
 
   const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerSnapshot);
 
@@ -202,7 +202,11 @@ export function FieldRouteTodayPage() {
         </div>
       </div>
 
-      <FieldDataSyncBar loading={loading} onRefresh={refresh} />
+      <FieldDataSyncBar
+        loading={loading}
+        pendingOutboundCount={outboundPendingCount}
+        onRefresh={refresh}
+      />
 
       {!online && routeCache && dayVisits.length > 0 && (
         <div

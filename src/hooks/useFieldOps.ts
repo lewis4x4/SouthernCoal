@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  enqueueFieldMeasurementInsert,
+  getFieldOutboundQueueLength,
+  optimisticMeasurementsFromQueue,
+  processFieldOutboundQueue,
+} from '@/lib/fieldOutboundQueue';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,6 +86,10 @@ export function useFieldOps() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<FieldVisitDetails | null>(null);
+  const [outboundPendingCount, setOutboundPendingCount] = useState(() =>
+    typeof window !== 'undefined' ? getFieldOutboundQueueLength() : 0,
+  );
+  const lastDetailVisitIdRef = useRef<string | null>(null);
 
   const permitMap = useMemo(
     () => new Map(permits.map((permit) => [permit.id, permit])),
@@ -96,7 +106,108 @@ export function useFieldOps() {
     [users],
   );
 
+  const loadVisitDetails = useCallback(async (visitId: string) => {
+    setDetailLoading(true);
+
+    const [
+      visitRes,
+      inspectionRes,
+      measurementRes,
+      evidenceRes,
+      noDischargeRes,
+      accessIssueRes,
+      governanceRes,
+    ] = await Promise.all([
+      supabase.from('field_visits').select('*').eq('id', visitId).single(),
+      supabase.from('outlet_inspections').select('*').eq('field_visit_id', visitId).maybeSingle(),
+      supabase.from('field_measurements').select('*').eq('field_visit_id', visitId).order('measured_at', { ascending: false }),
+      supabase.from('field_evidence_assets').select('*').eq('field_visit_id', visitId).order('created_at', { ascending: false }),
+      supabase.from('no_discharge_events').select('*').eq('field_visit_id', visitId).maybeSingle(),
+      supabase.from('access_issues').select('*').eq('field_visit_id', visitId).maybeSingle(),
+      supabase.from('governance_issues').select('*').eq('field_visit_id', visitId).order('raised_at', { ascending: false }),
+    ]);
+
+    if (visitRes.error || !visitRes.data) {
+      toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
+      setDetail(null);
+      lastDetailVisitIdRef.current = null;
+      setDetailLoading(false);
+      return null;
+    }
+
+    const visit = visitRes.data as FieldVisitRecord;
+
+    let routeStopSequence: number | null = null;
+    if (visit.sampling_calendar_id) {
+      const stopRes = await supabase
+        .from('sampling_route_stops')
+        .select('stop_sequence')
+        .eq('calendar_id', visit.sampling_calendar_id)
+        .maybeSingle();
+      if (!stopRes.error && stopRes.data) {
+        routeStopSequence = stopRes.data.stop_sequence as number;
+      }
+    }
+
+    const listItem: FieldVisitListItem = {
+      ...visit,
+      route_batch_id: visit.route_batch_id ?? null,
+      permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
+      outfall_number: outfallMap.get(visit.outfall_id)?.outfall_number ?? null,
+      assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
+      route_stop_sequence: routeStopSequence,
+    };
+
+    const serverMeasurements = (measurementRes.data ?? []) as FieldMeasurementRecord[];
+    const optimistic = optimisticMeasurementsFromQueue(visitId, userId);
+    const measurements = [...optimistic, ...serverMeasurements].sort((a, b) =>
+      (b.measured_at ?? '').localeCompare(a.measured_at ?? ''),
+    );
+
+    const nextDetail: FieldVisitDetails = {
+      visit: listItem,
+      inspection: (inspectionRes.data as OutletInspectionRecord | null) ?? null,
+      measurements,
+      evidence: (evidenceRes.data ?? []) as FieldEvidenceAssetRecord[],
+      noDischarge: (noDischargeRes.data as NoDischargeRecord | null) ?? null,
+      accessIssue: (accessIssueRes.data as AccessIssueRecord | null) ?? null,
+      governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
+    };
+
+    setDetail(nextDetail);
+    lastDetailVisitIdRef.current = visitId;
+    setDetailLoading(false);
+    return nextDetail;
+  }, [outfallMap, permitMap, userId, userMap]);
+
+  const flushOutboundIfOnline = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.onLine) {
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { processed: 0, failed: null as Error | null };
+    }
+
+    const flushResult = await processFieldOutboundQueue(supabase);
+    setOutboundPendingCount(getFieldOutboundQueueLength());
+
+    if (flushResult.failed) {
+      toast.error(`Could not upload pending field data: ${flushResult.failed.message}`);
+    } else if (flushResult.processed > 0) {
+      toast.success(
+        `Uploaded ${flushResult.processed} pending field ${flushResult.processed === 1 ? 'entry' : 'entries'}`,
+      );
+    }
+
+    const vid = lastDetailVisitIdRef.current;
+    if (flushResult.processed > 0 && vid) {
+      await loadVisitDetails(vid);
+    }
+
+    return flushResult;
+  }, [loadVisitDetails]);
+
   const loadDispatchContext = useCallback(async () => {
+    await flushOutboundIfOnline();
+
     if (!organizationId) {
       setLoading(false);
       return;
@@ -216,73 +327,7 @@ export function useFieldOps() {
       })),
     );
     setLoading(false);
-  }, [organizationId]);
-
-  const loadVisitDetails = useCallback(async (visitId: string) => {
-    setDetailLoading(true);
-
-    const [
-      visitRes,
-      inspectionRes,
-      measurementRes,
-      evidenceRes,
-      noDischargeRes,
-      accessIssueRes,
-      governanceRes,
-    ] = await Promise.all([
-      supabase.from('field_visits').select('*').eq('id', visitId).single(),
-      supabase.from('outlet_inspections').select('*').eq('field_visit_id', visitId).maybeSingle(),
-      supabase.from('field_measurements').select('*').eq('field_visit_id', visitId).order('measured_at', { ascending: false }),
-      supabase.from('field_evidence_assets').select('*').eq('field_visit_id', visitId).order('created_at', { ascending: false }),
-      supabase.from('no_discharge_events').select('*').eq('field_visit_id', visitId).maybeSingle(),
-      supabase.from('access_issues').select('*').eq('field_visit_id', visitId).maybeSingle(),
-      supabase.from('governance_issues').select('*').eq('field_visit_id', visitId).order('raised_at', { ascending: false }),
-    ]);
-
-    if (visitRes.error || !visitRes.data) {
-      toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
-      setDetail(null);
-      setDetailLoading(false);
-      return null;
-    }
-
-    const visit = visitRes.data as FieldVisitRecord;
-
-    let routeStopSequence: number | null = null;
-    if (visit.sampling_calendar_id) {
-      const stopRes = await supabase
-        .from('sampling_route_stops')
-        .select('stop_sequence')
-        .eq('calendar_id', visit.sampling_calendar_id)
-        .maybeSingle();
-      if (!stopRes.error && stopRes.data) {
-        routeStopSequence = stopRes.data.stop_sequence as number;
-      }
-    }
-
-    const listItem: FieldVisitListItem = {
-      ...visit,
-      route_batch_id: visit.route_batch_id ?? null,
-      permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
-      outfall_number: outfallMap.get(visit.outfall_id)?.outfall_number ?? null,
-      assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
-      route_stop_sequence: routeStopSequence,
-    };
-
-    const nextDetail: FieldVisitDetails = {
-      visit: listItem,
-      inspection: (inspectionRes.data as OutletInspectionRecord | null) ?? null,
-      measurements: (measurementRes.data ?? []) as FieldMeasurementRecord[],
-      evidence: (evidenceRes.data ?? []) as FieldEvidenceAssetRecord[],
-      noDischarge: (noDischargeRes.data as NoDischargeRecord | null) ?? null,
-      accessIssue: (accessIssueRes.data as AccessIssueRecord | null) ?? null,
-      governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
-    };
-
-    setDetail(nextDetail);
-    setDetailLoading(false);
-    return nextDetail;
-  }, [outfallMap, permitMap, userMap]);
+  }, [organizationId, flushOutboundIfOnline]);
 
   const createVisit = useCallback(async (input: DispatchVisitInput) => {
     if (!organizationId || !userId) throw new Error('Missing organization context');
@@ -351,7 +396,48 @@ export function useFieldOps() {
     measuredValue?: number;
     measuredText?: string;
     unit?: string;
-  }) => {
+  }): Promise<{ queued: boolean }> => {
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    if (offline) {
+      const opId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+      const ok = enqueueFieldMeasurementInsert({
+        id: opId,
+        visitId,
+        parameterName: measurement.parameterName,
+        measuredValue: measurement.measuredValue ?? null,
+        measuredText: measurement.measuredText ?? null,
+        unit: measurement.unit ?? null,
+      });
+
+      if (!ok) throw new Error('Could not save offline — storage blocked or full');
+
+      const measuredAt = new Date().toISOString();
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visitId) return prev;
+        const optimistic: FieldMeasurementRecord = {
+          id: `local-${opId}`,
+          field_visit_id: visitId,
+          parameter_name: measurement.parameterName,
+          measured_value: measurement.measuredValue ?? null,
+          measured_text: measurement.measuredText ?? null,
+          unit: measurement.unit ?? null,
+          measured_at: measuredAt,
+          metadata: { outbound_queue_id: opId, pending_sync: true },
+          created_by: userId ?? '',
+          created_at: measuredAt,
+        };
+        return { ...prev, measurements: [optimistic, ...prev.measurements] };
+      });
+
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { queued: true };
+    }
+
     const { error } = await supabase
       .from('field_measurements')
       .insert({
@@ -364,7 +450,8 @@ export function useFieldOps() {
 
     if (error) throw new Error(error.message);
     await loadVisitDetails(visitId);
-  }, [loadVisitDetails]);
+    return { queued: false };
+  }, [loadVisitDetails, userId]);
 
   const saveCocPrimaryContainer = useCallback(async (
     visitId: string,
@@ -490,12 +577,21 @@ export function useFieldOps() {
     }
   }, [loadDispatchContext, organizationId]);
 
+  useEffect(() => {
+    const onUp = () => {
+      void flushOutboundIfOnline();
+    };
+    window.addEventListener('online', onUp);
+    return () => window.removeEventListener('online', onUp);
+  }, [flushOutboundIfOnline]);
+
   return {
     permits,
     outfalls,
     users,
     visits,
     loading,
+    outboundPendingCount,
     detail,
     detailLoading,
     refresh: loadDispatchContext,
