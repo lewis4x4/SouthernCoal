@@ -14,6 +14,7 @@ import {
   Waves,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useSamplingCalendar } from '@/hooks/useSamplingCalendar';
@@ -172,6 +173,7 @@ export function FieldSchedulePage() {
     outfalls,
     users,
     visits,
+    loading: fieldQueueLoading,
     createVisit,
     refresh: refreshVisits,
   } = useFieldOps();
@@ -639,6 +641,13 @@ export function FieldSchedulePage() {
           <CalendarDays className="h-6 w-6 text-violet-300" />
         </div>
       </div>
+
+      <FieldDataSyncBar
+        loading={loading || fieldQueueLoading}
+        onRefresh={async () => {
+          await Promise.all([refreshVisits(), refreshCalendar()]);
+        }}
+      />
 
       <div className="grid gap-4 xl:grid-cols-4">
         <SpotlightCard className="p-5">
