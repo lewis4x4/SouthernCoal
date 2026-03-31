@@ -5,6 +5,7 @@ import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants
 import type { FieldMeasurementRecord } from '@/types';
 import {
   enqueueCocPrimaryUpsert,
+  enqueueFieldVisitComplete,
   enqueueFieldMeasurementInsert,
   enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
@@ -13,9 +14,12 @@ import {
   getPendingMeasurementInsertsForVisit,
   mergeMeasurementsWithQueuedCoc,
   mergeOutletInspectionWithQueue,
+  mergeVisitWithQueuedCompletion,
+  mergeVisitWithQueuedLifecycle,
   mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
+  shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
 
 describe('fieldOutboundQueue', () => {
@@ -127,6 +131,17 @@ describe('fieldOutboundQueue', () => {
     vi.restoreAllMocks();
   });
 
+  it('detects transient outbound failures that should queue locally', () => {
+    expect(shouldQueueFieldOutboundFailure(new Error('TypeError: Failed to fetch'))).toBe(true);
+    expect(shouldQueueFieldOutboundFailure(new DOMException('Timeout', 'AbortError'))).toBe(true);
+    expect(shouldQueueFieldOutboundFailure({ message: 'Load failed', status: 503 })).toBe(true);
+  });
+
+  it('does not queue permanent outbound failures', () => {
+    expect(shouldQueueFieldOutboundFailure(new Error('new row violates row-level security policy'))).toBe(false);
+    expect(shouldQueueFieldOutboundFailure({ message: 'invalid input syntax for type uuid', status: 400 })).toBe(false);
+  });
+
   it('mergeOutletInspectionWithQueue overlays latest pending upsert', () => {
     expect(mergeOutletInspectionWithQueue('v1', null, 'u1')).toBeNull();
     enqueueOutletInspectionUpsert({
@@ -181,6 +196,113 @@ describe('fieldOutboundQueue', () => {
     expect(merged.visit_status).toBe('in_progress');
     expect(merged.started_latitude).toBe(1);
     expect(merged.started_longitude).toBe(2);
+  });
+
+  it('mergeVisitWithQueuedCompletion overlays pending completion', () => {
+    const visit = {
+      id: 'v1',
+      visit_status: 'in_progress' as const,
+      outcome: null,
+      started_at: '2026-03-31T12:00:00.000Z',
+      completed_at: null,
+      completed_latitude: null,
+      completed_longitude: null,
+      weather_conditions: null,
+      field_notes: null,
+      potential_force_majeure: false,
+      potential_force_majeure_notes: null,
+      permit_number: 'P1',
+      outfall_number: 'O1',
+      assigned_to_name: 'A',
+      route_stop_sequence: null,
+    } as FieldVisitListItem;
+
+    enqueueFieldVisitComplete({
+      id: 'fc1',
+      visitId: 'v1',
+      outcome: 'access_issue',
+      completedAt: '2026-03-31T14:00:00.000Z',
+      completedLatitude: 38.2,
+      completedLongitude: -81.4,
+      weatherConditions: 'Rain',
+      fieldNotes: 'Locked gate',
+      potentialForceMajeure: true,
+      potentialForceMajeureNotes: 'Road washed out',
+      noDischargeNarrative: null,
+      noDischargeObservedCondition: null,
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetails: null,
+      accessIssueType: 'locked_gate',
+      accessIssueObstructionNarrative: 'Gate chained',
+      accessIssueContactAttempted: true,
+      accessIssueContactName: 'Guard',
+      accessIssueContactOutcome: 'No answer',
+      actorName: 'Sampler',
+    });
+
+    const merged = mergeVisitWithQueuedCompletion(visit);
+    expect(merged.visit_status).toBe('completed');
+    expect(merged.outcome).toBe('access_issue');
+    expect(merged.completed_latitude).toBe(38.2);
+    expect(merged.weather_conditions).toBe('Rain');
+    expect(merged.potential_force_majeure).toBe(true);
+  });
+
+  it('mergeVisitWithQueuedLifecycle prefers queued completion over start', () => {
+    const visit = {
+      id: 'v1',
+      visit_status: 'assigned' as const,
+      started_at: null,
+      outcome: null,
+      completed_at: null,
+      started_latitude: null,
+      started_longitude: null,
+      completed_latitude: null,
+      completed_longitude: null,
+      weather_conditions: null,
+      field_notes: null,
+      potential_force_majeure: false,
+      potential_force_majeure_notes: null,
+      permit_number: 'P1',
+      outfall_number: 'O1',
+      assigned_to_name: 'A',
+      route_stop_sequence: null,
+    } as FieldVisitListItem;
+
+    enqueueFieldVisitStart({
+      id: 's1',
+      visitId: 'v1',
+      startedAt: '2026-03-31T12:00:00.000Z',
+      latitude: 1,
+      longitude: 2,
+    });
+    enqueueFieldVisitComplete({
+      id: 'fc2',
+      visitId: 'v1',
+      outcome: 'sample_collected',
+      completedAt: '2026-03-31T14:00:00.000Z',
+      completedLatitude: 3,
+      completedLongitude: 4,
+      weatherConditions: null,
+      fieldNotes: null,
+      potentialForceMajeure: false,
+      potentialForceMajeureNotes: null,
+      noDischargeNarrative: null,
+      noDischargeObservedCondition: null,
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetails: null,
+      accessIssueType: null,
+      accessIssueObstructionNarrative: null,
+      accessIssueContactAttempted: false,
+      accessIssueContactName: null,
+      accessIssueContactOutcome: null,
+      actorName: 'Sampler',
+    });
+
+    const merged = mergeVisitWithQueuedLifecycle(visit);
+    expect(merged.visit_status).toBe('completed');
+    expect(merged.started_latitude).toBe(1);
+    expect(merged.completed_latitude).toBe(3);
   });
 
   it('mergeMeasurementsWithQueuedCoc replaces server CoC row', () => {
@@ -318,5 +440,43 @@ describe('fieldOutboundQueue', () => {
     expect(result.processed).toBe(1);
     expect(upsert).toHaveBeenCalledTimes(1);
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('processFieldOutboundQueue processes field_visit_complete via rpc', async () => {
+    enqueueFieldVisitComplete({
+      id: 'fc3',
+      visitId: 'v1',
+      outcome: 'no_discharge',
+      completedAt: '2026-03-31T14:00:00.000Z',
+      completedLatitude: 38.3,
+      completedLongitude: -81.3,
+      weatherConditions: 'Cloudy',
+      fieldNotes: 'Dry channel',
+      potentialForceMajeure: false,
+      potentialForceMajeureNotes: null,
+      noDischargeNarrative: 'No flow at sample point',
+      noDischargeObservedCondition: 'Dry bed',
+      noDischargeObstructionObserved: true,
+      noDischargeObstructionDetails: 'Debris',
+      accessIssueType: null,
+      accessIssueObstructionNarrative: null,
+      accessIssueContactAttempted: false,
+      accessIssueContactName: null,
+      accessIssueContactOutcome: null,
+      actorName: 'Sampler',
+    });
+
+    const rpc = vi.fn().mockResolvedValue({ data: { governance_issue_id: null }, error: null });
+    const fake = { rpc } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+
+    expect(result.failed).toBeNull();
+    expect(result.processed).toBe(1);
+    expect(rpc).toHaveBeenCalledWith('complete_field_visit', expect.objectContaining({
+      p_field_visit_id: 'v1',
+      p_outcome: 'no_discharge',
+      p_no_discharge_narrative: 'No flow at sample point',
+      p_actor_name: 'Sampler',
+    }));
   });
 });

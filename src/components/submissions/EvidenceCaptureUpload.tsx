@@ -11,6 +11,7 @@ interface EvidenceCaptureProps {
   bucket: string;
   pathPrefix: string;
   onUploaded: (path: string) => void;
+  onFileAccepted?: (file: File) => Promise<{ handled: boolean; message?: string } | void>;
   acceptedTypes?: string[];
   disabled?: boolean;
 }
@@ -36,6 +37,7 @@ export function EvidenceCaptureUpload({
   bucket,
   pathPrefix,
   onUploaded,
+  onFileAccepted,
   acceptedTypes = DEFAULT_ACCEPTED,
   disabled = false,
 }: EvidenceCaptureProps) {
@@ -69,6 +71,14 @@ export function EvidenceCaptureUpload({
     if (file) uploadFile(file);
   }
 
+  function handleKeyboardActivate(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (disabled || uploading) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      inputRef.current?.click();
+    }
+  }
+
   async function uploadFile(file: File) {
     if (disabled) return;
 
@@ -83,6 +93,15 @@ export function EvidenceCaptureUpload({
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File too large. Maximum 10MB.');
       return;
+    }
+
+    if (onFileAccepted) {
+      const result = await onFileAccepted(file);
+      if (result?.handled) {
+        if (result.message) toast.success(result.message);
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
     }
 
     setUploading(true);
@@ -121,6 +140,7 @@ export function EvidenceCaptureUpload({
         <FileCheck className="h-4 w-4 text-emerald-400" />
         <span className="text-xs text-emerald-400">Evidence uploaded</span>
         <button
+          type="button"
           onClick={() => {
             setUploadedPath(null);
             if (inputRef.current) inputRef.current.value = '';
@@ -138,9 +158,15 @@ export function EvidenceCaptureUpload({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onKeyDown={handleKeyboardActivate}
       onClick={() => {
         if (!disabled) inputRef.current?.click();
       }}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      aria-busy={uploading}
+      aria-label={disabled ? 'Evidence upload disabled' : 'Upload evidence file'}
       className={cn(
         'flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all',
         isDragging

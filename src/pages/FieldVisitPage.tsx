@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Camera, CheckCircle2, Droplets, MapPin, Package, ShieldAlert, Waves, Wind } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { useFieldOps } from '@/hooks/useFieldOps';
+import { listFieldEvidenceDrafts, saveFieldEvidenceDraft, type FieldEvidenceDraft } from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
@@ -91,6 +92,15 @@ export function FieldVisitPage() {
   const [startCoords, setStartCoords] = useState({ latitude: '', longitude: '' });
   const [completeCoords, setCompleteCoords] = useState({ latitude: '', longitude: '' });
   const [saving, setSaving] = useState(false);
+  const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
+
+  const refreshPendingEvidenceDrafts = useCallback(async (visitId: string) => {
+    try {
+      setPendingEvidenceDrafts(await listFieldEvidenceDrafts(visitId));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load offline evidence drafts');
+    }
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -98,8 +108,14 @@ export function FieldVisitPage() {
         console.error('[FieldVisitPage] Failed to load visit details:', error);
         toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
       });
+      void refreshPendingEvidenceDrafts(id);
     }
-  }, [id, loadVisitDetails]);
+  }, [id, loadVisitDetails, refreshPendingEvidenceDrafts]);
+
+  useEffect(() => {
+    if (!id) return;
+    void refreshPendingEvidenceDrafts(id);
+  }, [id, detail?.evidence.length, refreshPendingEvidenceDrafts]);
 
   useEffect(() => {
     if (!detail) return;
@@ -146,6 +162,11 @@ export function FieldVisitPage() {
     () => detail?.evidence.filter((asset) => asset.evidence_type === 'photo').length ?? 0,
     [detail?.evidence],
   );
+  const pendingPhotoCount = useMemo(
+    () => pendingEvidenceDrafts.filter((draft) => draft.evidenceType === 'photo').length,
+    [pendingEvidenceDrafts],
+  );
+  const totalPhotoCount = photoCount + pendingPhotoCount;
   const generalMeasurements = useMemo(
     () =>
       detail?.measurements.filter((m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) ??
@@ -310,12 +331,12 @@ export function FieldVisitPage() {
       }
     }
 
-    if (outcome === 'no_discharge' && photoCount < 1) {
+    if (outcome === 'no_discharge' && totalPhotoCount < 1) {
       toast.error('At least one photo must be uploaded before completing a no-discharge visit');
       return;
     }
 
-    if (outcome === 'access_issue' && photoCount < 1) {
+    if (outcome === 'access_issue' && totalPhotoCount < 1) {
       toast.error('At least one photo must be uploaded before completing an access issue visit');
       return;
     }
@@ -323,19 +344,13 @@ export function FieldVisitPage() {
     try {
       setSaving(true);
       if (outcome === 'sample_collected') {
-        const { queued } = await saveCocPrimaryContainer(
+        await saveCocPrimaryContainer(
           detail.visit.id,
           cocContainerId,
           cocPreservativeConfirmed,
         );
-        if (queued) {
-          toast.error(
-            'Chain of custody is saved on this device. Connect to the network to complete this visit.',
-          );
-          return;
-        }
       }
-      const result = await completeVisit(detail.visit, {
+      const { queued, result } = await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude, longitude },
         weatherConditions,
@@ -357,9 +372,11 @@ export function FieldVisitPage() {
         },
       });
       toast.success(
-        result.governance_issue_id
-          ? 'Visit completed and governance issue created'
-          : 'Visit completed',
+        queued
+          ? 'Visit completed on this device; it will sync when you are back online'
+          : result.governance_issue_id
+            ? 'Visit completed and governance issue created'
+            : 'Visit completed',
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to complete visit');
@@ -403,7 +420,7 @@ export function FieldVisitPage() {
           loading={fieldQueueLoading || detailLoading}
           pendingOutboundCount={outboundPendingCount}
           onRefresh={async () => {
-            await Promise.all([refreshFieldQueue(), loadVisitDetails(id)]);
+            await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
           }}
         />
       )}
@@ -753,7 +770,12 @@ export function FieldVisitPage() {
             </div>
 
             <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
-              {photoCount} photo evidence item{photoCount === 1 ? '' : 's'} attached
+              {totalPhotoCount} photo evidence item{totalPhotoCount === 1 ? '' : 's'} attached
+              {pendingPhotoCount > 0 && (
+                <span className="ml-2 text-amber-200">
+                  ({pendingPhotoCount} pending sync on this device)
+                </span>
+              )}
             </div>
 
             <div className="mt-4">
@@ -762,7 +784,32 @@ export function FieldVisitPage() {
                 referenceId={detail.visit.id}
                 bucket="field-inspections"
                 pathPrefix={orgScopedPrefix}
+                acceptedTypes={['.pdf', '.png', '.jpg', '.jpeg', '.heic', '.webp']}
                 disabled={visitLocked}
+                onFileAccepted={async (file) => {
+                  if (typeof navigator !== 'undefined' && navigator.onLine) {
+                    return { handled: false };
+                  }
+
+                  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+                  const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
+
+                  await saveFieldEvidenceDraft({
+                    fieldVisitId: detail.visit.id,
+                    bucket: 'field-inspections',
+                    pathPrefix: orgScopedPrefix,
+                    file,
+                    evidenceType,
+                    latitude: completeCoords.latitude ? Number(completeCoords.latitude) : null,
+                    longitude: completeCoords.longitude ? Number(completeCoords.longitude) : null,
+                  });
+                  await refreshPendingEvidenceDrafts(detail.visit.id);
+
+                  return {
+                    handled: true,
+                    message: 'Evidence saved on this device; it will upload when you are back online',
+                  };
+                }}
                 onUploaded={(path) => {
                   const ext = path.split('.').pop()?.toLowerCase() ?? '';
                   const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
@@ -783,6 +830,22 @@ export function FieldVisitPage() {
                 }}
               />
             </div>
+
+            {pendingEvidenceDrafts.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {pendingEvidenceDrafts.map((draft) => (
+                  <div
+                    key={draft.id}
+                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm"
+                  >
+                    <div className="font-medium text-amber-100">{draft.fileName}</div>
+                    <div className="mt-1 text-xs text-amber-200/80">
+                      {draft.evidenceType.replace('_', ' ')} pending sync
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="mt-4">
               <SubmissionEvidenceViewer
@@ -924,7 +987,7 @@ export function FieldVisitPage() {
 
             <div className="mt-4 space-y-2 text-sm text-text-secondary">
               <p>Outcome: <span className="font-medium text-text-primary">{outcome.replace('_', ' ')}</span></p>
-              <p>Photo evidence count: <span className="font-medium text-text-primary">{photoCount}</span></p>
+              <p>Photo evidence count: <span className="font-medium text-text-primary">{totalPhotoCount}</span></p>
               <p>Linked governance issues: <span className="font-medium text-text-primary">{detail.governanceIssues.length}</span></p>
               {detail.visit.potential_force_majeure && (
                 <p className="text-amber-200/90">

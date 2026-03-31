@@ -1,10 +1,28 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
-import type { FieldMeasurementRecord, FieldVisitListItem, OutletInspectionRecord } from '@/types';
+import type {
+  AccessIssueRecord,
+  FieldMeasurementRecord,
+  FieldVisitListItem,
+  FieldVisitOutcome,
+  NoDischargeRecord,
+  OutletInspectionRecord,
+} from '@/types';
 
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
 
 const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'unknown']);
+const TRANSIENT_OUTBOUND_ERROR_PATTERNS = [
+  'failed to fetch',
+  'fetch failed',
+  'load failed',
+  'networkerror',
+  'network request failed',
+  'network connection was lost',
+  'timeout',
+  'timed out',
+];
+const TRANSIENT_OUTBOUND_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 export type FieldOutboundOp =
   | {
@@ -46,6 +64,30 @@ export type FieldOutboundOp =
       containerText: string;
       preservativeConfirmed: boolean;
       enqueuedAt: string;
+    }
+  | {
+      kind: 'field_visit_complete';
+      id: string;
+      visitId: string;
+      outcome: FieldVisitOutcome;
+      completedAt: string;
+      completedLatitude: number;
+      completedLongitude: number;
+      weatherConditions: string | null;
+      fieldNotes: string | null;
+      potentialForceMajeure: boolean;
+      potentialForceMajeureNotes: string | null;
+      noDischargeNarrative: string | null;
+      noDischargeObservedCondition: string | null;
+      noDischargeObstructionObserved: boolean;
+      noDischargeObstructionDetails: string | null;
+      accessIssueType: string | null;
+      accessIssueObstructionNarrative: string | null;
+      accessIssueContactAttempted: boolean;
+      accessIssueContactName: string | null;
+      accessIssueContactOutcome: string | null;
+      actorName: string;
+      enqueuedAt: string;
     };
 
 function isMeasurementInsertOp(
@@ -74,6 +116,38 @@ function isCocPrimaryUpsertOp(
     typeof o.containerText === 'string' &&
     typeof o.preservativeConfirmed === 'boolean' &&
     typeof o.enqueuedAt === 'string'
+  );
+}
+
+function isFieldVisitCompleteOp(
+  o: Record<string, unknown>,
+): o is Extract<FieldOutboundOp, { kind: 'field_visit_complete' }> {
+  return (
+    o.kind === 'field_visit_complete' &&
+    typeof o.id === 'string' &&
+    typeof o.visitId === 'string' &&
+    typeof o.outcome === 'string' &&
+    ['sample_collected', 'no_discharge', 'access_issue'].includes(o.outcome) &&
+    typeof o.completedAt === 'string' &&
+    typeof o.completedLatitude === 'number' &&
+    Number.isFinite(o.completedLatitude) &&
+    typeof o.completedLongitude === 'number' &&
+    Number.isFinite(o.completedLongitude) &&
+    typeof o.potentialForceMajeure === 'boolean' &&
+    typeof o.noDischargeObstructionObserved === 'boolean' &&
+    typeof o.accessIssueContactAttempted === 'boolean' &&
+    typeof o.actorName === 'string' &&
+    typeof o.enqueuedAt === 'string' &&
+    isNullableString(o.weatherConditions) &&
+    isNullableString(o.fieldNotes) &&
+    isNullableString(o.potentialForceMajeureNotes) &&
+    isNullableString(o.noDischargeNarrative) &&
+    isNullableString(o.noDischargeObservedCondition) &&
+    isNullableString(o.noDischargeObstructionDetails) &&
+    isNullableString(o.accessIssueType) &&
+    isNullableString(o.accessIssueObstructionNarrative) &&
+    isNullableString(o.accessIssueContactName) &&
+    isNullableString(o.accessIssueContactOutcome)
   );
 }
 
@@ -120,6 +194,7 @@ function isOutboundOp(v: unknown): v is FieldOutboundOp {
   if (k === 'outlet_inspection_upsert') return isOutletInspectionUpsertOp(o);
   if (k === 'field_visit_start') return isFieldVisitStartOp(o);
   if (k === 'coc_primary_upsert') return isCocPrimaryUpsertOp(o);
+  if (k === 'field_visit_complete') return isFieldVisitCompleteOp(o);
   return false;
 }
 
@@ -155,6 +230,30 @@ function writeQueue(ops: FieldOutboundOp[]): boolean {
 
 export function getFieldOutboundQueue(): FieldOutboundOp[] {
   return readQueue();
+}
+
+export function shouldQueueFieldOutboundFailure(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const maybeStatus = 'status' in error ? Number(error.status) : NaN;
+    if (Number.isFinite(maybeStatus) && TRANSIENT_OUTBOUND_STATUS_CODES.has(maybeStatus)) {
+      return true;
+    }
+  }
+
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'string'
+      ? error
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? String(error.message)
+        : '';
+
+  const normalized = message.toLowerCase();
+  return TRANSIENT_OUTBOUND_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
 export function getFieldOutboundQueueLength(): number {
@@ -258,12 +357,73 @@ export function enqueueCocPrimaryUpsert(params: {
   return writeQueue(queue);
 }
 
+export function enqueueFieldVisitComplete(params: {
+  id: string;
+  visitId: string;
+  outcome: FieldVisitOutcome;
+  completedAt: string;
+  completedLatitude: number;
+  completedLongitude: number;
+  weatherConditions: string | null;
+  fieldNotes: string | null;
+  potentialForceMajeure: boolean;
+  potentialForceMajeureNotes: string | null;
+  noDischargeNarrative: string | null;
+  noDischargeObservedCondition: string | null;
+  noDischargeObstructionObserved: boolean;
+  noDischargeObstructionDetails: string | null;
+  accessIssueType: string | null;
+  accessIssueObstructionNarrative: string | null;
+  accessIssueContactAttempted: boolean;
+  accessIssueContactName: string | null;
+  accessIssueContactOutcome: string | null;
+  actorName: string;
+}): boolean {
+  const queue = readQueue();
+  queue.push({
+    kind: 'field_visit_complete',
+    id: params.id,
+    visitId: params.visitId,
+    outcome: params.outcome,
+    completedAt: params.completedAt,
+    completedLatitude: params.completedLatitude,
+    completedLongitude: params.completedLongitude,
+    weatherConditions: params.weatherConditions,
+    fieldNotes: params.fieldNotes,
+    potentialForceMajeure: params.potentialForceMajeure,
+    potentialForceMajeureNotes: params.potentialForceMajeureNotes,
+    noDischargeNarrative: params.noDischargeNarrative,
+    noDischargeObservedCondition: params.noDischargeObservedCondition,
+    noDischargeObstructionObserved: params.noDischargeObstructionObserved,
+    noDischargeObstructionDetails: params.noDischargeObstructionDetails,
+    accessIssueType: params.accessIssueType,
+    accessIssueObstructionNarrative: params.accessIssueObstructionNarrative,
+    accessIssueContactAttempted: params.accessIssueContactAttempted,
+    accessIssueContactName: params.accessIssueContactName,
+    accessIssueContactOutcome: params.accessIssueContactOutcome,
+    actorName: params.actorName,
+    enqueuedAt: new Date().toISOString(),
+  });
+  return writeQueue(queue);
+}
+
 function getLatestPendingStartForVisit(
   visitId: string,
 ): Extract<FieldOutboundOp, { kind: 'field_visit_start' }> | null {
   const ops = readQueue().filter(
     (op): op is Extract<FieldOutboundOp, { kind: 'field_visit_start' }> =>
       op.kind === 'field_visit_start' && op.visitId === visitId,
+  );
+  if (ops.length === 0) return null;
+  return ops[ops.length - 1]!;
+}
+
+function getLatestPendingCompletionForVisit(
+  visitId: string,
+): Extract<FieldOutboundOp, { kind: 'field_visit_complete' }> | null {
+  const ops = readQueue().filter(
+    (op): op is Extract<FieldOutboundOp, { kind: 'field_visit_complete' }> =>
+      op.kind === 'field_visit_complete' && op.visitId === visitId,
   );
   if (ops.length === 0) return null;
   return ops[ops.length - 1]!;
@@ -280,6 +440,27 @@ export function mergeVisitWithQueuedStart<V extends FieldVisitListItem>(visit: V
     started_latitude: pending.latitude,
     started_longitude: pending.longitude,
   };
+}
+
+export function mergeVisitWithQueuedCompletion<V extends FieldVisitListItem>(visit: V): V {
+  const pending = getLatestPendingCompletionForVisit(visit.id);
+  if (!pending) return visit;
+  return {
+    ...visit,
+    visit_status: 'completed',
+    outcome: pending.outcome,
+    completed_at: pending.completedAt,
+    completed_latitude: pending.completedLatitude,
+    completed_longitude: pending.completedLongitude,
+    weather_conditions: pending.weatherConditions,
+    field_notes: pending.fieldNotes,
+    potential_force_majeure: pending.potentialForceMajeure,
+    potential_force_majeure_notes: pending.potentialForceMajeureNotes,
+  };
+}
+
+export function mergeVisitWithQueuedLifecycle<V extends FieldVisitListItem>(visit: V): V {
+  return mergeVisitWithQueuedCompletion(mergeVisitWithQueuedStart(visit));
 }
 
 function getLatestPendingCocForVisit(
@@ -324,6 +505,53 @@ export function mergeMeasurementsWithQueuedCoc(
   return [...withoutCoc, row].sort((a, b) =>
     (b.measured_at ?? '').localeCompare(a.measured_at ?? ''),
   );
+}
+
+export function mergeNoDischargeWithQueuedCompletion(
+  visitId: string,
+  server: NoDischargeRecord | null,
+  userId: string | null,
+): NoDischargeRecord | null {
+  const pending = getLatestPendingCompletionForVisit(visitId);
+  if (!pending || pending.outcome !== 'no_discharge' || !pending.noDischargeNarrative) {
+    return server;
+  }
+  const now = pending.completedAt;
+  return {
+    id: server?.id ?? `local-${pending.id}`,
+    field_visit_id: visitId,
+    narrative: pending.noDischargeNarrative,
+    observed_condition: pending.noDischargeObservedCondition,
+    obstruction_observed: pending.noDischargeObstructionObserved,
+    obstruction_details: pending.noDischargeObstructionDetails,
+    created_by: userId ?? server?.created_by ?? '',
+    created_at: server?.created_at ?? now,
+    updated_at: now,
+  };
+}
+
+export function mergeAccessIssueWithQueuedCompletion(
+  visitId: string,
+  server: AccessIssueRecord | null,
+  userId: string | null,
+): AccessIssueRecord | null {
+  const pending = getLatestPendingCompletionForVisit(visitId);
+  if (!pending || pending.outcome !== 'access_issue' || !pending.accessIssueObstructionNarrative) {
+    return server;
+  }
+  const now = pending.completedAt;
+  return {
+    id: server?.id ?? `local-${pending.id}`,
+    field_visit_id: visitId,
+    issue_type: pending.accessIssueType ?? 'access_issue',
+    obstruction_narrative: pending.accessIssueObstructionNarrative,
+    contact_attempted: pending.accessIssueContactAttempted,
+    contact_name: pending.accessIssueContactName,
+    contact_outcome: pending.accessIssueContactOutcome,
+    created_by: userId ?? server?.created_by ?? '',
+    created_at: server?.created_at ?? now,
+    updated_at: now,
+  };
 }
 
 export function optimisticMeasurementsFromQueue(
@@ -460,6 +688,28 @@ export async function processFieldOutboundQueue(
             });
             if (error) throw new Error(error.message);
           }
+        } else if (op.kind === 'field_visit_complete') {
+          const { error } = await client.rpc('complete_field_visit', {
+            p_field_visit_id: op.visitId,
+            p_outcome: op.outcome,
+            p_completed_latitude: op.completedLatitude,
+            p_completed_longitude: op.completedLongitude,
+            p_weather_conditions: op.weatherConditions,
+            p_field_notes: op.fieldNotes,
+            p_potential_force_majeure: op.potentialForceMajeure,
+            p_potential_force_majeure_notes: op.potentialForceMajeureNotes,
+            p_no_discharge_narrative: op.noDischargeNarrative,
+            p_no_discharge_observed_condition: op.noDischargeObservedCondition,
+            p_no_discharge_obstruction_observed: op.noDischargeObstructionObserved,
+            p_no_discharge_obstruction_details: op.noDischargeObstructionDetails,
+            p_access_issue_type: op.accessIssueType ?? 'access_issue',
+            p_access_issue_obstruction_narrative: op.accessIssueObstructionNarrative,
+            p_access_issue_contact_attempted: op.accessIssueContactAttempted,
+            p_access_issue_contact_name: op.accessIssueContactName,
+            p_access_issue_contact_outcome: op.accessIssueContactOutcome,
+            p_actor_name: op.actorName,
+          });
+          if (error) throw new Error(error.message);
         }
         const next = queue.slice(1);
         if (!writeQueue(next)) {

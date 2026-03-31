@@ -1,0 +1,106 @@
+version: 1
+
+north_star_mission: "<REPLACE_WITH_PROJECT_MISSION_STATEMENT>"
+
+mission_gate_rules:
+  enabled: true
+  verdicts: [pass, risk, fail]
+  fail_blocks_release: true
+  waiver_required_on_risk: true
+
+default_gate_order:
+  - engineer
+  - qa_agent
+  - cdo_agent
+  - chaos_agent
+  - security_agent
+  - performance_agent
+  - migration_agent
+  - release_gate_agent
+
+agents:
+  engineer:
+    role: Engineer of Record
+    mandatory_when: always
+    output: segment_handoff
+    pass_criteria:
+      - implementation_complete
+      - scoped_to_one_segment
+
+  qa_agent:
+    role: Acceptance and Regression Validator
+    mandatory_when: always
+    output: gate_report
+    pass_criteria:
+      - acceptance_flows_pass
+      - no_blocking_regressions
+
+  cdo_agent:
+    role: Chief Design Officer
+    mandatory_when:
+      - ui_changed
+      - ux_changed
+      - copy_changed
+      - external_visual_changed
+    output: gate_report
+    pass_criteria:
+      - no_blocking_visual_issues
+      - no_blocking_copy_issues
+
+  chaos_agent:
+    role: Testing and Simulation Agent
+    mandatory_when:
+      - workflow_changed
+      - state_machine_changed
+      - parser_changed
+      - concurrency_risk
+      - resilience_risk
+    output: gate_report
+    pass_criteria:
+      - no_blocking_integrity_risks
+      - no_blocking_state_risks
+
+  security_agent:
+    role: Security and Boundary Validator
+    mandatory_when:
+      - auth_changed
+      - permissions_changed
+      - rls_changed
+      - integration_changed
+      - admin_surface_changed
+      - sensitive_data_changed
+    output: gate_report
+    pass_criteria:
+      - no_auth_bypass
+      - no_boundary_leak
+      - no_secret_exposure
+
+  performance_agent:
+    role: Performance Validator
+    mandatory_when:
+      - bundle_changed
+      - render_path_changed
+      - query_path_changed
+      - large_dataset_flow_changed
+    output: gate_report
+    pass_criteria:
+      - no_blocking_budget_regression
+
+  migration_agent:
+    role: Migration Integrity Validator
+    mandatory_when:
+      - migration_added
+      - schema_changed
+    output: gate_report
+    pass_criteria:
+      - ordering_valid
+      - rollback_present
+      - no_sequence_gaps
+
+  release_gate_agent:
+    role: Final Go/No-Go Aggregator
+    mandatory_when: optional
+    output: gate_report
+    pass_criteria:
+      - all_required_gates_pass
+      - mission_alignment_pass

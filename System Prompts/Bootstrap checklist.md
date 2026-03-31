@@ -1,0 +1,17 @@
+- [ ] Add `AGENTS.md`
+- [ ] Add `CLAUDE.md`
+- [ ] Add `CODEX.md`
+- [ ] Add `docs/mission-statement.md`
+- [ ] Add `docs/agent-gates-runbook.md`
+- [ ] Add `agents/registry.yaml`
+- [ ] Add `agents/templates/segment-handoff.md`
+- [ ] Add `agents/templates/gate-report.md`
+- [ ] Add `agents/schemas/gate-report.schema.json`
+- [ ] Add `scripts/check-migration-order.mjs`
+- [ ] Add `scripts/agent-gates/run-segment-gates.mjs`
+- [ ] Add `.agents/design-review-runner.js`
+- [ ] Add `.agents/stress-test/run.ts`
+- [ ] Add `test-results/agent-gates/`
+- [ ] Wire `package.json` scripts
+- [ ] Replace mission statement everywhere
+- [ ] Do one dry-run segment end to end

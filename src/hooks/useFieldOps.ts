@@ -2,17 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   enqueueCocPrimaryUpsert,
+  enqueueFieldVisitComplete,
   enqueueFieldMeasurementInsert,
   enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
   getFieldOutboundQueueLength,
+  mergeAccessIssueWithQueuedCompletion,
   mergeMeasurementsWithQueuedCoc,
+  mergeNoDischargeWithQueuedCompletion,
   mergeOutletInspectionWithQueue,
-  mergeVisitWithQueuedStart,
+  mergeVisitWithQueuedLifecycle,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
+  shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import { syncFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -72,6 +77,12 @@ interface CompletionInput {
 function displayName(user: Partial<FieldOpsUser>) {
   const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
   return full || user.email || 'Unassigned';
+}
+
+function createOutboundOpId() {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 export function useFieldOps() {
@@ -163,7 +174,7 @@ export function useFieldOps() {
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
     };
-    const listItem = mergeVisitWithQueuedStart(baseListItem);
+    const listItem = mergeVisitWithQueuedLifecycle(baseListItem);
 
     const serverMeasurements = (measurementRes.data ?? []) as FieldMeasurementRecord[];
     const optimistic = optimisticMeasurementsFromQueue(visitId, userId);
@@ -180,8 +191,16 @@ export function useFieldOps() {
       inspection,
       measurements,
       evidence: (evidenceRes.data ?? []) as FieldEvidenceAssetRecord[],
-      noDischarge: (noDischargeRes.data as NoDischargeRecord | null) ?? null,
-      accessIssue: (accessIssueRes.data as AccessIssueRecord | null) ?? null,
+      noDischarge: mergeNoDischargeWithQueuedCompletion(
+        visitId,
+        (noDischargeRes.data as NoDischargeRecord | null) ?? null,
+        userId,
+      ),
+      accessIssue: mergeAccessIssueWithQueuedCompletion(
+        visitId,
+        (accessIssueRes.data as AccessIssueRecord | null) ?? null,
+        userId,
+      ),
       governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
     };
 
@@ -197,24 +216,38 @@ export function useFieldOps() {
       return { processed: 0, failed: null as Error | null };
     }
 
+    const evidenceSyncResult = organizationId && userId
+      ? await syncFieldEvidenceDrafts(supabase, { organizationId, userId })
+      : { uploaded: 0, failed: null as Error | null, syncedVisitIds: [] as string[] };
+
+    if (evidenceSyncResult.failed) {
+      toast.error(`Could not upload pending field evidence: ${evidenceSyncResult.failed.message}`);
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { processed: evidenceSyncResult.uploaded, failed: evidenceSyncResult.failed };
+    }
+
     const flushResult = await processFieldOutboundQueue(supabase);
     setOutboundPendingCount(getFieldOutboundQueueLength());
+    const totalProcessed = evidenceSyncResult.uploaded + flushResult.processed;
 
     if (flushResult.failed) {
       toast.error(`Could not upload pending field data: ${flushResult.failed.message}`);
-    } else if (flushResult.processed > 0) {
+    } else if (totalProcessed > 0) {
       toast.success(
-        `Uploaded ${flushResult.processed} pending field ${flushResult.processed === 1 ? 'entry' : 'entries'}`,
+        `Uploaded ${totalProcessed} pending field ${totalProcessed === 1 ? 'item' : 'items'}`,
       );
     }
 
     const vid = lastDetailVisitIdRef.current;
-    if (flushResult.processed > 0 && vid) {
+    if ((totalProcessed > 0 || evidenceSyncResult.syncedVisitIds.includes(vid ?? '')) && vid) {
       await loadVisitDetails(vid);
     }
 
-    return flushResult;
-  }, [loadVisitDetails]);
+    return {
+      processed: totalProcessed,
+      failed: flushResult.failed,
+    };
+  }, [loadVisitDetails, organizationId, userId]);
 
   const loadDispatchContext = useCallback(async () => {
     await flushOutboundIfOnline();
@@ -326,7 +359,7 @@ export function useFieldOps() {
     setOutfalls(outfallRows);
     setUsers(userRows);
     setVisits(
-      visitRows.map((visit) => ({
+      visitRows.map((visit) => mergeVisitWithQueuedLifecycle({
         ...visit,
         route_batch_id: visit.route_batch_id ?? null,
         permit_number: permitLookup.get(visit.permit_id)?.permit_number ?? null,
@@ -371,15 +404,9 @@ export function useFieldOps() {
     coords: CoordinateInput,
   ): Promise<{ queued: boolean }> => {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-    if (offline) {
-      const opId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      const startedAt = new Date().toISOString();
+    const queueLocally = (startedAt: string) => {
       const ok = enqueueFieldVisitStart({
-        id: opId,
+        id: createOutboundOpId(),
         visitId,
         startedAt,
         latitude: coords.latitude,
@@ -389,23 +416,34 @@ export function useFieldOps() {
 
       setDetail((prev) => {
         if (!prev || prev.visit.id !== visitId) return prev;
-        return { ...prev, visit: mergeVisitWithQueuedStart(prev.visit) };
+        return { ...prev, visit: mergeVisitWithQueuedLifecycle(prev.visit) };
       });
       setOutboundPendingCount(getFieldOutboundQueueLength());
-      return { queued: true };
+      return { queued: true } as const;
+    };
+
+    if (offline) {
+      const startedAt = new Date().toISOString();
+      return queueLocally(startedAt);
     }
 
+    const startedAt = new Date().toISOString();
     const { error } = await supabase
       .from('field_visits')
       .update({
         visit_status: 'in_progress',
-        started_at: new Date().toISOString(),
+        started_at: startedAt,
         started_latitude: coords.latitude,
         started_longitude: coords.longitude,
       })
       .eq('id', visitId);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (shouldQueueFieldOutboundFailure(error)) {
+        return queueLocally(startedAt);
+      }
+      throw new Error(error.message);
+    }
 
     await Promise.all([loadDispatchContext(), loadVisitDetails(visitId)]);
     return { queued: false };
@@ -428,12 +466,8 @@ export function useFieldOps() {
     };
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-    if (offline) {
-      const opId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const queueLocally = () => {
+      const opId = createOutboundOpId();
 
       const ok = enqueueOutletInspectionUpsert({
         id: opId,
@@ -470,14 +504,23 @@ export function useFieldOps() {
       });
 
       setOutboundPendingCount(getFieldOutboundQueueLength());
-      return { queued: true };
+      return { queued: true } as const;
+    };
+
+    if (offline) {
+      return queueLocally();
     }
 
     const { error } = await supabase
       .from('outlet_inspections')
       .upsert(payload, { onConflict: 'field_visit_id' });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (shouldQueueFieldOutboundFailure(error)) {
+        return queueLocally();
+      }
+      throw new Error(error.message);
+    }
     await loadVisitDetails(visitId);
     return { queued: false };
   }, [loadVisitDetails, userId]);
@@ -489,12 +532,8 @@ export function useFieldOps() {
     unit?: string;
   }): Promise<{ queued: boolean }> => {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-    if (offline) {
-      const opId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const queueLocally = () => {
+      const opId = createOutboundOpId();
 
       const ok = enqueueFieldMeasurementInsert({
         id: opId,
@@ -526,7 +565,11 @@ export function useFieldOps() {
       });
 
       setOutboundPendingCount(getFieldOutboundQueueLength());
-      return { queued: true };
+      return { queued: true } as const;
+    };
+
+    if (offline) {
+      return queueLocally();
     }
 
     const { error } = await supabase
@@ -539,7 +582,12 @@ export function useFieldOps() {
         unit: measurement.unit ?? null,
       });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (shouldQueueFieldOutboundFailure(error)) {
+        return queueLocally();
+      }
+      throw new Error(error.message);
+    }
     await loadVisitDetails(visitId);
     return { queued: false };
   }, [loadVisitDetails, userId]);
@@ -555,14 +603,9 @@ export function useFieldOps() {
     }
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-    if (offline) {
-      const opId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const queueLocally = () => {
       const ok = enqueueCocPrimaryUpsert({
-        id: opId,
+        id: createOutboundOpId(),
         visitId,
         containerText: text,
         preservativeConfirmed,
@@ -577,46 +620,57 @@ export function useFieldOps() {
         };
       });
       setOutboundPendingCount(getFieldOutboundQueueLength());
-      return { queued: true };
-    }
-
-    const metadata = {
-      preservative_confirmed: preservativeConfirmed,
-      source: 'field_visit_coc_v1',
+      return { queued: true } as const;
     };
 
-    const { data: existing, error: selectError } = await supabase
-      .from('field_measurements')
-      .select('id')
-      .eq('field_visit_id', visitId)
-      .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
-      .maybeSingle();
+    if (offline) {
+      return queueLocally();
+    }
 
-    if (selectError) throw new Error(selectError.message);
+    try {
+      const metadata = {
+        preservative_confirmed: preservativeConfirmed,
+        source: 'field_visit_coc_v1',
+      };
 
-    if (existing?.id) {
-      const { error } = await supabase
+      const { data: existing, error: selectError } = await supabase
         .from('field_measurements')
-        .update({
+        .select('id')
+        .eq('field_visit_id', visitId)
+        .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
+        .maybeSingle();
+
+      if (selectError) throw new Error(selectError.message);
+
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('field_measurements')
+          .update({
+            measured_text: text,
+            measured_value: null,
+            unit: null,
+            metadata,
+          })
+          .eq('id', existing.id);
+
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from('field_measurements').insert({
+          field_visit_id: visitId,
+          parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
           measured_text: text,
           measured_value: null,
           unit: null,
           metadata,
-        })
-        .eq('id', existing.id);
+        });
 
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabase.from('field_measurements').insert({
-        field_visit_id: visitId,
-        parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
-        measured_text: text,
-        measured_value: null,
-        unit: null,
-        metadata,
-      });
-
-      if (error) throw new Error(error.message);
+        if (error) throw new Error(error.message);
+      }
+    } catch (error) {
+      if (shouldQueueFieldOutboundFailure(error)) {
+        return queueLocally();
+      }
+      throw error;
     }
 
     await loadVisitDetails(visitId);
@@ -653,9 +707,66 @@ export function useFieldOps() {
     await loadVisitDetails(input.fieldVisitId);
   }, [loadVisitDetails, organizationId, userId]);
 
-  const completeVisit = useCallback(async (visit: FieldVisitListItem, input: CompletionInput) => {
+  const completeVisit = useCallback(async (
+    visit: FieldVisitListItem,
+    input: CompletionInput,
+  ): Promise<{ queued: boolean; result: CompleteFieldVisitResult }> => {
     if (!organizationId || !userId) throw new Error('Missing organization context');
     if (!visit.started_at) throw new Error('Visit must be started before completion');
+    const queueLocally = () => {
+      const ok = enqueueFieldVisitComplete({
+        id: createOutboundOpId(),
+        visitId: visit.id,
+        outcome: input.outcome,
+        completedAt: new Date().toISOString(),
+        completedLatitude: input.completedCoords.latitude,
+        completedLongitude: input.completedCoords.longitude,
+        weatherConditions: input.weatherConditions ?? null,
+        fieldNotes: input.fieldNotes ?? null,
+        potentialForceMajeure: input.potentialForceMajeure ?? false,
+        potentialForceMajeureNotes: input.potentialForceMajeureNotes ?? null,
+        noDischargeNarrative: input.noDischarge?.narrative?.trim() || null,
+        noDischargeObservedCondition: input.noDischarge?.observedCondition ?? null,
+        noDischargeObstructionObserved: input.noDischarge?.obstructionObserved ?? false,
+        noDischargeObstructionDetails: input.noDischarge?.obstructionDetails ?? null,
+        accessIssueType: input.accessIssue?.issueType ?? 'access_issue',
+        accessIssueObstructionNarrative: input.accessIssue?.obstructionNarrative?.trim() || null,
+        accessIssueContactAttempted: input.accessIssue?.contactAttempted ?? false,
+        accessIssueContactName: input.accessIssue?.contactName ?? null,
+        accessIssueContactOutcome: input.accessIssue?.contactOutcome ?? null,
+        actorName,
+      });
+      if (!ok) throw new Error('Could not save offline — storage blocked or full');
+
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visit.id) return prev;
+        return {
+          ...prev,
+          visit: mergeVisitWithQueuedLifecycle(prev.visit),
+          noDischarge: mergeNoDischargeWithQueuedCompletion(visit.id, prev.noDischarge, userId),
+          accessIssue: mergeAccessIssueWithQueuedCompletion(visit.id, prev.accessIssue, userId),
+        };
+      });
+      setVisits((prev) => prev.map((row) => (
+        row.id === visit.id ? mergeVisitWithQueuedLifecycle(row) : row
+      )));
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+
+      return {
+        queued: true,
+        result: {
+          linked_sampling_event_id: visit.linked_sampling_event_id,
+          governance_issue_id: null,
+        },
+      } as const;
+    };
+
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    if (offline) {
+      return queueLocally();
+    }
+
     const { data, error } = await supabase.rpc('complete_field_visit', {
       p_field_visit_id: visit.id,
       p_outcome: input.outcome,
@@ -677,13 +788,21 @@ export function useFieldOps() {
       p_actor_name: actorName,
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (shouldQueueFieldOutboundFailure(error)) {
+        return queueLocally();
+      }
+      throw new Error(error.message);
+    }
 
     await Promise.all([loadDispatchContext(), loadVisitDetails(visit.id)]);
-    return (data ?? {
-      linked_sampling_event_id: visit.linked_sampling_event_id,
-      governance_issue_id: null,
-    }) as CompleteFieldVisitResult;
+    return {
+      queued: false,
+      result: (data ?? {
+        linked_sampling_event_id: visit.linked_sampling_event_id,
+        governance_issue_id: null,
+      }) as CompleteFieldVisitResult,
+    };
   }, [actorName, loadDispatchContext, loadVisitDetails, organizationId, userId]);
 
   useEffect(() => {
