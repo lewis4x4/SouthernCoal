@@ -10,6 +10,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useFieldOps } from '@/hooks/useFieldOps';
@@ -128,6 +129,8 @@ export function FieldRouteTodayPage() {
         </div>
       </div>
 
+      <FieldDataSyncBar loading={loading} onRefresh={refresh} />
+
       <SpotlightCard className="p-6" spotlightColor="rgba(16, 185, 129, 0.08)">
         <div className="flex flex-wrap items-end gap-4">
           <label className="space-y-2">
@@ -168,13 +171,6 @@ export function FieldRouteTodayPage() {
               </div>
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm text-text-secondary transition-colors hover:bg-white/[0.06]"
-          >
-            Refresh
-          </button>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-muted">

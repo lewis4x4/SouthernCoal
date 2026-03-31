@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -25,7 +26,7 @@ export function FieldDispatchPage() {
   const role = getEffectiveRole();
   const canDispatch = MANAGER_ROLES.includes(role);
 
-  const { permits, outfalls, users, visits, loading, createVisit } = useFieldOps();
+  const { permits, outfalls, users, visits, loading, refresh, createVisit } = useFieldOps();
 
   const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today' | 'overdue'>('all');
   const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
@@ -120,6 +121,8 @@ export function FieldDispatchPage() {
           </div>
         </div>
       </div>
+
+      <FieldDataSyncBar loading={loading} onRefresh={refresh} />
 
       {canDispatch && (
         <SpotlightCard className="p-6" spotlightColor="rgba(6, 182, 212, 0.08)">

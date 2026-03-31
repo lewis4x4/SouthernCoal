@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Camera, CheckCircle2, Droplets, MapPin, Package, ShieldAlert, Waves, Wind } from 'lucide-react';
 import { toast } from 'sonner';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
@@ -46,7 +47,9 @@ export function FieldVisitPage() {
   const {
     detail,
     detailLoading,
+    loading: fieldQueueLoading,
     loadVisitDetails,
+    refresh: refreshFieldQueue,
     startVisit,
     saveInspection,
     addMeasurement,
@@ -363,6 +366,15 @@ export function FieldVisitPage() {
           Back to field queue
         </Link>
       </div>
+
+      {id && (
+        <FieldDataSyncBar
+          loading={fieldQueueLoading || detailLoading}
+          onRefresh={async () => {
+            await Promise.all([refreshFieldQueue(), loadVisitDetails(id)]);
+          }}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
