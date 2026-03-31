@@ -172,14 +172,18 @@ export function FieldRouteTodayPage() {
       const c = outfallCoords[id];
       if (c) coords[id] = c;
     }
-    saveFieldRouteCache({
+    const ok = saveFieldRouteCache({
       routeDate,
       scope,
       viewerUserId: scope === 'mine' ? user?.id ?? null : null,
       visits: dayVisitsLive,
       outfallCoords: coords,
     });
-    toast.success('Route saved on this device for offline viewing');
+    if (ok) {
+      toast.success('Route saved on this device for offline viewing');
+    } else {
+      toast.error('Could not save offline copy (storage blocked or full)');
+    }
   }
 
   return (
@@ -201,7 +205,11 @@ export function FieldRouteTodayPage() {
       <FieldDataSyncBar loading={loading} onRefresh={refresh} />
 
       {!online && routeCache && dayVisits.length > 0 && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div
+          className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
           Offline — showing route saved{' '}
           {new Date(routeCache.savedAt).toLocaleString(undefined, {
             dateStyle: 'short',
@@ -212,7 +220,11 @@ export function FieldRouteTodayPage() {
       )}
 
       {!online && !routeCache && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+        <div
+          className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary"
+          role="status"
+          aria-live="polite"
+        >
           You&apos;re offline and no saved route matches this date and scope. Go online once, open this page, then use &quot;Save route offline&quot;.
         </div>
       )}

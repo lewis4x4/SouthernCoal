@@ -36,7 +36,11 @@ function parsePayload(raw: string | null): FieldRouteCachePayload | null {
 
 export function loadFieldRouteCache(): FieldRouteCachePayload | null {
   if (typeof localStorage === 'undefined') return null;
-  return parsePayload(localStorage.getItem(STORAGE_KEY));
+  try {
+    return parsePayload(localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return null;
+  }
 }
 
 export function loadFieldRouteCacheMatching(
@@ -51,14 +55,15 @@ export function loadFieldRouteCacheMatching(
   return p;
 }
 
+/** Returns false if storage is blocked, quota exceeded, or serialization fails. */
 export function saveFieldRouteCache(payload: {
   routeDate: string;
   scope: 'mine' | 'org';
   viewerUserId: string | null;
   visits: FieldVisitListItem[];
   outfallCoords: Record<string, { lat: number; lng: number }>;
-}): void {
-  if (typeof localStorage === 'undefined') return;
+}): boolean {
+  if (typeof localStorage === 'undefined') return false;
   const full: FieldRouteCachePayload = {
     version: 1,
     savedAt: new Date().toISOString(),
@@ -68,10 +73,19 @@ export function saveFieldRouteCache(payload: {
     visits: payload.visits,
     outfallCoords: payload.outfallCoords,
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(full));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(full));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function clearFieldRouteCache(): void {
   if (typeof localStorage === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEY);
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   saveFieldRouteCache,
   loadFieldRouteCache,
@@ -46,39 +46,61 @@ describe('fieldRouteLocalCache', () => {
 
   it('saves and loads matching cache', () => {
     const v = [minimalVisit()];
-    saveFieldRouteCache({
-      routeDate: '2026-03-31',
-      scope: 'mine',
-      viewerUserId: 'u1',
-      visits: v,
-      outfallCoords: { of1: { lat: 1, lng: 2 } },
-    });
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'mine',
+        viewerUserId: 'u1',
+        visits: v,
+        outfallCoords: { of1: { lat: 1, lng: 2 } },
+      }),
+    ).toBe(true);
     const m = loadFieldRouteCacheMatching('2026-03-31', 'mine', 'u1');
     expect(m?.visits).toHaveLength(1);
     expect(m?.outfallCoords.of1).toEqual({ lat: 1, lng: 2 });
   });
 
   it('returns null when scope or date differs', () => {
-    saveFieldRouteCache({
-      routeDate: '2026-03-31',
-      scope: 'mine',
-      viewerUserId: 'u1',
-      visits: [minimalVisit()],
-      outfallCoords: {},
-    });
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'mine',
+        viewerUserId: 'u1',
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
     expect(loadFieldRouteCacheMatching('2026-04-01', 'mine', 'u1')).toBeNull();
     expect(loadFieldRouteCacheMatching('2026-03-31', 'org', null)).toBeNull();
   });
 
   it('clearFieldRouteCache removes entry', () => {
-    saveFieldRouteCache({
-      routeDate: '2026-03-31',
-      scope: 'org',
-      viewerUserId: null,
-      visits: [minimalVisit()],
-      outfallCoords: {},
-    });
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'org',
+        viewerUserId: null,
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
     clearFieldRouteCache();
     expect(loadFieldRouteCache()).toBeNull();
+  });
+
+  it('saveFieldRouteCache returns false when setItem throws', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'mine',
+        viewerUserId: 'u1',
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(false);
+    spy.mockRestore();
   });
 });
