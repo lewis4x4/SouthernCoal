@@ -2,9 +2,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   enqueueFieldMeasurementInsert,
+  enqueueOutletInspectionUpsert,
   getFieldOutboundQueue,
   getFieldOutboundQueueLength,
   getPendingMeasurementInsertsForVisit,
+  mergeOutletInspectionWithQueue,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
 } from '@/lib/fieldOutboundQueue';
@@ -32,7 +34,7 @@ describe('fieldOutboundQueue', () => {
     ).toBe(true);
     expect(getFieldOutboundQueueLength()).toBe(1);
     const q = getFieldOutboundQueue();
-    expect(q[0]?.parameterName).toBe('pH');
+    expect(q[0]?.kind === 'field_measurement_insert' && q[0].parameterName).toBe('pH');
     expect(getPendingMeasurementInsertsForVisit('v1')).toHaveLength(1);
     expect(getPendingMeasurementInsertsForVisit('other')).toHaveLength(0);
   });
@@ -72,8 +74,9 @@ describe('fieldOutboundQueue', () => {
     });
 
     const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
     const fake = {
-      from: () => ({ insert }),
+      from: () => ({ insert, upsert }),
     } as unknown as SupabaseClient;
 
     const result = await processFieldOutboundQueue(fake);
@@ -93,7 +96,8 @@ describe('fieldOutboundQueue', () => {
       unit: null,
     });
     const insert = vi.fn().mockResolvedValue({ error: { message: 'RLS' } });
-    const fake = { from: () => ({ insert }) } as unknown as SupabaseClient;
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const fake = { from: () => ({ insert, upsert }) } as unknown as SupabaseClient;
     const result = await processFieldOutboundQueue(fake);
     expect(result.failed?.message).toContain('RLS');
     expect(result.processed).toBe(0);
@@ -114,5 +118,57 @@ describe('fieldOutboundQueue', () => {
     });
     expect(ok).toBe(false);
     vi.restoreAllMocks();
+  });
+
+  it('mergeOutletInspectionWithQueue overlays latest pending upsert', () => {
+    expect(mergeOutletInspectionWithQueue('v1', null, 'u1')).toBeNull();
+    enqueueOutletInspectionUpsert({
+      id: 'i1',
+      visitId: 'v1',
+      flowStatus: 'no_flow',
+      signageCondition: 'ok',
+      pipeCondition: null,
+      erosionObserved: false,
+      obstructionObserved: true,
+      obstructionDetails: 'gate',
+      inspectorNotes: 'n1',
+    });
+    enqueueOutletInspectionUpsert({
+      id: 'i2',
+      visitId: 'v1',
+      flowStatus: 'flowing',
+      signageCondition: null,
+      pipeCondition: 'cracked',
+      erosionObserved: true,
+      obstructionObserved: false,
+      obstructionDetails: null,
+      inspectorNotes: 'n2',
+    });
+    const merged = mergeOutletInspectionWithQueue('v1', null, 'u1');
+    expect(merged?.flow_status).toBe('flowing');
+    expect(merged?.inspector_notes).toBe('n2');
+    expect(merged?.id).toBe('local-i2');
+  });
+
+  it('processFieldOutboundQueue processes inspection upsert', async () => {
+    enqueueOutletInspectionUpsert({
+      id: 'in1',
+      visitId: 'v1',
+      flowStatus: 'unknown',
+      signageCondition: null,
+      pipeCondition: null,
+      erosionObserved: false,
+      obstructionObserved: false,
+      obstructionDetails: null,
+      inspectorNotes: null,
+    });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const fake = { from: () => ({ insert, upsert }) } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.failed).toBeNull();
+    expect(result.processed).toBe(1);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(insert).not.toHaveBeenCalled();
   });
 });

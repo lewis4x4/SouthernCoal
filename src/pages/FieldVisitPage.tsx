@@ -206,8 +206,12 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      await saveInspection(detail.visit.id, inspection);
-      toast.success('Inspection saved');
+      const { queued } = await saveInspection(detail.visit.id, inspection);
+      toast.success(
+        queued
+          ? 'Inspection saved on this device; will upload when you are back online'
+          : 'Inspection saved',
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save inspection');
     } finally {

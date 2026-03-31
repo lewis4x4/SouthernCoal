@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   enqueueFieldMeasurementInsert,
+  enqueueOutletInspectionUpsert,
   getFieldOutboundQueueLength,
+  mergeOutletInspectionWithQueue,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
 } from '@/lib/fieldOutboundQueue';
@@ -164,9 +166,12 @@ export function useFieldOps() {
       (b.measured_at ?? '').localeCompare(a.measured_at ?? ''),
     );
 
+    const serverInspection = (inspectionRes.data as OutletInspectionRecord | null) ?? null;
+    const inspection = mergeOutletInspectionWithQueue(visitId, serverInspection, userId);
+
     const nextDetail: FieldVisitDetails = {
       visit: listItem,
-      inspection: (inspectionRes.data as OutletInspectionRecord | null) ?? null,
+      inspection,
       measurements,
       evidence: (evidenceRes.data ?? []) as FieldEvidenceAssetRecord[],
       noDischarge: (noDischargeRes.data as NoDischargeRecord | null) ?? null,
@@ -371,10 +376,14 @@ export function useFieldOps() {
     await Promise.all([loadDispatchContext(), loadVisitDetails(visitId)]);
   }, [loadDispatchContext, loadVisitDetails]);
 
-  const saveInspection = useCallback(async (visitId: string, inspection: Partial<OutletInspectionRecord>) => {
+  const saveInspection = useCallback(async (
+    visitId: string,
+    inspection: Partial<OutletInspectionRecord>,
+  ): Promise<{ queued: boolean }> => {
+    const flowStatus = inspection.flow_status ?? 'unknown';
     const payload = {
       field_visit_id: visitId,
-      flow_status: inspection.flow_status ?? 'unknown',
+      flow_status: flowStatus,
       signage_condition: inspection.signage_condition ?? null,
       pipe_condition: inspection.pipe_condition ?? null,
       erosion_observed: inspection.erosion_observed ?? false,
@@ -383,13 +392,60 @@ export function useFieldOps() {
       inspector_notes: inspection.inspector_notes ?? null,
     };
 
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    if (offline) {
+      const opId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+      const ok = enqueueOutletInspectionUpsert({
+        id: opId,
+        visitId,
+        flowStatus: flowStatus as 'flowing' | 'no_flow' | 'obstructed' | 'unknown',
+        signageCondition: payload.signage_condition,
+        pipeCondition: payload.pipe_condition,
+        erosionObserved: payload.erosion_observed,
+        obstructionObserved: payload.obstruction_observed,
+        obstructionDetails: payload.obstruction_details,
+        inspectorNotes: payload.inspector_notes,
+      });
+
+      if (!ok) throw new Error('Could not save offline — storage blocked or full');
+
+      const now = new Date().toISOString();
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visitId) return prev;
+        const nextInspection: OutletInspectionRecord = {
+          id: `local-${opId}`,
+          field_visit_id: visitId,
+          flow_status: flowStatus as OutletInspectionRecord['flow_status'],
+          signage_condition: payload.signage_condition,
+          pipe_condition: payload.pipe_condition,
+          erosion_observed: payload.erosion_observed,
+          obstruction_observed: payload.obstruction_observed,
+          obstruction_details: payload.obstruction_details,
+          inspector_notes: payload.inspector_notes,
+          created_by: userId ?? prev.inspection?.created_by ?? '',
+          created_at: prev.inspection?.created_at ?? now,
+          updated_at: now,
+        };
+        return { ...prev, inspection: nextInspection };
+      });
+
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { queued: true };
+    }
+
     const { error } = await supabase
       .from('outlet_inspections')
       .upsert(payload, { onConflict: 'field_visit_id' });
 
     if (error) throw new Error(error.message);
     await loadVisitDetails(visitId);
-  }, [loadVisitDetails]);
+    return { queued: false };
+  }, [loadVisitDetails, userId]);
 
   const addMeasurement = useCallback(async (visitId: string, measurement: {
     parameterName: string;
