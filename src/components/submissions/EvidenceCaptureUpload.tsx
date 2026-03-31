@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface EvidenceCaptureProps {
-  submissionType: 'dmr' | 'quarterly_report' | 'notification' | 'correction' | 'roadmap';
+  submissionType: 'dmr' | 'quarterly_report' | 'notification' | 'correction' | 'roadmap' | 'field_visit' | 'governance';
   referenceId: string;
   bucket: string;
   pathPrefix: string;
   onUploaded: (path: string) => void;
+  onFileAccepted?: (file: File) => Promise<{ handled: boolean; message?: string } | void>;
   acceptedTypes?: string[];
+  disabled?: boolean;
 }
 
 const DEFAULT_ACCEPTED = ['.pdf', '.png', '.jpg', '.jpeg'];
@@ -35,7 +37,9 @@ export function EvidenceCaptureUpload({
   bucket,
   pathPrefix,
   onUploaded,
+  onFileAccepted,
   acceptedTypes = DEFAULT_ACCEPTED,
+  disabled = false,
 }: EvidenceCaptureProps) {
   const { log } = useAuditLog();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,17 +59,29 @@ export function EvidenceCaptureUpload({
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
+    if (disabled) return;
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
+    if (file) void uploadFile(file);
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (disabled) return;
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    if (file) void uploadFile(file);
+  }
+
+  function handleKeyboardActivate(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (disabled || uploading) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      inputRef.current?.click();
+    }
   }
 
   async function uploadFile(file: File) {
+    if (disabled) return;
+
     // Validate file type
     const ext = '.' + (file.name.split('.').pop()?.toLowerCase() ?? '');
     if (!acceptedTypes.includes(ext)) {
@@ -80,33 +96,45 @@ export function EvidenceCaptureUpload({
     }
 
     setUploading(true);
+    try {
+      if (onFileAccepted) {
+        const result = await onFileAccepted(file);
+        if (result?.handled) {
+          if (result.message) toast.success(result.message);
+          if (inputRef.current) inputRef.current.value = '';
+          return;
+        }
+      }
 
-    const storagePath = `${pathPrefix}${referenceId}/${Date.now()}_${file.name}`;
+      const storagePath = `${pathPrefix}${referenceId}/${Date.now()}_${file.name}`;
 
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(storagePath, file, { contentType: file.type, upsert: false });
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
 
-    if (error) {
-      toast.error(`Upload failed: ${error.message}`);
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      log('evidence_uploaded', {
+        submission_type: submissionType,
+        reference_id: referenceId,
+        file_name: file.name,
+        file_size: file.size,
+      }, {
+        module: submissionType,
+        tableName: 'evidence',
+      });
+
+      setUploadedPath(storagePath);
+      onUploaded(storagePath);
+      toast.success(`Evidence uploaded: ${file.name}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      toast.error(`Upload failed: ${message}`);
+    } finally {
       setUploading(false);
-      return;
     }
-
-    log('evidence_uploaded', {
-      submission_type: submissionType,
-      reference_id: referenceId,
-      file_name: file.name,
-      file_size: file.size,
-    }, {
-      module: submissionType,
-      tableName: 'evidence',
-    });
-
-    setUploadedPath(storagePath);
-    setUploading(false);
-    onUploaded(storagePath);
-    toast.success(`Evidence uploaded: ${file.name}`);
   }
 
   if (uploadedPath) {
@@ -115,6 +143,7 @@ export function EvidenceCaptureUpload({
         <FileCheck className="h-4 w-4 text-emerald-400" />
         <span className="text-xs text-emerald-400">Evidence uploaded</span>
         <button
+          type="button"
           onClick={() => {
             setUploadedPath(null);
             if (inputRef.current) inputRef.current.value = '';
@@ -132,13 +161,21 @@ export function EvidenceCaptureUpload({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
+      onKeyDown={handleKeyboardActivate}
+      onClick={() => {
+        if (!disabled) inputRef.current?.click();
+      }}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      aria-busy={uploading}
+      aria-label={disabled ? 'Evidence upload disabled' : 'Upload evidence file'}
       className={cn(
         'flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all',
         isDragging
           ? 'border-blue-400/40 bg-blue-500/5'
           : 'border-white/[0.1] bg-white/[0.01] hover:border-white/[0.15] hover:bg-white/[0.03]',
-        uploading && 'pointer-events-none opacity-60',
+        (uploading || disabled) && 'pointer-events-none opacity-60',
       )}
     >
       {uploading ? (
@@ -147,7 +184,7 @@ export function EvidenceCaptureUpload({
         <Upload className="h-5 w-5 text-text-muted" />
       )}
       <div className="text-xs text-text-muted">
-        {uploading ? 'Uploading...' : 'Drop evidence file or click to browse'}
+        {uploading ? 'Uploading...' : disabled ? 'Evidence is locked after visit completion' : 'Drop evidence file or click to browse'}
       </div>
       <div className="text-[10px] text-text-muted/60">
         {acceptedTypes.join(', ')} &middot; Max 10MB

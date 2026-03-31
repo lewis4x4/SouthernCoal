@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useSearchStore } from '@/stores/search';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { ComplianceSearchResponse, SearchContext } from '@/types/search';
@@ -64,9 +64,8 @@ export function useComplianceSearch() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${token}`,
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
               'Content-Type': 'application/json',
+              ...edgeFunctionFetchHeaders(token),
             },
             body: JSON.stringify({
               query,

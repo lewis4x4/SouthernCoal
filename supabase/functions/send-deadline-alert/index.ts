@@ -5,6 +5,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+/** SPA origin for deep links in transactional email (same secret as other Edge Functions). */
+const FRONTEND_URL = (Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173").replace(/\/$/, "");
 
 const TIER_LABELS: Record<string, string> = {
   tier_1: "Tier 1 Alert",
@@ -117,7 +119,8 @@ serve(async (req) => {
     }
 
     const tierLabel = TIER_LABELS[penalty_tier] ?? "Alert";
-    const subject = `[SCC Compliance] ${tierLabel}: ${escapeHtml(obligation_name)}`;
+    const subject = `[SCC Compliance] ${tierLabel}: ${obligation_name}`;
+    const obligationsHref = `${FRONTEND_URL}/obligations`;
 
     const htmlBody = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -144,7 +147,7 @@ serve(async (req) => {
             </tr>
           </table>
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #334155;">
-            <a href="${SUPABASE_URL.replace('.supabase.co', '')}/obligations" style="display: inline-block; padding: 10px 20px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">
+            <a href="${escapeHtml(obligationsHref)}" style="display: inline-block; padding: 10px 20px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">
               View Obligations
             </a>
           </div>

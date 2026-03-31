@@ -72,12 +72,10 @@ EXCEPTION
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- ---------------------------------------------------------------------------
 -- Trigger: Fire on review_status, reviewed_by, or reviewed_at changes
 -- ---------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS trg_audit_permit_limits_review ON permit_limits;
-
 CREATE TRIGGER trg_audit_permit_limits_review
   AFTER UPDATE OF review_status, reviewed_by, reviewed_at ON permit_limits
   FOR EACH ROW
@@ -87,26 +85,21 @@ CREATE TRIGGER trg_audit_permit_limits_review
     OR OLD.reviewed_at IS DISTINCT FROM NEW.reviewed_at
   )
   EXECUTE FUNCTION log_permit_limit_review_change();
-
 -- ---------------------------------------------------------------------------
 -- Also log when extraction metadata is first populated (initial import)
 -- ---------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS trg_audit_permit_limits_extraction ON permit_limits;
-
 CREATE TRIGGER trg_audit_permit_limits_extraction
   AFTER INSERT ON permit_limits
   FOR EACH ROW
   WHEN (NEW.extraction_source IS NOT NULL)
   EXECUTE FUNCTION log_permit_limit_review_change();
-
 -- ---------------------------------------------------------------------------
 -- Comments
 -- ---------------------------------------------------------------------------
 COMMENT ON FUNCTION log_permit_limit_review_change() IS
   'Audit trail for permit limit verification workflow. Logs all review status transitions.';
-
 COMMENT ON TRIGGER trg_audit_permit_limits_review ON permit_limits IS
   'Fires when review_status, reviewed_by, or reviewed_at changes. Required for compliance.';
-
 COMMENT ON TRIGGER trg_audit_permit_limits_extraction ON permit_limits IS
   'Fires on INSERT when AI extraction source is set. Records initial import for audit trail.';

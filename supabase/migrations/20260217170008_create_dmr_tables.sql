@@ -40,30 +40,23 @@ CREATE TABLE dmr_submissions (
   -- One submission per permit × period
   CONSTRAINT dmr_submissions_unique UNIQUE (permit_id, monitoring_period_start, monitoring_period_end)
 );
-
 ALTER TABLE dmr_submissions ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org DMR submissions"
   ON dmr_submissions FOR SELECT TO authenticated
   USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Users can insert own org DMR submissions"
   ON dmr_submissions FOR INSERT TO authenticated
   WITH CHECK (organization_id = get_user_org_id());
-
 CREATE POLICY "Users can update own org DMR submissions"
   ON dmr_submissions FOR UPDATE TO authenticated
   USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role full access to DMR submissions"
   ON dmr_submissions FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_dmr_submissions_org ON dmr_submissions(organization_id);
 CREATE INDEX idx_dmr_submissions_permit ON dmr_submissions(permit_id);
 CREATE INDEX idx_dmr_submissions_period ON dmr_submissions(monitoring_period_end DESC);
 CREATE INDEX idx_dmr_submissions_status ON dmr_submissions(status);
-
 -- ============================================================================
 -- 2. DMR Line Items — Individual parameter measurements per outfall
 -- ============================================================================
@@ -112,9 +105,7 @@ CREATE TABLE dmr_line_items (
   -- One record per submission × outfall × parameter × stat base
   CONSTRAINT dmr_line_items_unique UNIQUE (submission_id, outfall_id, parameter_id, statistical_base)
 );
-
 ALTER TABLE dmr_line_items ENABLE ROW LEVEL SECURITY;
-
 -- RLS via parent submission
 CREATE POLICY "Users can view own org DMR line items"
   ON dmr_line_items FOR SELECT TO authenticated
@@ -125,7 +116,6 @@ CREATE POLICY "Users can view own org DMR line items"
         AND ds.organization_id = get_user_org_id()
     )
   );
-
 CREATE POLICY "Users can insert DMR line items for own org submissions"
   ON dmr_line_items FOR INSERT TO authenticated
   WITH CHECK (
@@ -135,7 +125,6 @@ CREATE POLICY "Users can insert DMR line items for own org submissions"
         AND ds.organization_id = get_user_org_id()
     )
   );
-
 CREATE POLICY "Users can update own org DMR line items"
   ON dmr_line_items FOR UPDATE TO authenticated
   USING (
@@ -145,17 +134,14 @@ CREATE POLICY "Users can update own org DMR line items"
         AND ds.organization_id = get_user_org_id()
     )
   );
-
 CREATE POLICY "Service role full access to DMR line items"
   ON dmr_line_items FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_dmr_line_items_submission ON dmr_line_items(submission_id);
 CREATE INDEX idx_dmr_line_items_outfall ON dmr_line_items(outfall_id);
 CREATE INDEX idx_dmr_line_items_parameter ON dmr_line_items(parameter_id);
 CREATE INDEX idx_dmr_line_items_exceedance ON dmr_line_items(is_exceedance) WHERE is_exceedance = true;
 CREATE INDEX idx_dmr_line_items_storet ON dmr_line_items(storet_code);
-
 -- ============================================================================
 -- 3. Update trigger for dmr_submissions
 -- ============================================================================
@@ -166,12 +152,10 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER trg_dmr_submissions_updated
   BEFORE UPDATE ON dmr_submissions
   FOR EACH ROW
   EXECUTE FUNCTION update_dmr_submission_timestamp();
-
 -- ============================================================================
 -- 4. Audit log action types for DMR operations
 -- ============================================================================
@@ -184,7 +168,6 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   NULL; -- Constraint doesn't exist, proceed
 END $$;
-
 -- Add comment for documentation
 COMMENT ON TABLE dmr_submissions IS 'DMR submission records - one per permit × monitoring period. Source: NetDMR bundles, state DMR systems.';
 COMMENT ON TABLE dmr_line_items IS 'Individual parameter measurements within a DMR submission. Tracks limits, values, and exceedances.';

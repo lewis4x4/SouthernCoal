@@ -1,33 +1,53 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { LoginPage } from '@/pages/LoginPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
+import { RoleGuard } from '@/components/layout/RoleGuard';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { lazyRoute } from '@/lib/lazyRoute';
+import type { Role } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — code splitting for ~40% bundle reduction
 // ---------------------------------------------------------------------------
-const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const UploadDashboard = lazy(() => import('@/pages/UploadDashboard').then(m => ({ default: m.UploadDashboard })));
-const Obligations = lazy(() => import('@/pages/Obligations').then(m => ({ default: m.Obligations })));
-const Monitoring = lazy(() => import('@/pages/Monitoring').then(m => ({ default: m.Monitoring })));
-const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
-const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })));
-const CoverageGaps = lazy(() => import('@/pages/CoverageGaps').then(m => ({ default: m.CoverageGaps })));
-const AuditLogPage = lazy(() => import('@/pages/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
-const AccessControlPage = lazy(() => import('@/pages/AccessControlPage').then(m => ({ default: m.AccessControlPage })));
-const CorrectionsPage = lazy(() => import('@/pages/CorrectionsPage').then(m => ({ default: m.CorrectionsPage })));
-const RoadmapPage = lazy(() => import('@/pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
-const SearchPage = lazy(() => import('@/pages/SearchPage').then(m => ({ default: m.SearchPage })));
-const SearchObservabilityPage = lazy(() => import('@/pages/SearchObservabilityPage').then(m => ({ default: m.SearchObservabilityPage })));
-const ReviewQueuePage = lazy(() => import('@/pages/ReviewQueuePage').then(m => ({ default: m.ReviewQueuePage })));
-const CorrectiveActionsPage = lazy(() => import('@/pages/CorrectiveActionsPage').then(m => ({ default: m.CorrectiveActionsPage })));
-const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDetailPage').then(m => ({ default: m.CorrectiveActionDetailPage })));
-const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
-const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m => ({ default: m.ExternalDataPage })));
-const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
+const Dashboard = lazyRoute(() => import('@/pages/Dashboard'), 'Dashboard');
+const UploadDashboard = lazyRoute(() => import('@/pages/UploadDashboard'), 'UploadDashboard');
+const Obligations = lazyRoute(() => import('@/pages/Obligations'), 'Obligations');
+const Monitoring = lazyRoute(() => import('@/pages/Monitoring'), 'Monitoring');
+const Reports = lazyRoute(() => import('@/pages/Reports'), 'Reports');
+const Admin = lazyRoute(() => import('@/pages/Admin'), 'Admin');
+const CoverageGaps = lazyRoute(() => import('@/pages/CoverageGaps'), 'CoverageGaps');
+const AuditLogPage = lazyRoute(() => import('@/pages/AuditLogPage'), 'AuditLogPage');
+const AccessControlPage = lazyRoute(() => import('@/pages/AccessControlPage'), 'AccessControlPage');
+const CorrectionsPage = lazyRoute(() => import('@/pages/CorrectionsPage'), 'CorrectionsPage');
+const RoadmapPage = lazyRoute(() => import('@/pages/RoadmapPage'), 'RoadmapPage');
+const SearchPage = lazyRoute(() => import('@/pages/SearchPage'), 'SearchPage');
+const SearchObservabilityPage = lazyRoute(
+  () => import('@/pages/SearchObservabilityPage'),
+  'SearchObservabilityPage',
+);
+const ReviewQueuePage = lazyRoute(() => import('@/pages/ReviewQueuePage'), 'ReviewQueuePage');
+const CorrectiveActionsPage = lazyRoute(
+  () => import('@/pages/CorrectiveActionsPage'),
+  'CorrectiveActionsPage',
+);
+const CorrectiveActionDetailPage = lazyRoute(
+  () => import('@/pages/CorrectiveActionDetailPage'),
+  'CorrectiveActionDetailPage',
+);
+const FailureToSamplePage = lazyRoute(() => import('@/pages/FailureToSamplePage'), 'FailureToSamplePage');
+const ExternalDataPage = lazyRoute(() => import('@/pages/ExternalDataPage'), 'ExternalDataPage');
+const AdminReportsPage = lazyRoute(() => import('@/pages/AdminReportsPage'), 'AdminReportsPage');
+const FieldSchedulePage = lazyRoute(() => import('@/pages/FieldSchedulePage'), 'FieldSchedulePage');
+const FieldDispatchPage = lazyRoute(() => import('@/pages/FieldDispatchPage'), 'FieldDispatchPage');
+const FieldRouteTodayPage = lazyRoute(() => import('@/pages/FieldRouteTodayPage'), 'FieldRouteTodayPage');
+const FieldVisitPage = lazyRoute(() => import('@/pages/FieldVisitPage'), 'FieldVisitPage');
+const GovernanceIssuesPage = lazyRoute(() => import('@/pages/GovernanceIssuesPage'), 'GovernanceIssuesPage');
+const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
+const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
+const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -257,6 +277,87 @@ export function App() {
               <AppShell>
                 <LazyPage><ExternalDataPage /></LazyPage>
               </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Field queue and dispatch */}
+        <Route
+          path="/field/schedule"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_SCHEDULE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldSchedulePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/sampling"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_SCHEDULE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldSchedulePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/field/dispatch"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldDispatchPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/field/route"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldRouteTodayPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        {/* Field visit execution */}
+        <Route
+          path="/field/visits/:id"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldVisitPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        {/* Governance issue inbox */}
+        <Route
+          path="/governance/issues"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={GOVERNANCE_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><GovernanceIssuesPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />

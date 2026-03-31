@@ -46,9 +46,7 @@ BEGIN
   RETURN COALESCE(result, '[]'::jsonb);
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION execute_readonly_query TO authenticated;
-
 -- Index for rate limiting: count recent searches per user
 CREATE INDEX IF NOT EXISTS idx_audit_log_search_rate_limit
   ON audit_log(user_id, action, created_at)

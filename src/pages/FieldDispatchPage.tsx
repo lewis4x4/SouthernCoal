@@ -1,0 +1,408 @@
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  AlertTriangle,
+  CalendarDays,
+  ClipboardList,
+  ListOrdered,
+  MapPinned,
+  Plus,
+  Route,
+  UserRound,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useFieldOps } from '@/hooks/useFieldOps';
+import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
+import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
+import type { FieldVisitListItem } from '@/types';
+
+const MANAGER_ROLES = ['site_manager', 'environmental_manager', 'executive', 'admin'];
+
+function statusTone(visit: FieldVisitListItem) {
+  if (visit.visit_status === 'completed') return 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10';
+  if (visit.visit_status === 'in_progress') return 'text-amber-300 border-amber-500/20 bg-amber-500/10';
+  if (visit.visit_status === 'cancelled') return 'text-red-300 border-red-500/20 bg-red-500/10';
+  return 'text-cyan-300 border-cyan-500/20 bg-cyan-500/10';
+}
+
+export function FieldDispatchPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { getEffectiveRole } = usePermissions();
+  const role = getEffectiveRole();
+  const canDispatch = MANAGER_ROLES.includes(role);
+
+  const {
+    permits,
+    outfalls,
+    users,
+    visits,
+    loading,
+    outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
+    refresh,
+    createVisit,
+  } = useFieldOps();
+
+  const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today' | 'overdue'>('all');
+  const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
+
+  const [permitId, setPermitId] = useState('');
+  const [outfallId, setOutfallId] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0] ?? '');
+  const [fieldNotes, setFieldNotes] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const outfallOptions = useMemo(
+    () => outfalls.filter((outfall) => !permitId || outfall.permit_id === permitId),
+    [outfalls, permitId],
+  );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const filteredVisits = useMemo(() => {
+    let list = visits;
+    if (queueFilter === 'mine' && user?.id) {
+      list = list.filter((visit) => visit.assigned_to === user.id);
+    }
+    if (queueFilter === 'today') {
+      list = list.filter((visit) => visit.scheduled_date === todayStr);
+    }
+    if (queueFilter === 'overdue') {
+      list = list.filter((visit) => visitIsOpenOverdue(visit, todayStr));
+    }
+    const sorted = [...list];
+    if (queueSort === 'route_order') {
+      sorted.sort((a, b) => {
+        const ar = a.route_stop_sequence;
+        const br = b.route_stop_sequence;
+        if (ar != null && br != null && ar !== br) return ar - br;
+        if (ar != null && br == null) return -1;
+        if (ar == null && br != null) return 1;
+        return `${a.scheduled_date}T${a.created_at}`.localeCompare(`${b.scheduled_date}T${b.created_at}`);
+      });
+    } else {
+      sorted.sort((a, b) => `${b.scheduled_date}T${b.created_at}`.localeCompare(`${a.scheduled_date}T${a.created_at}`));
+    }
+    return sorted;
+  }, [queueFilter, queueSort, todayStr, user?.id, visits]);
+
+  const queueNeedsDispositionCount = useMemo(
+    () => filteredVisits.filter((v) => visitNeedsDisposition(v)).length,
+    [filteredVisits],
+  );
+
+  const queueOutfallDayConflicts = useMemo(() => groupSameOutfallSameDay(visits), [visits]);
+
+  async function handleCreate() {
+    if (!permitId || !outfallId || !assignedTo || !scheduledDate) {
+      toast.error('Permit, outfall, assignee, and scheduled date are required');
+      return;
+    }
+
+    try {
+      setCreating(true);
+      const created = await createVisit({
+        permitId,
+        outfallId,
+        assignedTo,
+        scheduledDate,
+        fieldNotes,
+      });
+      setOutfallId('');
+      setFieldNotes('');
+      toast.success('Field visit dispatched');
+      navigate(`/field/visits/${created.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to dispatch field visit');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+            Field Queue
+          </h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Manual dispatch for WV field work and the live queue of executable field visits. Route-dispatched visits show stop order for daily worklists.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <Link
+            to="/field/route"
+            className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
+          >
+            Today&apos;s route
+          </Link>
+          <div className="rounded-xl bg-cyan-500/10 p-3">
+            <Route className="h-6 w-6 text-cyan-300" />
+          </div>
+        </div>
+      </div>
+
+      <FieldDataSyncBar
+        loading={loading}
+        pendingOutboundCount={outboundPendingCount}
+        queueFlushDiagnostic={outboundQueueDiagnostic}
+        onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+        onRefresh={refresh}
+        auditRefreshPayload={{ surface: 'field_dispatch' }}
+      />
+
+      <FieldSameOutfallDayWarning
+        groups={queueOutfallDayConflicts}
+        contextLabel="field queue (WV)"
+        detailListClassName="max-h-52 overflow-y-auto pr-1"
+      />
+
+      {canDispatch && (
+        <SpotlightCard className="p-6" spotlightColor="rgba(6, 182, 212, 0.08)">
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-cyan-300" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+              Manual Dispatch
+            </h2>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-text-muted">Permit</span>
+              <select
+                value={permitId}
+                onChange={(e) => {
+                  setPermitId(e.target.value);
+                  setOutfallId('');
+                }}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              >
+                <option value="">Select permit</option>
+                {permits.map((permit) => (
+                  <option key={permit.id} value={permit.id}>
+                    {permit.permit_number}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-text-muted">Outfall</span>
+              <select
+                value={outfallId}
+                onChange={(e) => setOutfallId(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              >
+                <option value="">Select outfall</option>
+                {outfallOptions.map((outfall) => (
+                  <option key={outfall.id} value={outfall.id}>
+                    {outfall.outfall_number}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-text-muted">Assigned sampler</span>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              >
+                <option value="">Select assignee</option>
+                {users.filter((fieldUser) => fieldUser.is_active).map((fieldUser) => (
+                  <option key={fieldUser.id} value={fieldUser.id}>
+                    {[fieldUser.first_name, fieldUser.last_name].filter(Boolean).join(' ') || fieldUser.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-text-muted">Scheduled date</span>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              />
+            </label>
+          </div>
+
+          <label className="mt-4 block space-y-2">
+            <span className="text-xs font-medium text-text-muted">Dispatch notes</span>
+            <textarea
+              value={fieldNotes}
+              onChange={(e) => setFieldNotes(e.target.value)}
+              rows={3}
+              placeholder="Optional instructions for the field team."
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+            />
+          </label>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
+            >
+              {creating ? 'Dispatching…' : 'Dispatch field visit'}
+            </button>
+          </div>
+        </SpotlightCard>
+      )}
+
+      <SpotlightCard className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-medium text-text-muted">Queue</span>
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'mine', 'today', 'overdue'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setQueueFilter(key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  queueFilter === key
+                    ? 'bg-cyan-500/20 text-cyan-200'
+                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                }`}
+              >
+                {key === 'all'
+                  ? 'All'
+                  : key === 'mine'
+                    ? 'My assignments'
+                    : key === 'today'
+                      ? 'Today'
+                      : 'Overdue open'}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs font-medium text-text-muted">Sort</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setQueueSort('newest')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                queueSort === 'newest'
+                  ? 'bg-cyan-500/20 text-cyan-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+              }`}
+            >
+              Newest
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueSort('route_order')}
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                queueSort === 'route_order'
+                  ? 'bg-cyan-500/20 text-cyan-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+              }`}
+            >
+              <ListOrdered className="h-3.5 w-3.5" />
+              Route order
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3 text-xs text-text-secondary">
+          <ClipboardList className="h-3.5 w-3.5 shrink-0 text-cyan-300" aria-hidden />
+          <span>
+            <span className="font-semibold text-cyan-200/90">{queueNeedsDispositionCount}</span>
+            {' of '}
+            {filteredVisits.length} shown still need a field outcome (complete the visit).
+          </span>
+        </div>
+      </SpotlightCard>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-40 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+          ))
+        ) : filteredVisits.length === 0 ? (
+          <SpotlightCard className="p-6 lg:col-span-2">
+            <p className="text-sm text-text-muted">No field visits match this filter.</p>
+          </SpotlightCard>
+        ) : (
+          filteredVisits.map((visit) => (
+            <Link key={visit.id} to={`/field/visits/${visit.id}`}>
+              <SpotlightCard
+                className={`h-full p-6 transition-all hover:border-white/[0.12] ${
+                  visitNeedsDisposition(visit)
+                    ? 'border-l-2 border-l-cyan-400/35 pl-[calc(1.5rem-2px)]'
+                    : ''
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <MapPinned className="h-4 w-4 text-cyan-300" />
+                      <h3 className="text-base font-semibold text-text-primary">
+                        {visit.permit_number ?? 'Permit'} / {visit.outfall_number ?? 'Outfall'}
+                      </h3>
+                      {visit.route_stop_sequence != null && (
+                        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
+                          Stop {visit.route_stop_sequence}
+                        </span>
+                      )}
+                      {visitIsOpenOverdue(visit, todayStr) && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-500/35 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-200">
+                          <AlertTriangle className="h-3 w-3" />
+                          Overdue
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {new Date(`${visit.scheduled_date}T00:00:00`).toLocaleDateString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <UserRound className="h-3.5 w-3.5" />
+                        {visit.assigned_to_name}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusTone(visit)}`}>
+                    {visit.visit_status.replace('_', ' ')}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                    <div className="text-text-muted">Outcome</div>
+                    <div className="mt-1 font-medium text-text-primary">
+                      {visit.outcome ? visit.outcome.replace('_', ' ') : 'Pending'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                    <div className="text-text-muted">Force majeure flag</div>
+                    <div className="mt-1 font-medium text-text-primary">
+                      {visit.potential_force_majeure ? 'Raised' : 'Not raised'}
+                    </div>
+                  </div>
+                </div>
+
+                {visit.field_notes && (
+                  <p className="mt-4 line-clamp-2 text-sm text-text-secondary">
+                    {visit.field_notes}
+                  </p>
+                )}
+              </SpotlightCard>
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

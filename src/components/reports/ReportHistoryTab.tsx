@@ -1,6 +1,6 @@
 import { useReportHistory } from '@/hooks/useReportHistory';
 import { Loader2, Download, AlertTriangle, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
-import { getFreshToken } from '@/lib/supabase';
+import { getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle; text: string; color: string }> = {
@@ -33,11 +33,15 @@ export function ReportHistoryTab() {
       const token = await getFreshToken();
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-status?job_id=${reportId}`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { ...edgeFunctionFetchHeaders(token) } },
       );
+      if (!resp.ok) {
+        toast.error(`Download failed (${resp.status})`);
+        return;
+      }
       const data = await resp.json();
       if (data.download_url) {
-        window.open(data.download_url, '_blank');
+        window.open(data.download_url, '_blank', 'noopener,noreferrer');
       } else {
         toast.error('Download URL not available');
       }

@@ -12,7 +12,6 @@
 -- ============================================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------------------
 -- 0. Expand audit_log CHECK constraint FIRST (before triggers that use it)
 -- ---------------------------------------------------------------------------
@@ -41,12 +40,10 @@ BEGIN
   -- Using a permissive text type instead of strict CHECK for flexibility
   -- The action column likely doesn't have a CHECK constraint or has a flexible one
 END $$;
-
 -- ---------------------------------------------------------------------------
 -- 1. Drop existing (incomplete) table and recreate with full schema
 -- ---------------------------------------------------------------------------
 DROP TABLE IF EXISTS corrective_actions CASCADE;
-
 CREATE TABLE corrective_actions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -141,7 +138,6 @@ CREATE TABLE corrective_actions (
     CHECK (responsible_person_id IS NULL OR approved_by_id IS NULL
            OR responsible_person_id != approved_by_id)
 );
-
 -- ---------------------------------------------------------------------------
 -- 2. Indexes
 -- ---------------------------------------------------------------------------
@@ -154,17 +150,14 @@ CREATE INDEX idx_ca_followup_assigned ON corrective_actions(followup_assigned_to
   WHERE followup_assigned_to IS NOT NULL;
 CREATE INDEX idx_ca_source ON corrective_actions(source_type, source_id)
   WHERE source_id IS NOT NULL;
-
 -- ---------------------------------------------------------------------------
 -- 3. RLS Policies (FIX: JOIN roles table via role_id FK)
 -- ---------------------------------------------------------------------------
 ALTER TABLE corrective_actions ENABLE ROW LEVEL SECURITY;
-
 -- SELECT: Users can only see CAs in their organization
 CREATE POLICY "Users view own org corrective actions"
   ON corrective_actions FOR SELECT TO authenticated
   USING (organization_id = get_user_org_id());
-
 -- INSERT: Only env_manager, admin, executive can create
 -- FIX: JOIN roles table on role_id, check r.name
 CREATE POLICY "Managers create corrective actions"
@@ -178,7 +171,6 @@ CREATE POLICY "Managers create corrective actions"
         AND r.name = ANY(ARRAY['environmental_manager', 'admin', 'executive'])
     )
   );
-
 -- UPDATE: Assigned user or manager roles
 -- FIX: JOIN roles table on role_id, check r.name
 CREATE POLICY "Users update assigned or managed corrective actions"
@@ -196,7 +188,6 @@ CREATE POLICY "Users update assigned or managed corrective actions"
     )
   )
   WITH CHECK (organization_id = get_user_org_id());
-
 -- DELETE: Admin only
 -- FIX: JOIN roles table on role_id, check r.name
 CREATE POLICY "Admins delete corrective actions"
@@ -210,12 +201,10 @@ CREATE POLICY "Admins delete corrective actions"
         AND r.name = 'admin'
     )
   );
-
 -- Service role bypass
 CREATE POLICY "Service role full access"
   ON corrective_actions FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 -- ---------------------------------------------------------------------------
 -- 4. Triggers
 -- ---------------------------------------------------------------------------
@@ -229,11 +218,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER trg_ca_updated_at
   BEFORE UPDATE ON corrective_actions
   FOR EACH ROW EXECUTE FUNCTION update_ca_timestamp();
-
 -- Auto-create CA from exceedance
 -- FIX: Use result_value (not measured_value), use limit_value correctly
 CREATE OR REPLACE FUNCTION auto_create_ca_from_exceedance()
@@ -280,11 +267,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER trg_exceedance_creates_ca
   AFTER INSERT ON exceedances
   FOR EACH ROW EXECUTE FUNCTION auto_create_ca_from_exceedance();
-
 -- Auto-create CA from enforcement action
 -- FIX: Use actual action_type enum values, remove regulation_cited reference
 CREATE OR REPLACE FUNCTION auto_create_ca_from_enforcement()
@@ -323,11 +308,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER trg_enforcement_creates_ca
   AFTER INSERT ON enforcement_actions
   FOR EACH ROW EXECUTE FUNCTION auto_create_ca_from_enforcement();
-
 -- Server-side signature audit
 -- Note: Using direct INSERT without CHECK constraint dependency
 -- The audit_log table may not have strict action CHECK, or we log with flexible action names
@@ -377,7 +360,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER trg_ca_signature_audit
   AFTER UPDATE ON corrective_actions
   FOR EACH ROW
@@ -386,12 +368,10 @@ CREATE TRIGGER trg_ca_signature_audit
     OR NEW.approved_by_signed_at IS DISTINCT FROM OLD.approved_by_signed_at
   )
   EXECUTE FUNCTION log_ca_signature_change();
-
 -- ---------------------------------------------------------------------------
 -- 5. Comments
 -- ---------------------------------------------------------------------------
 COMMENT ON TABLE corrective_actions IS 'EMS Document 2015-013 digital replacement - 7-step workflow for compliance issues';
 COMMENT ON COLUMN corrective_actions.source_id IS 'Polymorphic FK: exceedances.id if source_type=exceedance, enforcement_actions.id if source_type=enforcement, NULL otherwise';
 COMMENT ON COLUMN corrective_actions.workflow_step IS '7-step EMS workflow: identification → root_cause_analysis → corrective_action_plan → preventive_action → implementation → verification → closure';
-
 COMMIT;

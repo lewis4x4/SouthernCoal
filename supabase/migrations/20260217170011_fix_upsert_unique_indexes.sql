@@ -9,14 +9,12 @@
 -- Creating explicit unique index ensures ON CONFLICT works correctly
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sampling_events_unique_event
 ON sampling_events(outfall_id, sample_date, COALESCE(sample_time, '00:00:00'));
-
 -- ============================================================================
 -- 2. Create UNIQUE index for lab_results upsert
 -- ============================================================================
 -- Supports ON CONFLICT (sampling_event_id, parameter_id)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_lab_results_unique_result
 ON lab_results(sampling_event_id, parameter_id);
-
 -- ============================================================================
 -- 3. Documentation
 -- ============================================================================

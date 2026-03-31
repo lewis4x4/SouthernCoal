@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getFreshToken } from '@/lib/supabase';
+import { getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 import { toast } from 'sonner';
 
@@ -65,10 +65,7 @@ export function useReportGeneration() {
         const resp = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-status?job_id=${jobId}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
+            headers: { ...edgeFunctionFetchHeaders(token) },
           },
         );
 
@@ -130,8 +127,7 @@ export function useReportGeneration() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              ...edgeFunctionFetchHeaders(token),
             },
             body: JSON.stringify({
               report_key: reportKey,
@@ -190,7 +186,7 @@ export function useReportGeneration() {
   );
 
   const download = useCallback((url: string) => {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 
   const reset = useCallback(() => {

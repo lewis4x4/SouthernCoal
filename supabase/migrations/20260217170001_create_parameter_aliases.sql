@@ -26,36 +26,27 @@ CREATE TABLE parameter_aliases (
   -- Unique constraint: same alias can't exist twice for same state context
   CONSTRAINT parameter_aliases_unique UNIQUE (alias, state_code)
 );
-
 -- Index for fast lookup during parsing (case-insensitive)
 CREATE INDEX idx_parameter_aliases_lookup
   ON parameter_aliases(lower(alias), state_code);
-
 -- Index for parameter_id lookups
 CREATE INDEX idx_parameter_aliases_parameter_id
   ON parameter_aliases(parameter_id);
-
 -- Enable RLS
 ALTER TABLE parameter_aliases ENABLE ROW LEVEL SECURITY;
-
 -- RLS: Read-only for authenticated users (reference data)
 CREATE POLICY "Authenticated users can read parameter aliases"
   ON parameter_aliases FOR SELECT TO authenticated
   USING (true);
-
 -- RLS: Service role can manage (seeded/managed centrally)
 CREATE POLICY "Service role manages parameter aliases"
   ON parameter_aliases FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 COMMENT ON TABLE parameter_aliases IS
   'Maps lab/permit parameter name variants to canonical parameters.id. Used by Edge Function parsers for normalization.';
-
 COMMENT ON COLUMN parameter_aliases.alias IS
   'The alias text as it appears in source files (e.g., "fe_tot", "iron (total)")';
-
 COMMENT ON COLUMN parameter_aliases.source IS
   'Origin of alias: lab_edd (WV EDD files), permit_sheet (parameter sheets), dmr, netdmr (KY), osmre (TN), manual';
-
 COMMENT ON COLUMN parameter_aliases.state_code IS
   'State-specific alias (null = universal). Allows state-specific name variants.';

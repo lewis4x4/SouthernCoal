@@ -7,7 +7,6 @@
 
 -- Drop existing constraint if present (avoid duplicate index errors)
 DROP INDEX IF EXISTS idx_permit_limits_upsert_key;
-
 -- Create composite unique index for upsert deduplication
 -- Uses COALESCE to handle NULL values consistently
 CREATE UNIQUE INDEX idx_permit_limits_upsert_key
@@ -17,7 +16,6 @@ ON permit_limits (
   COALESCE(statistical_base, 'default'),
   COALESCE(monitoring_frequency, 'default')
 );
-
 -- Documentation
 COMMENT ON INDEX idx_permit_limits_upsert_key IS
   'Unique constraint for permit limit upsert: outfall + parameter + statistical_base + frequency. Uses COALESCE for NULL handling.';

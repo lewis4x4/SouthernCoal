@@ -78,7 +78,9 @@ type AuditAction =
   | 'report_permission_changed'
   | 'report_schedule_changed'
   | 'report_recipient_changed'
-  | 'data_quality_status_changed';
+  | 'data_quality_status_changed'
+  // Field / WV route execution (client-only refresh; server mutations still logged by Edge/DB)
+  | 'field_sync_manual_refresh';
 
 export type { AuditAction };
 
@@ -102,18 +104,20 @@ interface AuditEntity {
 export function useAuditLog() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
+  const userId = user?.id ?? null;
+  const organizationId = profile?.organization_id ?? null;
 
   const log = useCallback(
     (action: AuditAction, details?: Record<string, unknown>, entity?: AuditEntity) => {
-      if (!user) return;
+      if (!userId) return;
 
       // Fire-and-forget — wrap in Promise to ensure .catch() is available
       Promise.resolve(
         supabase
           .from('audit_log')
           .insert({
-            user_id: user.id,
-            organization_id: profile?.organization_id ?? null,
+            user_id: userId,
+            organization_id: organizationId,
             action,
             module: entity?.module ?? 'frontend',
             table_name: entity?.tableName ?? 'ui_action',
@@ -134,7 +138,7 @@ export function useAuditLog() {
           console.warn('[audit] Exception during log:', action, err);
         });
     },
-    [user?.id, profile?.organization_id],
+    [organizationId, userId],
   );
 
   return { log };

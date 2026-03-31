@@ -22,6 +22,7 @@ export function useDiscrepancies() {
   const { user } = useAuth();
   const { log } = useAuditLog();
   const abortRef = useRef<AbortController | null>(null);
+  const userId = user?.id ?? null;
 
   // Fetch severity counts server-side (accurate across all rows, not capped by PostgREST)
   const fetchCounts = useCallback(async () => {
@@ -110,7 +111,7 @@ export function useDiscrepancies() {
 
       if (status === 'reviewed' || status === 'dismissed') {
         updates.reviewed_at = now;
-        updates.reviewed_by = user?.id ?? null;
+        updates.reviewed_by = userId;
       }
       if (status === 'dismissed' && extra?.dismiss_reason) {
         updates.dismiss_reason = extra.dismiss_reason;
@@ -120,11 +121,11 @@ export function useDiscrepancies() {
       }
       if (status === 'escalated') {
         updates.escalated_at = now;
-        updates.reviewed_by = user?.id ?? null;
+        updates.reviewed_by = userId;
       }
       if (status === 'resolved') {
         updates.resolved_at = now;
-        updates.reviewed_by = user?.id ?? null;
+        updates.reviewed_by = userId;
       }
 
       const { error: updateErr } = await supabase
@@ -184,7 +185,7 @@ export function useDiscrepancies() {
 
       return null;
     },
-    [rows, log],
+    [log, rows, userId],
   );
 
   return { rows, loading, error, counts, totalCount, refetch: fetchDiscrepancies, updateStatus };

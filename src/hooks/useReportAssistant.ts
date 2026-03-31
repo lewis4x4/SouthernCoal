@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase, getFreshToken } from '@/lib/supabase';
+import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 
 /**
@@ -274,7 +274,7 @@ export function useReportAssistant() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            ...edgeFunctionFetchHeaders(token),
           },
           body: JSON.stringify({
             report_key: reportKey,

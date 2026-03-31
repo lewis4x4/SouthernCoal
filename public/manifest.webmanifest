@@ -1,0 +1,17 @@
+{
+  "name": "SCC Compliance Monitor",
+  "short_name": "SCC Monitor",
+  "description": "Offline-capable field and compliance operations for SCC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050816",
+  "theme_color": "#050816",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

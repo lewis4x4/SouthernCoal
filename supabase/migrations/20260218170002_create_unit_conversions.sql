@@ -18,24 +18,19 @@ CREATE TABLE IF NOT EXISTS unit_conversions (
   -- Unique constraint: one conversion per parameter + unit pair
   CONSTRAINT unit_conversions_unique UNIQUE (parameter_id, from_unit, to_unit)
 );
-
 -- Index for fast lookups during exceedance detection
 CREATE INDEX idx_unit_conversions_lookup
 ON unit_conversions (parameter_id, from_unit, to_unit);
-
 -- RLS: Read-only for authenticated users
 ALTER TABLE unit_conversions ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Authenticated users can read unit conversions"
   ON unit_conversions FOR SELECT TO authenticated USING (true);
-
 -- Documentation
 COMMENT ON TABLE unit_conversions IS 'Unit conversion factors for normalizing lab results to permit limit units during exceedance detection';
 COMMENT ON COLUMN unit_conversions.parameter_id IS 'Parameter this conversion applies to (NULL = applies to all parameters)';
 COMMENT ON COLUMN unit_conversions.from_unit IS 'Source unit (lab result unit)';
 COMMENT ON COLUMN unit_conversions.to_unit IS 'Target unit (permit limit unit)';
 COMMENT ON COLUMN unit_conversions.conversion_factor IS 'Multiply by this factor to convert from_unit → to_unit';
-
 -- =============================================================================
 -- Seed common unit conversions
 -- =============================================================================

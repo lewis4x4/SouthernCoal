@@ -20,7 +20,6 @@ VALUES (
   ]
 )
 ON CONFLICT (id) DO NOTHING;
-
 -- RLS policies for handoff attachments
 -- Storage path format: {user_id}/{timestamp}_{filename}
 
@@ -31,7 +30,6 @@ CREATE POLICY "Users upload own attachments"
     bucket_id = 'handoff-attachments'
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
-
 -- Users can view files in their own folder
 CREATE POLICY "Users view own attachments"
   ON storage.objects FOR SELECT TO authenticated
@@ -39,7 +37,6 @@ CREATE POLICY "Users view own attachments"
     bucket_id = 'handoff-attachments'
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
-
 -- Users can delete files in their own folder
 CREATE POLICY "Users delete own attachments"
   ON storage.objects FOR DELETE TO authenticated

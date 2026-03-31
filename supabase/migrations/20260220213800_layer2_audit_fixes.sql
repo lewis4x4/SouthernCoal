@@ -2,11 +2,9 @@
 -- P0: Make external_sync_log.organization_id NOT NULL (no NULL rows exist)
 ALTER TABLE external_sync_log
   ALTER COLUMN organization_id SET NOT NULL;
-
 -- P1: Add recurrence tracking to discrepancy_reviews
 ALTER TABLE discrepancy_reviews
   ADD COLUMN IF NOT EXISTS recurrence_count integer NOT NULL DEFAULT 1;
-
 -- P1: Update batch_insert_discrepancies to bump recurrence on conflict
 CREATE OR REPLACE FUNCTION batch_insert_discrepancies(rows jsonb)
 RETURNS jsonb
@@ -70,7 +68,6 @@ BEGIN
   );
 END;
 $$;
-
 -- P2: CHECK constraints on enum-like columns
 ALTER TABLE discrepancy_reviews
   ADD CONSTRAINT chk_dr_source CHECK (source IN ('echo', 'msha'));
@@ -80,7 +77,6 @@ ALTER TABLE discrepancy_reviews
   ADD CONSTRAINT chk_dr_status CHECK (status IN ('pending', 'reviewed', 'dismissed', 'escalated', 'resolved'));
 ALTER TABLE discrepancy_reviews
   ADD CONSTRAINT chk_dr_type CHECK (discrepancy_type IN ('missing_internal', 'missing_external', 'value_mismatch', 'status_mismatch'));
-
 -- P2: Indexes on triage workflow columns
 CREATE INDEX IF NOT EXISTS idx_dr_reviewed_at ON discrepancy_reviews(reviewed_at) WHERE reviewed_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_dr_resolved_at ON discrepancy_reviews(resolved_at) WHERE resolved_at IS NOT NULL;

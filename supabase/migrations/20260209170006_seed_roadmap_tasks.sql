@@ -6,7 +6,6 @@
 -- ============================================================================
 
 BEGIN;
-
 INSERT INTO roadmap_tasks (organization_id, task_id, phase, section, task_description, owner_type, depends_on, status, is_new_v3, notes)
 VALUES
   -- ==========================================================================
@@ -276,9 +275,7 @@ VALUES
   -- ==========================================================================
   ('2bffc35c-e2c4-4396-868f-207f80e1e2c4', '5.12', 5, '5B', 'Run a mock regulator audit using the system: pick one exceedance, produce the full defensibility bundle — lab result, COC, calibration record, 24-hour call log, 5-day letter, corrective action, DMR impact, proof-of-submission.', 'both', ARRAY['Phase 3', 'Phase 4'], 'not_started', true, 'If you can produce this in under 30 minutes, the system is court-ready.'),
   ('2bffc35c-e2c4-4396-868f-207f80e1e2c4', '5.13', 5, '5B', 'Establish quarterly access review and contact verification cadence: verify all system users still need their access level, verify all agency contacts are current, document the review.', 'scc_mgmt', ARRAY['3.30', '2.30–2.51'], 'not_started', true, 'Agency contacts change. Personnel change. Recurring calendar task.');
-
 COMMIT;
-
 -- ============================================================================
 -- Verification (uncomment to run after migration)
 -- ============================================================================
@@ -295,4 +292,4 @@ COMMIT;
 -- -- Expected total: 180 tasks (Phase 1: 45, Phase 2: 61, Phase 3: 31, Phase 4: 30, Phase 5: 13)
 -- -- Expected new_v3: 14 tasks (1.42-1.45, 2.59-2.61, 3.28-3.31, 4.29-4.30, 5.12-5.13)
 -- SELECT COUNT(*) AS total_tasks FROM roadmap_tasks
--- WHERE organization_id = '2bffc35c-e2c4-4396-868f-207f80e1e2c4';
+-- WHERE organization_id = '2bffc35c-e2c4-4396-868f-207f80e1e2c4';;

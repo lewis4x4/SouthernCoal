@@ -9,21 +9,18 @@
 -- Also improves upsert conflict detection performance
 CREATE INDEX IF NOT EXISTS idx_lab_results_event_parameter
 ON lab_results(sampling_event_id, parameter_id);
-
 -- ============================================================================
 -- 2. Compound index for outfall + date queries on sampling_events
 -- ============================================================================
 -- Supports efficient lookups by outfall and sample date
 CREATE INDEX IF NOT EXISTS idx_sampling_events_outfall_date
 ON sampling_events(outfall_id, sample_date DESC);
-
 -- ============================================================================
 -- 3. Partial index for non-null import_id lookups
 -- ============================================================================
 -- Supports efficient rollback queries and import audit
 CREATE INDEX IF NOT EXISTS idx_lab_results_import_not_null
 ON lab_results(import_id) WHERE import_id IS NOT NULL;
-
 -- ============================================================================
 -- 4. Documentation comments
 -- ============================================================================

@@ -32,7 +32,6 @@
 -- 1. Add completion_date column if it doesn't exist
 ALTER TABLE consent_decree_obligations
 ADD COLUMN IF NOT EXISTS completion_date DATE;
-
 -- 2. Penalty calculation: days at risk
 --    Uses next_due_date (not initial_due_date) since that's the current deadline.
 CREATE OR REPLACE FUNCTION calculate_days_at_risk(
@@ -50,7 +49,6 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-
 -- 3. Penalty calculation: stipulated penalty per Consent Decree
 --    Case 7:16-cv-00462-GEC
 --
@@ -96,7 +94,6 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-
 -- 4. Add generated columns
 --    References next_due_date (the current deadline) not initial_due_date.
 ALTER TABLE consent_decree_obligations
@@ -115,7 +112,6 @@ ADD COLUMN IF NOT EXISTS penalty_tier TEXT GENERATED ALWAYS AS (
 ADD COLUMN IF NOT EXISTS accrued_penalty DECIMAL GENERATED ALWAYS AS (
   calculate_stipulated_penalty(obligation_type, calculate_days_at_risk(next_due_date, completion_date))
 ) STORED;
-
 -- 5. RLS INSERT policy for auto-generating obligations from frontend
 DO $$
 BEGIN
@@ -130,11 +126,10 @@ BEGIN
       WITH CHECK (true);
   END IF;
 END $$;
-
 -- =============================================================================
 -- Verify after running:
 --   SELECT id, obligation_type, next_due_date, days_at_risk, penalty_tier, accrued_penalty
 --   FROM consent_decree_obligations
 --   ORDER BY days_at_risk DESC
 --   LIMIT 10;
--- =============================================================================
+-- =============================================================================;

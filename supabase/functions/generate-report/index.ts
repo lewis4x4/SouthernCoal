@@ -166,8 +166,9 @@ function sanitizeConfig(cfg: Config): Config {
 async function rptPermitInventory(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   const { data, error } = await sb
     .from("npdes_permits")
     .select(
@@ -204,8 +205,9 @@ async function rptPermitInventory(
 async function rptPermitRenewalTracker(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   const { data, error } = await sb
     .from("npdes_permits")
     .select(
@@ -245,8 +247,9 @@ async function rptPermitRenewalTracker(
 async function rptOutfallInventory(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   const siteIds = await getSiteIds(sb, orgIds);
   if (!siteIds.length) return { columns: [], rows: [], flags: {} };
 
@@ -284,8 +287,9 @@ async function rptOutfallInventory(
 async function rptPermitLimitMatrix(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   // 2-query approach: get permit IDs for visible orgs, then limits
   const { data: permits } = await sb
     .from("npdes_permits")
@@ -412,9 +416,11 @@ async function rptEchoDmrSummary(
 // SCC is added, this table MUST be org-scoped.
 async function rptConsentDecree(
   sb: SB,
-  _orgIds: string[],
-  _cfg: Config,
+  orgIds: string[],
+  cfg: Config,
 ): Promise<Result> {
+  void orgIds;
+  void cfg;
   const { data, error } = await sb
     .from("consent_decree_obligations")
     .select(
@@ -519,8 +525,9 @@ async function rptDiscrepancyTriage(
 async function rptAiVerification(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   const { data, error } = await sb
     .from("file_processing_queue")
     .select(
@@ -586,8 +593,9 @@ async function rptAuditTrail(
 async function rptFilePipeline(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   const { data, error } = await sb
     .from("file_processing_queue")
     .select(
@@ -620,9 +628,10 @@ async function rptFilePipeline(
 // Filtered by state only, not org. If multi-tenant beyond SCC is added, scope.
 async function rptRegulatoryDeadlines(
   sb: SB,
-  _orgIds: string[],
+  orgIds: string[],
   cfg: Config,
 ): Promise<Result> {
+  void orgIds;
   let query = sb
     .from("regulatory_deadlines")
     .select(
@@ -668,8 +677,9 @@ async function rptRegulatoryDeadlines(
 async function rptStateComplianceMatrix(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   // Aggregate permits per state
   const { data: permits } = await sb
     .from("npdes_permits")
@@ -784,8 +794,9 @@ async function rptSyncHealth(
 async function rptExecutiveSummary(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   // Aggregate key metrics across the system
   const [permitsRes, echoRes, ftsRes, obligationsRes, syncRes] =
     await Promise.all([
@@ -850,8 +861,9 @@ async function rptExecutiveSummary(
 async function rptInspectionPrep(
   sb: SB,
   orgIds: string[],
-  _cfg: Config,
+  cfg: Config,
 ): Promise<Result> {
+  void cfg;
   // Comprehensive snapshot for inspection readiness
   const [permitsRes, outfallsRes, echoRes, obligationsRes] = await Promise.all([
     sb

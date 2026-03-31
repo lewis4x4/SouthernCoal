@@ -11,22 +11,16 @@
 
 UPDATE parameters SET storet_code = '01046'
   WHERE name = 'Iron, Dissolved' AND storet_code IS NULL;
-
 UPDATE parameters SET storet_code = '01056'
   WHERE name = 'Manganese, Dissolved' AND storet_code IS NULL;
-
 UPDATE parameters SET storet_code = '00010'
   WHERE name = 'Temperature' AND storet_code IS NULL;
-
 UPDATE parameters SET storet_code = '00076'
   WHERE name = 'Turbidity' AND storet_code IS NULL;
-
 UPDATE parameters SET storet_code = '00300'
   WHERE name = 'Dissolved Oxygen' AND storet_code IS NULL;
-
 UPDATE parameters SET storet_code = '00940'
   WHERE name = 'Chloride' AND storet_code IS NULL;
-
 -- ---------------------------------------------------------------------------
 -- Add new parameters commonly found in coal mining permits
 -- ---------------------------------------------------------------------------
@@ -79,7 +73,6 @@ VALUES
   ('Flow, Instantaneous', 'Q-Inst', '00061', 'physical', 'cfs', 'total')
 
 ON CONFLICT (name) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Document the update
 -- ---------------------------------------------------------------------------

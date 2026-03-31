@@ -1,13 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { parseSupabaseBrowserEnv } from '@/lib/supabaseEnv';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    'Missing Supabase environment variables. Copy .env.example to .env.local and fill in values.',
-  );
-}
+const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = parseSupabaseBrowserEnv();
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -37,4 +31,15 @@ export async function getFreshToken(): Promise<string> {
   }
 
   return refreshed.session.access_token;
+}
+
+/**
+ * Standard headers for browser fetch() to Supabase Edge Functions.
+ * The gateway expects Authorization (user JWT) and apikey (anon).
+ */
+export function edgeFunctionFetchHeaders(accessToken: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    apikey: SUPABASE_ANON_KEY,
+  };
 }

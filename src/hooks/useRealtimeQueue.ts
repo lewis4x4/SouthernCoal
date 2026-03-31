@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { supabase, getFreshToken } from '@/lib/supabase';
+import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import { useAuth } from './useAuth';
 import { useUserProfile } from './useUserProfile';
@@ -17,8 +17,8 @@ async function triggerEmbeddings(queueId: string) {
     await fetch(`${supabaseUrl}/functions/v1/generate-embeddings`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        ...edgeFunctionFetchHeaders(accessToken),
       },
       body: JSON.stringify({ queue_id: queueId }),
     });

@@ -108,15 +108,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Create trigger on exceedances
 DROP TRIGGER IF EXISTS trg_exceedance_creates_ca ON exceedances;
 CREATE TRIGGER trg_exceedance_creates_ca
   AFTER INSERT ON exceedances
   FOR EACH ROW
   EXECUTE FUNCTION auto_create_ca_from_exceedance();
-
-
 -- =========================================================================
 -- TRIGGER 2: Auto-create CA from enforcement_actions
 -- =========================================================================
@@ -198,19 +195,16 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Create trigger on enforcement_actions
 DROP TRIGGER IF EXISTS trg_enforcement_creates_ca ON enforcement_actions;
 CREATE TRIGGER trg_enforcement_creates_ca
   AFTER INSERT ON enforcement_actions
   FOR EACH ROW
   EXECUTE FUNCTION auto_create_ca_from_enforcement();
-
-
 -- =========================================================================
 -- VERIFICATION
 -- =========================================================================
 -- SELECT tgname, tgrelid::regclass FROM pg_trigger
 --   WHERE tgname LIKE 'trg_%_creates_ca';
 -- SELECT proname FROM pg_proc
---   WHERE proname LIKE 'auto_create_ca_%';
+--   WHERE proname LIKE 'auto_create_ca_%';;

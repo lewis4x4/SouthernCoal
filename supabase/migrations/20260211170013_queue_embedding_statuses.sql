@@ -2,7 +2,6 @@
 -- Required for generate-embeddings to mark completion/quarantine
 
 ALTER TABLE file_processing_queue DROP CONSTRAINT file_processing_queue_status_check;
-
 ALTER TABLE file_processing_queue ADD CONSTRAINT file_processing_queue_status_check CHECK (
   status = ANY (ARRAY[
     'uploaded'::text, 'queued'::text, 'processing'::text,
