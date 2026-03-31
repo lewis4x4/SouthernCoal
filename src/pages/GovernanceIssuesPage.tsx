@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useGovernanceIssues } from '@/hooks/useGovernanceIssues';
+import { governanceInboxUrgentLine, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import type { GovernanceIssueStatus } from '@/types';
 const EDIT_ROLES = ['environmental_manager', 'admin'];
 
@@ -18,6 +19,19 @@ const STATUS_OPTIONS: GovernanceIssueStatus[] = [
 function formatDeadline(value: string | null) {
   if (!value) return '—';
   return new Date(value).toLocaleString();
+}
+
+function inboxUrgentClass(tone: GovernanceDeadlineTone) {
+  switch (tone) {
+    case 'overdue':
+      return 'text-red-300';
+    case 'soon':
+      return 'text-amber-200';
+    case 'ok':
+      return 'text-emerald-200/90';
+    default:
+      return 'text-text-muted';
+  }
 }
 
 export function GovernanceIssuesPage() {
@@ -107,34 +121,48 @@ export function GovernanceIssuesPage() {
                 No governance issues are currently queued.
               </div>
             ) : (
-              issues.map((issue) => (
-                <button
-                  key={issue.id}
-                  onClick={() => setSelectedId(issue.id)}
-                  className={`w-full rounded-xl border px-4 py-4 text-left transition-colors ${
-                    issue.id === selectedId
-                      ? 'border-amber-500/30 bg-amber-500/10'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-text-primary">{issue.title}</div>
-                      <div className="mt-1 text-xs text-text-muted">
-                        {issue.issue_type.replace('_', ' ')} · Step {issue.current_step}
+              issues.map((issue) => {
+                const urgent = governanceInboxUrgentLine({
+                  response_deadline: issue.response_deadline,
+                  notice_deadline: issue.notice_deadline,
+                  written_deadline: issue.written_deadline,
+                });
+                return (
+                  <button
+                    key={issue.id}
+                    onClick={() => setSelectedId(issue.id)}
+                    className={`w-full rounded-xl border px-4 py-4 text-left transition-colors ${
+                      issue.id === selectedId
+                        ? 'border-amber-500/30 bg-amber-500/10'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-text-primary">{issue.title}</div>
+                        <div className="mt-1 text-xs text-text-muted">
+                          {issue.issue_type.replace('_', ' ')} · Step {issue.current_step}
+                        </div>
                       </div>
+                      <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary">
+                        {issue.current_status.replace('_', ' ')}
+                      </span>
                     </div>
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary">
-                      {issue.current_status.replace('_', ' ')}
-                    </span>
-                  </div>
 
-                  <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
-                    <Clock3 className="h-3.5 w-3.5" />
-                    Owner: {issue.current_owner_name}
-                  </div>
-                </button>
-              ))
+                    <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
+                      <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                      <span>Owner: {issue.current_owner_name}</span>
+                    </div>
+                    {urgent.text ? (
+                      <div className={`mt-2 text-xs font-medium ${inboxUrgentClass(urgent.tone)}`}>
+                        {urgent.text}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-text-muted">No deadlines on record</div>
+                    )}
+                  </button>
+                );
+              })
             )}
           </div>
         </SpotlightCard>
