@@ -1,8 +1,57 @@
 # SCC Compliance Monitoring System — Unified Roadmap
 
-**Last Updated:** February 20, 2026
-**Total Tasks:** 201 | **Completed:** 4 | **Remaining:** 197
-**Source of Truth:** `roadmap_tasks` table in Supabase (`zymenlnwyzpnohljwifx`)
+**Last Updated:** March 31, 2026  
+**Total Tasks:** 201 | **Completed:** 4 | **Remaining:** 197  
+**Source of Truth (task IDs & program phases):** `roadmap_tasks` table in Supabase (`zymenlnwyzpnohljwifx`)
+
+---
+
+## Complete roadmap — how the documents fit together (read once)
+
+Use this section so engineering does not bounce between three different “phase” systems.
+
+### Three layers — who owns what
+
+| Layer | Document | Use it for |
+|--------|-----------|------------|
+| **Hub (start here)** | **This file** (`UNIFIED_ROADMAP.md`) | Task IDs (3.xx, 5.xx), Phases 1–5 *program*, crosswalk, and “which doc wins” |
+| **Execution order (WV field OS)** | `Roadmap/SCC Water Sampling Platform — Codex Handoff Roadmap.md` | **Build sequence** Phases 0–10, verification gates, requirement buckets, what not to touch |
+| **Product depth** | `Roadmap/SCC_Water_Sampling_Platform_Definitive_Build_Roadmap.md` | Manual § mapping, acceptance criteria, week-style estimates, gaps/risks narrative |
+
+### Rules — conflict resolution
+
+1. **WV in-house field-to-DMR software** — follow **Codex Handoff** phase order (0 → 10). Do not skip ahead to offline sync (Codex Phase 4) before field execution (Codex Phase 3) is usable online unless you explicitly timebox a spike.
+2. **Consent Decree / EMS program work** — track with **this file** + **`roadmap_tasks`** (Phases 1–5). Management-blocked items stay parallel; they do not redefine Codex ordering for field code.
+3. **Inventory claims** (table counts, Edge Function counts) — **verify in repo + Supabase** per Codex Handoff. Planning numbers in any doc are not authoritative.
+4. **Phase numbers are not interchangeable.** “Definitive Phase 2 (Field Event Capture)” ≠ “Codex Phase 2 (Calendar & routes).” Use the crosswalk below.
+
+### Crosswalk — Codex ↔ Definitive ↔ UNIFIED
+
+| Codex Handoff (execution) | Definitive build roadmap (narrative) | UNIFIED / notes |
+|---------------------------|----------------------------------------|-----------------|
+| Phase 0–0.5 Orientation + Verification | Pre-build / reality check | Optional gate before major spend |
+| Phase 1 WV data model | “Phase 1” field data foundation / migrations | Aligns with existing `field_visits`, etc. |
+| Phase 2 Calendar & routes | Calendar / route generation sections | Relates to 3.14 and supervisor UI |
+| Phase 3 Field execution app | **Definitive “Phase 2”** mobile / field capture | Web field visit UI = stepping stone; PWA/offline = Codex 4 |
+| Phase 4 Offline sync | **Definitive “Phase 2A”** offline architecture | Service Worker, IndexedDB, queue |
+| Phase 5 Governance engine | **Definitive “Phase 3”** governance decision engine | Governance UI partial in repo |
+| Phase 6 Mineral Labs contract | Lab integration / Section 7 | Hardening, not parser existence |
+| Phase 7 Exceptions / FM / exceedance | Definitive Phase 5 / exception flows | Ties to lab + field |
+| Phase 8 DMR calc & review | **Definitive “Phase 4”** DMR engine | UNIFIED 3.15, 3.16 |
+| Phases 9–10 Training, quarterly, hardening | Later definitive sections | UNIFIED Phase 4–5 EMS / go-live |
+
+### Two lanes — what to work on when
+
+| Lane | Purpose | Ordering |
+|------|---------|----------|
+| **A — WV field spine** | In-house sampling program in the manual | **Strict:** Codex Handoff §7 |
+| **B — Compliance platform** | Upload Dashboard, ECHO, DMR pipeline tasks, EMS inputs | **UNIFIED** phases + deps; parallel when not blocked |
+
+**Default for app engineers on WV program:** pull next work from **Lane A**. Use **Lane B** when Lane A is waiting on data/people or for non-WV platform commitments.
+
+### Repo alignment snapshot (March 2026)
+
+Partially implemented (do not re-plan from zero): sampling schedules/calendar generation, route batches and dispatch, field visits, governance issue hooks from completion, “Today’s route” execution page, ECHO-related pipeline per completed milestones 3.49–3.52. Definitive “gaps” list is **directional**; verify current code before treating a line as still missing.
 
 ---
 
@@ -286,39 +335,22 @@ Mock regulator audit, quarterly access review cadence.
 
 ---
 
-## What To Build Next (Recommended Order)
+## What to build next (single prioritized view)
 
-### Immediate (no dependencies)
+**1. Lane A (WV field spine — Codex order)**  
+Continue in order: harden **field execution** (visit flows, mobile UX), then **offline/sync** (Codex Phase 4), then deepen **governance** (Codex Phase 5) per Handoff doc. Do not jump to DMR auto-calc (Codex 8) before field + lab linkage are credible.
 
-1. **2.62** + **2.63** — parameter_aliases + outfall_aliases migrations
-2. **3.01** — Upload Dashboard UI (critical path, handoff spec ready)
-3. **3.37** — ECHO sync coverage panel
-4. **3.38** — VA NPDES ID override flow
+**2. Lane B (UNIFIED tasks — platform / EMS)**  
+When unblocked or in parallel:
 
-### After Upload Dashboard (3.01)
-
-5. **3.32** — Justice EDD parser (needs sample EDD file from SCC — task 1.24)
-6. **3.33** — DMR submission pipeline
-7. **3.34** — Wire parsers into Upload Dashboard
-
-### After Internal Data Exists
-
-8. **3.35** — Full discrepancy detection re-run
-9. **3.36** — Triage initial discrepancies
-10. **3.43** — Table virtualization
-
-### Parallel (anytime)
-
-- **3.44** reviewed_by tracking
-- **3.45** Split loading states
-- **3.47** Realtime sync subscription
-
-### Blocked
-
-- **3.39-3.42** MSHA pipeline — blocked on mine ID mapping from Brian
-- **Phase 1** (1.01-1.45) — blocked on SCC management engagement
-- **Phase 2** (2.01-2.61) — blocked on Phase 1 documents
+| Priority | Items |
+|----------|--------|
+| Immediate (low external deps) | **2.62**, **2.63** aliases; **3.01** Upload Dashboard; **3.37**, **3.38** |
+| After 3.01 | **3.32**–**3.34** (Justice EDD → DMR pipeline → Dashboard wiring); needs **1.24** sample file |
+| After internal data | **3.35**–**3.36** discrepancy re-run + triage; **3.43** virtualization |
+| Parallel polish | **3.44**–**3.45**, **3.47** |
+| Blocked | **3.39**–**3.42** MSHA (Brian); **Phase 1**–**2** client docs |
 
 ---
 
-*Generated by SCC Compliance Monitor. This document mirrors the `roadmap_tasks` database table. For the authoritative task list, query the database directly.*
+*This file mirrors the `roadmap_tasks` database table for numbered tasks. For authoritative rows, query Supabase. For **build order** on the WV field program, defer to the Codex Handoff roadmap unless leadership explicitly reprioritizes.*
