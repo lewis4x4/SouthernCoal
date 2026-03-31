@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { FieldMeasurementRecord, OutletInspectionRecord } from '@/types';
+import type { FieldMeasurementRecord, FieldVisitListItem, OutletInspectionRecord } from '@/types';
 
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
 
@@ -28,6 +28,15 @@ export type FieldOutboundOp =
       obstructionDetails: string | null;
       inspectorNotes: string | null;
       enqueuedAt: string;
+    }
+  | {
+      kind: 'field_visit_start';
+      id: string;
+      visitId: string;
+      startedAt: string;
+      latitude: number;
+      longitude: number;
+      enqueuedAt: string;
     };
 
 function isMeasurementInsertOp(
@@ -44,6 +53,22 @@ function isMeasurementInsertOp(
 
 function isNullableString(v: unknown): v is string | null {
   return typeof v === 'string' || v === null;
+}
+
+function isFieldVisitStartOp(
+  o: Record<string, unknown>,
+): o is Extract<FieldOutboundOp, { kind: 'field_visit_start' }> {
+  return (
+    o.kind === 'field_visit_start' &&
+    typeof o.id === 'string' &&
+    typeof o.visitId === 'string' &&
+    typeof o.startedAt === 'string' &&
+    typeof o.enqueuedAt === 'string' &&
+    typeof o.latitude === 'number' &&
+    Number.isFinite(o.latitude) &&
+    typeof o.longitude === 'number' &&
+    Number.isFinite(o.longitude)
+  );
 }
 
 function isOutletInspectionUpsertOp(
@@ -71,6 +96,7 @@ function isOutboundOp(v: unknown): v is FieldOutboundOp {
   const k = o.kind;
   if (k === 'field_measurement_insert') return isMeasurementInsertOp(o);
   if (k === 'outlet_inspection_upsert') return isOutletInspectionUpsertOp(o);
+  if (k === 'field_visit_start') return isFieldVisitStartOp(o);
   return false;
 }
 
@@ -171,6 +197,50 @@ export function enqueueOutletInspectionUpsert(params: {
   return writeQueue(queue);
 }
 
+export function enqueueFieldVisitStart(params: {
+  id: string;
+  visitId: string;
+  startedAt: string;
+  latitude: number;
+  longitude: number;
+}): boolean {
+  const queue = readQueue();
+  queue.push({
+    kind: 'field_visit_start',
+    id: params.id,
+    visitId: params.visitId,
+    startedAt: params.startedAt,
+    latitude: params.latitude,
+    longitude: params.longitude,
+    enqueuedAt: new Date().toISOString(),
+  });
+  return writeQueue(queue);
+}
+
+function getLatestPendingStartForVisit(
+  visitId: string,
+): Extract<FieldOutboundOp, { kind: 'field_visit_start' }> | null {
+  const ops = readQueue().filter(
+    (op): op is Extract<FieldOutboundOp, { kind: 'field_visit_start' }> =>
+      op.kind === 'field_visit_start' && op.visitId === visitId,
+  );
+  if (ops.length === 0) return null;
+  return ops[ops.length - 1]!;
+}
+
+/** Overlay queued start onto visit row for detail UI (latest wins; replay FIFO). */
+export function mergeVisitWithQueuedStart<V extends FieldVisitListItem>(visit: V): V {
+  const pending = getLatestPendingStartForVisit(visit.id);
+  if (!pending) return visit;
+  return {
+    ...visit,
+    visit_status: 'in_progress',
+    started_at: pending.startedAt,
+    started_latitude: pending.latitude,
+    started_longitude: pending.longitude,
+  };
+}
+
 export function optimisticMeasurementsFromQueue(
   visitId: string,
   userId: string | null,
@@ -259,6 +329,17 @@ export async function processFieldOutboundQueue(
             },
             { onConflict: 'field_visit_id' },
           );
+          if (error) throw new Error(error.message);
+        } else if (op.kind === 'field_visit_start') {
+          const { error } = await client
+            .from('field_visits')
+            .update({
+              visit_status: 'in_progress',
+              started_at: op.startedAt,
+              started_latitude: op.latitude,
+              started_longitude: op.longitude,
+            })
+            .eq('id', op.visitId);
           if (error) throw new Error(error.message);
         }
         const next = queue.slice(1);

@@ -1,12 +1,15 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { FieldVisitListItem } from '@/types';
 import {
   enqueueFieldMeasurementInsert,
+  enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
   getFieldOutboundQueue,
   getFieldOutboundQueueLength,
   getPendingMeasurementInsertsForVisit,
   mergeOutletInspectionWithQueue,
+  mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
 } from '@/lib/fieldOutboundQueue';
@@ -148,6 +151,56 @@ describe('fieldOutboundQueue', () => {
     expect(merged?.flow_status).toBe('flowing');
     expect(merged?.inspector_notes).toBe('n2');
     expect(merged?.id).toBe('local-i2');
+  });
+
+  it('mergeVisitWithQueuedStart overlays pending start', () => {
+    const visit = {
+      id: 'v1',
+      visit_status: 'assigned' as const,
+      started_at: null,
+      started_latitude: null,
+      started_longitude: null,
+      permit_number: 'P1',
+      outfall_number: 'O1',
+      assigned_to_name: 'A',
+      route_stop_sequence: null,
+    } as FieldVisitListItem;
+    expect(mergeVisitWithQueuedStart(visit).visit_status).toBe('assigned');
+    enqueueFieldVisitStart({
+      id: 's1',
+      visitId: 'v1',
+      startedAt: '2026-03-31T12:00:00.000Z',
+      latitude: 1,
+      longitude: 2,
+    });
+    const merged = mergeVisitWithQueuedStart(visit);
+    expect(merged.visit_status).toBe('in_progress');
+    expect(merged.started_latitude).toBe(1);
+    expect(merged.started_longitude).toBe(2);
+  });
+
+  it('processFieldOutboundQueue processes field_visit_start', async () => {
+    enqueueFieldVisitStart({
+      id: 'st1',
+      visitId: 'v1',
+      startedAt: '2026-03-31T12:00:00.000Z',
+      latitude: 38.1,
+      longitude: -81.2,
+    });
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn(() => ({ eq }));
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') return { update };
+      return { insert, upsert };
+    });
+    const fake = { from } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.failed).toBeNull();
+    expect(result.processed).toBe(1);
+    expect(update).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith('id', 'v1');
   });
 
   it('processFieldOutboundQueue processes inspection upsert', async () => {

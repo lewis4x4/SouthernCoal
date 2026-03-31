@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   enqueueFieldMeasurementInsert,
+  enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
   getFieldOutboundQueueLength,
   mergeOutletInspectionWithQueue,
+  mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
   processFieldOutboundQueue,
 } from '@/lib/fieldOutboundQueue';
@@ -151,7 +153,7 @@ export function useFieldOps() {
       }
     }
 
-    const listItem: FieldVisitListItem = {
+    const baseListItem: FieldVisitListItem = {
       ...visit,
       route_batch_id: visit.route_batch_id ?? null,
       permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
@@ -159,6 +161,7 @@ export function useFieldOps() {
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
     };
+    const listItem = mergeVisitWithQueuedStart(baseListItem);
 
     const serverMeasurements = (measurementRes.data ?? []) as FieldMeasurementRecord[];
     const optimistic = optimisticMeasurementsFromQueue(visitId, userId);
@@ -360,7 +363,35 @@ export function useFieldOps() {
     return data as FieldVisitRecord;
   }, [loadDispatchContext, organizationId, userId]);
 
-  const startVisit = useCallback(async (visitId: string, coords: CoordinateInput) => {
+  const startVisit = useCallback(async (
+    visitId: string,
+    coords: CoordinateInput,
+  ): Promise<{ queued: boolean }> => {
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    if (offline) {
+      const opId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      const startedAt = new Date().toISOString();
+      const ok = enqueueFieldVisitStart({
+        id: opId,
+        visitId,
+        startedAt,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      if (!ok) throw new Error('Could not save offline — storage blocked or full');
+
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visitId) return prev;
+        return { ...prev, visit: mergeVisitWithQueuedStart(prev.visit) };
+      });
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+      return { queued: true };
+    }
+
     const { error } = await supabase
       .from('field_visits')
       .update({
@@ -374,6 +405,7 @@ export function useFieldOps() {
     if (error) throw new Error(error.message);
 
     await Promise.all([loadDispatchContext(), loadVisitDetails(visitId)]);
+    return { queued: false };
   }, [loadDispatchContext, loadVisitDetails]);
 
   const saveInspection = useCallback(async (

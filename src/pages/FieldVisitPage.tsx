@@ -192,8 +192,12 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      await startVisit(detail.visit.id, { latitude, longitude });
-      toast.success('Visit started');
+      const { queued } = await startVisit(detail.visit.id, { latitude, longitude });
+      toast.success(
+        queued
+          ? 'Visit started on this device; will sync when you are back online'
+          : 'Visit started',
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to start visit');
     } finally {
