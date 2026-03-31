@@ -6,7 +6,21 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { useFieldOps } from '@/hooks/useFieldOps';
-import type { FieldVisitOutcome, OutletInspectionRecord } from '@/types';
+import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
+import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
+
+function deadlineToneClass(tone: GovernanceDeadlineTone) {
+  switch (tone) {
+    case 'overdue':
+      return 'text-red-300';
+    case 'soon':
+      return 'text-amber-200';
+    case 'ok':
+      return 'text-text-primary';
+    default:
+      return 'text-text-muted';
+  }
+}
 
 async function captureBrowserCoordinates() {
   if (!navigator.geolocation) {
@@ -765,12 +779,58 @@ export function FieldVisitPage() {
               <p>Outcome: <span className="font-medium text-text-primary">{outcome.replace('_', ' ')}</span></p>
               <p>Photo evidence count: <span className="font-medium text-text-primary">{photoCount}</span></p>
               <p>Linked governance issues: <span className="font-medium text-text-primary">{detail.governanceIssues.length}</span></p>
+              {detail.visit.potential_force_majeure && (
+                <p className="text-amber-200/90">
+                  Potential force majeure was flagged on this visit. Notice and written targets below are set from completion time (see governance inbox for the official queue).
+                </p>
+              )}
             </div>
 
             {detail.governanceIssues.length > 0 && (
-              <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
-                Latest governance issue routes to Bill Johnson step 1.
-                <div className="mt-2">
+              <div className="mt-4 space-y-3">
+                {detail.governanceIssues.map((issue: GovernanceIssueRecord) => {
+                  const response = describeGovernanceDeadline(issue.response_deadline);
+                  const notice = describeGovernanceDeadline(issue.notice_deadline);
+                  const written = describeGovernanceDeadline(issue.written_deadline);
+                  const isFm = issue.issue_type === 'potential_force_majeure';
+                  return (
+                    <div
+                      key={issue.id}
+                      className={`rounded-xl border px-4 py-3 text-sm ${
+                        isFm ? 'border-amber-500/25 bg-amber-500/5' : 'border-white/[0.06] bg-white/[0.02]'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-text-primary">{issue.title}</div>
+                          <div className="mt-0.5 text-xs text-text-muted">
+                            {issue.issue_type.replace(/_/g, ' ')} · Step {issue.current_step} · {issue.current_status.replace(/_/g, ' ')}
+                          </div>
+                        </div>
+                        {isFm && (
+                          <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-200">
+                            FM candidate
+                          </span>
+                        )}
+                      </div>
+                      <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                        <div>
+                          <dt className="text-text-muted">Response</dt>
+                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(response.tone)}`}>{response.text}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">Notice target</dt>
+                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(notice.tone)}`}>{notice.text}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">Written target</dt>
+                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(written.tone)}`}>{written.text}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  );
+                })}
+                <div className="text-sm text-text-secondary">
                   <Link to="/governance/issues" className="text-cyan-300 hover:text-cyan-200">
                     Open governance inbox
                   </Link>
