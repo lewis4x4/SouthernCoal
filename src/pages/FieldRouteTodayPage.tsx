@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarDays,
@@ -74,6 +74,7 @@ export function FieldRouteTodayPage() {
   const [routeDate, setRouteDate] = useState(today);
   const [scope, setScope] = useState<'mine' | 'org'>(canSeeOrgWide ? 'org' : 'mine');
   const [outfallCoords, setOutfallCoords] = useState<Record<string, { lat: number; lng: number }>>({});
+  const lastAutoSavedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!canSeeOrgWide) setScope('mine');
@@ -157,13 +158,11 @@ export function FieldRouteTodayPage() {
 
   const showRouteLoader = loading && online && dayVisits.length === 0;
 
-  function handleSaveOffline() {
+  const persistOfflineCopy = useCallback((showToast: boolean) => {
     if (!online) {
-      toast.error('Connect to the network to save an offline copy');
-      return;
-    }
-    if (dayVisitsLive.length === 0) {
-      toast.error('No visits on this date to save');
+      if (showToast) {
+        toast.error('Connect to the network to save an offline copy');
+      }
       return;
     }
     const ids = [...new Set(dayVisitsLive.map((v) => v.outfall_id))];
@@ -180,11 +179,35 @@ export function FieldRouteTodayPage() {
       outfallCoords: coords,
     });
     if (ok) {
-      toast.success('Route saved on this device for offline viewing');
+      if (showToast) {
+        toast.success('Offline route copy updated on this device');
+      }
     } else {
-      toast.error('Could not save offline copy (storage blocked or full)');
+      if (showToast) {
+        toast.error('Could not save offline copy (storage blocked or full)');
+      }
     }
+  }, [dayVisitsLive, online, outfallCoords, routeDate, scope, user?.id]);
+
+  function handleSaveOffline() {
+    persistOfflineCopy(true);
   }
+
+  useEffect(() => {
+    if (!online || loading) return;
+    const cacheKey = JSON.stringify({
+      routeDate,
+      scope,
+      viewerUserId: scope === 'mine' ? user?.id ?? null : null,
+      visits: dayVisitsLive.map((v) => [v.id, v.visit_status, v.route_stop_sequence, v.updated_at]),
+      coords: Object.entries(outfallCoords)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, c]) => [id, c.lat, c.lng]),
+    });
+    if (lastAutoSavedKeyRef.current === cacheKey) return;
+    persistOfflineCopy(false);
+    lastAutoSavedKeyRef.current = cacheKey;
+  }, [dayVisitsLive, loading, online, outfallCoords, persistOfflineCopy, routeDate, scope, user?.id]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -194,7 +217,7 @@ export function FieldRouteTodayPage() {
             Today&apos;s route
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-            Phase 3 route execution with Phase 4 preview: save today&apos;s list to this device, then view it when the browser is offline (read-only; execution still requires network).
+            Phase 3 route execution with Phase 4 preview: today&apos;s list is cached on this device when online, then available when the browser is offline (read-only; execution still requires network).
           </p>
         </div>
         <div className="rounded-xl bg-emerald-500/10 p-3">
@@ -219,7 +242,7 @@ export function FieldRouteTodayPage() {
             dateStyle: 'short',
             timeStyle: 'short',
           })}
-          . Open each visit still needs connectivity.
+          {'. '}Visits you opened before can also load from the local cache.
         </div>
       )}
 
@@ -277,10 +300,9 @@ export function FieldRouteTodayPage() {
             <button
               type="button"
               onClick={handleSaveOffline}
-              disabled={dayVisitsLive.length === 0}
               className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
             >
-              Save route offline
+              Update offline copy
             </button>
           )}
         </div>

@@ -62,13 +62,13 @@ export function EvidenceCaptureUpload({
     if (disabled) return;
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
+    if (file) void uploadFile(file);
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     if (disabled) return;
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    if (file) void uploadFile(file);
   }
 
   function handleKeyboardActivate(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -95,43 +95,46 @@ export function EvidenceCaptureUpload({
       return;
     }
 
-    if (onFileAccepted) {
-      const result = await onFileAccepted(file);
-      if (result?.handled) {
-        if (result.message) toast.success(result.message);
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
-    }
-
     setUploading(true);
+    try {
+      if (onFileAccepted) {
+        const result = await onFileAccepted(file);
+        if (result?.handled) {
+          if (result.message) toast.success(result.message);
+          if (inputRef.current) inputRef.current.value = '';
+          return;
+        }
+      }
 
-    const storagePath = `${pathPrefix}${referenceId}/${Date.now()}_${file.name}`;
+      const storagePath = `${pathPrefix}${referenceId}/${Date.now()}_${file.name}`;
 
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(storagePath, file, { contentType: file.type, upsert: false });
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
 
-    if (error) {
-      toast.error(`Upload failed: ${error.message}`);
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      log('evidence_uploaded', {
+        submission_type: submissionType,
+        reference_id: referenceId,
+        file_name: file.name,
+        file_size: file.size,
+      }, {
+        module: submissionType,
+        tableName: 'evidence',
+      });
+
+      setUploadedPath(storagePath);
+      onUploaded(storagePath);
+      toast.success(`Evidence uploaded: ${file.name}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      toast.error(`Upload failed: ${message}`);
+    } finally {
       setUploading(false);
-      return;
     }
-
-    log('evidence_uploaded', {
-      submission_type: submissionType,
-      reference_id: referenceId,
-      file_name: file.name,
-      file_size: file.size,
-    }, {
-      module: submissionType,
-      tableName: 'evidence',
-    });
-
-    setUploadedPath(storagePath);
-    setUploading(false);
-    onUploaded(storagePath);
-    toast.success(`Evidence uploaded: ${file.name}`);
   }
 
   if (uploadedPath) {

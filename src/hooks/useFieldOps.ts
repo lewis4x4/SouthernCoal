@@ -18,6 +18,7 @@ import {
 } from '@/lib/fieldOutboundQueue';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import { syncFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
+import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -126,6 +127,15 @@ export function useFieldOps() {
   const loadVisitDetails = useCallback(async (visitId: string) => {
     setDetailLoading(true);
 
+    const cachedDetail = loadFieldVisitCache(visitId);
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (offline && cachedDetail) {
+      setDetail(cachedDetail);
+      lastDetailVisitIdRef.current = visitId;
+      setDetailLoading(false);
+      return cachedDetail;
+    }
+
     const [
       visitRes,
       inspectionRes,
@@ -145,6 +155,13 @@ export function useFieldOps() {
     ]);
 
     if (visitRes.error || !visitRes.data) {
+      if (cachedDetail) {
+        toast.error('Showing cached field visit copy because the live load failed');
+        setDetail(cachedDetail);
+        lastDetailVisitIdRef.current = visitId;
+        setDetailLoading(false);
+        return cachedDetail;
+      }
       toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
       setDetail(null);
       lastDetailVisitIdRef.current = null;
@@ -205,10 +222,17 @@ export function useFieldOps() {
     };
 
     setDetail(nextDetail);
+    saveFieldVisitCache(nextDetail);
     lastDetailVisitIdRef.current = visitId;
     setDetailLoading(false);
     return nextDetail;
   }, [outfallMap, permitMap, userId, userMap]);
+
+  useEffect(() => {
+    if (detail) {
+      saveFieldVisitCache(detail);
+    }
+  }, [detail]);
 
   const flushOutboundIfOnline = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.onLine) {
