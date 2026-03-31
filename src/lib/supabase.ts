@@ -1,13 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { parseSupabaseBrowserEnv } from '@/lib/supabaseEnv';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    'Missing Supabase environment variables. Copy .env.example to .env.local and fill in values.',
-  );
-}
+const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = parseSupabaseBrowserEnv();
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
