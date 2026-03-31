@@ -5,6 +5,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import type {
   ParameterOption,
   SamplingCalendarRecord,
+  SamplingRouteBatchRecord,
+  SamplingRouteStopRecord,
   SamplingScheduleRecord,
 } from '@/types';
 
@@ -42,6 +44,14 @@ interface ApplyAdjustmentInput {
   newScheduledDate?: string;
 }
 
+interface CreateRouteBatchInput {
+  routeDate: string;
+  routeZone: string;
+  assignedTo?: string;
+  notes?: string;
+  calendarIds?: string[];
+}
+
 function monthRange(month: string) {
   const start = new Date(`${month}-01T00:00:00`);
   const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
@@ -59,6 +69,8 @@ export function useSamplingCalendar(selectedMonth: string) {
   const [parameters, setParameters] = useState<ParameterOption[]>([]);
   const [schedules, setSchedules] = useState<SamplingScheduleRecord[]>([]);
   const [calendarItems, setCalendarItems] = useState<SamplingCalendarRecord[]>([]);
+  const [routeBatches, setRouteBatches] = useState<SamplingRouteBatchRecord[]>([]);
+  const [routeStops, setRouteStops] = useState<SamplingRouteStopRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
 
@@ -72,7 +84,7 @@ export function useSamplingCalendar(selectedMonth: string) {
 
     const { start, end } = monthRange(selectedMonth);
 
-    const [parameterRes, scheduleRes] = await Promise.all([
+    const [parameterRes, scheduleRes, routeBatchRes] = await Promise.all([
       supabase
         .from('parameters')
         .select('id, name, short_name, default_unit')
@@ -83,10 +95,19 @@ export function useSamplingCalendar(selectedMonth: string) {
         .eq('organization_id', organizationId)
         .order('permit_id')
         .order('outfall_id'),
+      supabase
+        .from('sampling_route_batches')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .gte('route_date', start)
+        .lte('route_date', end)
+        .order('route_date')
+        .order('created_at'),
     ]);
 
     if (parameterRes.error) toast.error(`Failed to load parameters: ${parameterRes.error.message}`);
     if (scheduleRes.error) toast.error(`Failed to load sampling schedules: ${scheduleRes.error.message}`);
+    if (routeBatchRes.error) toast.error(`Failed to load route batches: ${routeBatchRes.error.message}`);
 
     await supabase.rpc('refresh_sampling_calendar_statuses', {
       p_organization_id: organizationId,
@@ -104,9 +125,24 @@ export function useSamplingCalendar(selectedMonth: string) {
 
     if (calendarRes.error) toast.error(`Failed to load sampling calendar: ${calendarRes.error.message}`);
 
+    const routeBatchRows = (routeBatchRes.data ?? []) as SamplingRouteBatchRecord[];
+    const routeBatchIds = routeBatchRows.map((batch) => batch.id);
+
+    const routeStopRes = routeBatchIds.length > 0
+      ? await supabase
+          .from('sampling_route_stops')
+          .select('*')
+          .in('route_batch_id', routeBatchIds)
+          .order('stop_sequence')
+      : { data: [], error: null };
+
+    if (routeStopRes.error) toast.error(`Failed to load route stops: ${routeStopRes.error.message}`);
+
     setParameters((parameterRes.data ?? []) as ParameterOption[]);
     setSchedules((scheduleRes.data ?? []) as SamplingScheduleRecord[]);
     setCalendarItems((calendarRes.data ?? []) as SamplingCalendarRecord[]);
+    setRouteBatches(routeBatchRows);
+    setRouteStops((routeStopRes.data ?? []) as SamplingRouteStopRecord[]);
     setLoading(false);
   }, [organizationId, selectedMonth]);
 
@@ -196,6 +232,39 @@ export function useSamplingCalendar(selectedMonth: string) {
     await loadCalendarData();
   }, [loadCalendarData]);
 
+  const createRouteBatch = useCallback(async (input: CreateRouteBatchInput) => {
+    setMutating(true);
+
+    const { data, error } = await supabase.rpc('create_sampling_route_batch', {
+      p_route_date: input.routeDate,
+      p_route_zone: input.routeZone,
+      p_assigned_to: input.assignedTo || null,
+      p_notes: input.notes || null,
+      p_calendar_ids: input.calendarIds && input.calendarIds.length > 0 ? input.calendarIds : null,
+    });
+
+    setMutating(false);
+
+    if (error) throw new Error(error.message);
+    await loadCalendarData();
+    return data as { route_batch_id?: string; stop_count?: number } | null;
+  }, [loadCalendarData]);
+
+  const dispatchRouteBatch = useCallback(async (routeBatchId: string, fieldNotes?: string) => {
+    setMutating(true);
+
+    const { data, error } = await supabase.rpc('dispatch_sampling_route_batch', {
+      p_route_batch_id: routeBatchId,
+      p_field_notes: fieldNotes || null,
+    });
+
+    setMutating(false);
+
+    if (error) throw new Error(error.message);
+    await loadCalendarData();
+    return data as { route_batch_id?: string; created_visit_count?: number } | null;
+  }, [loadCalendarData]);
+
   useEffect(() => {
     loadCalendarData().catch((error) => {
       console.error('[useSamplingCalendar] Failed to load calendar data:', error);
@@ -207,6 +276,8 @@ export function useSamplingCalendar(selectedMonth: string) {
     parameters,
     schedules,
     calendarItems,
+    routeBatches,
+    routeStops,
     loading,
     mutating,
     refresh: loadCalendarData,
@@ -214,5 +285,7 @@ export function useSamplingCalendar(selectedMonth: string) {
     generateMonth,
     createManualEntry,
     applyAdjustment,
+    createRouteBatch,
+    dispatchRouteBatch,
   };
 }

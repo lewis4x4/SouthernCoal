@@ -6,6 +6,8 @@ export type SamplingFrequencyCode = 'weekly' | 'monthly' | 'semi_monthly' | 'man
 export type SamplingCalendarStatus = 'pending' | 'completed' | 'overdue' | 'skipped';
 export type SamplingDispatchStatus = 'ready' | 'dispatched' | 'in_progress' | 'completed' | 'skipped' | 'exception';
 export type SamplingCalendarAdjustmentType = 'manual_entry' | 'rain_event' | 'skip' | 'reschedule' | 'makeup';
+export type SamplingRouteBatchStatus = 'draft' | 'dispatched' | 'in_progress' | 'completed' | 'exception' | 'cancelled';
+export type SamplingRouteStopStatus = 'pending' | 'dispatched' | 'in_progress' | 'completed' | 'skipped' | 'exception';
 
 export interface FieldOpsUser {
   id: string;
@@ -232,6 +234,7 @@ export interface SamplingCalendarRecord {
   status: SamplingCalendarStatus;
   dispatch_status: SamplingDispatchStatus;
   current_field_visit_id: string | null;
+  current_route_batch_id: string | null;
   sampling_event_id: string | null;
   skip_reason: string | null;
   override_reason: string | null;
@@ -268,6 +271,50 @@ export interface SamplingCalendarAdjustmentRecord {
   metadata: Record<string, unknown>;
   created_by: string;
   created_at: string;
+}
+
+export interface SamplingRouteBatchRecord {
+  id: string;
+  organization_id: string;
+  route_date: string;
+  route_zone: string;
+  assigned_to: string | null;
+  route_status: SamplingRouteBatchStatus;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SamplingRouteBatchListItem extends SamplingRouteBatchRecord {
+  assigned_to_name: string | null;
+  stop_count: number;
+  completed_stop_count: number;
+  due_soon_stop_count: number;
+}
+
+export interface SamplingRouteStopRecord {
+  id: string;
+  route_batch_id: string;
+  calendar_id: string;
+  stop_sequence: number;
+  priority_rank: number;
+  priority_reason: string | null;
+  estimated_drive_minutes: number | null;
+  stop_status: SamplingRouteStopStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SamplingRouteStopListItem extends SamplingRouteStopRecord {
+  scheduled_date: string;
+  route_zone: string | null;
+  permit_number: string | null;
+  outfall_number: string | null;
+  parameter_name: string | null;
+  dispatch_status: SamplingDispatchStatus;
+  current_field_visit_id: string | null;
+  current_field_visit_status: FieldVisitStatus | null;
 }
 
 export interface FieldVisitDetails {

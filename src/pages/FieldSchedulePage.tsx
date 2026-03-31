@@ -9,6 +9,7 @@ import {
   Route,
   Send,
   ShieldAlert,
+  TimerReset,
   Waves,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,10 +17,14 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useSamplingCalendar } from '@/hooks/useSamplingCalendar';
 import type {
+  FieldVisitStatus,
   ParameterOption,
   SamplingCalendarListItem,
   SamplingDispatchStatus,
   SamplingFrequencyCode,
+  SamplingRouteBatchListItem,
+  SamplingRouteBatchStatus,
+  SamplingRouteStopListItem,
   SamplingScheduleListItem,
 } from '@/types';
 
@@ -40,7 +45,7 @@ const ADJUSTMENT_OPTIONS: Array<{ value: 'skip' | 'reschedule' | 'makeup'; label
   { value: 'makeup', label: 'Create makeup' },
 ];
 
-function dispatchTone(status: SamplingDispatchStatus) {
+function dispatchTone(status: SamplingDispatchStatus | SamplingRouteBatchStatus | 'pending') {
   switch (status) {
     case 'completed':
       return 'text-emerald-300 border-emerald-500/20 bg-emerald-500/10';
@@ -51,7 +56,9 @@ function dispatchTone(status: SamplingDispatchStatus) {
     case 'dispatched':
       return 'text-cyan-300 border-cyan-500/20 bg-cyan-500/10';
     case 'skipped':
+    case 'cancelled':
       return 'text-slate-300 border-white/[0.08] bg-white/[0.06]';
+    case 'pending':
     default:
       return 'text-violet-300 border-violet-500/20 bg-violet-500/10';
   }
@@ -62,12 +69,64 @@ function fieldDisplayName(user: { first_name?: string | null; last_name?: string
   return full || user?.email || 'Unassigned';
 }
 
+function formatDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString();
+}
+
+function daysUntil(date: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${date}T00:00:00`);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function urgencyRank(item: SamplingCalendarListItem) {
+  const diff = daysUntil(item.scheduled_date);
+
+  if (item.dispatch_status === 'exception') return 0;
+  if (item.status === 'overdue' || diff < 0) return 1;
+  if (item.dispatch_status === 'in_progress') return 2;
+  if (diff === 0) return 3;
+  if (diff <= 2 && item.dispatch_status === 'ready') return 4;
+  if (item.dispatch_status === 'dispatched') return 5;
+  if (item.dispatch_status === 'ready') return 6;
+  if (item.dispatch_status === 'completed') return 8;
+  if (item.dispatch_status === 'skipped') return 9;
+  return 10;
+}
+
+function urgencyLabel(item: SamplingCalendarListItem) {
+  const diff = daysUntil(item.scheduled_date);
+
+  if (item.dispatch_status === 'exception') return 'Exception';
+  if (item.status === 'overdue' || diff < 0) return 'Overdue';
+  if (item.dispatch_status === 'in_progress') return 'In progress';
+  if (diff === 0) return 'Due today';
+  if (diff <= 2 && item.dispatch_status === 'ready') return 'Due soon';
+  if (item.dispatch_status === 'dispatched') return 'Dispatched';
+  if (item.dispatch_status === 'completed') return 'Completed';
+  if (item.dispatch_status === 'skipped') return 'Skipped';
+  return 'Upcoming';
+}
+
+function stopStatusFromVisit(visitStatus: FieldVisitStatus | null) {
+  if (visitStatus === 'in_progress') return 'In progress';
+  if (visitStatus === 'completed') return 'Completed';
+  if (visitStatus === 'cancelled') return 'Cancelled';
+  if (visitStatus === 'assigned') return 'Dispatched';
+  return 'Pending';
+}
+
 export function FieldSchedulePage() {
   const navigate = useNavigate();
   const currentMonth = new Date().toISOString().slice(0, 7);
+  const today = new Date().toISOString().slice(0, 10);
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [statusFilter, setStatusFilter] = useState<'all' | SamplingDispatchStatus>('all');
+  const [zoneFilter, setZoneFilter] = useState('all');
+  const [groupMode, setGroupMode] = useState<'day' | 'route'>('day');
+
   const [schedulePermitId, setSchedulePermitId] = useState('');
   const [scheduleOutfallId, setScheduleOutfallId] = useState('');
   const [scheduleParameterId, setScheduleParameterId] = useState('');
@@ -85,7 +144,7 @@ export function FieldSchedulePage() {
   const [manualOutfallId, setManualOutfallId] = useState('');
   const [manualParameterId, setManualParameterId] = useState('');
   const [manualEntryType, setManualEntryType] = useState<'manual' | 'rain_event'>('manual');
-  const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
+  const [manualDate, setManualDate] = useState(today);
   const [manualRouteZone, setManualRouteZone] = useState('');
   const [manualAssignedTo, setManualAssignedTo] = useState('');
   const [manualReason, setManualReason] = useState('');
@@ -96,6 +155,13 @@ export function FieldSchedulePage() {
   const [adjustmentType, setAdjustmentType] = useState<'skip' | 'reschedule' | 'makeup'>('skip');
   const [adjustmentDate, setAdjustmentDate] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
+
+  const [routeDate, setRouteDate] = useState(today);
+  const [routeZone, setRouteZone] = useState('');
+  const [routeAssignedTo, setRouteAssignedTo] = useState('');
+  const [routeNotes, setRouteNotes] = useState('');
+  const [selectedRouteBatchId, setSelectedRouteBatchId] = useState<string | null>(null);
+  const [routeDispatchNotes, setRouteDispatchNotes] = useState('');
 
   const {
     permits,
@@ -110,6 +176,8 @@ export function FieldSchedulePage() {
     parameters,
     schedules,
     calendarItems,
+    routeBatches,
+    routeStops,
     loading,
     mutating,
     refresh: refreshCalendar,
@@ -117,6 +185,8 @@ export function FieldSchedulePage() {
     generateMonth,
     createManualEntry,
     applyAdjustment,
+    createRouteBatch,
+    dispatchRouteBatch,
   } = useSamplingCalendar(selectedMonth);
 
   const permitMap = useMemo(() => new Map(permits.map((permit) => [permit.id, permit])), [permits]);
@@ -124,6 +194,7 @@ export function FieldSchedulePage() {
   const parameterMap = useMemo(() => new Map(parameters.map((parameter) => [parameter.id, parameter])), [parameters]);
   const userMap = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
   const visitMap = useMemo(() => new Map(visits.map((visit) => [visit.id, visit])), [visits]);
+  const scheduleMap = useMemo(() => new Map(schedules.map((schedule) => [schedule.id, schedule])), [schedules]);
 
   const scheduleItems = useMemo<SamplingScheduleListItem[]>(() => (
     schedules.map((schedule) => ({
@@ -131,13 +202,13 @@ export function FieldSchedulePage() {
       permit_number: permitMap.get(schedule.permit_id)?.permit_number ?? null,
       outfall_number: outfallMap.get(schedule.outfall_id)?.outfall_number ?? null,
       parameter_name: parameterMap.get(schedule.parameter_id)?.name ?? null,
-      default_assigned_to_name: fieldDisplayName(userMap.get(schedule.default_assigned_to ?? '')),
+      default_assigned_to_name: schedule.default_assigned_to ? fieldDisplayName(userMap.get(schedule.default_assigned_to)) : null,
     }))
   ), [outfallMap, parameterMap, permitMap, schedules, userMap]);
 
-  const calendarList = useMemo<SamplingCalendarListItem[]>(() => {
-    const rows = calendarItems.map((item) => {
-      const schedule = schedules.find((entry) => entry.id === item.schedule_id);
+  const allCalendarRows = useMemo<SamplingCalendarListItem[]>(() => {
+    return calendarItems.map((item) => {
+      const schedule = scheduleMap.get(item.schedule_id);
       const visit = item.current_field_visit_id ? visitMap.get(item.current_field_visit_id) : null;
 
       return {
@@ -149,19 +220,118 @@ export function FieldSchedulePage() {
         frequency_code: schedule?.frequency_code ?? null,
         sample_type: schedule?.sample_type ?? null,
         instructions: schedule?.instructions ?? null,
-        default_assigned_to_name: fieldDisplayName(userMap.get(item.default_assigned_to ?? '')),
+        default_assigned_to_name: item.default_assigned_to ? fieldDisplayName(userMap.get(item.default_assigned_to)) : null,
         current_field_visit_status: visit?.visit_status ?? null,
         current_field_visit_outcome: visit?.outcome ?? null,
       };
     });
+  }, [calendarItems, outfallMap, parameterMap, permitMap, scheduleMap, visitMap, userMap]);
 
-    return rows.filter((row) => statusFilter === 'all' || row.dispatch_status === statusFilter);
-  }, [calendarItems, outfallMap, parameterMap, permitMap, schedules, statusFilter, userMap, visitMap]);
+  const calendarLookup = useMemo(
+    () => new Map(allCalendarRows.map((item) => [item.id, item])),
+    [allCalendarRows],
+  );
+
+  const calendarList = useMemo<SamplingCalendarListItem[]>(() => {
+    return allCalendarRows
+      .filter((row) => statusFilter === 'all' || row.dispatch_status === statusFilter)
+      .filter((row) => zoneFilter === 'all' || (row.route_zone ?? '') === zoneFilter)
+      .sort((a, b) => (
+        urgencyRank(a) - urgencyRank(b)
+        || a.scheduled_date.localeCompare(b.scheduled_date)
+        || (a.route_zone ?? '').localeCompare(b.route_zone ?? '')
+        || (a.outfall_number ?? '').localeCompare(b.outfall_number ?? '')
+      ));
+  }, [allCalendarRows, statusFilter, zoneFilter]);
+
+  const groupedCalendar = useMemo(() => {
+    const groups = new Map<string, SamplingCalendarListItem[]>();
+
+    for (const item of calendarList) {
+      const key = groupMode === 'route'
+        ? `${item.scheduled_date}__${item.route_zone || 'Unzoned'}`
+        : item.scheduled_date;
+      const existing = groups.get(key) ?? [];
+      existing.push(item);
+      groups.set(key, existing);
+    }
+
+    return Array.from(groups.entries()).map(([key, items]) => {
+      const [date, zone] = key.split('__');
+      return { key, date: date ?? items[0]?.scheduled_date ?? today, zone: zone ?? null, items };
+    });
+  }, [calendarList, groupMode, today]);
+
+  const availableZones = useMemo(() => {
+    const values = new Set<string>();
+    for (const item of calendarItems) {
+      if (item.route_zone) values.add(item.route_zone);
+    }
+    for (const schedule of schedules) {
+      if (schedule.route_zone) values.add(schedule.route_zone);
+    }
+    return Array.from(values).sort();
+  }, [calendarItems, schedules]);
 
   const selectedCalendar = useMemo(
     () => calendarList.find((item) => item.id === selectedCalendarId) ?? null,
     [calendarList, selectedCalendarId],
   );
+
+  const routeBatchList = useMemo<SamplingRouteBatchListItem[]>(() => {
+    return routeBatches
+      .map((batch) => {
+        const stops = routeStops.filter((stop) => stop.route_batch_id === batch.id);
+        const dueSoonStopCount = stops.filter((stop) => {
+          const calendar = calendarLookup.get(stop.calendar_id);
+          if (!calendar) return false;
+          const diff = daysUntil(calendar.scheduled_date);
+          return diff >= 0 && diff <= 2 && calendar.dispatch_status !== 'completed';
+        }).length;
+
+        return {
+          ...batch,
+          assigned_to_name: batch.assigned_to ? fieldDisplayName(userMap.get(batch.assigned_to)) : null,
+          stop_count: stops.length,
+          completed_stop_count: stops.filter((stop) => stop.stop_status === 'completed').length,
+          due_soon_stop_count: dueSoonStopCount,
+        };
+      })
+      .sort((a, b) => (
+        a.route_date.localeCompare(b.route_date)
+        || a.route_zone.localeCompare(b.route_zone)
+        || (a.assigned_to_name ?? '').localeCompare(b.assigned_to_name ?? '')
+      ));
+  }, [calendarLookup, routeBatches, routeStops, userMap]);
+
+  const selectedRouteBatch = useMemo(
+    () => routeBatchList.find((batch) => batch.id === selectedRouteBatchId) ?? null,
+    [routeBatchList, selectedRouteBatchId],
+  );
+
+  const selectedRouteStops = useMemo<SamplingRouteStopListItem[]>(() => {
+    if (!selectedRouteBatchId) return [];
+
+    return routeStops
+      .filter((stop) => stop.route_batch_id === selectedRouteBatchId)
+      .map((stop) => {
+        const calendar = calendarLookup.get(stop.calendar_id);
+        const visit = calendar?.current_field_visit_id ? visitMap.get(calendar.current_field_visit_id) : null;
+
+        return {
+          ...stop,
+          scheduled_date: calendar?.scheduled_date ?? '',
+          route_zone: calendar?.route_zone ?? null,
+          permit_number: calendar?.permit_number ?? null,
+          outfall_number: calendar?.outfall_number ?? null,
+          parameter_name: calendar?.parameter_name ?? null,
+          dispatch_status: calendar?.dispatch_status ?? 'ready',
+          current_field_visit_id: calendar?.current_field_visit_id ?? null,
+          current_field_visit_status: visit?.visit_status ?? null,
+        };
+      })
+      .sort((a, b) => a.stop_sequence - b.stop_sequence);
+  }, [calendarLookup, routeStops, selectedRouteBatchId, visitMap]);
 
   const scheduleOutfalls = useMemo(
     () => outfalls.filter((outfall) => !schedulePermitId || outfall.permit_id === schedulePermitId),
@@ -173,21 +343,20 @@ export function FieldSchedulePage() {
     [manualPermitId, outfalls],
   );
 
-  const queueStats = useMemo(() => {
-    return {
-      total: calendarItems.length,
-      ready: calendarItems.filter((item) => item.dispatch_status === 'ready').length,
-      overdue: calendarItems.filter((item) => item.status === 'overdue').length,
-      exceptions: calendarItems.filter((item) => item.dispatch_status === 'exception').length,
-    };
-  }, [calendarItems]);
+  const queueStats = useMemo(() => ({
+    total: calendarItems.length,
+    ready: calendarItems.filter((item) => item.dispatch_status === 'ready').length,
+    overdue: calendarItems.filter((item) => item.status === 'overdue').length,
+    dueSoon: calendarItems.filter((item) => {
+      const diff = daysUntil(item.scheduled_date);
+      return diff >= 0 && diff <= 2 && item.dispatch_status === 'ready';
+    }).length,
+  }), [calendarItems]);
 
   async function handleGenerateMonth() {
     try {
       const result = await generateMonth();
-      toast.success(
-        `Generated ${result?.generated_count ?? 0} calendar entries for ${selectedMonth}.`,
-      );
+      toast.success(`Generated ${result?.generated_count ?? 0} calendar entries for ${selectedMonth}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to generate sampling calendar');
     }
@@ -305,6 +474,50 @@ export function FieldSchedulePage() {
     }
   }
 
+  async function handleCreateRouteBatch() {
+    if (!routeDate || !routeZone.trim()) {
+      toast.error('Route date and route zone are required');
+      return;
+    }
+
+    if (!routeAssignedTo) {
+      toast.error('Route batches need an assigned sampler');
+      return;
+    }
+
+    try {
+      const result = await createRouteBatch({
+        routeDate,
+        routeZone: routeZone.trim(),
+        assignedTo: routeAssignedTo,
+        notes: routeNotes,
+      });
+
+      if (result?.route_batch_id) {
+        setSelectedRouteBatchId(result.route_batch_id);
+      }
+
+      toast.success(`Created route batch with ${result?.stop_count ?? 0} stops`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create route batch');
+    }
+  }
+
+  async function handleDispatchRouteBatch() {
+    if (!selectedRouteBatch) {
+      toast.error('Select a route batch first');
+      return;
+    }
+
+    try {
+      const result = await dispatchRouteBatch(selectedRouteBatch.id, routeDispatchNotes);
+      await refreshVisits();
+      toast.success(`Dispatched ${result?.created_visit_count ?? 0} route stops into field visits`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to dispatch route batch');
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -313,7 +526,7 @@ export function FieldSchedulePage() {
             Sampling Calendar
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Generate WV sampling work, log exceptions, and dispatch approved calendar items into executable field visits.
+            Generate WV sampling work, build daily route batches, and dispatch approved calendar items into executable field visits.
           </p>
         </div>
         <div className="rounded-xl bg-violet-500/10 p-3">
@@ -328,19 +541,19 @@ export function FieldSchedulePage() {
           <div className="mt-2 text-sm text-text-secondary">calendar entries loaded for {selectedMonth}</div>
         </SpotlightCard>
         <SpotlightCard className="p-5">
-          <div className="text-xs uppercase tracking-wider text-text-muted">Ready to dispatch</div>
+          <div className="text-xs uppercase tracking-wider text-text-muted">Ready to route</div>
           <div className="mt-2 text-3xl font-semibold text-cyan-300">{queueStats.ready}</div>
           <div className="mt-2 text-sm text-text-secondary">entries staged with no active field visit</div>
         </SpotlightCard>
         <SpotlightCard className="p-5">
           <div className="text-xs uppercase tracking-wider text-text-muted">Overdue</div>
           <div className="mt-2 text-3xl font-semibold text-amber-300">{queueStats.overdue}</div>
-          <div className="mt-2 text-sm text-text-secondary">sampling work past due date</div>
+          <div className="mt-2 text-sm text-text-secondary">sampling work past its due date</div>
         </SpotlightCard>
         <SpotlightCard className="p-5">
-          <div className="text-xs uppercase tracking-wider text-text-muted">Exceptions</div>
-          <div className="mt-2 text-3xl font-semibold text-red-300">{queueStats.exceptions}</div>
-          <div className="mt-2 text-sm text-text-secondary">calendar items needing supervisor intervention</div>
+          <div className="text-xs uppercase tracking-wider text-text-muted">Due soon</div>
+          <div className="mt-2 text-3xl font-semibold text-violet-300">{queueStats.dueSoon}</div>
+          <div className="mt-2 text-sm text-text-secondary">work due within the next two days</div>
         </SpotlightCard>
       </div>
 
@@ -453,7 +666,7 @@ export function FieldSchedulePage() {
                     <input
                       value={scheduleRouteZone}
                       onChange={(event) => setScheduleRouteZone(event.target.value)}
-                      placeholder="South Fork / Route A"
+                      placeholder="North / Central / West"
                       className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
                     />
                   </label>
@@ -548,7 +761,7 @@ export function FieldSchedulePage() {
                     value={scheduleInstructions}
                     onChange={(event) => setScheduleInstructions(event.target.value)}
                     rows={3}
-                    placeholder="Bottle prep, access notes, known hazards, route instructions."
+                    placeholder="Bottle prep, route hazards, known access constraints."
                     className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
                   />
                 </label>
@@ -698,7 +911,7 @@ export function FieldSchedulePage() {
                 </h2>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as 'all' | SamplingDispatchStatus)}
@@ -713,6 +926,26 @@ export function FieldSchedulePage() {
                   <option value="skipped">Skipped</option>
                 </select>
 
+                <select
+                  value={zoneFilter}
+                  onChange={(event) => setZoneFilter(event.target.value)}
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                >
+                  <option value="all">All zones</option>
+                  {availableZones.map((zone) => (
+                    <option key={zone} value={zone}>{zone}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={groupMode}
+                  onChange={(event) => setGroupMode(event.target.value as 'day' | 'route')}
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                >
+                  <option value="day">Group by day</option>
+                  <option value="route">Group by route</option>
+                </select>
+
                 <button
                   onClick={() => refreshCalendar().catch((error) => {
                     toast.error(error instanceof Error ? error.message : 'Failed to refresh sampling calendar');
@@ -724,53 +957,72 @@ export function FieldSchedulePage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3">
+            <div className="mt-5 space-y-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, index) => (
                   <div key={index} className="h-24 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
                 ))
-              ) : calendarList.length === 0 ? (
+              ) : groupedCalendar.length === 0 ? (
                 <p className="text-sm text-text-muted">No sampling calendar entries exist for {selectedMonth}.</p>
               ) : (
-                calendarList.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedCalendarId(item.id);
-                      setDispatchAssignedTo(item.default_assigned_to ?? '');
-                      setDispatchNotes(item.instructions ?? '');
-                    }}
-                    className={`rounded-2xl border p-4 text-left transition-colors ${
-                      item.id === selectedCalendarId
-                        ? 'border-violet-400/40 bg-violet-500/10'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                groupedCalendar.map((group) => (
+                  <div key={group.key} className="space-y-3">
+                    <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold text-text-primary">
-                          {item.permit_number ?? 'Permit'} / {item.outfall_number ?? 'Outfall'} / {item.parameter_name ?? 'Parameter'}
+                          {formatDate(group.date)}
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
-                          <span>{new Date(`${item.scheduled_date}T00:00:00`).toLocaleDateString()}</span>
-                          <span>{item.frequency_code?.replace(/_/g, ' ') ?? 'manual'}</span>
-                          <span>{item.route_zone || 'No zone'}</span>
-                          <span>{item.default_assigned_to_name || 'No default assignee'}</span>
+                        <div className="mt-1 text-xs text-text-muted">
+                          {group.zone ? `${group.zone} route` : `${group.items.length} scheduled items`}
                         </div>
                       </div>
-
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${dispatchTone(item.dispatch_status)}`}>
-                        {item.dispatch_status.replace('_', ' ')}
-                      </span>
+                      <div className="text-xs text-text-muted">{group.items.length} stops</div>
                     </div>
 
-                    {(item.skip_reason || item.override_reason) && (
-                      <p className="mt-3 text-sm text-text-secondary">
-                        {item.override_reason || item.skip_reason}
-                      </p>
-                    )}
-                  </button>
+                    {group.items.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedCalendarId(item.id);
+                          setDispatchAssignedTo(item.default_assigned_to ?? '');
+                          setDispatchNotes(item.instructions ?? '');
+                          setRouteDate(item.scheduled_date);
+                          setRouteZone(item.route_zone ?? '');
+                          if (item.default_assigned_to) setRouteAssignedTo(item.default_assigned_to);
+                        }}
+                        className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                          item.id === selectedCalendarId
+                            ? 'border-violet-400/40 bg-violet-500/10'
+                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-text-primary">
+                              {item.permit_number ?? 'Permit'} / {item.outfall_number ?? 'Outfall'} / {item.parameter_name ?? 'Parameter'}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
+                              <span>{urgencyLabel(item)}</span>
+                              <span>{item.route_zone || 'Unzoned'}</span>
+                              <span>{item.default_assigned_to_name || 'No default assignee'}</span>
+                              {item.current_route_batch_id && <span>Route batch assigned</span>}
+                            </div>
+                          </div>
+
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${dispatchTone(item.dispatch_status)}`}>
+                            {item.dispatch_status.replace('_', ' ')}
+                          </span>
+                        </div>
+
+                        {(item.skip_reason || item.override_reason || item.instructions) && (
+                          <p className="mt-3 line-clamp-2 text-sm text-text-secondary">
+                            {item.override_reason || item.skip_reason || item.instructions}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 ))
               )}
             </div>
@@ -778,6 +1030,188 @@ export function FieldSchedulePage() {
         </div>
 
         <div className="space-y-6">
+          <SpotlightCard className="p-6">
+            <div className="flex items-center gap-2">
+              <Route className="h-4 w-4 text-violet-300" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                Route Batch Builder
+              </h2>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-text-muted">Route date</span>
+                <input
+                  type="date"
+                  value={routeDate}
+                  onChange={(event) => setRouteDate(event.target.value)}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-text-muted">Route zone</span>
+                <input
+                  value={routeZone}
+                  onChange={(event) => setRouteZone(event.target.value)}
+                  placeholder="North / Central / West"
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-text-muted">Assigned sampler</span>
+                <select
+                  value={routeAssignedTo}
+                  onChange={(event) => setRouteAssignedTo(event.target.value)}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                >
+                  <option value="">Select assignee</option>
+                  {users.filter((user) => user.is_active).map((user) => (
+                    <option key={user.id} value={user.id}>{fieldDisplayName(user)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-medium text-text-muted">Route notes</span>
+                <textarea
+                  value={routeNotes}
+                  onChange={(event) => setRouteNotes(event.target.value)}
+                  rows={3}
+                  placeholder="Daily route context, staging notes, known access constraints."
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                />
+              </label>
+
+              <button
+                onClick={handleCreateRouteBatch}
+                disabled={mutating}
+                className="w-full rounded-xl bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-200 transition-colors hover:bg-violet-500/25 disabled:opacity-60"
+              >
+                Create route batch
+              </button>
+            </div>
+          </SpotlightCard>
+
+          <SpotlightCard className="p-6">
+            <div className="flex items-center gap-2">
+              <TimerReset className="h-4 w-4 text-cyan-300" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                Route Review
+              </h2>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {routeBatchList.length === 0 ? (
+                <p className="text-sm text-text-muted">No route batches exist for {selectedMonth}.</p>
+              ) : (
+                routeBatchList.map((batch) => (
+                  <button
+                    type="button"
+                    key={batch.id}
+                    onClick={() => {
+                      setSelectedRouteBatchId(batch.id);
+                      setRouteDispatchNotes(batch.notes ?? '');
+                    }}
+                    className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                      batch.id === selectedRouteBatchId
+                        ? 'border-cyan-400/40 bg-cyan-500/10'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-text-primary">
+                          {formatDate(batch.route_date)} / {batch.route_zone}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
+                          <span>{batch.stop_count} stops</span>
+                          <span>{batch.assigned_to_name || 'No assignee'}</span>
+                          <span>{batch.due_soon_stop_count} due soon</span>
+                        </div>
+                      </div>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${dispatchTone(batch.route_status)}`}>
+                        {batch.route_status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </SpotlightCard>
+
+          <SpotlightCard className="p-6">
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-cyan-300" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                Dispatch Route Batch
+              </h2>
+            </div>
+
+            {selectedRouteBatch ? (
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="text-sm font-semibold text-text-primary">
+                    {formatDate(selectedRouteBatch.route_date)} / {selectedRouteBatch.route_zone}
+                  </div>
+                  <div className="mt-2 text-xs text-text-muted">
+                    {selectedRouteBatch.assigned_to_name || 'No assignee'} • {selectedRouteBatch.stop_count} stops
+                  </div>
+                </div>
+
+                <label className="space-y-2">
+                  <span className="text-xs font-medium text-text-muted">Dispatch notes override</span>
+                  <textarea
+                    value={routeDispatchNotes}
+                    onChange={(event) => setRouteDispatchNotes(event.target.value)}
+                    rows={3}
+                    placeholder="Optional notes applied to all field visits created from this route."
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                  />
+                </label>
+
+                <button
+                  onClick={handleDispatchRouteBatch}
+                  disabled={mutating || selectedRouteBatch.route_status === 'completed'}
+                  className="w-full rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
+                >
+                  Dispatch full route batch
+                </button>
+
+                <div className="space-y-3">
+                  {selectedRouteStops.map((stop) => (
+                    <div key={stop.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-text-primary">
+                            Stop {stop.stop_sequence}: {stop.outfall_number ?? 'Outfall'} / {stop.parameter_name ?? 'Parameter'}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
+                            <span>{stop.permit_number}</span>
+                            <span>{stop.priority_reason || 'standard priority'}</span>
+                            <span>{stopStatusFromVisit(stop.current_field_visit_status)}</span>
+                          </div>
+                        </div>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${dispatchTone(stop.stop_status)}`}>
+                          {stop.stop_status.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {stop.current_field_visit_id && (
+                        <Link to={`/field/visits/${stop.current_field_visit_id}`} className="mt-3 inline-flex text-sm text-cyan-300 hover:text-cyan-200">
+                          Open linked field visit
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-5 text-sm text-text-muted">Select a route batch to review ordered stops and dispatch it.</p>
+            )}
+          </SpotlightCard>
+
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
               <Send className="h-4 w-4 text-cyan-300" />
@@ -793,7 +1227,7 @@ export function FieldSchedulePage() {
                     {selectedCalendar.permit_number} / {selectedCalendar.outfall_number}
                   </div>
                   <div className="mt-2 text-xs text-text-muted">
-                    {selectedCalendar.parameter_name} on {new Date(`${selectedCalendar.scheduled_date}T00:00:00`).toLocaleDateString()}
+                    {selectedCalendar.parameter_name} on {formatDate(selectedCalendar.scheduled_date)}
                   </div>
                 </div>
 
@@ -827,7 +1261,7 @@ export function FieldSchedulePage() {
                   disabled={mutating || selectedCalendar.dispatch_status === 'completed' || selectedCalendar.dispatch_status === 'in_progress'}
                   className="w-full rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
                 >
-                  Dispatch to field visit
+                  Dispatch single calendar item
                 </button>
 
                 {selectedCalendar.current_field_visit_id && (
@@ -840,7 +1274,7 @@ export function FieldSchedulePage() {
                 )}
               </div>
             ) : (
-              <p className="mt-5 text-sm text-text-muted">Select a calendar row to dispatch it into the field queue.</p>
+              <p className="mt-5 text-sm text-text-muted">Select a calendar row to dispatch it individually.</p>
             )}
           </SpotlightCard>
 
