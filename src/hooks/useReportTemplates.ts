@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase, getFreshToken } from '@/lib/supabase';
+import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 import { toast } from 'sonner';
 
@@ -172,8 +172,8 @@ export function useReportTemplates() {
                     {
                         method: 'POST',
                         headers: {
-                            Authorization: `Bearer ${token}`,
                             'Content-Type': 'application/json',
+                            ...edgeFunctionFetchHeaders(token),
                         },
                         body: JSON.stringify({
                             report_key: entry.report_key,

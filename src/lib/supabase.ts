@@ -32,3 +32,14 @@ export async function getFreshToken(): Promise<string> {
 
   return refreshed.session.access_token;
 }
+
+/**
+ * Standard headers for browser fetch() to Supabase Edge Functions.
+ * The gateway expects Authorization (user JWT) and apikey (anon).
+ */
+export function edgeFunctionFetchHeaders(accessToken: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    apikey: SUPABASE_ANON_KEY,
+  };
+}

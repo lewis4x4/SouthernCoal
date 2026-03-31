@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { QueueEntry } from '@/types/queue';
@@ -77,8 +77,8 @@ export function usePermitLimitsImport() {
             {
               method: 'POST',
               headers: {
-                Authorization: `Bearer ${session.access_token}`,
                 'Content-Type': 'application/json',
+                ...edgeFunctionFetchHeaders(session.access_token),
               },
               body: JSON.stringify({ queue_id: queueId }),
               signal: controller.signal,
