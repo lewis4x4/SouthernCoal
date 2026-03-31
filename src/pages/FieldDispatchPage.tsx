@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, MapPinned, Plus, Route, UserRound } from 'lucide-react';
+import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import type { FieldVisitListItem } from '@/types';
@@ -18,11 +19,15 @@ function statusTone(visit: FieldVisitListItem) {
 
 export function FieldDispatchPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { getEffectiveRole } = usePermissions();
   const role = getEffectiveRole();
   const canDispatch = MANAGER_ROLES.includes(role);
 
   const { permits, outfalls, users, visits, loading, createVisit } = useFieldOps();
+
+  const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today'>('all');
+  const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
 
   const [permitId, setPermitId] = useState('');
   const [outfallId, setOutfallId] = useState('');
@@ -35,6 +40,32 @@ export function FieldDispatchPage() {
     () => outfalls.filter((outfall) => !permitId || outfall.permit_id === permitId),
     [outfalls, permitId],
   );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const filteredVisits = useMemo(() => {
+    let list = visits;
+    if (queueFilter === 'mine' && user?.id) {
+      list = list.filter((visit) => visit.assigned_to === user.id);
+    }
+    if (queueFilter === 'today') {
+      list = list.filter((visit) => visit.scheduled_date === todayStr);
+    }
+    const sorted = [...list];
+    if (queueSort === 'route_order') {
+      sorted.sort((a, b) => {
+        const ar = a.route_stop_sequence;
+        const br = b.route_stop_sequence;
+        if (ar != null && br != null && ar !== br) return ar - br;
+        if (ar != null && br == null) return -1;
+        if (ar == null && br != null) return 1;
+        return `${a.scheduled_date}T${a.created_at}`.localeCompare(`${b.scheduled_date}T${b.created_at}`);
+      });
+    } else {
+      sorted.sort((a, b) => `${b.scheduled_date}T${b.created_at}`.localeCompare(`${a.scheduled_date}T${a.created_at}`));
+    }
+    return sorted;
+  }, [queueFilter, queueSort, todayStr, user?.id, visits]);
 
   async function handleCreate() {
     if (!permitId || !outfallId || !assignedTo || !scheduledDate) {
@@ -70,7 +101,7 @@ export function FieldDispatchPage() {
             Field Queue
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Manual dispatch for WV field work and the live queue of executable field visits.
+            Manual dispatch for WV field work and the live queue of executable field visits. Route-dispatched visits show stop order for daily worklists.
           </p>
         </div>
         <div className="rounded-xl bg-cyan-500/10 p-3">
@@ -173,17 +204,65 @@ export function FieldDispatchPage() {
         </SpotlightCard>
       )}
 
+      <SpotlightCard className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-medium text-text-muted">Queue</span>
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'mine', 'today'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setQueueFilter(key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  queueFilter === key
+                    ? 'bg-cyan-500/20 text-cyan-200'
+                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                }`}
+              >
+                {key === 'all' ? 'All' : key === 'mine' ? 'My assignments' : 'Today'}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs font-medium text-text-muted">Sort</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setQueueSort('newest')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                queueSort === 'newest'
+                  ? 'bg-cyan-500/20 text-cyan-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+              }`}
+            >
+              Newest
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueSort('route_order')}
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                queueSort === 'route_order'
+                  ? 'bg-cyan-500/20 text-cyan-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+              }`}
+            >
+              <ListOrdered className="h-3.5 w-3.5" />
+              Route order
+            </button>
+          </div>
+        </div>
+      </SpotlightCard>
+
       <div className="grid gap-4 lg:grid-cols-2">
         {loading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="h-40 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
           ))
-        ) : visits.length === 0 ? (
+        ) : filteredVisits.length === 0 ? (
           <SpotlightCard className="p-6 lg:col-span-2">
-            <p className="text-sm text-text-muted">No field visits are currently queued.</p>
+            <p className="text-sm text-text-muted">No field visits match this filter.</p>
           </SpotlightCard>
         ) : (
-          visits.map((visit) => (
+          filteredVisits.map((visit) => (
             <Link key={visit.id} to={`/field/visits/${visit.id}`}>
               <SpotlightCard className="h-full p-6 transition-all hover:border-white/[0.12]">
                 <div className="flex items-start justify-between gap-3">
@@ -193,6 +272,11 @@ export function FieldDispatchPage() {
                       <h3 className="text-base font-semibold text-text-primary">
                         {visit.permit_number ?? 'Permit'} / {visit.outfall_number ?? 'Outfall'}
                       </h3>
+                      {visit.route_stop_sequence != null && (
+                        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
+                          Stop {visit.route_stop_sequence}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-muted">
                       <span className="inline-flex items-center gap-1">

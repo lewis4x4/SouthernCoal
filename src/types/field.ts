@@ -53,6 +53,7 @@ export interface FieldVisitRecord {
   potential_force_majeure_notes: string | null;
   linked_sampling_event_id: string | null;
   sampling_calendar_id: string | null;
+  route_batch_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +62,8 @@ export interface FieldVisitListItem extends FieldVisitRecord {
   permit_number: string | null;
   outfall_number: string | null;
   assigned_to_name: string;
+  /** Stop order within a dispatched route batch (from sampling_route_stops). */
+  route_stop_sequence: number | null;
 }
 
 export interface OutletInspectionRecord {
@@ -309,6 +312,7 @@ export interface SamplingRouteStopRecord {
 export interface SamplingRouteStopListItem extends SamplingRouteStopRecord {
   scheduled_date: string;
   route_zone: string | null;
+  outfall_id: string | null;
   permit_number: string | null;
   outfall_number: string | null;
   parameter_name: string | null;

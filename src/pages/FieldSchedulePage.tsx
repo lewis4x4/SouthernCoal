@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
   CalendarDays,
   ClipboardList,
   CloudRain,
@@ -16,6 +17,8 @@ import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useSamplingCalendar } from '@/hooks/useSamplingCalendar';
+import { supabase } from '@/lib/supabase';
+import { buildRouteLegEstimates, findNonConsecutiveOutfallRepeats } from '@/lib/routePreview';
 import type {
   FieldVisitStatus,
   ParameterOption,
@@ -162,6 +165,7 @@ export function FieldSchedulePage() {
   const [routeNotes, setRouteNotes] = useState('');
   const [selectedRouteBatchId, setSelectedRouteBatchId] = useState<string | null>(null);
   const [routeDispatchNotes, setRouteDispatchNotes] = useState('');
+  const [outfallCoordById, setOutfallCoordById] = useState<Record<string, { lat: number; lng: number }>>({});
 
   const {
     permits,
@@ -322,6 +326,7 @@ export function FieldSchedulePage() {
           ...stop,
           scheduled_date: calendar?.scheduled_date ?? '',
           route_zone: calendar?.route_zone ?? null,
+          outfall_id: calendar?.outfall_id ?? null,
           permit_number: calendar?.permit_number ?? null,
           outfall_number: calendar?.outfall_number ?? null,
           parameter_name: calendar?.parameter_name ?? null,
@@ -332,6 +337,107 @@ export function FieldSchedulePage() {
       })
       .sort((a, b) => a.stop_sequence - b.stop_sequence);
   }, [calendarLookup, routeStops, selectedRouteBatchId, visitMap]);
+
+  useEffect(() => {
+    const ids = [
+      ...new Set(
+        selectedRouteStops
+          .map((stop) => stop.outfall_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (ids.length === 0) {
+      setOutfallCoordById({});
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('outfalls')
+        .select('id, latitude, longitude')
+        .in('id', ids);
+
+      if (cancelled) return;
+      if (error) {
+        toast.error(`Could not load outfall coordinates: ${error.message}`);
+        return;
+      }
+
+      const next: Record<string, { lat: number; lng: number }> = {};
+      for (const row of data ?? []) {
+        const lat = row.latitude != null ? Number(row.latitude) : NaN;
+        const lng = row.longitude != null ? Number(row.longitude) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          next[row.id as string] = { lat, lng };
+        }
+      }
+      setOutfallCoordById(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRouteStops]);
+
+  const routePreview = useMemo(() => {
+    if (selectedRouteStops.length === 0) return null;
+    const ordered = selectedRouteStops.map((stop) => ({
+      label: `${stop.outfall_number ?? '?'} · ${stop.parameter_name ?? 'Param'}`,
+      coord: stop.outfall_id ? outfallCoordById[stop.outfall_id] ?? null : null,
+      outfallId: stop.outfall_id ?? '',
+    }));
+    const { legs, totalMinutes, missingCoordCount } = buildRouteLegEstimates(
+      ordered.map(({ label, coord }) => ({ label, coord })),
+    );
+    const repeatIds = findNonConsecutiveOutfallRepeats(
+      ordered.map((o) => o.outfallId).filter(Boolean),
+    );
+    const repeatLabels = repeatIds.map((id) => {
+      const stop = selectedRouteStops.find((s) => s.outfall_id === id);
+      return stop?.outfall_number ?? id.slice(0, 8);
+    });
+    return { legs, totalMinutes, missingCoordCount, repeatLabels, stopCount: selectedRouteStops.length };
+  }, [selectedRouteStops, outfallCoordById]);
+
+  const routeZoneDayBalance = useMemo(() => {
+    if (!selectedRouteBatch) return null;
+    const d = selectedRouteBatch.route_date;
+    const zoneKey = selectedRouteBatch.route_zone || 'Unzoned';
+    const sameDayReady = allCalendarRows.filter(
+      (row) => row.scheduled_date === d && row.dispatch_status === 'ready',
+    );
+    const byZone = new Map<string, number>();
+    for (const row of sameDayReady) {
+      const key = row.route_zone || 'Unzoned';
+      byZone.set(key, (byZone.get(key) ?? 0) + 1);
+    }
+    const inThisZoneUnbatched = sameDayReady.filter(
+      (row) => (row.route_zone || 'Unzoned') === zoneKey && !row.current_route_batch_id,
+    ).length;
+    return {
+      byZone,
+      inThisZoneUnbatched,
+      inThisBatch: selectedRouteStops.length,
+      sameDayReadyTotal: sameDayReady.length,
+      zoneKey,
+    };
+  }, [allCalendarRows, selectedRouteBatch, selectedRouteStops.length]);
+
+  const stopOrderPriorityReview = useMemo(() => {
+    if (selectedRouteStops.length < 2) return { ok: true as const, detail: null as string | null };
+    const ranks = selectedRouteStops.map((stop) => stop.priority_rank);
+    for (let i = 1; i < ranks.length; i += 1) {
+      if ((ranks[i] as number) < (ranks[i - 1] as number)) {
+        return {
+          ok: false as const,
+          detail: 'Later stop has higher priority than an earlier stop (rank ordering).',
+        };
+      }
+    }
+    return { ok: true as const, detail: null };
+  }, [selectedRouteStops]);
 
   const scheduleOutfalls = useMemo(
     () => outfalls.filter((outfall) => !schedulePermitId || outfall.permit_id === schedulePermitId),
@@ -1126,8 +1232,8 @@ export function FieldSchedulePage() {
                           {formatDate(batch.route_date)} / {batch.route_zone}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
+                          <span>Daily route · {batch.assigned_to_name || 'unassigned'}</span>
                           <span>{batch.stop_count} stops</span>
-                          <span>{batch.assigned_to_name || 'No assignee'}</span>
                           <span>{batch.due_soon_stop_count} due soon</span>
                         </div>
                       </div>
@@ -1139,6 +1245,82 @@ export function FieldSchedulePage() {
                 ))
               )}
             </div>
+          </SpotlightCard>
+
+          <SpotlightCard className="p-6">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-violet-300" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                Route preview & balance
+              </h2>
+            </div>
+
+            {selectedRouteBatch && routePreview ? (
+              <div className="mt-5 space-y-4 text-sm">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Drive-time signal</div>
+                  <p className="mt-2 text-text-secondary">
+                    Straight-line segments with a road factor (~45 mph effective). Not turn-by-turn.
+                  </p>
+                  <div className="mt-3 text-lg font-semibold text-text-primary">
+                    ~{routePreview.totalMinutes} min total
+                    {routePreview.missingCoordCount > 0 && (
+                      <span className="ml-2 text-xs font-normal text-amber-300">
+                        ({routePreview.missingCoordCount} stop{routePreview.missingCoordCount === 1 ? '' : 's'} missing outfall coordinates)
+                      </span>
+                    )}
+                  </div>
+                  {routePreview.legs.length > 0 && (
+                    <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-text-muted">
+                      {routePreview.legs.map((leg) => (
+                        <li key={`${leg.fromLabel}-${leg.toLabel}`}>
+                          {leg.fromLabel} → {leg.toLabel}: ~{leg.minutes} min ({leg.km.toFixed(1)} km line)
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Stop order review</div>
+                  <p className={`mt-2 ${stopOrderPriorityReview.ok ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {stopOrderPriorityReview.ok
+                      ? 'Sequence follows non-decreasing priority rank (short-hold / due-soon ordering).'
+                      : stopOrderPriorityReview.detail}
+                  </p>
+                  {routePreview.repeatLabels.length > 0 && (
+                    <p className="mt-2 text-xs text-amber-300">
+                      Same outfall appears non-consecutive: {routePreview.repeatLabels.join(', ')} — consider reordering when editing is available.
+                    </p>
+                  )}
+                </div>
+
+                {routeZoneDayBalance && (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Zone / day balance</div>
+                    <p className="mt-2 text-text-secondary">
+                      {formatDate(selectedRouteBatch.route_date)}: {routeZoneDayBalance.sameDayReadyTotal} ready item
+                      {routeZoneDayBalance.sameDayReadyTotal === 1 ? '' : 's'} org-wide. This batch holds{' '}
+                      {routeZoneDayBalance.inThisBatch} in <span className="text-text-primary">{routeZoneDayBalance.zoneKey}</span>.
+                    </p>
+                    <p className="mt-2 text-xs text-text-muted">
+                      Other ready work in same zone (not on a batch): {routeZoneDayBalance.inThisZoneUnbatched}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-text-muted">
+                      {[...routeZoneDayBalance.byZone.entries()]
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([zone, count]) => (
+                          <li key={zone}>
+                            {zone}: {count} ready
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="mt-5 text-sm text-text-muted">Select a route batch with stops to see drive estimates and balance.</p>
+            )}
           </SpotlightCard>
 
           <SpotlightCard className="p-6">
@@ -1156,7 +1338,7 @@ export function FieldSchedulePage() {
                     {formatDate(selectedRouteBatch.route_date)} / {selectedRouteBatch.route_zone}
                   </div>
                   <div className="mt-2 text-xs text-text-muted">
-                    {selectedRouteBatch.assigned_to_name || 'No assignee'} • {selectedRouteBatch.stop_count} stops
+                    Daily assignment · {selectedRouteBatch.assigned_to_name || 'No assignee'} • {selectedRouteBatch.stop_count} stops
                   </div>
                 </div>
 

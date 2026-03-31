@@ -172,6 +172,29 @@ export function useFieldOps() {
 
     const visitRows = (visitRes.data ?? []) as FieldVisitRecord[];
 
+    const calendarIds = [
+      ...new Set(
+        visitRows
+          .map((visit) => visit.sampling_calendar_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const routeStopByCalendar = new Map<string, number>();
+    if (calendarIds.length > 0) {
+      const stopRes = await supabase
+        .from('sampling_route_stops')
+        .select('calendar_id, stop_sequence')
+        .in('calendar_id', calendarIds);
+
+      if (stopRes.error) toast.error(`Failed to load route stop order: ${stopRes.error.message}`);
+      for (const row of stopRes.data ?? []) {
+        const calId = row.calendar_id as string;
+        const seq = row.stop_sequence as number;
+        if (calId) routeStopByCalendar.set(calId, seq);
+      }
+    }
+
     const permitLookup = new Map(permitRows.map((permit) => [permit.id, permit]));
     const outfallLookup = new Map(outfallRows.map((outfall) => [outfall.id, outfall]));
     const userLookup = new Map(userRows.map((fieldUser) => [fieldUser.id, fieldUser]));
@@ -182,9 +205,13 @@ export function useFieldOps() {
     setVisits(
       visitRows.map((visit) => ({
         ...visit,
+        route_batch_id: visit.route_batch_id ?? null,
         permit_number: permitLookup.get(visit.permit_id)?.permit_number ?? null,
         outfall_number: outfallLookup.get(visit.outfall_id)?.outfall_number ?? null,
         assigned_to_name: displayName(userLookup.get(visit.assigned_to) ?? {}),
+        route_stop_sequence: visit.sampling_calendar_id
+          ? routeStopByCalendar.get(visit.sampling_calendar_id) ?? null
+          : null,
       })),
     );
     setLoading(false);
@@ -219,11 +246,26 @@ export function useFieldOps() {
     }
 
     const visit = visitRes.data as FieldVisitRecord;
+
+    let routeStopSequence: number | null = null;
+    if (visit.sampling_calendar_id) {
+      const stopRes = await supabase
+        .from('sampling_route_stops')
+        .select('stop_sequence')
+        .eq('calendar_id', visit.sampling_calendar_id)
+        .maybeSingle();
+      if (!stopRes.error && stopRes.data) {
+        routeStopSequence = stopRes.data.stop_sequence as number;
+      }
+    }
+
     const listItem: FieldVisitListItem = {
       ...visit,
+      route_batch_id: visit.route_batch_id ?? null,
       permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
       outfall_number: outfallMap.get(visit.outfall_id)?.outfall_number ?? null,
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
+      route_stop_sequence: routeStopSequence,
     };
 
     const nextDetail: FieldVisitDetails = {
