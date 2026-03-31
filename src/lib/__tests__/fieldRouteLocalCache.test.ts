@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   saveFieldRouteCache,
   loadFieldRouteCache,
   loadFieldRouteCacheMatching,
   clearFieldRouteCache,
+  clearFieldRouteCacheFromIdb,
+  fieldRouteCacheMatchesView,
+  findVisitInFieldRouteCache,
+  findVisitInFieldRouteCacheAsync,
+  saveFieldRouteCacheDual,
 } from '../fieldRouteLocalCache';
 import type { FieldVisitListItem } from '@/types';
 
@@ -44,6 +49,10 @@ describe('fieldRouteLocalCache', () => {
     localStorage.clear();
   });
 
+  afterEach(async () => {
+    await clearFieldRouteCacheFromIdb();
+  });
+
   it('saves and loads matching cache', () => {
     const v = [minimalVisit()];
     expect(
@@ -72,6 +81,64 @@ describe('fieldRouteLocalCache', () => {
     ).toBe(true);
     expect(loadFieldRouteCacheMatching('2026-04-01', 'mine', 'u1')).toBeNull();
     expect(loadFieldRouteCacheMatching('2026-03-31', 'org', null)).toBeNull();
+  });
+
+  it('fieldRouteCacheMatchesView checks date, scope, and viewer', () => {
+    const p = {
+      version: 1 as const,
+      routeDate: '2026-03-31',
+      scope: 'org' as const,
+      viewerUserId: null,
+      savedAt: '2026-03-31T12:00:00Z',
+      visits: [minimalVisit()],
+      outfallCoords: {},
+    };
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', null)).toBe(true);
+    expect(fieldRouteCacheMatchesView(p, '2026-04-01', 'org', null)).toBe(false);
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'mine', 'u1')).toBe(false);
+  });
+
+  it('saveFieldRouteCacheDual returns ok and snapshot', async () => {
+    const { ok, snapshot } = await saveFieldRouteCacheDual({
+      routeDate: '2026-03-31',
+      scope: 'mine',
+      viewerUserId: 'u1',
+      visits: [minimalVisit()],
+      outfallCoords: {},
+    });
+    expect(ok).toBe(true);
+    expect(snapshot.visits).toHaveLength(1);
+  });
+
+  it('findVisitInFieldRouteCache returns matching visit', () => {
+    const v2 = minimalVisit({ id: 'v2', outfall_number: '002' });
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'org',
+        viewerUserId: null,
+        visits: [minimalVisit(), v2],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+    expect(findVisitInFieldRouteCache('v2')?.outfall_number).toBe('002');
+    expect(findVisitInFieldRouteCache('missing')).toBeNull();
+    expect(findVisitInFieldRouteCache('')).toBeNull();
+  });
+
+  it('findVisitInFieldRouteCacheAsync falls back to localStorage', async () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        scope: 'org',
+        viewerUserId: null,
+        visits: [minimalVisit({ id: 'vx' })],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+    const row = await findVisitInFieldRouteCacheAsync('vx');
+    expect(row?.id).toBe('vx');
+    expect(await findVisitInFieldRouteCacheAsync('missing')).toBeNull();
   });
 
   it('clearFieldRouteCache removes entry', () => {

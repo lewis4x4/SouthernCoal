@@ -1,15 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Camera, CheckCircle2, Droplets, MapPin, Package, ShieldAlert, Waves, Wind } from 'lucide-react';
+import {
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
+  ClipboardList,
+  Droplets,
+  MapPin,
+  Package,
+  ShieldAlert,
+  Waves,
+  Wind,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { useFieldOps } from '@/hooks/useFieldOps';
-import { listFieldEvidenceDrafts, saveFieldEvidenceDraft, type FieldEvidenceDraft } from '@/lib/fieldEvidenceDrafts';
+import {
+  clearPersistedFieldEvidenceSyncFailuresForVisit,
+  listFieldEvidenceDrafts,
+  readPersistedFieldEvidenceSyncFailuresForVisit,
+  saveFieldEvidenceDraft,
+  type FieldEvidenceDraft,
+  type FieldEvidenceDraftSyncFailure,
+} from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
 
 function deadlineToneClass(tone: GovernanceDeadlineTone) {
@@ -50,6 +71,7 @@ export function FieldVisitPage() {
     detailLoading,
     loading: fieldQueueLoading,
     outboundPendingCount,
+    visits: fieldQueueVisits,
     loadVisitDetails,
     refresh: refreshFieldQueue,
     startVisit,
@@ -93,6 +115,7 @@ export function FieldVisitPage() {
   const [completeCoords, setCompleteCoords] = useState({ latitude: '', longitude: '' });
   const [saving, setSaving] = useState(false);
   const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
+  const [evidenceUploadFailures, setEvidenceUploadFailures] = useState<FieldEvidenceDraftSyncFailure[]>([]);
 
   const refreshPendingEvidenceDrafts = useCallback(async (visitId: string) => {
     try {
@@ -109,6 +132,7 @@ export function FieldVisitPage() {
         toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
       });
       void refreshPendingEvidenceDrafts(id);
+      setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
     }
   }, [id, loadVisitDetails, refreshPendingEvidenceDrafts]);
 
@@ -167,6 +191,13 @@ export function FieldVisitPage() {
     [pendingEvidenceDrafts],
   );
   const totalPhotoCount = photoCount + pendingPhotoCount;
+  const evidenceFailureByDraftId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of evidenceUploadFailures) {
+      if (!m.has(f.draftId)) m.set(f.draftId, f.message);
+    }
+    return m;
+  }, [evidenceUploadFailures]);
   const generalMeasurements = useMemo(
     () =>
       detail?.measurements.filter((m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) ??
@@ -174,6 +205,18 @@ export function FieldVisitPage() {
     [detail?.measurements],
   );
   const visitLocked = detail?.visit.visit_status === 'completed';
+
+  const visitSiblingOutfallConflicts = useMemo(() => {
+    if (!id || !detail) return [];
+    const siblings = siblingVisitsSameOutfallSameDay(
+      fieldQueueVisits,
+      id,
+      detail.visit.scheduled_date,
+      detail.visit.outfall_id,
+    );
+    if (siblings.length === 0) return [];
+    return groupSameOutfallSameDay([detail.visit, ...siblings]);
+  }, [id, detail, fieldQueueVisits]);
 
   async function handleCaptureStartCoords() {
     try {
@@ -421,8 +464,66 @@ export function FieldVisitPage() {
           pendingOutboundCount={outboundPendingCount}
           onRefresh={async () => {
             await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
+            setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
           }}
+          auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
         />
+      )}
+
+      {visitNeedsDisposition(detail.visit) && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100"
+          role="status"
+          aria-live="polite"
+        >
+          <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-cyan-200" aria-hidden />
+          <div>
+            <p className="font-medium text-cyan-50">Open visit — disposition required</p>
+            <p className="mt-1 text-xs text-cyan-200/85">
+              This stop is still assigned or in progress. Finish sampling documentation (or no-discharge / access issue)
+              and complete the visit so the route shows a clear outcome. Queued offline actions sync when you are back
+              online.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <FieldSameOutfallDayWarning
+        groups={visitSiblingOutfallConflicts}
+        contextLabel="this visit"
+      />
+
+      {id && evidenceUploadFailures.length > 0 && (
+        <div
+          className="flex flex-wrap items-start gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm"
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-200" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-red-100">Photo or file upload needs a retry</div>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-text-secondary">
+              {evidenceUploadFailures.map((f) => (
+                <li key={f.draftId}>
+                  <span className="font-medium text-text-primary">{f.fileName}</span>
+                  <span className="text-text-muted"> — {f.message}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-text-muted">
+              Stay online and tap Refresh above. Files stay on this device until they upload successfully.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              clearPersistedFieldEvidenceSyncFailuresForVisit(id);
+              setEvidenceUploadFailures([]);
+            }}
+            className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -842,6 +943,11 @@ export function FieldVisitPage() {
                     <div className="mt-1 text-xs text-amber-200/80">
                       {draft.evidenceType.replace('_', ' ')} pending sync
                     </div>
+                    {evidenceFailureByDraftId.get(draft.id) ? (
+                      <div className="mt-2 text-xs text-red-200/95">
+                        Last upload attempt: {evidenceFailureByDraftId.get(draft.id)}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

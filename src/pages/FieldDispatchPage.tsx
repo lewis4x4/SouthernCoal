@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFieldOps } from '@/hooks/useFieldOps';
+import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
 import type { FieldVisitListItem } from '@/types';
 
@@ -72,6 +74,8 @@ export function FieldDispatchPage() {
     return sorted;
   }, [queueFilter, queueSort, todayStr, user?.id, visits]);
 
+  const queueOutfallDayConflicts = useMemo(() => groupSameOutfallSameDay(visits), [visits]);
+
   async function handleCreate() {
     if (!permitId || !outfallId || !assignedTo || !scheduledDate) {
       toast.error('Permit, outfall, assignee, and scheduled date are required');
@@ -126,6 +130,13 @@ export function FieldDispatchPage() {
         loading={loading}
         pendingOutboundCount={outboundPendingCount}
         onRefresh={refresh}
+        auditRefreshPayload={{ surface: 'field_dispatch' }}
+      />
+
+      <FieldSameOutfallDayWarning
+        groups={queueOutfallDayConflicts}
+        contextLabel="field queue (WV)"
+        detailListClassName="max-h-52 overflow-y-auto pr-1"
       />
 
       {canDispatch && (

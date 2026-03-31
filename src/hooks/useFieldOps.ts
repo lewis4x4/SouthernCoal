@@ -17,7 +17,13 @@ import {
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
-import { syncFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
+import {
+  clearPersistedFieldEvidenceSyncFailures,
+  persistFieldEvidenceSyncFailures,
+  syncFieldEvidenceDrafts,
+  type FieldEvidenceDraftSyncFailure,
+} from '@/lib/fieldEvidenceDrafts';
+import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,6 +92,25 @@ function createOutboundOpId() {
     : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+function fieldVisitShellFromRouteListItem(
+  visitId: string,
+  routeListItem: FieldVisitListItem,
+  userId: string | null,
+): FieldVisitDetails {
+  const listItem = mergeVisitWithQueuedLifecycle(routeListItem);
+  const optimistic = optimisticMeasurementsFromQueue(visitId, userId);
+  const mergedMeasurements = mergeMeasurementsWithQueuedCoc(visitId, userId, [...optimistic]);
+  return {
+    visit: listItem,
+    inspection: mergeOutletInspectionWithQueue(visitId, null, userId),
+    measurements: mergedMeasurements,
+    evidence: [],
+    noDischarge: mergeNoDischargeWithQueuedCompletion(visitId, null, userId),
+    accessIssue: mergeAccessIssueWithQueuedCompletion(visitId, null, userId),
+    governanceIssues: [],
+  };
+}
+
 export function useFieldOps() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
@@ -136,6 +161,18 @@ export function useFieldOps() {
       return cachedDetail;
     }
 
+    if (offline) {
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      if (routeListItem) {
+        const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
+        setDetail(shell);
+        saveFieldVisitCache(shell);
+        lastDetailVisitIdRef.current = visitId;
+        setDetailLoading(false);
+        return shell;
+      }
+    }
+
     const [
       visitRes,
       inspectionRes,
@@ -161,6 +198,18 @@ export function useFieldOps() {
         lastDetailVisitIdRef.current = visitId;
         setDetailLoading(false);
         return cachedDetail;
+      }
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      if (routeListItem) {
+        const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
+        toast.error(
+          'Live load failed; showing your saved route copy for this stop. Reconnect and tap Refresh when you can.',
+        );
+        setDetail(shell);
+        saveFieldVisitCache(shell);
+        lastDetailVisitIdRef.current = visitId;
+        setDetailLoading(false);
+        return shell;
       }
       toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
       setDetail(null);
@@ -242,13 +291,33 @@ export function useFieldOps() {
 
     const evidenceSyncResult = organizationId && userId
       ? await syncFieldEvidenceDrafts(supabase, { organizationId, userId })
-      : { uploaded: 0, failed: null as Error | null, syncedVisitIds: [] as string[] };
+      : { uploaded: 0, failures: [] as FieldEvidenceDraftSyncFailure[], syncedVisitIds: [] as string[] };
 
-    if (evidenceSyncResult.failed) {
-      toast.error(`Could not upload pending field evidence: ${evidenceSyncResult.failed.message}`);
+    if (evidenceSyncResult.failures.length > 0) {
+      const failures = evidenceSyncResult.failures;
+      persistFieldEvidenceSyncFailures([...failures]);
+      const n = failures.length;
+      const first = failures[0];
+      if (!first) {
+        setOutboundPendingCount(getFieldOutboundQueueLength());
+        return { processed: evidenceSyncResult.uploaded, failed: new Error('Evidence sync failed') };
+      }
+      const partial =
+        evidenceSyncResult.uploaded > 0
+          ? `Uploaded ${evidenceSyncResult.uploaded} photo(s), but `
+          : '';
+      const more = n > 1 ? ` (${n - 1} more file${n > 2 ? 's' : ''} also failed)` : '';
+      toast.error(
+        `${partial}could not upload ${n} pending ${n === 1 ? 'file' : 'files'}: “${first.fileName}” — ${first.message}.${more} Use Refresh on the field visit to retry.`,
+      );
       setOutboundPendingCount(getFieldOutboundQueueLength());
-      return { processed: evidenceSyncResult.uploaded, failed: evidenceSyncResult.failed };
+      return {
+        processed: evidenceSyncResult.uploaded,
+        failed: new Error(first.message),
+      };
     }
+
+    clearPersistedFieldEvidenceSyncFailures();
 
     const flushResult = await processFieldOutboundQueue(supabase);
     setOutboundPendingCount(getFieldOutboundQueueLength());

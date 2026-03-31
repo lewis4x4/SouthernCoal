@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 type Props = {
   /** True while server fetch for this surface is in flight */
@@ -7,12 +9,20 @@ type Props = {
   onRefresh: () => Promise<void>;
   /** Field mutations waiting to upload after reconnect (Phase 4 outbound queue) */
   pendingOutboundCount?: number;
+  /** Logged after a successful Refresh (fire-and-forget); identifies which field screen triggered sync. */
+  auditRefreshPayload?: Record<string, unknown>;
 };
 
 /**
  * Phase 3 sync visibility: browser online/offline, last successful load time, manual refresh.
  */
-export function FieldDataSyncBar({ loading, onRefresh, pendingOutboundCount = 0 }: Props) {
+export function FieldDataSyncBar({
+  loading,
+  onRefresh,
+  pendingOutboundCount = 0,
+  auditRefreshPayload,
+}: Props) {
+  const { log } = useAuditLog();
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [manualBusy, setManualBusy] = useState(false);
   const [online, setOnline] = useState(
@@ -36,16 +46,23 @@ export function FieldDataSyncBar({ loading, onRefresh, pendingOutboundCount = 0 
     }
   }, [loading, manualBusy]);
 
-  async function handleRefresh() {
+  const handleRefresh = useCallback(async () => {
     setManualBusy(true);
     try {
       await onRefresh();
+      if (auditRefreshPayload) {
+        log('field_sync_manual_refresh', auditRefreshPayload, {
+          module: 'field_operations',
+          tableName: 'field_visits',
+        });
+      }
     } catch (err) {
       console.error('[FieldDataSyncBar] refresh failed', err);
+      toast.error(err instanceof Error ? err.message : 'Refresh failed');
     } finally {
       setManualBusy(false);
     }
-  }
+  }, [auditRefreshPayload, log, onRefresh]);
 
   const busy = loading || manualBusy;
   const timeLabel = lastSyncedAt

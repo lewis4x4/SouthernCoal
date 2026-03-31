@@ -23,6 +23,89 @@ type StoredDraft = {
 
 export type FieldEvidenceDraft = Omit<StoredDraft, 'file'>;
 
+export type FieldEvidenceDraftSyncFailure = {
+  draftId: string;
+  fieldVisitId: string;
+  fileName: string;
+  message: string;
+};
+
+const SYNC_FAILURES_KEY = 'scc.fieldEvidenceSyncFailures.v1';
+
+type PersistedSyncFailuresPayload = {
+  version: 1;
+  savedAt: string;
+  failures: FieldEvidenceDraftSyncFailure[];
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function parseSyncFailuresPayload(raw: string | null): PersistedSyncFailuresPayload | null {
+  if (raw == null || raw === '') return null;
+  try {
+    const data = JSON.parse(raw) as unknown;
+    if (!isRecord(data)) return null;
+    if (data.version !== 1) return null;
+    if (typeof data.savedAt !== 'string') return null;
+    if (!Array.isArray(data.failures)) return null;
+    return data as unknown as PersistedSyncFailuresPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function readPersistedFieldEvidenceSyncFailures(): FieldEvidenceDraftSyncFailure[] {
+  if (typeof sessionStorage === 'undefined') return [];
+  try {
+    const p = parseSyncFailuresPayload(sessionStorage.getItem(SYNC_FAILURES_KEY));
+    return p?.failures ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export function readPersistedFieldEvidenceSyncFailuresForVisit(
+  visitId: string,
+): FieldEvidenceDraftSyncFailure[] {
+  if (!visitId) return [];
+  return readPersistedFieldEvidenceSyncFailures().filter((f) => f.fieldVisitId === visitId);
+}
+
+export function persistFieldEvidenceSyncFailures(failures: FieldEvidenceDraftSyncFailure[]): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (failures.length === 0) {
+      sessionStorage.removeItem(SYNC_FAILURES_KEY);
+      return;
+    }
+    const payload: PersistedSyncFailuresPayload = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      failures,
+    };
+    sessionStorage.setItem(SYNC_FAILURES_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore quota / privacy mode */
+  }
+}
+
+export function clearPersistedFieldEvidenceSyncFailures(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.removeItem(SYNC_FAILURES_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearPersistedFieldEvidenceSyncFailuresForVisit(visitId: string): void {
+  if (!visitId) return;
+  const rest = readPersistedFieldEvidenceSyncFailures().filter((f) => f.fieldVisitId !== visitId);
+  persistFieldEvidenceSyncFailures(rest);
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
@@ -150,7 +233,7 @@ export async function syncFieldEvidenceDrafts(
     organizationId: string;
     userId: string;
   },
-): Promise<{ uploaded: number; failed: Error | null; syncedVisitIds: string[] }> {
+): Promise<{ uploaded: number; failures: FieldEvidenceDraftSyncFailure[]; syncedVisitIds: string[] }> {
   const drafts = await withStore('readonly', async (store) => {
     const rows = (await requestToPromise(store.getAll())) as StoredDraft[];
     return rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -158,6 +241,7 @@ export async function syncFieldEvidenceDrafts(
 
   let uploaded = 0;
   const syncedVisitIds = new Set<string>();
+  const failures: FieldEvidenceDraftSyncFailure[] = [];
 
   for (const draft of drafts) {
     try {
@@ -200,13 +284,14 @@ export async function syncFieldEvidenceDrafts(
       uploaded += 1;
       syncedVisitIds.add(draft.fieldVisitId);
     } catch (error) {
-      return {
-        uploaded,
-        failed: error instanceof Error ? error : new Error(String(error)),
-        syncedVisitIds: [...syncedVisitIds],
-      };
+      failures.push({
+        draftId: draft.id,
+        fieldVisitId: draft.fieldVisitId,
+        fileName: draft.fileName,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  return { uploaded, failed: null, syncedVisitIds: [...syncedVisitIds] };
+  return { uploaded, failures, syncedVisitIds: [...syncedVisitIds] };
 }

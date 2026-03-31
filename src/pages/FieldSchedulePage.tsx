@@ -649,6 +649,7 @@ export function FieldSchedulePage() {
         onRefresh={async () => {
           await Promise.all([refreshVisits(), refreshCalendar()]);
         }}
+        auditRefreshPayload={{ surface: 'field_schedule' }}
       />
 
       <div className="grid gap-4 xl:grid-cols-4">
