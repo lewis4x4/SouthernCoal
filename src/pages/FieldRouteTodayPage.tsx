@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarDays,
@@ -15,8 +15,29 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
+import {
+  loadFieldRouteCacheMatching,
+  saveFieldRouteCache,
+} from '@/lib/fieldRouteLocalCache';
 import { supabase } from '@/lib/supabase';
 import type { FieldVisitListItem } from '@/types';
+
+function subscribeOnline(cb: () => void) {
+  window.addEventListener('online', cb);
+  window.addEventListener('offline', cb);
+  return () => {
+    window.removeEventListener('online', cb);
+    window.removeEventListener('offline', cb);
+  };
+}
+
+function getOnlineSnapshot() {
+  return typeof navigator !== 'undefined' && navigator.onLine;
+}
+
+function getServerSnapshot() {
+  return true;
+}
 
 const MANAGER_ROLES = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 
@@ -47,6 +68,8 @@ export function FieldRouteTodayPage() {
 
   const { visits, loading, refresh } = useFieldOps();
 
+  const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerSnapshot);
+
   const today = new Date().toISOString().slice(0, 10);
   const [routeDate, setRouteDate] = useState(today);
   const [scope, setScope] = useState<'mine' | 'org'>(canSeeOrgWide ? 'org' : 'mine');
@@ -56,7 +79,12 @@ export function FieldRouteTodayPage() {
     if (!canSeeOrgWide) setScope('mine');
   }, [canSeeOrgWide]);
 
-  const dayVisits = useMemo(() => {
+  const routeCache = useMemo(
+    () => loadFieldRouteCacheMatching(routeDate, scope, user?.id ?? null),
+    [routeDate, scope, user?.id],
+  );
+
+  const dayVisitsLive = useMemo(() => {
     let list = visits.filter((v) => v.scheduled_date === routeDate);
     if (scope === 'mine' && user?.id) {
       list = list.filter((v) => v.assigned_to === user.id);
@@ -69,7 +97,21 @@ export function FieldRouteTodayPage() {
     });
   }, [routeDate, scope, user?.id, visits]);
 
+  const dayVisits = useMemo(() => {
+    if (online) return dayVisitsLive;
+    return routeCache?.visits ?? [];
+  }, [online, routeCache, dayVisitsLive]);
+
+  useEffect(() => {
+    if (!online && routeCache?.outfallCoords) {
+      setOutfallCoords(routeCache.outfallCoords);
+    }
+  }, [online, routeCache]);
+
   const loadCoords = useCallback(async (ids: string[]) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return;
+    }
     if (ids.length === 0) {
       setOutfallCoords({});
       return;
@@ -113,6 +155,33 @@ export function FieldRouteTodayPage() {
   const completedCount = dayVisits.filter((v) => v.visit_status === 'completed').length;
   const fullRouteHref = routeLineCoords.length >= 2 ? mapsDirUrl(routeLineCoords) : '';
 
+  const showRouteLoader = loading && online && dayVisits.length === 0;
+
+  function handleSaveOffline() {
+    if (!online) {
+      toast.error('Connect to the network to save an offline copy');
+      return;
+    }
+    if (dayVisitsLive.length === 0) {
+      toast.error('No visits on this date to save');
+      return;
+    }
+    const ids = [...new Set(dayVisitsLive.map((v) => v.outfall_id))];
+    const coords: Record<string, { lat: number; lng: number }> = {};
+    for (const id of ids) {
+      const c = outfallCoords[id];
+      if (c) coords[id] = c;
+    }
+    saveFieldRouteCache({
+      routeDate,
+      scope,
+      viewerUserId: scope === 'mine' ? user?.id ?? null : null,
+      visits: dayVisitsLive,
+      outfallCoords: coords,
+    });
+    toast.success('Route saved on this device for offline viewing');
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -121,7 +190,7 @@ export function FieldRouteTodayPage() {
             Today&apos;s route
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-            Roadmap Phase 3 — route execution: ordered field visits, progress, and map links. Sync when online; offline queue follows in Phase 4.
+            Phase 3 route execution with Phase 4 preview: save today&apos;s list to this device, then view it when the browser is offline (read-only; execution still requires network).
           </p>
         </div>
         <div className="rounded-xl bg-emerald-500/10 p-3">
@@ -130,6 +199,23 @@ export function FieldRouteTodayPage() {
       </div>
 
       <FieldDataSyncBar loading={loading} onRefresh={refresh} />
+
+      {!online && routeCache && dayVisits.length > 0 && (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Offline — showing route saved{' '}
+          {new Date(routeCache.savedAt).toLocaleString(undefined, {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })}
+          . Open each visit still needs connectivity.
+        </div>
+      )}
+
+      {!online && !routeCache && (
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+          You&apos;re offline and no saved route matches this date and scope. Go online once, open this page, then use &quot;Save route offline&quot;.
+        </div>
+      )}
 
       <SpotlightCard className="p-6" spotlightColor="rgba(16, 185, 129, 0.08)">
         <div className="flex flex-wrap items-end gap-4">
@@ -171,6 +257,16 @@ export function FieldRouteTodayPage() {
               </div>
             </div>
           )}
+          {online && (
+            <button
+              type="button"
+              onClick={handleSaveOffline}
+              disabled={dayVisitsLive.length === 0}
+              className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+            >
+              Save route offline
+            </button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-muted">
@@ -193,20 +289,22 @@ export function FieldRouteTodayPage() {
         </div>
       </SpotlightCard>
 
-      {loading ? (
+      {showRouteLoader ? (
         <div className="flex justify-center py-16">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400/60" />
         </div>
       ) : dayVisits.length === 0 ? (
-        <SpotlightCard className="p-8">
-          <p className="text-sm text-text-muted">
-            No field visits for this date{scope === 'mine' ? ' assigned to you' : ''}. Check the{' '}
-            <Link to="/field/dispatch" className="text-emerald-300 hover:text-emerald-200">
-              Field Queue
-            </Link>
-            .
-          </p>
-        </SpotlightCard>
+        online || routeCache ? (
+          <SpotlightCard className="p-8">
+            <p className="text-sm text-text-muted">
+              No field visits for this date{scope === 'mine' ? ' assigned to you' : ''}. Check the{' '}
+              <Link to="/field/dispatch" className="text-emerald-300 hover:text-emerald-200">
+                Field Queue
+              </Link>
+              .
+            </p>
+          </SpotlightCard>
+        ) : null
       ) : (
         <ol className="space-y-3">
           {dayVisits.map((visit) => {
