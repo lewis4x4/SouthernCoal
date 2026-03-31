@@ -37,7 +37,7 @@ export function ReportHistoryTab() {
       );
       const data = await resp.json();
       if (data.download_url) {
-        window.open(data.download_url, '_blank');
+        window.open(data.download_url, '_blank', 'noopener,noreferrer');
       } else {
         toast.error('Download URL not available');
       }

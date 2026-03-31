@@ -56,7 +56,7 @@ export function CitationCard({ chunk, index }: CitationCardProps) {
         return;
       }
 
-      window.open(urlData.signedUrl, '_blank');
+      window.open(urlData.signedUrl, '_blank', 'noopener,noreferrer');
     } catch {
       toast.error('Failed to open document');
     } finally {

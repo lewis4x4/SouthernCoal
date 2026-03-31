@@ -190,7 +190,7 @@ export function useReportGeneration() {
   );
 
   const download = useCallback((url: string) => {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 
   const reset = useCallback(() => {

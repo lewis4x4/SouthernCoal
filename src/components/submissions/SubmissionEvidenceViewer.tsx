@@ -31,7 +31,7 @@ export function SubmissionEvidenceViewer({ paths, bucket }: SubmissionEvidenceVi
       return;
     }
 
-    window.open(data.signedUrl, '_blank');
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
   return (

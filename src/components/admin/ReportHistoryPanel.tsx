@@ -43,7 +43,7 @@ export function ReportHistoryPanel() {
     if (error || !data?.signedUrl) {
       return;
     }
-    window.open(data.signedUrl, '_blank');
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
   const STATUS_STYLES: Record<string, string> = {

@@ -64,7 +64,7 @@ export function CorrectiveActionDetailPage() {
 
       if (data?.pdf_url) {
         // Open PDF in new tab
-        window.open(data.pdf_url, '_blank');
+        window.open(data.pdf_url, '_blank', 'noopener,noreferrer');
         toast.success('PDF generated successfully');
       }
     } catch (err) {
