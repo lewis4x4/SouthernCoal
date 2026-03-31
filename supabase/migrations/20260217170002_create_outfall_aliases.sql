@@ -33,23 +33,18 @@ CREATE TABLE outfall_aliases (
   -- Unique per org/permit context
   CONSTRAINT outfall_aliases_unique UNIQUE (alias, organization_id, permit_id)
 );
-
 -- Index for fast lookup during parsing
 CREATE INDEX idx_outfall_aliases_lookup
   ON outfall_aliases(organization_id, permit_id, lower(alias));
-
 -- Index for outfall_id lookups
 CREATE INDEX idx_outfall_aliases_outfall_id
   ON outfall_aliases(outfall_id);
-
 -- Enable RLS
 ALTER TABLE outfall_aliases ENABLE ROW LEVEL SECURITY;
-
 -- RLS: Org-scoped read
 CREATE POLICY "Users view own org outfall aliases"
   ON outfall_aliases FOR SELECT TO authenticated
   USING (organization_id = get_user_org_id());
-
 -- RLS: Manager roles can create aliases
 CREATE POLICY "Managers create outfall aliases"
   ON outfall_aliases FOR INSERT TO authenticated
@@ -62,17 +57,13 @@ CREATE POLICY "Managers create outfall aliases"
         AND r.name IN ('admin', 'environmental_manager', 'site_manager')
     )
   );
-
 -- RLS: Service role full access (for Edge Function automation)
 CREATE POLICY "Service role manages outfall aliases"
   ON outfall_aliases FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 COMMENT ON TABLE outfall_aliases IS
   'Maps lab/permit outfall identifiers to canonical outfalls.id. Scoped per organization and permit.';
-
 COMMENT ON COLUMN outfall_aliases.alias IS
   'The alias text as it appears in source files (e.g., "DO16", "1.0", "Outfall 001")';
-
 COMMENT ON COLUMN outfall_aliases.match_method IS
   'How this alias was resolved: exact (case-insensitive), zero_strip (001=1), digits_only (DO16=16), user_confirmed';

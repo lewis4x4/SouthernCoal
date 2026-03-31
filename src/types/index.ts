@@ -76,3 +76,25 @@ export type {
   FtsKpis,
   FtsFilters,
 } from './fts';
+
+// Field ops + governance
+export type {
+  FieldVisitStatus,
+  FieldVisitOutcome,
+  GovernanceIssueType,
+  GovernanceIssueStatus,
+  FieldOpsUser,
+  PermitOption,
+  OutfallOption,
+  FieldVisitRecord,
+  FieldVisitListItem,
+  OutletInspectionRecord,
+  FieldMeasurementRecord,
+  FieldEvidenceAssetRecord,
+  NoDischargeRecord,
+  AccessIssueRecord,
+  GovernanceIssueRecord,
+  GovernanceIssueEventRecord,
+  FieldVisitDetails,
+  CompleteFieldVisitResult,
+} from './field';

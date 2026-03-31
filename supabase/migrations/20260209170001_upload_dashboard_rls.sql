@@ -27,14 +27,12 @@ USING (
     )
   )
 );
-
 -- file_processing_queue: INSERT for authenticated users
 -- Users can only insert entries where they are the uploader
 CREATE POLICY "Users can insert queue entries"
 ON file_processing_queue FOR INSERT
 TO authenticated
 WITH CHECK (uploaded_by = auth.uid());
-
 -- npdes_permits: SELECT scoped via site → org chain
 -- Users can view permits for sites belonging to their organization
 CREATE POLICY "Users can view own org permits"
@@ -48,7 +46,6 @@ USING (
     )
   )
 );
-
 -- outfalls: SELECT scoped via site → org chain
 -- Same pattern as permits — outfalls belong to sites, sites belong to orgs
 CREATE POLICY "Users can view own org outfalls"
@@ -62,7 +59,6 @@ USING (
     )
   )
 );
-
 -- permit_limits: SELECT scoped via outfall → site → org chain
 -- permit_limits references outfalls, which reference sites
 CREATE POLICY "Users can view own org permit limits"
@@ -79,7 +75,6 @@ USING (
     )
   )
 );
-
 -- documents: SELECT scoped to org
 -- Users can view documents belonging to their organization
 CREATE POLICY "Users can view own org documents"
@@ -90,14 +85,12 @@ USING (
     SELECT organization_id FROM user_profiles WHERE id = auth.uid()
   )
 );
-
 -- user_profiles: SELECT for own profile
 -- Users need to read their own profile for org scoping and display
 CREATE POLICY "Users can view own profile"
 ON user_profiles FOR SELECT
 TO authenticated
 USING (id = auth.uid());
-
 -- organizations: SELECT scoped to user's org
 -- Users need to read their org name for header display
 CREATE POLICY "Users can view own organization"
@@ -108,20 +101,17 @@ USING (
     SELECT organization_id FROM user_profiles WHERE id = auth.uid()
   )
 );
-
 -- roles: SELECT for all authenticated
 -- Reference table — all users need to resolve role names
 CREATE POLICY "Authenticated users can read roles"
 ON roles FOR SELECT
 TO authenticated
 USING (true);
-
 -- user_role_assignments: SELECT for own assignments
 -- Users need to read their own role assignments for RBAC
 CREATE POLICY "Users can view own role assignments"
 ON user_role_assignments FOR SELECT
 TO authenticated
 USING (user_id = auth.uid());
-
 -- NOTE: audit_log INSERT policy for authenticated users is confirmed to already
--- exist per CMS Schema Documentation. No additional policy needed.
+-- exist per CMS Schema Documentation. No additional policy needed.;

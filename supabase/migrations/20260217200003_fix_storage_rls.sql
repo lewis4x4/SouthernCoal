@@ -9,7 +9,6 @@
 DROP POLICY IF EXISTS "Users upload own attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users view own attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users delete own attachments" ON storage.objects;
-
 -- Create org-scoped policies
 -- Path format: {org_id}/{YYYY-MM-DD}/{timestamp}_{filename}
 
@@ -19,21 +18,18 @@ CREATE POLICY "Org upload handoff attachments" ON storage.objects
     bucket_id = 'handoff-attachments'
     AND (storage.foldername(name))[1] = get_user_org_id()::text
   );
-
 CREATE POLICY "Org read handoff attachments" ON storage.objects
   FOR SELECT TO authenticated
   USING (
     bucket_id = 'handoff-attachments'
     AND (storage.foldername(name))[1] = get_user_org_id()::text
   );
-
 CREATE POLICY "Org delete handoff attachments" ON storage.objects
   FOR DELETE TO authenticated
   USING (
     bucket_id = 'handoff-attachments'
     AND (storage.foldername(name))[1] = get_user_org_id()::text
   );
-
 -- =============================================================================
 -- Update accepted MIME types to include more document formats
 -- =============================================================================
@@ -48,11 +44,10 @@ SET allowed_mime_types = ARRAY[
   'text/csv', 'text/plain', 'text/markdown'
 ]
 WHERE id = 'handoff-attachments';
-
 -- =============================================================================
 -- Verification Query (run manually to confirm)
 -- =============================================================================
 -- SELECT policyname, cmd
 -- FROM pg_policies
 -- WHERE tablename = 'objects' AND policyname LIKE 'Org%handoff%';
--- Expected: 3 rows (upload, read, delete)
+-- Expected: 3 rows (upload, read, delete);

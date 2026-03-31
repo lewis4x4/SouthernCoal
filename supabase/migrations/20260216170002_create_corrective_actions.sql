@@ -126,10 +126,8 @@ CREATE TABLE corrective_actions (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-
 -- Enable Row Level Security
 ALTER TABLE corrective_actions ENABLE ROW LEVEL SECURITY;
-
 -- =========================================================================
 -- INDEXES
 -- =========================================================================
@@ -137,36 +135,28 @@ ALTER TABLE corrective_actions ENABLE ROW LEVEL SECURITY;
 -- Primary query index (org-scoped list views)
 CREATE INDEX idx_corrective_actions_org
   ON corrective_actions(organization_id);
-
 -- Status filtering
 CREATE INDEX idx_corrective_actions_status
   ON corrective_actions(status);
-
 -- Workflow step filtering
 CREATE INDEX idx_corrective_actions_workflow
   ON corrective_actions(workflow_step);
-
 -- Source lookups (for finding CA from exceedance/enforcement)
 CREATE INDEX idx_corrective_actions_source
   ON corrective_actions(source_type, source_id);
-
 -- Assigned user filtering
 CREATE INDEX idx_corrective_actions_assigned
   ON corrective_actions(followup_assigned_to)
   WHERE status NOT IN ('closed', 'verified');
-
 -- Due date for overdue queries
 CREATE INDEX idx_corrective_actions_due
   ON corrective_actions(due_date)
   WHERE status NOT IN ('closed', 'verified');
-
 -- Site/permit lookups
 CREATE INDEX idx_corrective_actions_site
   ON corrective_actions(site_id);
-
 CREATE INDEX idx_corrective_actions_permit
   ON corrective_actions(npdes_permit_id);
-
 -- =========================================================================
 -- UPDATED_AT TRIGGER
 -- =========================================================================
@@ -177,27 +167,22 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER trg_corrective_actions_updated_at
   BEFORE UPDATE ON corrective_actions
   FOR EACH ROW
   EXECUTE FUNCTION update_corrective_actions_updated_at();
-
 -- =========================================================================
 -- DOCUMENTATION
 -- =========================================================================
 COMMENT ON TABLE corrective_actions IS
   'EMS Document 2015-013 Corrective Action tracking. Auto-created from exceedances and enforcement actions. 7-step workflow with digital signatures.';
-
 COMMENT ON COLUMN corrective_actions.workflow_step IS
   'Current step in EMS 7-step workflow: identification → root_cause_analysis → corrective_action_plan → preventive_action → implementation → verification → closure';
-
 COMMENT ON COLUMN corrective_actions.source_type IS
   'What triggered this CA: exceedance (permit limit violation), enforcement (NOV/CO), audit, inspection, or manual entry';
-
 -- =========================================================================
 -- VERIFICATION QUERIES
 -- =========================================================================
 -- SELECT column_name, data_type FROM information_schema.columns
 --   WHERE table_name = 'corrective_actions' ORDER BY ordinal_position;
--- SELECT indexname FROM pg_indexes WHERE tablename = 'corrective_actions';
+-- SELECT indexname FROM pg_indexes WHERE tablename = 'corrective_actions';;

@@ -18,16 +18,13 @@ AS $$
   FROM user_profiles
   WHERE id = auth.uid()
 $$;
-
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION get_user_org_id() TO authenticated;
-
 -- Documentation
 COMMENT ON FUNCTION get_user_org_id() IS
   'Returns the organization_id for the current authenticated user. Used by RLS policies for org-scoped access control.';
-
 -- =============================================================================
 -- VERIFICATION: Run after applying to confirm function exists
 -- =============================================================================
 -- SELECT proname, prosrc FROM pg_proc WHERE proname = 'get_user_org_id';
--- SELECT get_user_org_id(); -- Should return current user's org_id
+-- SELECT get_user_org_id(); -- Should return current user's org_id;

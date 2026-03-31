@@ -49,7 +49,6 @@ BEGIN
   RETURN 1.0;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
 -- =============================================================================
 -- Main exceedance detection trigger function
 -- =============================================================================
@@ -276,17 +275,14 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- =============================================================================
 -- Create trigger on lab_results table
 -- =============================================================================
 DROP TRIGGER IF EXISTS trg_detect_exceedance ON lab_results;
-
 CREATE TRIGGER trg_detect_exceedance
   AFTER INSERT OR UPDATE OF result_value ON lab_results
   FOR EACH ROW
   EXECUTE FUNCTION detect_exceedance();
-
 -- =============================================================================
 -- Documentation
 -- =============================================================================

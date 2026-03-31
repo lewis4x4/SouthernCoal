@@ -12,14 +12,11 @@ CREATE TABLE report_templates (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
 -- Indexes
 CREATE INDEX idx_report_templates_org ON report_templates(organization_id);
 CREATE INDEX idx_report_templates_created_by ON report_templates(created_by);
-
 -- RLS
 ALTER TABLE report_templates ENABLE ROW LEVEL SECURITY;
-
 -- Users see own templates + shared templates in their org
 CREATE POLICY "Users can view own and shared templates"
   ON report_templates FOR SELECT
@@ -27,7 +24,6 @@ CREATE POLICY "Users can view own and shared templates"
     organization_id = get_user_org_id()
     AND (created_by = auth.uid() OR is_shared = true)
   );
-
 -- Users can create templates
 CREATE POLICY "Authenticated users can create templates"
   ON report_templates FOR INSERT
@@ -35,7 +31,6 @@ CREATE POLICY "Authenticated users can create templates"
     organization_id = get_user_org_id()
     AND created_by = auth.uid()
   );
-
 -- Users can update own templates; admins can update any in their org
 CREATE POLICY "Users can update own templates"
   ON report_templates FOR UPDATE
@@ -47,7 +42,6 @@ CREATE POLICY "Users can update own templates"
       WHERE ura.user_id = auth.uid() AND r.name = 'admin'
     ))
   );
-
 -- Users can delete own templates; admins can delete any
 CREATE POLICY "Users can delete own templates"
   ON report_templates FOR DELETE

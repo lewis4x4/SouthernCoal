@@ -3,7 +3,6 @@
 
 -- Clean up partial state from any prior failed attempt
 DROP TABLE IF EXISTS document_chunks CASCADE;
-
 CREATE TABLE document_chunks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -37,28 +36,23 @@ CREATE TABLE document_chunks (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-
 -- RLS
 ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org chunks"
 ON document_chunks FOR SELECT
 TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage chunks"
 ON document_chunks FOR ALL
 TO service_role
 USING (true)
 WITH CHECK (true);
-
 -- Lookup indexes
 CREATE INDEX idx_dc_document_id ON document_chunks(document_id);
 CREATE INDEX idx_dc_org_id ON document_chunks(organization_id);
 CREATE INDEX idx_dc_document_type ON document_chunks(document_type);
 CREATE INDEX idx_dc_state_code ON document_chunks(state_code);
 CREATE INDEX idx_dc_permit_number ON document_chunks(permit_number);
-
 -- NOTE: Vector index deferred. Exact scan is fast for <10K chunks.
 -- Add HNSW/IVFFlat index after confirming pgvector version supports it.
 

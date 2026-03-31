@@ -13,6 +13,7 @@ import {
   LogOut,
   FileEdit,
   Map,
+  MapPin,
   ShieldAlert,
   DollarSign,
   Pin,
@@ -23,6 +24,7 @@ import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFtsNavBadge } from '@/hooks/useFtsNavBadge';
+import type { Role } from '@/types/auth';
 
 const ROLE_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -35,7 +37,25 @@ const ROLE_LABELS: Record<string, string> = {
   read_only: 'Read-Only',
 };
 
-const NAV_GROUPS = [
+type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof Home;
+  roles?: Role[];
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+  activeColor: string;
+  hoverColor: string;
+  accentColor: string;
+};
+
+const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
+const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Main',
     items: [
@@ -45,6 +65,16 @@ const NAV_GROUPS = [
     activeColor: 'bg-white/10 text-white shadow-lg shadow-white/5',
     hoverColor: 'hover:text-text-secondary',
     accentColor: 'border-white/20',
+  },
+  {
+    label: 'Field Ops',
+    items: [
+      { label: 'Field Queue', href: '/field/dispatch', icon: MapPin, roles: FIELD_ROUTE_ROLES },
+      { label: 'Governance', href: '/governance/issues', icon: ShieldAlert, roles: GOVERNANCE_ROUTE_ROLES },
+    ],
+    activeColor: 'bg-emerald-500/15 text-emerald-300 shadow-lg shadow-emerald-500/5',
+    hoverColor: 'hover:text-emerald-400',
+    accentColor: 'border-emerald-500/30',
   },
   {
     label: 'Compliance',
@@ -112,6 +142,13 @@ export function Sidebar() {
     window.dispatchEvent(new CustomEvent('sidebar-pin-change', { detail: isPinned }));
   }, [isPinned]);
 
+  const visibleGroups = NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.roles || item.roles.includes(role)),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <aside
       className={cn(
@@ -152,7 +189,7 @@ export function Sidebar() {
 
       {/* Navigation Groups */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-hide">
-        {NAV_GROUPS.map((group, groupIdx) => (
+        {visibleGroups.map((group, groupIdx) => (
           <div key={groupIdx} className="mb-4">
             {/* Group Label */}
             {isExpanded && (
@@ -255,9 +292,3 @@ export function Sidebar() {
     </aside>
   );
 }
-
-// Export the width for use in AppShell
-export const SIDEBAR_WIDTH = {
-  collapsed: '4rem', // 64px
-  expanded: '14rem', // 224px
-};

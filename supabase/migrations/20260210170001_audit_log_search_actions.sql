@@ -2,7 +2,6 @@
 -- Adds compliance_search + all frontend audit actions that were silently failing
 
 ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS audit_log_action_check;
-
 ALTER TABLE audit_log ADD CONSTRAINT audit_log_action_check CHECK (
   action = ANY (ARRAY[
     -- Base CRUD / auth actions

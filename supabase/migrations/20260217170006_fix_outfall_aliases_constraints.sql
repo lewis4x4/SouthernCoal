@@ -13,18 +13,15 @@
 
 -- Drop the existing unique constraint (allows NULL duplicates)
 ALTER TABLE outfall_aliases DROP CONSTRAINT IF EXISTS outfall_aliases_unique;
-
 -- Create partial index for permit-scoped aliases (permit_id IS NOT NULL)
 CREATE UNIQUE INDEX idx_outfall_aliases_unique_with_permit
   ON outfall_aliases(lower(alias), organization_id, permit_id)
   WHERE permit_id IS NOT NULL;
-
 -- Create partial index for universal aliases (permit_id IS NULL)
 -- This ensures only ONE alias per org when permit is not specified
 CREATE UNIQUE INDEX idx_outfall_aliases_unique_universal
   ON outfall_aliases(lower(alias), organization_id)
   WHERE permit_id IS NULL;
-
 -- ---------------------------------------------------------------------------
 -- Fix 2: Add ON DELETE CASCADE to FK constraints
 -- ---------------------------------------------------------------------------
@@ -32,26 +29,21 @@ CREATE UNIQUE INDEX idx_outfall_aliases_unique_universal
 -- Drop and recreate organization_id FK with CASCADE
 ALTER TABLE outfall_aliases
   DROP CONSTRAINT IF EXISTS outfall_aliases_organization_id_fkey;
-
 ALTER TABLE outfall_aliases
   ADD CONSTRAINT outfall_aliases_organization_id_fkey
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
 -- Drop and recreate permit_id FK with CASCADE
 ALTER TABLE outfall_aliases
   DROP CONSTRAINT IF EXISTS outfall_aliases_permit_id_fkey;
-
 ALTER TABLE outfall_aliases
   ADD CONSTRAINT outfall_aliases_permit_id_fkey
   FOREIGN KEY (permit_id) REFERENCES npdes_permits(id) ON DELETE CASCADE;
-
 -- ---------------------------------------------------------------------------
 -- Fix 3: Update RLS INSERT policy to validate outfall ownership
 -- ---------------------------------------------------------------------------
 
 -- Drop the existing INSERT policy
 DROP POLICY IF EXISTS "Managers create outfall aliases" ON outfall_aliases;
-
 -- Create improved INSERT policy with outfall ownership validation
 CREATE POLICY "Managers create outfall aliases"
   ON outfall_aliases FOR INSERT TO authenticated
@@ -75,12 +67,10 @@ CREATE POLICY "Managers create outfall aliases"
         AND s.organization_id = get_user_org_id()
     )
   );
-
 -- ---------------------------------------------------------------------------
 -- Comments
 -- ---------------------------------------------------------------------------
 COMMENT ON INDEX idx_outfall_aliases_unique_with_permit IS
   'Ensures unique (alias, organization, permit) combinations. Case-insensitive via lower().';
-
 COMMENT ON INDEX idx_outfall_aliases_unique_universal IS
   'Ensures unique (alias, organization) when permit_id is NULL (universal aliases).';

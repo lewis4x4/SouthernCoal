@@ -10,7 +10,6 @@
 CREATE POLICY "Users view own org corrective actions"
   ON corrective_actions FOR SELECT TO authenticated
   USING (organization_id = get_user_org_id());
-
 -- =========================================================================
 -- INSERT: Authorized roles can create CAs
 -- Environmental Manager, Admin, Executive can create manually
@@ -27,7 +26,6 @@ CREATE POLICY "Authorized users create corrective actions"
         AND r.name IN ('admin', 'executive', 'environmental_manager', 'site_manager')
     )
   );
-
 -- =========================================================================
 -- UPDATE: Assigned user or manager roles can update
 -- =========================================================================
@@ -50,7 +48,6 @@ CREATE POLICY "Users update assigned or managed corrective actions"
   WITH CHECK (
     organization_id = get_user_org_id()
   );
-
 -- =========================================================================
 -- DELETE: Admin only (soft delete via status preferred)
 -- =========================================================================
@@ -65,7 +62,6 @@ CREATE POLICY "Admin can delete corrective actions"
         AND r.name = 'admin'
     )
   );
-
 -- =========================================================================
 -- SERVICE ROLE: Full access for Edge Functions and triggers
 -- =========================================================================
@@ -73,8 +69,7 @@ CREATE POLICY "Service role manages all corrective actions"
   ON corrective_actions FOR ALL TO service_role
   USING (true)
   WITH CHECK (true);
-
 -- =========================================================================
 -- VERIFICATION
 -- =========================================================================
--- SELECT policyname, cmd FROM pg_policies WHERE tablename = 'corrective_actions';
+-- SELECT policyname, cmd FROM pg_policies WHERE tablename = 'corrective_actions';;

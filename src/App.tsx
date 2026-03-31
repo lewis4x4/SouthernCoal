@@ -4,7 +4,9 @@ import { Toaster } from 'sonner';
 import { LoginPage } from '@/pages/LoginPage';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGuard } from '@/components/layout/AuthGuard';
+import { RoleGuard } from '@/components/layout/RoleGuard';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import type { Role } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages — code splitting for ~40% bundle reduction
@@ -28,6 +30,11 @@ const CorrectiveActionDetailPage = lazy(() => import('@/pages/CorrectiveActionDe
 const FailureToSamplePage = lazy(() => import('@/pages/FailureToSamplePage').then(m => ({ default: m.FailureToSamplePage })));
 const ExternalDataPage = lazy(() => import('@/pages/ExternalDataPage').then(m => ({ default: m.ExternalDataPage })));
 const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
+const FieldDispatchPage = lazy(() => import('@/pages/FieldDispatchPage').then(m => ({ default: m.FieldDispatchPage })));
+const FieldVisitPage = lazy(() => import('@/pages/FieldVisitPage').then(m => ({ default: m.FieldVisitPage })));
+const GovernanceIssuesPage = lazy(() => import('@/pages/GovernanceIssuesPage').then(m => ({ default: m.GovernanceIssuesPage })));
+const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
+const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -257,6 +264,48 @@ export function App() {
               <AppShell>
                 <LazyPage><ExternalDataPage /></LazyPage>
               </AppShell>
+            </AuthGuard>
+          }
+        />
+
+        {/* Field queue and dispatch */}
+        <Route
+          path="/field/dispatch"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldDispatchPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        {/* Field visit execution */}
+        <Route
+          path="/field/visits/:id"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={FIELD_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><FieldVisitPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        {/* Governance issue inbox */}
+        <Route
+          path="/governance/issues"
+          element={
+            <AuthGuard>
+              <RoleGuard allowedRoles={GOVERNANCE_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><GovernanceIssuesPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />

@@ -6,12 +6,13 @@ import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface EvidenceCaptureProps {
-  submissionType: 'dmr' | 'quarterly_report' | 'notification' | 'correction' | 'roadmap';
+  submissionType: 'dmr' | 'quarterly_report' | 'notification' | 'correction' | 'roadmap' | 'field_visit' | 'governance';
   referenceId: string;
   bucket: string;
   pathPrefix: string;
   onUploaded: (path: string) => void;
   acceptedTypes?: string[];
+  disabled?: boolean;
 }
 
 const DEFAULT_ACCEPTED = ['.pdf', '.png', '.jpg', '.jpeg'];
@@ -36,6 +37,7 @@ export function EvidenceCaptureUpload({
   pathPrefix,
   onUploaded,
   acceptedTypes = DEFAULT_ACCEPTED,
+  disabled = false,
 }: EvidenceCaptureProps) {
   const { log } = useAuditLog();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,17 +57,21 @@ export function EvidenceCaptureUpload({
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
+    if (disabled) return;
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) uploadFile(file);
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (disabled) return;
     const file = e.target.files?.[0];
     if (file) uploadFile(file);
   }
 
   async function uploadFile(file: File) {
+    if (disabled) return;
+
     // Validate file type
     const ext = '.' + (file.name.split('.').pop()?.toLowerCase() ?? '');
     if (!acceptedTypes.includes(ext)) {
@@ -132,13 +138,15 @@ export function EvidenceCaptureUpload({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (!disabled) inputRef.current?.click();
+      }}
       className={cn(
         'flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all',
         isDragging
           ? 'border-blue-400/40 bg-blue-500/5'
           : 'border-white/[0.1] bg-white/[0.01] hover:border-white/[0.15] hover:bg-white/[0.03]',
-        uploading && 'pointer-events-none opacity-60',
+        (uploading || disabled) && 'pointer-events-none opacity-60',
       )}
     >
       {uploading ? (
@@ -147,7 +155,7 @@ export function EvidenceCaptureUpload({
         <Upload className="h-5 w-5 text-text-muted" />
       )}
       <div className="text-xs text-text-muted">
-        {uploading ? 'Uploading...' : 'Drop evidence file or click to browse'}
+        {uploading ? 'Uploading...' : disabled ? 'Evidence is locked after visit completion' : 'Drop evidence file or click to browse'}
       </div>
       <div className="text-[10px] text-text-muted/60">
         {acceptedTypes.join(', ')} &middot; Max 10MB

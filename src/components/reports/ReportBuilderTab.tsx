@@ -6,7 +6,7 @@ import { TemplateProgressModal } from './TemplateProgressModal';
 import {
     Plus, Play, Edit2, Trash2, Layers, Users, Loader2
 } from 'lucide-react';
-import { STATES } from '@/lib/constants';
+import { STATES, type StateConfig } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export function ReportBuilderTab() {
@@ -109,7 +109,7 @@ export function ReportBuilderTab() {
                 toast.success('Template created');
             }
             setIsEditing(false);
-        } catch (err) {
+        } catch {
             // Error handled in hook
         }
     };
@@ -161,7 +161,7 @@ export function ReportBuilderTab() {
             // Update hook's stats in background
             runTemplate(template).catch(console.error);
 
-        } catch (err) {
+        } catch {
             toast.error('Template run failed');
             setRunningJob(null);
         }
@@ -275,7 +275,7 @@ export function ReportBuilderTab() {
 
                                                     <select
                                                         value={entry.format}
-                                                        onChange={(e) => updateReportConfig(idx, { format: e.target.value as any })}
+                                                        onChange={(e) => updateReportConfig(idx, { format: e.target.value as TemplateReportEntry['format'] })}
                                                         className="bg-transparent border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-text-muted focus:outline-none"
                                                     >
                                                         <option value="pdf">PDF</option>
@@ -289,19 +289,19 @@ export function ReportBuilderTab() {
                                                     <div>
                                                         <label className="text-[10px] text-text-muted block mb-1">State Filter</label>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {STATES.slice(0, 5).map(st => (
+                                                            {STATES.slice(0, 5).map((st: StateConfig) => (
                                                                 <button
-                                                                    key={typeof st === 'string' ? st : (st as any).name}
+                                                                    key={st.code}
                                                                     onClick={() => {
                                                                         const states = entry.config.states || [];
-                                                                        const val = typeof st === 'string' ? st : (st as any).name;
+                                                                        const val = st.code;
                                                                         const next = states.includes(val) ? states.filter(s => s !== val) : [...states, val];
                                                                         updateReportConfig(idx, { config: { ...entry.config, states: next } });
                                                                     }}
-                                                                    className={`px-2 py-0.5 rounded text-[10px] ${entry.config.states?.includes(typeof st === 'string' ? st : (st as any).name) ? 'bg-primary/20 text-primary' : 'bg-white/[0.04] text-text-muted'
+                                                                    className={`px-2 py-0.5 rounded text-[10px] ${entry.config.states?.includes(st.code) ? 'bg-primary/20 text-primary' : 'bg-white/[0.04] text-text-muted'
                                                                         }`}
                                                                 >
-                                                                    {typeof st === 'string' ? st : (st as any).name}
+                                                                    {st.code}
                                                                 </button>
                                                             ))}
                                                         </div>

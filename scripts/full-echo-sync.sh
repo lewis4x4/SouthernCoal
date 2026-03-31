@@ -6,6 +6,8 @@
 #
 # Usage:
 #   chmod +x scripts/full-echo-sync.sh
+#   export SUPABASE_ANON_KEY="..."
+#   export SYNC_ECHO_INTERNAL_SECRET="..."
 #   ./scripts/full-echo-sync.sh
 #
 # Resumes from where it left off if re-run (uses progress file).
@@ -16,13 +18,23 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-URL="https://zymenlnwyzpnohljwifx.supabase.co"
-ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5bWVubG53eXpwbm9obGp3aWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NTY0NjcsImV4cCI6MjA4NjIzMjQ2N30.Q6uKHhUEKhnanBuWEeCIVoJN08t5afqUx74zGZ4VMgQ"
-SECRET="bommuq-5raggi-dytbaH"
+URL="${SUPABASE_URL:-https://zymenlnwyzpnohljwifx.supabase.co}"
+ANON_KEY="${SUPABASE_ANON_KEY:-}"
+SECRET="${SYNC_ECHO_INTERNAL_SECRET:-}"
 RUN_TAG="full-sync-$(date +%Y%m%d-%H%M%S)"
 DONE_FILE="/tmp/echo-sync-done.txt"
 FAIL_FILE="/tmp/echo-sync-failed.txt"
 LOG_FILE="/tmp/echo-sync-${RUN_TAG}.log"
+
+if [[ -z "$ANON_KEY" ]]; then
+  echo "SUPABASE_ANON_KEY is required."
+  exit 1
+fi
+
+if [[ -z "$SECRET" ]]; then
+  echo "SYNC_ECHO_INTERNAL_SECRET is required."
+  exit 1
+fi
 
 # Create tracking files if missing
 touch "$DONE_FILE" "$FAIL_FILE"

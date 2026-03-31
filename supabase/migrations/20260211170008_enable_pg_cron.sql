@@ -4,6 +4,5 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
-
 -- Cron jobs will be scheduled AFTER Edge Functions are deployed and tested.
--- See plan Step 7 for the scheduled job SQL.
+-- See plan Step 7 for the scheduled job SQL.;

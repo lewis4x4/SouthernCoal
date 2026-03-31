@@ -25,7 +25,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Iron, Total'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Iron, Dissolved variants
 -- ---------------------------------------------------------------------------
@@ -42,7 +41,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Iron, Dissolved'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Manganese variants → Manganese, Total
 -- ---------------------------------------------------------------------------
@@ -63,7 +61,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Manganese, Total'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Manganese, Dissolved variants
 -- ---------------------------------------------------------------------------
@@ -80,7 +77,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Manganese, Dissolved'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- pH variants
 -- ---------------------------------------------------------------------------
@@ -99,7 +95,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'pH'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Total Suspended Solids variants
 -- ---------------------------------------------------------------------------
@@ -116,7 +111,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Total Suspended Solids'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Selenium, Total variants
 -- ---------------------------------------------------------------------------
@@ -135,7 +129,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Selenium, Total'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Selenium, Dissolved variants
 -- ---------------------------------------------------------------------------
@@ -151,7 +144,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Selenium, Dissolved'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Specific Conductance variants
 -- ---------------------------------------------------------------------------
@@ -170,7 +162,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Specific Conductance'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Sulfate variants
 -- ---------------------------------------------------------------------------
@@ -188,7 +179,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Sulfate'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Settleable Solids variants
 -- ---------------------------------------------------------------------------
@@ -205,7 +195,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Settleable Solids'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Aluminum, Total variants
 -- ---------------------------------------------------------------------------
@@ -226,7 +215,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Aluminum, Total'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Aluminum, Dissolved variants
 -- ---------------------------------------------------------------------------
@@ -242,7 +230,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Aluminum, Dissolved'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Total Dissolved Solids variants
 -- ---------------------------------------------------------------------------
@@ -258,7 +245,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Total Dissolved Solids'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Temperature variants
 -- ---------------------------------------------------------------------------
@@ -275,7 +261,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Temperature'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Flow variants
 -- ---------------------------------------------------------------------------
@@ -291,7 +276,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Flow'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Mercury, Total variants
 -- ---------------------------------------------------------------------------
@@ -308,7 +292,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Mercury, Total'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Dissolved Oxygen variants
 -- ---------------------------------------------------------------------------
@@ -325,7 +308,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Dissolved Oxygen'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Turbidity variants
 -- ---------------------------------------------------------------------------
@@ -339,7 +321,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Turbidity'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Oil & Grease variants
 -- ---------------------------------------------------------------------------
@@ -355,7 +336,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Oil & Grease'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Alkalinity variants
 -- ---------------------------------------------------------------------------
@@ -371,7 +351,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Alkalinity'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Hardness variants
 -- ---------------------------------------------------------------------------
@@ -387,7 +366,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Hardness'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Acidity variants
 -- ---------------------------------------------------------------------------
@@ -402,7 +380,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Acidity'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- BOD variants
 -- ---------------------------------------------------------------------------
@@ -418,7 +395,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'BOD'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Ammonia variants
 -- ---------------------------------------------------------------------------
@@ -435,7 +411,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Ammonia'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Calcium variants
 -- ---------------------------------------------------------------------------
@@ -451,7 +426,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Calcium'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Magnesium variants
 -- ---------------------------------------------------------------------------
@@ -467,7 +441,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Magnesium'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Sodium variants
 -- ---------------------------------------------------------------------------
@@ -483,7 +456,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Sodium'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Potassium variants
 -- ---------------------------------------------------------------------------
@@ -499,7 +471,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Potassium'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Osmotic Pressure variants
 -- ---------------------------------------------------------------------------
@@ -514,7 +485,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Osmotic Pressure'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Chloride variants
 -- ---------------------------------------------------------------------------
@@ -530,7 +500,6 @@ CROSS JOIN (VALUES
 ) AS a(alias)
 WHERE p.name = 'Chloride'
 ON CONFLICT (alias, state_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
 -- Log the seed
 -- ---------------------------------------------------------------------------

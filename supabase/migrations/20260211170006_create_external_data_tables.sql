@@ -50,22 +50,17 @@ CREATE TABLE external_echo_facilities (
   -- One record per NPDES ID per org
   UNIQUE (organization_id, npdes_id)
 );
-
 ALTER TABLE external_echo_facilities ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org ECHO facilities"
 ON external_echo_facilities FOR SELECT TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage ECHO facilities"
 ON external_echo_facilities FOR ALL TO service_role
 USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_eef_org_id ON external_echo_facilities(organization_id);
 CREATE INDEX idx_eef_npdes_id ON external_echo_facilities(npdes_id);
 CREATE INDEX idx_eef_state ON external_echo_facilities(state_code);
 CREATE INDEX idx_eef_compliance ON external_echo_facilities(compliance_status);
-
 -- ============================================================================
 -- 2. external_echo_dmrs — Cached DMR effluent data from EPA ECHO
 -- ============================================================================
@@ -111,23 +106,18 @@ CREATE TABLE external_echo_dmrs (
   -- One record per outfall × parameter × stat base × period × org
   UNIQUE (organization_id, npdes_id, outfall, parameter_code, statistical_base, monitoring_period_end)
 );
-
 ALTER TABLE external_echo_dmrs ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org ECHO DMRs"
 ON external_echo_dmrs FOR SELECT TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage ECHO DMRs"
 ON external_echo_dmrs FOR ALL TO service_role
 USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_eed_org_id ON external_echo_dmrs(organization_id);
 CREATE INDEX idx_eed_npdes_id ON external_echo_dmrs(npdes_id);
 CREATE INDEX idx_eed_facility ON external_echo_dmrs(facility_id);
 CREATE INDEX idx_eed_period ON external_echo_dmrs(monitoring_period_end);
 CREATE INDEX idx_eed_violation ON external_echo_dmrs(violation_code) WHERE violation_code IS NOT NULL;
-
 -- ============================================================================
 -- 3. external_msha_inspections — Cached MSHA inspection/violation records
 --    (skeleton — actual sync blocked until mine ID mapping from Tom)
@@ -165,21 +155,16 @@ CREATE TABLE external_msha_inspections (
 
   UNIQUE (organization_id, mine_id, event_number)
 );
-
 ALTER TABLE external_msha_inspections ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org MSHA inspections"
 ON external_msha_inspections FOR SELECT TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage MSHA inspections"
 ON external_msha_inspections FOR ALL TO service_role
 USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_emi_org_id ON external_msha_inspections(organization_id);
 CREATE INDEX idx_emi_mine_id ON external_msha_inspections(mine_id);
 CREATE INDEX idx_emi_date ON external_msha_inspections(inspection_date);
-
 -- ============================================================================
 -- 4. external_sync_log — Audit trail of all sync operations
 -- ============================================================================
@@ -205,22 +190,17 @@ CREATE TABLE external_sync_log (
 
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE external_sync_log ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org sync logs"
 ON external_sync_log FOR SELECT TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage sync logs"
 ON external_sync_log FOR ALL TO service_role
 USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_esl_org ON external_sync_log(organization_id);
 CREATE INDEX idx_esl_source ON external_sync_log(source);
 CREATE INDEX idx_esl_status ON external_sync_log(status);
 CREATE INDEX idx_esl_started ON external_sync_log(started_at DESC);
-
 -- ============================================================================
 -- 5. discrepancy_reviews — Triage queue for cross-validation mismatches
 -- ============================================================================
@@ -263,21 +243,16 @@ CREATE TABLE discrepancy_reviews (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE discrepancy_reviews ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org discrepancies"
 ON discrepancy_reviews FOR SELECT TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Users can update own org discrepancies"
 ON discrepancy_reviews FOR UPDATE TO authenticated
 USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role can manage discrepancies"
 ON discrepancy_reviews FOR ALL TO service_role
 USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_dr_org ON discrepancy_reviews(organization_id);
 CREATE INDEX idx_dr_npdes ON discrepancy_reviews(npdes_id);
 CREATE INDEX idx_dr_severity ON discrepancy_reviews(severity);

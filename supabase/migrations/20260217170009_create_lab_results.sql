@@ -33,26 +33,20 @@ CREATE TABLE sampling_events (
   -- One event per outfall × date × time (time can be null for single daily samples)
   CONSTRAINT sampling_events_unique UNIQUE NULLS NOT DISTINCT (outfall_id, sample_date, sample_time)
 );
-
 ALTER TABLE sampling_events ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can view own org sampling events"
   ON sampling_events FOR SELECT TO authenticated
   USING (organization_id = get_user_org_id());
-
 CREATE POLICY "Users can insert own org sampling events"
   ON sampling_events FOR INSERT TO authenticated
   WITH CHECK (organization_id = get_user_org_id());
-
 CREATE POLICY "Service role full access to sampling events"
   ON sampling_events FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_sampling_events_org ON sampling_events(organization_id);
 CREATE INDEX idx_sampling_events_outfall ON sampling_events(outfall_id);
 CREATE INDEX idx_sampling_events_date ON sampling_events(sample_date DESC);
 CREATE INDEX idx_sampling_events_import ON sampling_events(import_id);
-
 -- ============================================================================
 -- 2. Lab Results — Individual parameter measurements
 -- ============================================================================
@@ -86,9 +80,7 @@ CREATE TABLE lab_results (
   -- One result per event × parameter
   CONSTRAINT lab_results_unique UNIQUE (sampling_event_id, parameter_id)
 );
-
 ALTER TABLE lab_results ENABLE ROW LEVEL SECURITY;
-
 -- RLS via parent sampling_event
 CREATE POLICY "Users can view own org lab results"
   ON lab_results FOR SELECT TO authenticated
@@ -99,7 +91,6 @@ CREATE POLICY "Users can view own org lab results"
         AND se.organization_id = get_user_org_id()
     )
   );
-
 CREATE POLICY "Users can insert lab results for own org events"
   ON lab_results FOR INSERT TO authenticated
   WITH CHECK (
@@ -109,17 +100,14 @@ CREATE POLICY "Users can insert lab results for own org events"
         AND se.organization_id = get_user_org_id()
     )
   );
-
 CREATE POLICY "Service role full access to lab results"
   ON lab_results FOR ALL TO service_role
   USING (true) WITH CHECK (true);
-
 CREATE INDEX idx_lab_results_event ON lab_results(sampling_event_id);
 CREATE INDEX idx_lab_results_parameter ON lab_results(parameter_id);
 CREATE INDEX idx_lab_results_import ON lab_results(import_id);
 CREATE INDEX idx_lab_results_below_det ON lab_results(below_detection) WHERE below_detection = true;
 CREATE INDEX idx_lab_results_hold_time ON lab_results(hold_time_compliant) WHERE hold_time_compliant = false;
-
 -- ============================================================================
 -- 3. Comments for documentation
 -- ============================================================================
