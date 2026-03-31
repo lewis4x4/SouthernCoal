@@ -7,12 +7,18 @@ import type { GovernanceIssueEventRecord, GovernanceIssueRecord, GovernanceIssue
 
 const STEP_ONE_OWNER = 'Bill Johnson';
 
+/** Inbox slice — Codex Phase 5 visibility beyond the primary reviewer queue */
+export type GovernanceInboxFilter = 'bill_primary' | 'all_open' | 'escalated';
+
+const ACTIVE_STATUSES: GovernanceIssueStatus[] = ['open', 'under_review'];
+
 export function useGovernanceIssues() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [issues, setIssues] = useState<GovernanceIssueRecord[]>([]);
   const [events, setEvents] = useState<Record<string, GovernanceIssueEventRecord[]>>({});
   const [loading, setLoading] = useState(true);
+  const [inboxFilter, setInboxFilter] = useState<GovernanceInboxFilter>('bill_primary');
   const organizationId = profile?.organization_id ?? null;
   const actorName = user?.email ?? 'System';
 
@@ -23,13 +29,21 @@ export function useGovernanceIssues() {
     }
 
     setLoading(true);
-    const { data, error } = await supabase
+
+    let q = supabase
       .from('governance_issues')
       .select('*')
-      .eq('current_step', 1)
-      .eq('current_owner_name', STEP_ONE_OWNER)
       .eq('organization_id', organizationId)
-      .order('raised_at', { ascending: false });
+      .in('current_status', ACTIVE_STATUSES);
+
+    if (inboxFilter === 'bill_primary') {
+      q = q.eq('current_step', 1).eq('current_owner_name', STEP_ONE_OWNER);
+    } else if (inboxFilter === 'escalated') {
+      q = q.gt('current_step', 1);
+    }
+    // all_open: org + active statuses only
+
+    const { data, error } = await q.order('raised_at', { ascending: false });
 
     if (error) {
       toast.error(`Failed to load governance issues: ${error.message}`);
@@ -39,7 +53,7 @@ export function useGovernanceIssues() {
 
     setIssues((data ?? []) as GovernanceIssueRecord[]);
     setLoading(false);
-  }, [organizationId]);
+  }, [organizationId, inboxFilter]);
 
   const loadEvents = useCallback(async (issueId: string) => {
     const { data, error } = await supabase
@@ -89,6 +103,8 @@ export function useGovernanceIssues() {
     issues,
     events,
     loading,
+    inboxFilter,
+    setInboxFilter,
     refresh: loadIssues,
     loadEvents,
     updateIssue,

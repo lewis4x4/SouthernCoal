@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, ListOrdered, MapPinned, Plus, Route, UserRound, AlertTriangle } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  ClipboardList,
+  ListOrdered,
+  MapPinned,
+  Plus,
+  Route,
+  UserRound,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
@@ -9,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
 import type { FieldVisitListItem } from '@/types';
 
@@ -28,7 +38,18 @@ export function FieldDispatchPage() {
   const role = getEffectiveRole();
   const canDispatch = MANAGER_ROLES.includes(role);
 
-  const { permits, outfalls, users, visits, loading, outboundPendingCount, refresh, createVisit } = useFieldOps();
+  const {
+    permits,
+    outfalls,
+    users,
+    visits,
+    loading,
+    outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
+    refresh,
+    createVisit,
+  } = useFieldOps();
 
   const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today' | 'overdue'>('all');
   const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
@@ -73,6 +94,11 @@ export function FieldDispatchPage() {
     }
     return sorted;
   }, [queueFilter, queueSort, todayStr, user?.id, visits]);
+
+  const queueNeedsDispositionCount = useMemo(
+    () => filteredVisits.filter((v) => visitNeedsDisposition(v)).length,
+    [filteredVisits],
+  );
 
   const queueOutfallDayConflicts = useMemo(() => groupSameOutfallSameDay(visits), [visits]);
 
@@ -129,6 +155,8 @@ export function FieldDispatchPage() {
       <FieldDataSyncBar
         loading={loading}
         pendingOutboundCount={outboundPendingCount}
+        queueFlushDiagnostic={outboundQueueDiagnostic}
+        onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
         onRefresh={refresh}
         auditRefreshPayload={{ surface: 'field_dispatch' }}
       />
@@ -286,6 +314,14 @@ export function FieldDispatchPage() {
             </button>
           </div>
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3 text-xs text-text-secondary">
+          <ClipboardList className="h-3.5 w-3.5 shrink-0 text-cyan-300" aria-hidden />
+          <span>
+            <span className="font-semibold text-cyan-200/90">{queueNeedsDispositionCount}</span>
+            {' of '}
+            {filteredVisits.length} shown still need a field outcome (complete the visit).
+          </span>
+        </div>
       </SpotlightCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -300,7 +336,13 @@ export function FieldDispatchPage() {
         ) : (
           filteredVisits.map((visit) => (
             <Link key={visit.id} to={`/field/visits/${visit.id}`}>
-              <SpotlightCard className="h-full p-6 transition-all hover:border-white/[0.12]">
+              <SpotlightCard
+                className={`h-full p-6 transition-all hover:border-white/[0.12] ${
+                  visitNeedsDisposition(visit)
+                    ? 'border-l-2 border-l-cyan-400/35 pl-[calc(1.5rem-2px)]'
+                    : ''
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">

@@ -23,6 +23,14 @@ import {
   syncFieldEvidenceDrafts,
   type FieldEvidenceDraftSyncFailure,
 } from '@/lib/fieldEvidenceDrafts';
+import {
+  clearStoredOutboundQueueDiagnostic,
+  OUTBOUND_QUEUE_DIAGNOSTIC_CHANGED_EVENT,
+  persistOutboundQueueDiagnostic,
+  readStoredOutboundQueueDiagnostic,
+  OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
+} from '@/lib/fieldOutboundQueueDiagnostic';
+import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
 import { supabase } from '@/lib/supabase';
@@ -129,10 +137,26 @@ export function useFieldOps() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<FieldVisitDetails | null>(null);
-  const [outboundPendingCount, setOutboundPendingCount] = useState(() =>
-    typeof window !== 'undefined' ? getFieldOutboundQueueLength() : 0,
+  const [outboundPendingCount, setOutboundPendingCount] = useState(0);
+  /** Phase 4: shared across field pages via localStorage */
+  const [outboundQueueDiagnostic, setOutboundQueueDiagnostic] = useState(() =>
+    readStoredOutboundQueueDiagnostic(),
   );
   const lastDetailVisitIdRef = useRef<string | null>(null);
+
+  const clearOutboundQueueDiagnostic = useCallback(() => {
+    clearStoredOutboundQueueDiagnostic();
+    setOutboundQueueDiagnostic(null);
+  }, []);
+
+  const refreshOutboundPendingCount = useCallback(async () => {
+    try {
+      const n = await getFieldSyncPendingCount();
+      setOutboundPendingCount(n);
+    } catch {
+      setOutboundPendingCount(getFieldOutboundQueueLength());
+    }
+  }, []);
 
   const permitMap = useMemo(
     () => new Map(permits.map((permit) => [permit.id, permit])),
@@ -285,7 +309,7 @@ export function useFieldOps() {
 
   const flushOutboundIfOnline = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.onLine) {
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      await refreshOutboundPendingCount();
       return { processed: 0, failed: null as Error | null };
     }
 
@@ -293,41 +317,60 @@ export function useFieldOps() {
       ? await syncFieldEvidenceDrafts(supabase, { organizationId, userId })
       : { uploaded: 0, failures: [] as FieldEvidenceDraftSyncFailure[], syncedVisitIds: [] as string[] };
 
-    if (evidenceSyncResult.failures.length > 0) {
-      const failures = evidenceSyncResult.failures;
-      persistFieldEvidenceSyncFailures([...failures]);
-      const n = failures.length;
-      const first = failures[0];
-      if (!first) {
-        setOutboundPendingCount(getFieldOutboundQueueLength());
-        return { processed: evidenceSyncResult.uploaded, failed: new Error('Evidence sync failed') };
+    const hadEvidenceFailures = evidenceSyncResult.failures.length > 0;
+    if (hadEvidenceFailures) {
+      persistFieldEvidenceSyncFailures([...evidenceSyncResult.failures]);
+      const n = evidenceSyncResult.failures.length;
+      const first = evidenceSyncResult.failures[0];
+      if (first) {
+        const partial =
+          evidenceSyncResult.uploaded > 0
+            ? `Uploaded ${evidenceSyncResult.uploaded} photo(s), but `
+            : '';
+        const more = n > 1 ? ` (${n - 1} more file${n > 1 ? 's' : ''} also failed)` : '';
+        toast.error(
+          `${partial}could not upload ${n} pending ${n === 1 ? 'file' : 'files'}: “${first.fileName}” — ${first.message}.${more} Queued field actions will still sync. Retry photos from the visit screen.`,
+        );
       }
-      const partial =
-        evidenceSyncResult.uploaded > 0
-          ? `Uploaded ${evidenceSyncResult.uploaded} photo(s), but `
-          : '';
-      const more = n > 1 ? ` (${n - 1} more file${n > 2 ? 's' : ''} also failed)` : '';
-      toast.error(
-        `${partial}could not upload ${n} pending ${n === 1 ? 'file' : 'files'}: “${first.fileName}” — ${first.message}.${more} Use Refresh on the field visit to retry.`,
-      );
-      setOutboundPendingCount(getFieldOutboundQueueLength());
-      return {
-        processed: evidenceSyncResult.uploaded,
-        failed: new Error(first.message),
-      };
+    } else {
+      clearPersistedFieldEvidenceSyncFailures();
     }
 
-    clearPersistedFieldEvidenceSyncFailures();
-
     const flushResult = await processFieldOutboundQueue(supabase);
-    setOutboundPendingCount(getFieldOutboundQueueLength());
+    await refreshOutboundPendingCount();
     const totalProcessed = evidenceSyncResult.uploaded + flushResult.processed;
 
     if (flushResult.failed) {
       toast.error(`Could not upload pending field data: ${flushResult.failed.message}`);
-    } else if (totalProcessed > 0) {
+      const diag = flushResult.blockedOp
+        ? {
+            message: flushResult.failed.message,
+            opKind: flushResult.blockedOp.kind,
+            visitId: flushResult.blockedOp.visitId,
+          }
+        : {
+            message: flushResult.failed.message,
+            opKind: 'unknown',
+            visitId: '—',
+          };
+      persistOutboundQueueDiagnostic(diag);
+      setOutboundQueueDiagnostic(diag);
+    } else {
+      clearStoredOutboundQueueDiagnostic();
+      setOutboundQueueDiagnostic(null);
+    }
+
+    if (!flushResult.failed && totalProcessed > 0 && !hadEvidenceFailures) {
       toast.success(
         `Uploaded ${totalProcessed} pending field ${totalProcessed === 1 ? 'item' : 'items'}`,
+      );
+    } else if (!flushResult.failed && hadEvidenceFailures && flushResult.processed > 0) {
+      toast.message(
+        `Synced ${flushResult.processed} queued field ${flushResult.processed === 1 ? 'action' : 'actions'}. Fix failed photo uploads when you can.`,
+      );
+    } else if (!flushResult.failed && hadEvidenceFailures && evidenceSyncResult.uploaded > 0 && flushResult.processed === 0) {
+      toast.message(
+        `Uploaded ${evidenceSyncResult.uploaded} photo(s); no queued actions remained.`,
       );
     }
 
@@ -338,9 +381,12 @@ export function useFieldOps() {
 
     return {
       processed: totalProcessed,
-      failed: flushResult.failed,
+      failed:
+        hadEvidenceFailures && evidenceSyncResult.failures[0]
+          ? new Error(evidenceSyncResult.failures[0].message)
+          : flushResult.failed,
     };
-  }, [loadVisitDetails, organizationId, userId]);
+  }, [loadVisitDetails, organizationId, userId, refreshOutboundPendingCount]);
 
   const loadDispatchContext = useCallback(async () => {
     await flushOutboundIfOnline();
@@ -511,7 +557,7 @@ export function useFieldOps() {
         if (!prev || prev.visit.id !== visitId) return prev;
         return { ...prev, visit: mergeVisitWithQueuedLifecycle(prev.visit) };
       });
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      void refreshOutboundPendingCount();
       return { queued: true } as const;
     };
 
@@ -540,7 +586,7 @@ export function useFieldOps() {
 
     await Promise.all([loadDispatchContext(), loadVisitDetails(visitId)]);
     return { queued: false };
-  }, [loadDispatchContext, loadVisitDetails]);
+  }, [loadDispatchContext, loadVisitDetails, refreshOutboundPendingCount]);
 
   const saveInspection = useCallback(async (
     visitId: string,
@@ -596,7 +642,7 @@ export function useFieldOps() {
         return { ...prev, inspection: nextInspection };
       });
 
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      void refreshOutboundPendingCount();
       return { queued: true } as const;
     };
 
@@ -616,7 +662,7 @@ export function useFieldOps() {
     }
     await loadVisitDetails(visitId);
     return { queued: false };
-  }, [loadVisitDetails, userId]);
+  }, [loadVisitDetails, refreshOutboundPendingCount, userId]);
 
   const addMeasurement = useCallback(async (visitId: string, measurement: {
     parameterName: string;
@@ -657,7 +703,7 @@ export function useFieldOps() {
         return { ...prev, measurements: [optimistic, ...prev.measurements] };
       });
 
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      void refreshOutboundPendingCount();
       return { queued: true } as const;
     };
 
@@ -683,7 +729,7 @@ export function useFieldOps() {
     }
     await loadVisitDetails(visitId);
     return { queued: false };
-  }, [loadVisitDetails, userId]);
+  }, [loadVisitDetails, refreshOutboundPendingCount, userId]);
 
   const saveCocPrimaryContainer = useCallback(async (
     visitId: string,
@@ -712,7 +758,7 @@ export function useFieldOps() {
           measurements: mergeMeasurementsWithQueuedCoc(visitId, userId, prev.measurements),
         };
       });
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      void refreshOutboundPendingCount();
       return { queued: true } as const;
     };
 
@@ -768,7 +814,7 @@ export function useFieldOps() {
 
     await loadVisitDetails(visitId);
     return { queued: false };
-  }, [loadVisitDetails, userId]);
+  }, [loadVisitDetails, refreshOutboundPendingCount, userId]);
 
   const recordEvidenceAsset = useCallback(async (input: {
     fieldVisitId: string;
@@ -843,7 +889,7 @@ export function useFieldOps() {
       setVisits((prev) => prev.map((row) => (
         row.id === visit.id ? mergeVisitWithQueuedLifecycle(row) : row
       )));
-      setOutboundPendingCount(getFieldOutboundQueueLength());
+      void refreshOutboundPendingCount();
 
       return {
         queued: true,
@@ -896,7 +942,11 @@ export function useFieldOps() {
         governance_issue_id: null,
       }) as CompleteFieldVisitResult,
     };
-  }, [actorName, loadDispatchContext, loadVisitDetails, organizationId, userId]);
+  }, [actorName, loadDispatchContext, loadVisitDetails, organizationId, refreshOutboundPendingCount, userId]);
+
+  useEffect(() => {
+    void refreshOutboundPendingCount();
+  }, [refreshOutboundPendingCount]);
 
   useEffect(() => {
     if (organizationId) {
@@ -915,6 +965,23 @@ export function useFieldOps() {
     return () => window.removeEventListener('online', onUp);
   }, [flushOutboundIfOnline]);
 
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY) return;
+      setOutboundQueueDiagnostic(readStoredOutboundQueueDiagnostic());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  useEffect(() => {
+    const onSameTab = () => {
+      setOutboundQueueDiagnostic(readStoredOutboundQueueDiagnostic());
+    };
+    window.addEventListener(OUTBOUND_QUEUE_DIAGNOSTIC_CHANGED_EVENT, onSameTab);
+    return () => window.removeEventListener(OUTBOUND_QUEUE_DIAGNOSTIC_CHANGED_EVENT, onSameTab);
+  }, []);
+
   return {
     permits,
     outfalls,
@@ -922,9 +989,12 @@ export function useFieldOps() {
     visits,
     loading,
     outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
     detail,
     detailLoading,
     refresh: loadDispatchContext,
+    refreshOutboundPendingCount,
     loadVisitDetails,
     createVisit,
     startVisit,

@@ -23,6 +23,7 @@ const f2 = {
 
 describe('field evidence sync failure persistence', () => {
   beforeEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
   });
 

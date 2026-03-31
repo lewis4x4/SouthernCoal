@@ -8,6 +8,7 @@ import {
   Droplets,
   MapPin,
   Package,
+  RefreshCw,
   ShieldAlert,
   Waves,
   Wind,
@@ -71,8 +72,11 @@ export function FieldVisitPage() {
     detailLoading,
     loading: fieldQueueLoading,
     outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
     visits: fieldQueueVisits,
     loadVisitDetails,
+    refreshOutboundPendingCount,
     refresh: refreshFieldQueue,
     startVisit,
     saveInspection,
@@ -124,6 +128,13 @@ export function FieldVisitPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to load offline evidence drafts');
     }
   }, []);
+
+  /** Phase 4: same path as sync bar — flush queue + evidence drafts, reload visit failures */
+  const handleFieldSyncRefresh = useCallback(async () => {
+    if (!id) return;
+    await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
+    setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
+  }, [id, loadVisitDetails, refreshFieldQueue, refreshPendingEvidenceDrafts]);
 
   useEffect(() => {
     if (id) {
@@ -462,10 +473,9 @@ export function FieldVisitPage() {
         <FieldDataSyncBar
           loading={fieldQueueLoading || detailLoading}
           pendingOutboundCount={outboundPendingCount}
-          onRefresh={async () => {
-            await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
-            setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
-          }}
+          queueFlushDiagnostic={outboundQueueDiagnostic}
+          onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+          onRefresh={handleFieldSyncRefresh}
           auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
         />
       )}
@@ -510,19 +520,38 @@ export function FieldVisitPage() {
               ))}
             </ul>
             <p className="mt-2 text-xs text-text-muted">
-              Stay online and tap Refresh above. Files stay on this device until they upload successfully.
+              Stay online, then retry below or use Refresh in the sync bar. Files stay on this device until they upload
+              successfully.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              clearPersistedFieldEvidenceSyncFailuresForVisit(id);
-              setEvidenceUploadFailures([]);
-            }}
-            className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
-          >
-            Dismiss
-          </button>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+            <button
+              type="button"
+              disabled={fieldQueueLoading || detailLoading}
+              onClick={() => {
+                void handleFieldSyncRefresh().catch((err) => {
+                  toast.error(err instanceof Error ? err.message : 'Retry failed');
+                });
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-400/35 bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-50 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
+                aria-hidden
+              />
+              Retry uploads
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearPersistedFieldEvidenceSyncFailuresForVisit(id);
+                setEvidenceUploadFailures([]);
+              }}
+              className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -905,6 +934,7 @@ export function FieldVisitPage() {
                     longitude: completeCoords.longitude ? Number(completeCoords.longitude) : null,
                   });
                   await refreshPendingEvidenceDrafts(detail.visit.id);
+                  void refreshOutboundPendingCount();
 
                   return {
                     handled: true,
@@ -934,6 +964,27 @@ export function FieldVisitPage() {
 
             {pendingEvidenceDrafts.length > 0 && (
               <div className="mt-4 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.07] px-3 py-2">
+                  <p className="text-xs text-amber-100/90">
+                    Pending on this device — upload when online (same as top Refresh).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={fieldQueueLoading || detailLoading}
+                    onClick={() => {
+                      void handleFieldSyncRefresh().catch((err) => {
+                        toast.error(err instanceof Error ? err.message : 'Retry failed');
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
+                      aria-hidden
+                    />
+                    Retry pending uploads
+                  </button>
+                </div>
                 {pendingEvidenceDrafts.map((draft) => (
                   <div
                     key={draft.id}

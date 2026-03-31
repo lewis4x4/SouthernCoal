@@ -601,11 +601,16 @@ export function mergeOutletInspectionWithQueue(
   };
 }
 
-let outboundProcessChain: Promise<{ processed: number; failed: Error | null }> | null = null;
+export type FieldOutboundQueueFlushResult = {
+  processed: number;
+  failed: Error | null;
+  /** First op that blocked the queue (Phase 4 diagnostics) */
+  blockedOp: { kind: FieldOutboundOp['kind']; visitId: string } | null;
+};
 
-export async function processFieldOutboundQueue(
-  client: SupabaseClient,
-): Promise<{ processed: number; failed: Error | null }> {
+let outboundProcessChain: Promise<FieldOutboundQueueFlushResult> | null = null;
+
+export async function processFieldOutboundQueue(client: SupabaseClient): Promise<FieldOutboundQueueFlushResult> {
   if (outboundProcessChain) {
     return outboundProcessChain;
   }
@@ -615,7 +620,7 @@ export async function processFieldOutboundQueue(
     for (;;) {
       const queue = readQueue();
       if (queue.length === 0) {
-        return { processed, failed: null };
+        return { processed, failed: null, blockedOp: null };
       }
       const op = queue[0]!;
       try {
@@ -718,7 +723,11 @@ export async function processFieldOutboundQueue(
         processed += 1;
       } catch (e) {
         const err = e instanceof Error ? e : new Error(String(e));
-        return { processed, failed: err };
+        return {
+          processed,
+          failed: err,
+          blockedOp: { kind: op.kind, visitId: op.visitId },
+        };
       }
     }
   })();

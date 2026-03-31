@@ -92,6 +92,7 @@ describe('fieldOutboundQueue', () => {
 
     const result = await processFieldOutboundQueue(fake);
     expect(result.failed).toBeNull();
+    expect(result.blockedOp).toBeNull();
     expect(result.processed).toBe(2);
     expect(insert).toHaveBeenCalledTimes(2);
     expect(getFieldOutboundQueueLength()).toBe(0);
@@ -112,6 +113,7 @@ describe('fieldOutboundQueue', () => {
     const result = await processFieldOutboundQueue(fake);
     expect(result.failed?.message).toContain('RLS');
     expect(result.processed).toBe(0);
+    expect(result.blockedOp).toEqual({ kind: 'field_measurement_insert', visitId: 'v1' });
     expect(getFieldOutboundQueueLength()).toBe(1);
   });
 

@@ -175,6 +175,8 @@ export function FieldSchedulePage() {
     visits,
     loading: fieldQueueLoading,
     outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
     createVisit,
     refresh: refreshVisits,
   } = useFieldOps();
@@ -646,6 +648,8 @@ export function FieldSchedulePage() {
       <FieldDataSyncBar
         loading={loading || fieldQueueLoading}
         pendingOutboundCount={outboundPendingCount}
+        queueFlushDiagnostic={outboundQueueDiagnostic}
+        onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
         onRefresh={async () => {
           await Promise.all([refreshVisits(), refreshCalendar()]);
         }}

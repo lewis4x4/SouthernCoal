@@ -73,7 +73,14 @@ export function FieldRouteTodayPage() {
   const role = getEffectiveRole();
   const canSeeOrgWide = MANAGER_ROLES.includes(role);
 
-  const { visits, loading, outboundPendingCount, refresh } = useFieldOps();
+  const {
+    visits,
+    loading,
+    outboundPendingCount,
+    outboundQueueDiagnostic,
+    clearOutboundQueueDiagnostic,
+    refresh,
+  } = useFieldOps();
 
   const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerSnapshot);
 
@@ -269,6 +276,8 @@ export function FieldRouteTodayPage() {
       <FieldDataSyncBar
         loading={loading}
         pendingOutboundCount={outboundPendingCount}
+        queueFlushDiagnostic={outboundQueueDiagnostic}
+        onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
         onRefresh={refresh}
         auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
       />

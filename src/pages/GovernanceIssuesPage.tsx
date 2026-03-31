@@ -4,7 +4,8 @@ import { AlertTriangle, Clock3, FileWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useGovernanceIssues } from '@/hooks/useGovernanceIssues';
+import { useGovernanceIssues, type GovernanceInboxFilter } from '@/hooks/useGovernanceIssues';
+import { cn } from '@/lib/cn';
 import { governanceInboxUrgentLine, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import type { GovernanceIssueStatus } from '@/types';
 const EDIT_ROLES = ['environmental_manager', 'admin'];
@@ -39,7 +40,8 @@ export function GovernanceIssuesPage() {
   const role = getEffectiveRole();
   const canEdit = EDIT_ROLES.includes(role);
 
-  const { issues, events, loading, loadEvents, updateIssue } = useGovernanceIssues();
+  const { issues, events, loading, loadEvents, updateIssue, inboxFilter, setInboxFilter } =
+    useGovernanceIssues();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<GovernanceIssueStatus>('open');
   const [finalDisposition, setFinalDisposition] = useState('');
@@ -49,6 +51,15 @@ export function GovernanceIssuesPage() {
   useEffect(() => {
     if (!selectedId && issues.length > 0) {
       setSelectedId(issues[0]?.id ?? null);
+    }
+  }, [issues, selectedId]);
+
+  useEffect(() => {
+    if (selectedId && issues.length > 0 && !issues.some((i) => i.id === selectedId)) {
+      setSelectedId(issues[0]?.id ?? null);
+    }
+    if (selectedId && issues.length === 0) {
+      setSelectedId(null);
     }
   }, [issues, selectedId]);
 
@@ -86,6 +97,18 @@ export function GovernanceIssuesPage() {
     }
   }
 
+  const inboxDescriptions: Record<GovernanceInboxFilter, string> = {
+    bill_primary: 'Step 1 issues owned by Bill Johnson (decree escalation entry point).',
+    all_open: 'Every open or in-review issue in your organization.',
+    escalated: 'Step 2+ (past initial review — Tom Lusk, executive, or counsel track).',
+  };
+
+  const inboxTabs: { id: GovernanceInboxFilter; label: string }[] = [
+    { id: 'bill_primary', label: 'Bill · step 1' },
+    { id: 'all_open', label: 'All open' },
+    { id: 'escalated', label: 'Escalated' },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -93,9 +116,24 @@ export function GovernanceIssuesPage() {
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">
             Governance Inbox
           </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            WV step-1 governance queue currently assigned to Bill Johnson.
-          </p>
+          <p className="mt-1 text-sm text-text-secondary">{inboxDescriptions[inboxFilter]}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {inboxTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setInboxFilter(tab.id)}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                  inboxFilter === tab.id
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+                    : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]',
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="rounded-xl bg-amber-500/10 p-3">
           <FileWarning className="h-6 w-6 text-amber-300" />

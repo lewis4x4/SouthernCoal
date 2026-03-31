@@ -30,6 +30,7 @@ export type FieldEvidenceDraftSyncFailure = {
   message: string;
 };
 
+/** Durable across sessions (Phase 4); legacy copies may exist in sessionStorage under the same key */
 const SYNC_FAILURES_KEY = 'scc.fieldEvidenceSyncFailures.v1';
 
 type PersistedSyncFailuresPayload = {
@@ -56,10 +57,25 @@ function parseSyncFailuresPayload(raw: string | null): PersistedSyncFailuresPayl
   }
 }
 
-export function readPersistedFieldEvidenceSyncFailures(): FieldEvidenceDraftSyncFailure[] {
-  if (typeof sessionStorage === 'undefined') return [];
+function migrateSessionFailuresToLocal(): void {
+  if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') return;
   try {
-    const p = parseSyncFailuresPayload(sessionStorage.getItem(SYNC_FAILURES_KEY));
+    const legacy = sessionStorage.getItem(SYNC_FAILURES_KEY);
+    if (!legacy) return;
+    if (!localStorage.getItem(SYNC_FAILURES_KEY)) {
+      localStorage.setItem(SYNC_FAILURES_KEY, legacy);
+    }
+    sessionStorage.removeItem(SYNC_FAILURES_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readPersistedFieldEvidenceSyncFailures(): FieldEvidenceDraftSyncFailure[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    migrateSessionFailuresToLocal();
+    const p = parseSyncFailuresPayload(localStorage.getItem(SYNC_FAILURES_KEY));
     return p?.failures ?? [];
   } catch {
     return [];
@@ -74,10 +90,13 @@ export function readPersistedFieldEvidenceSyncFailuresForVisit(
 }
 
 export function persistFieldEvidenceSyncFailures(failures: FieldEvidenceDraftSyncFailure[]): void {
-  if (typeof sessionStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') return;
   try {
-    if (failures.length === 0) {
+    if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem(SYNC_FAILURES_KEY);
+    }
+    if (failures.length === 0) {
+      localStorage.removeItem(SYNC_FAILURES_KEY);
       return;
     }
     const payload: PersistedSyncFailuresPayload = {
@@ -85,16 +104,19 @@ export function persistFieldEvidenceSyncFailures(failures: FieldEvidenceDraftSyn
       savedAt: new Date().toISOString(),
       failures,
     };
-    sessionStorage.setItem(SYNC_FAILURES_KEY, JSON.stringify(payload));
+    localStorage.setItem(SYNC_FAILURES_KEY, JSON.stringify(payload));
   } catch {
     /* ignore quota / privacy mode */
   }
 }
 
 export function clearPersistedFieldEvidenceSyncFailures(): void {
-  if (typeof sessionStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') return;
   try {
-    sessionStorage.removeItem(SYNC_FAILURES_KEY);
+    localStorage.removeItem(SYNC_FAILURES_KEY);
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(SYNC_FAILURES_KEY);
+    }
   } catch {
     /* ignore */
   }
@@ -202,6 +224,17 @@ export async function saveFieldEvidenceDraft(input: {
     notes: draft.notes,
     createdAt: draft.createdAt,
   };
+}
+
+/** Count all drafts in IndexedDB (for Phase 4 sync health: queue + blobs). */
+export async function countFieldEvidenceDrafts(): Promise<number> {
+  try {
+    return await withStore('readonly', async (store) => {
+      return await requestToPromise(store.count());
+    });
+  } catch {
+    return 0;
+  }
 }
 
 export async function listFieldEvidenceDrafts(fieldVisitId: string): Promise<FieldEvidenceDraft[]> {
