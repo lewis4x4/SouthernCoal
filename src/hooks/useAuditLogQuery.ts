@@ -31,12 +31,14 @@ export function useAuditLogQuery(filters: AuditLogFilters, enabled = true) {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchPage = useCallback(async (offset: number, append: boolean) => {
     if (!enabled) {
       setEntries([]);
       setHasMore(false);
       setTotalCount(0);
+      setFetchError(null);
       setLoading(false);
       return;
     }
@@ -67,10 +69,17 @@ export function useAuditLogQuery(filters: AuditLogFilters, enabled = true) {
 
     if (error) {
       console.error('[audit-log-query] Failed:', error.message);
+      setFetchError(error.message);
+      if (offset === 0) {
+        setEntries([]);
+        setTotalCount(0);
+      }
+      setHasMore(false);
       setLoading(false);
       return;
     }
 
+    setFetchError(null);
     const rows = (data ?? []) as AuditLogEntry[];
     setEntries(prev => append ? [...prev, ...rows] : rows);
     setHasMore(rows.length === PAGE_SIZE);
@@ -88,5 +97,5 @@ export function useAuditLogQuery(filters: AuditLogFilters, enabled = true) {
     fetchPage(entries.length, true);
   }, [hasMore, loading, entries.length, fetchPage]);
 
-  return { entries, loading, hasMore, totalCount, loadMore };
+  return { entries, loading, hasMore, totalCount, loadMore, fetchError };
 }

@@ -19,6 +19,8 @@ export function useRoadmapTasks() {
 
     if (error) {
       console.error('[roadmap] Failed to fetch tasks:', error.message);
+      toast.error(`Could not load roadmap: ${error.message}`);
+      setTasks([]);
       setLoading(false);
       return;
     }
@@ -53,7 +55,7 @@ export function useRoadmapTasks() {
       .eq('id', dbId);
 
     if (error) {
-      toast.error('Failed to update task status');
+      toast.error(`Failed to update task status: ${error.message}`);
       return;
     }
 
@@ -80,7 +82,7 @@ export function useRoadmapTasks() {
       .eq('id', dbId);
 
     if (error) {
-      toast.error('Failed to save notes');
+      toast.error(`Failed to save notes: ${error.message}`);
     }
   }, []);
 
@@ -91,7 +93,7 @@ export function useRoadmapTasks() {
       .eq('id', dbId);
 
     if (error) {
-      toast.error('Failed to update assignment');
+      toast.error(`Failed to update assignment: ${error.message}`);
       return;
     }
 

@@ -24,6 +24,7 @@ export function useGovernanceIssues() {
 
   const loadIssues = useCallback(async () => {
     if (!organizationId) {
+      setIssues([]);
       setLoading(false);
       return;
     }
@@ -47,6 +48,7 @@ export function useGovernanceIssues() {
 
     if (error) {
       toast.error(`Failed to load governance issues: ${error.message}`);
+      setIssues([]);
       setLoading(false);
       return;
     }
@@ -91,12 +93,15 @@ export function useGovernanceIssues() {
   }, [actorName, loadEvents, loadIssues, user?.id]);
 
   useEffect(() => {
-    if (organizationId) {
-      loadIssues().catch((err) => {
-        console.error('[useGovernanceIssues] Failed to load issues:', err);
-        toast.error(err instanceof Error ? err.message : 'Failed to load governance issues');
-      });
+    if (!organizationId) {
+      setIssues([]);
+      setLoading(false);
+      return;
     }
+    loadIssues().catch((err) => {
+      console.error('[useGovernanceIssues] Failed to load issues:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to load governance issues');
+    });
   }, [loadIssues, organizationId]);
 
   return {

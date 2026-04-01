@@ -36,7 +36,8 @@ export function useSyncTrigger() {
         toast.error(result.error || `${source.toUpperCase()} sync failed`);
       }
     } catch (err) {
-      toast.error(`Failed to trigger ${source.toUpperCase()} sync`);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to trigger ${source.toUpperCase()} sync: ${msg}`);
       console.error(err);
     } finally {
       setSyncing((prev) => ({ ...prev, [source]: false }));

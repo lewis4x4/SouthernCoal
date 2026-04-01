@@ -24,9 +24,52 @@ const ACTION_COLORS: Record<string, string> = {
   correction_rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
   roadmap_status_change: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   obligation_generation: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  // Field / WV route (client audit)
+  field_sync_manual_refresh: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  field_visit_completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  field_visit_completion_queued: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  field_outbound_queue_flushed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  field_outbound_queue_blocked: 'bg-red-500/10 text-red-400 border-red-500/20',
+};
+
+/** Short labels for dense table cells and filter dropdowns (raw action still the filter value). */
+const ACTION_LABELS: Record<string, string> = {
+  field_sync_manual_refresh: 'Field: manual refresh',
+  field_visit_completed: 'Field: visit completed',
+  field_visit_completion_queued: 'Field: completion queued',
+  field_outbound_queue_flushed: 'Field: queue flushed',
+  field_outbound_queue_blocked: 'Field: queue blocked',
 };
 
 const DEFAULT_ACTION_COLOR = 'bg-white/5 text-text-secondary border-white/10';
+
+function formatActionLabel(action: string) {
+  return ACTION_LABELS[action] ?? action;
+}
+
+/** Always offer these in the module filter so reviewers can scope without waiting for a lucky first page. */
+const PRESET_AUDIT_MODULES = [
+  'access_control',
+  'corrective_actions',
+  'corrections',
+  'external_data',
+  'field_operations',
+  /** Legacy client audits before module name unified with queue/refresh */
+  'field_ops',
+  'frontend',
+  'handoff',
+  'roadmap',
+  'upload_dashboard',
+] as const;
+
+/** Field / route client-audit actions — always in the action filter (same rationale as preset modules). */
+const PRESET_FIELD_AUDIT_ACTIONS = [
+  'field_sync_manual_refresh',
+  'field_visit_completed',
+  'field_visit_completion_queued',
+  'field_outbound_queue_flushed',
+  'field_outbound_queue_blocked',
+] as const;
 
 export function AuditLogPage() {
   const { getEffectiveRole, loading: permissionsLoading } = usePermissions();
@@ -42,7 +85,7 @@ export function AuditLogPage() {
     action: null,
   });
 
-  const { entries, loading, hasMore, totalCount, loadMore } = useAuditLogQuery(
+  const { entries, loading, hasMore, totalCount, loadMore, fetchError } = useAuditLogQuery(
     filters,
     !permissionsLoading && canViewAuditLog,
   );
@@ -69,12 +112,14 @@ export function AuditLogPage() {
 
   // Unique modules and actions for filter dropdowns
   const modules = useMemo(() => {
-    const set = new Set(entries.map(e => e.module));
+    const set = new Set<string>(PRESET_AUDIT_MODULES);
+    for (const e of entries) set.add(e.module);
     return Array.from(set).sort();
   }, [entries]);
 
   const actions = useMemo(() => {
-    const set = new Set(entries.map(e => e.action));
+    const set = new Set<string>(PRESET_FIELD_AUDIT_ACTIONS);
+    for (const e of entries) set.add(e.action);
     return Array.from(set).sort();
   }, [entries]);
 
@@ -191,12 +236,22 @@ export function AuditLogPage() {
           className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
         >
           <option value="">All Actions</option>
-          {actions.map(a => <option key={a} value={a}>{a}</option>)}
+          {actions.map(a => <option key={a} value={a}>{formatActionLabel(a)}</option>)}
         </select>
         <span className="text-xs text-text-muted">
           Showing {entries.length} of {totalCount}
         </span>
       </div>
+
+      {fetchError ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/25 bg-red-500/[0.08] px-4 py-3 text-sm text-red-100/95"
+        >
+          <p className="font-medium text-red-50">Could not load audit log</p>
+          <p className="mt-1 text-xs text-red-200/90">{fetchError}</p>
+        </div>
+      ) : null}
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-white/[0.06]">
@@ -252,11 +307,14 @@ export function AuditLogPage() {
                         {userMap.get(entry.user_id ?? '') ?? entry.user_id?.slice(0, 8) ?? '—'}
                       </div>
                       <div>
-                        <span className={cn(
-                          'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                          ACTION_COLORS[entry.action] ?? DEFAULT_ACTION_COLOR,
-                        )}>
-                          {entry.action}
+                        <span
+                          title={entry.action}
+                          className={cn(
+                            'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                            ACTION_COLORS[entry.action] ?? DEFAULT_ACTION_COLOR,
+                          )}
+                        >
+                          {formatActionLabel(entry.action)}
                         </span>
                       </div>
                       <div className="text-xs text-text-muted">{entry.module}</div>

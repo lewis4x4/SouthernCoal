@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useSamplingCalendar } from '@/hooks/useSamplingCalendar';
@@ -178,6 +179,7 @@ export function FieldSchedulePage() {
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
+    dispatchLoadAlerts,
     createVisit,
     refresh: refreshVisits,
   } = useFieldOps();
@@ -659,6 +661,8 @@ export function FieldSchedulePage() {
         }}
         auditRefreshPayload={{ surface: 'field_schedule' }}
       />
+
+      <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
 
       <div className="grid gap-4 xl:grid-cols-4">
         <SpotlightCard className="p-5">

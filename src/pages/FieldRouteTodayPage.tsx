@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,6 +81,7 @@ export function FieldRouteTodayPage() {
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
+    dispatchLoadAlerts,
     refresh,
   } = useFieldOps();
 
@@ -340,6 +342,8 @@ export function FieldRouteTodayPage() {
         onRefresh={refresh}
         auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
       />
+
+      <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
 
       <FieldSameOutfallDayWarning
         groups={routeOutfallDayConflicts}

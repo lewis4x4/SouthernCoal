@@ -1,0 +1,8 @@
+# Local secrets — keep out of Cursor index / agent context
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+supabase/.temp/

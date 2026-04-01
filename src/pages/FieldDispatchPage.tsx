@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,6 +54,7 @@ export function FieldDispatchPage() {
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
+    dispatchLoadAlerts,
     refresh,
     createVisit,
   } = useFieldOps();
@@ -182,6 +184,8 @@ export function FieldDispatchPage() {
         onRefresh={refresh}
         auditRefreshPayload={{ surface: 'field_dispatch' }}
       />
+
+      <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
 
       <FieldSameOutfallDayWarning
         groups={queueOutfallDayConflicts}

@@ -186,6 +186,8 @@ export function useFieldOps() {
   const [outboundQueueDiagnostic, setOutboundQueueDiagnostic] = useState(() =>
     readStoredOutboundQueueDiagnostic(),
   );
+  /** Non-blocking load issues (permits, outfalls, etc.) — show inline so empty queues are not mistaken for “no data.” */
+  const [dispatchLoadAlerts, setDispatchLoadAlerts] = useState<string[]>([]);
   const lastDetailVisitIdRef = useRef<string | null>(null);
   const detailOwnerScopeRef = useRef<{ organizationId: string | null; viewerUserId: string | null }>({
     organizationId: null,
@@ -506,9 +508,36 @@ export function useFieldOps() {
           };
       persistOutboundQueueDiagnostic(diag);
       setOutboundQueueDiagnostic(diag);
+
+      const blockedVisitId = flushResult.blockedOp?.visitId;
+      auditLog(
+        'field_outbound_queue_blocked',
+        {
+          message: flushResult.failed.message,
+          op_kind: flushResult.blockedOp?.kind ?? 'unknown',
+          visit_id: blockedVisitId && blockedVisitId !== '—' ? blockedVisitId : null,
+        },
+        {
+          module: 'field_operations',
+          tableName: 'field_outbound_queue',
+          recordId:
+            blockedVisitId && /^[0-9a-f-]{36}$/i.test(blockedVisitId) ? blockedVisitId : undefined,
+        },
+      );
     } else {
       clearStoredOutboundQueueDiagnostic();
       setOutboundQueueDiagnostic(null);
+    }
+
+    if (!flushResult.failed && (flushResult.processed > 0 || evidenceSyncResult.uploaded > 0)) {
+      auditLog(
+        'field_outbound_queue_flushed',
+        {
+          queue_actions_processed: flushResult.processed,
+          evidence_files_uploaded: evidenceSyncResult.uploaded,
+        },
+        { module: 'field_operations', tableName: 'field_outbound_queue' },
+      );
     }
 
     if (!flushResult.failed && totalProcessed > 0 && !hadEvidenceFailures) {
@@ -537,7 +566,7 @@ export function useFieldOps() {
           ? new Error(evidenceSyncResult.failures[0].message)
           : flushResult.failed,
     };
-  }, [organizationId, userId, refreshOutboundPendingCount]);
+  }, [auditLog, organizationId, userId, refreshOutboundPendingCount]);
 
   const loadDispatchContext = useCallback(async (
     options?: { markSuccessfulSync?: boolean },
@@ -546,9 +575,10 @@ export function useFieldOps() {
     dispatchRequestIdRef.current = requestId;
 
     const isCurrentRequest = () => dispatchRequestIdRef.current === requestId;
-    const finish = (result: DispatchContextLoadResult) => {
+    const finish = (result: DispatchContextLoadResult, alerts: string[]) => {
       if (isCurrentRequest()) {
         setLoading(false);
+        setDispatchLoadAlerts(alerts);
         if (result.success && options?.markSuccessfulSync) {
           setLastSyncedAt(new Date());
         }
@@ -559,7 +589,7 @@ export function useFieldOps() {
     const flushResult = await flushOutboundIfOnline();
 
     if (!organizationId) {
-      return finish({ success: false });
+      return finish({ success: false }, []);
     }
 
     setLoading(true);
@@ -605,6 +635,7 @@ export function useFieldOps() {
     const permitIds = permitRows.map((permit) => permit.id);
 
     let outfallRows: OutfallOption[] = [];
+    let outfallQueryError: { message: string } | null = null;
     if (permitIds.length > 0) {
       const outfallRes = await supabase
         .from('outfalls')
@@ -613,6 +644,7 @@ export function useFieldOps() {
         .order('outfall_number');
 
       if (outfallRes.error) {
+        outfallQueryError = outfallRes.error;
         toast.error(
           `Failed to load ${FIELD_DISPATCH_STATE_CODE} outfalls: ${outfallRes.error.message}`,
         );
@@ -636,6 +668,10 @@ export function useFieldOps() {
           .select('user_id, roles(name)')
           .in('user_id', userIds)
       : { data: [], error: null };
+
+    if (assignmentRes.error) {
+      toast.error(`Failed to load role assignments: ${assignmentRes.error.message}`);
+    }
 
     if (!assignmentRes.error) {
       for (const assignment of assignmentRes.data ?? []) {
@@ -667,13 +703,17 @@ export function useFieldOps() {
     ];
 
     const routeStopByCalendar = new Map<string, number>();
+    let routeStopQueryError: { message: string } | null = null;
     if (calendarIds.length > 0) {
       const stopRes = await supabase
         .from('sampling_route_stops')
         .select('calendar_id, stop_sequence')
         .in('calendar_id', calendarIds);
 
-      if (stopRes.error) toast.error(`Failed to load route stop order: ${stopRes.error.message}`);
+      if (stopRes.error) {
+        routeStopQueryError = stopRes.error;
+        toast.error(`Failed to load route stop order: ${stopRes.error.message}`);
+      }
       for (const row of stopRes.data ?? []) {
         const calId = row.calendar_id as string;
         const seq = row.stop_sequence as number;
@@ -715,15 +755,44 @@ export function useFieldOps() {
 
     setVisits(withHints);
 
-    return finish({
-      success: didDispatchContextLoadSucceed({
-        flushFailed: flushResult.failed,
-        permitError: permitLoad.permitError,
-        sitesStateError: permitLoad.sitesStateError,
-        userError: userRes.error,
-        visitError: visitRes.error,
-      }),
-    });
+    const syncAlerts: string[] = [];
+    if (flushResult.failed) {
+      syncAlerts.push(`Queued field actions did not sync: ${flushResult.failed.message}`);
+    }
+    if (permitLoad.permitError) {
+      syncAlerts.push(`Permits: ${permitLoad.permitError.message}`);
+    }
+    if (permitLoad.sitesStateError) {
+      syncAlerts.push(`Permit state resolution (sites/states): ${permitLoad.sitesStateError.message}`);
+    }
+    if (userRes.error) {
+      syncAlerts.push(`Team directory: ${userRes.error.message}`);
+    }
+    if (visitRes.error) {
+      syncAlerts.push(`Field visits: ${visitRes.error.message}`);
+    }
+    if (outfallQueryError) {
+      syncAlerts.push(`${FIELD_DISPATCH_STATE_CODE} outfalls: ${outfallQueryError.message}`);
+    }
+    if (assignmentRes.error) {
+      syncAlerts.push(`Role assignments: ${assignmentRes.error.message}`);
+    }
+    if (routeStopQueryError) {
+      syncAlerts.push(`Route stop order: ${routeStopQueryError.message}`);
+    }
+
+    return finish(
+      {
+        success: didDispatchContextLoadSucceed({
+          flushFailed: flushResult.failed,
+          permitError: permitLoad.permitError,
+          sitesStateError: permitLoad.sitesStateError,
+          userError: userRes.error,
+          visitError: visitRes.error,
+        }),
+      },
+      syncAlerts,
+    );
   }, [organizationId, flushOutboundIfOnline]);
 
   const createVisit = useCallback(async (input: DispatchVisitInput) => {
@@ -1113,7 +1182,7 @@ export function useFieldOps() {
           outcome: input.outcome,
         },
         {
-          module: 'field_ops',
+          module: 'field_operations',
           tableName: 'field_visits',
           recordId: visit.id,
         },
@@ -1176,7 +1245,7 @@ export function useFieldOps() {
         governance_issue_id: result.governance_issue_id ?? null,
       },
       {
-        module: 'field_ops',
+        module: 'field_operations',
         tableName: 'field_visits',
         recordId: visit.id,
         newValues: { outcome: input.outcome, visit_status: 'completed' },
@@ -1195,12 +1264,14 @@ export function useFieldOps() {
   }, [refreshOutboundPendingCount]);
 
   useEffect(() => {
-    if (organizationId) {
-      loadDispatchContext({ markSuccessfulSync: true }).catch((err) => {
-        console.error('[useFieldOps] Failed to load context:', err);
-        toast.error(err instanceof Error ? err.message : 'Failed to load field operations');
-      });
+    if (!organizationId) {
+      setDispatchLoadAlerts([]);
+      return;
     }
+    loadDispatchContext({ markSuccessfulSync: true }).catch((err) => {
+      console.error('[useFieldOps] Failed to load context:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to load field operations');
+    });
   }, [loadDispatchContext, organizationId]);
 
   useEffect(() => {
@@ -1235,6 +1306,7 @@ export function useFieldOps() {
     visits,
     loading,
     lastSyncedAt,
+    dispatchLoadAlerts,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
@@ -86,6 +87,7 @@ export function FieldVisitPage() {
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
+    dispatchLoadAlerts,
     visits: fieldQueueVisits,
     loadVisitDetails,
     refreshOutboundPendingCount,
@@ -614,6 +616,8 @@ export function FieldVisitPage() {
           auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
         />
       )}
+
+      {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
 
       {visitOutboundQueuedCount > 0 ? (
         <div

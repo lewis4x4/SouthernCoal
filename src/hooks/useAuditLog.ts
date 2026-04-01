@@ -82,7 +82,9 @@ type AuditAction =
   // Field / WV route execution (client-only refresh; server mutations still logged by Edge/DB)
   | 'field_sync_manual_refresh'
   | 'field_visit_completed'
-  | 'field_visit_completion_queued';
+  | 'field_visit_completion_queued'
+  | 'field_outbound_queue_flushed'
+  | 'field_outbound_queue_blocked';
 
 export type { AuditAction };
 
