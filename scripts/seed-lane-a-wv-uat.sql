@@ -152,16 +152,16 @@ BEGIN
     status = EXCLUDED.status;
 
   -- Outfalls (lat/long for route map / coords)
-  -- site_id may or may not exist on outfalls; permit_id is the required FK.
-  -- If your outfalls table has site_id, add it manually after this runs.
+  -- site_id must be set so org-scoped outfall RLS can see these rows during field visit updates.
   INSERT INTO public.outfalls (
-    id, permit_id, outfall_number, is_active, latitude, longitude
+    id, permit_id, site_id, outfall_number, is_active, latitude, longitude
   ) VALUES
-    (v_of1, v_permit_id, '001', true, 38.3491, -81.6322),
-    (v_of2, v_permit_id, '002', true, 38.3510, -81.6290),
-    (v_of3, v_permit_id, '003', true, 38.3475, -81.6345)
+    (v_of1, v_permit_id, v_site_id, '001', true, 38.3491, -81.6322),
+    (v_of2, v_permit_id, v_site_id, '002', true, 38.3510, -81.6290),
+    (v_of3, v_permit_id, v_site_id, '003', true, 38.3475, -81.6345)
   ON CONFLICT (id) DO UPDATE SET
     permit_id = EXCLUDED.permit_id,
+    site_id = EXCLUDED.site_id,
     outfall_number = EXCLUDED.outfall_number,
     latitude = EXCLUDED.latitude,
     longitude = EXCLUDED.longitude;
