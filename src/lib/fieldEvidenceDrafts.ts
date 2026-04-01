@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FieldEvidenceAssetRecord } from '@/types';
+import { buildFieldEvidenceStoragePath } from '@/lib/fieldEvidenceStoragePath';
 
 const DB_NAME = 'scc-field-evidence-drafts';
 const STORE_NAME = 'drafts';
@@ -281,7 +282,11 @@ export async function syncFieldEvidenceDrafts(
       const file = new File([draft.file], draft.fileName, {
         type: draft.mimeType || 'application/octet-stream',
       });
-      const storagePath = `${draft.pathPrefix}${draft.fieldVisitId}/${Date.now()}_${draft.fileName}`;
+      const storagePath = buildFieldEvidenceStoragePath({
+        pathPrefix: draft.pathPrefix,
+        referenceId: draft.fieldVisitId,
+        fileName: draft.fileName,
+      });
 
       const { error: uploadError } = await client.storage
         .from(draft.bucket)

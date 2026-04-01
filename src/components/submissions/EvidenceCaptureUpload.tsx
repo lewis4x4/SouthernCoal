@@ -2,6 +2,7 @@ import { useState, useRef, type DragEvent } from 'react';
 import { Upload, FileCheck, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
+import { buildFieldEvidenceStoragePath } from '@/lib/fieldEvidenceStoragePath';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
@@ -106,7 +107,11 @@ export function EvidenceCaptureUpload({
         }
       }
 
-      const storagePath = `${pathPrefix}${referenceId}/${Date.now()}_${file.name}`;
+      const storagePath = buildFieldEvidenceStoragePath({
+        pathPrefix,
+        referenceId,
+        fileName: file.name,
+      });
 
       const { error } = await supabase.storage
         .from(bucket)

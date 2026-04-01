@@ -1273,6 +1273,15 @@ export function FieldVisitPage() {
         return;
       }
       case 'evidence': {
+        const reviewAccess = validateFieldVisitWizardStepAccess({
+          currentStep: activeStep,
+          targetStep: 'review_complete',
+          state: wizardGuardState,
+        });
+        if (!reviewAccess.ok) {
+          goToStep(reviewAccess.blockedStep);
+          return;
+        }
         const evidenceAdvance = validateFieldVisitWizardAdvanceStep('evidence', wizardGuardState);
         if (!evidenceAdvance.ok) {
           toast.error(evidenceAdvance.message);
@@ -2476,6 +2485,8 @@ export function FieldVisitPage() {
           : {
               label: activeStep === 'start_visit' && visitStarted
                 ? 'Continue to inspection'
+                : activeStep === 'evidence' && recommendedStep !== 'review_complete'
+                  ? `Continue to ${getFieldVisitWizardStep(recommendedStep).label.toLowerCase()}`
                 : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
               onClick: () => {
                 void handleWizardAdvance();

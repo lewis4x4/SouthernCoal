@@ -775,6 +775,29 @@ describe('FieldVisitPage wizard', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('routes evidence-step continue to the next required step instead of skipping to review', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail({
+      inspection: {
+        ...buildInspection(),
+        flow_status: 'obstructed',
+        obstruction_observed: true,
+        obstruction_details: 'Vegetation: brush packed against the pipe opening',
+      },
+    }));
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
+
+    await waitForStepHeading('Evidence');
+    await user.click(screen.getByRole('button', { name: 'Continue to choose outcome' }));
+
+    await waitForStepHeading('Choose Outcome');
+    expect(screen.queryByRole('heading', { name: 'Review & Complete' })).not.toBeInTheDocument();
+  });
+
   it('appends deficiency follow-up notes into the visible inspection notes field', async () => {
     const user = userEvent.setup();
     renderPage(buildStartedDetail({
