@@ -48,7 +48,16 @@ export function SmartStaging() {
         </h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { clearAll(); log('staging_clear_all'); }}
+            type="button"
+            onClick={() => {
+              const fileCount = files.length;
+              clearAll();
+              log(
+                'staging_clear_all',
+                { source: 'staging_header', file_count: fileCount },
+                { module: 'upload_dashboard', tableName: 'upload_staging' },
+              );
+            }}
             className="px-3 py-1.5 text-xs font-medium rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] border border-white/[0.06] transition-colors"
           >
             <Trash2 size={12} className="inline mr-1" />

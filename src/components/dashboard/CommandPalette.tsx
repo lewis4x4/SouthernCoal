@@ -46,7 +46,16 @@ export function CommandPalette() {
   }, []);
 
   function runAction(action: string, fn: () => void) {
+    const stagingClearCount =
+      action === 'staging_clear_all' ? useStagingStore.getState().files.length : 0;
     fn();
+    if (action === 'staging_clear_all') {
+      log(
+        'staging_clear_all',
+        { source: 'command_palette', file_count: stagingClearCount },
+        { module: 'upload_dashboard', tableName: 'upload_staging' },
+      );
+    }
     log('command_palette_action', { action });
     setOpen(false);
   }
