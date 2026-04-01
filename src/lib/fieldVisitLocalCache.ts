@@ -29,7 +29,16 @@ function parseDetail(data: unknown): FieldVisitDetails | null {
   if (!Array.isArray(data.measurements)) return null;
   if (!Array.isArray(data.evidence)) return null;
   if (!Array.isArray(data.governanceIssues)) return null;
-  return data as unknown as FieldVisitDetails;
+  return {
+    ...(data as unknown as FieldVisitDetails),
+    stop_requirements: Array.isArray(data.stop_requirements) ? data.stop_requirements : [],
+    required_field_measurements: Array.isArray(data.required_field_measurements)
+      ? data.required_field_measurements
+      : [],
+    previous_visit_context: isRecord(data.previous_visit_context) || data.previous_visit_context === null
+      ? (data.previous_visit_context as FieldVisitDetails['previous_visit_context'])
+      : null,
+  };
 }
 
 function parseEnvelope(raw: string | null): FieldVisitCacheEnvelope | null {

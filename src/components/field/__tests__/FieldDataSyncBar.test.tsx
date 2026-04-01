@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 
 vi.mock('@/hooks/useAuditLog', () => ({
@@ -103,5 +104,53 @@ describe('FieldDataSyncBar', () => {
     await waitFor(() => {
       expect(container.textContent).toBe(successfulSyncText);
     });
+  });
+
+  it('shows conflict-hold title when queueFlushDiagnostic.conflictHold is set', () => {
+    render(
+      <MemoryRouter>
+        <FieldDataSyncBar
+          loading={false}
+          lastSyncedAt={successfulSync}
+          onRefresh={vi.fn().mockResolvedValue({ success: true })}
+          queueFlushDiagnostic={{
+            message: 'Server already has a different outcome.',
+            opKind: 'field_visit_complete',
+            visitId: 'visit-1',
+            conflictHold: true,
+          }}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/Field sync conflict — queue on hold/i)).toBeInTheDocument();
+  });
+
+  it('renders evidence sync failures in the same sync-health region with retry and dismiss', () => {
+    const onRetryEvidenceSync = vi.fn();
+    const onDismissEvidenceFailures = vi.fn();
+    render(
+      <FieldDataSyncBar
+        loading={false}
+        lastSyncedAt={successfulSync}
+        onRefresh={vi.fn().mockResolvedValue({ success: true })}
+        evidenceSyncFailures={[
+          { draftId: 'd1', fileName: 'photo.jpg', message: 'Network error' },
+        ]}
+        onRetryEvidenceSync={onRetryEvidenceSync}
+        onDismissEvidenceFailures={onDismissEvidenceFailures}
+      />,
+    );
+
+    const region = document.getElementById('field-sync-health');
+    expect(region).toBeTruthy();
+    expect(screen.getByText(/Photo or file upload needs a retry/i)).toBeInTheDocument();
+    expect(screen.getByText('photo.jpg')).toBeInTheDocument();
+    expect(screen.getByText(/Network error/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry uploads/i }));
+    expect(onRetryEvidenceSync).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /^dismiss$/i }));
+    expect(onDismissEvidenceFailures).toHaveBeenCalledTimes(1);
   });
 });

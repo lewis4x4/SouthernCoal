@@ -113,4 +113,12 @@ export type {
   SamplingRouteBatchListItem,
   SamplingRouteStopRecord,
   SamplingRouteStopListItem,
+  FieldVisitStopRequirement,
+  FieldVisitRequiredMeasurement,
+  FieldVisitPhotoCategory,
+  FieldVisitContainerCaptureMethod,
+  FieldVisitContainerValidationStatus,
+  FieldVisitScannedContainer,
+  FieldVisitContainerValidation,
+  FieldVisitPreviousContext,
 } from './field';

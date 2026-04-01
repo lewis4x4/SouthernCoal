@@ -24,6 +24,21 @@ describe('fieldOutboundQueueDiagnostic', () => {
     });
   });
 
+  it('persists conflictHold flag when true', () => {
+    persistOutboundQueueDiagnostic({
+      message: 'Outcome mismatch',
+      opKind: 'field_visit_complete',
+      visitId: 'visit-uuid-2',
+      conflictHold: true,
+    });
+    expect(readStoredOutboundQueueDiagnostic()).toEqual({
+      message: 'Outcome mismatch',
+      opKind: 'field_visit_complete',
+      visitId: 'visit-uuid-2',
+      conflictHold: true,
+    });
+  });
+
   it('clear removes key', () => {
     persistOutboundQueueDiagnostic({
       message: 'x',

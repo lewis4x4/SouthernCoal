@@ -1,30 +1,45 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Beaker,
-  Camera,
-  CheckCircle2,
   ClipboardList,
   Copy,
-  Droplets,
   ExternalLink,
-  MapPin,
   Navigation,
-  Package,
   RefreshCw,
-  ShieldAlert,
-  Waves,
-  Wind,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDataSourceBanner } from '@/components/field/FieldDataSourceBanner';
 import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
+import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
-import { SpotlightCard } from '@/components/ui/SpotlightCard';
-import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
+import { CustodyScanPanel } from '@/components/field-visit/CustodyScanPanel';
+import { FieldVisitDeficiencyPrompts } from '@/components/field-visit/FieldVisitDeficiencyPrompts';
+import { FieldVisitForceMajeureAssistPanel } from '@/components/field-visit/FieldVisitForceMajeureAssistPanel';
+import { FieldVisitLastContextCard } from '@/components/field-visit/FieldVisitLastContextCard';
+import { FieldVisitPhotoBuckets } from '@/components/field-visit/FieldVisitPhotoBuckets';
+import { FieldVisitQaPromptsPanel } from '@/components/field-visit/FieldVisitQaPromptsPanel';
+import { FieldVisitReviewHooksPanel } from '@/components/field-visit/FieldVisitReviewHooksPanel';
+import { FieldVisitRequirementsCard } from '@/components/field-visit/FieldVisitRequirementsCard';
+import { SafetyActionsPanel } from '@/components/field-visit/SafetyActionsPanel';
+import { FieldVisitShortHoldAlert } from '@/components/field-visit/FieldVisitShortHoldAlert';
+import { FieldVisitRequiredChecklist } from '@/components/field-visit/FieldVisitRequiredChecklist';
+import { FieldVisitWeatherCard } from '@/components/field-visit/FieldVisitWeatherCard';
+import { FieldVisitWizardProgress } from '@/components/field-visit/FieldVisitWizardProgress';
+import { FieldVisitWizardShell } from '@/components/field-visit/FieldVisitWizardShell';
+import type { FieldVisitWizardProgressStep } from '@/components/field-visit/FieldVisitWizardProgress';
+import { QuickPhrasePicker } from '@/components/field-visit/QuickPhrasePicker';
+import { FieldVisitEvidenceStep } from '@/components/field-visit/steps/FieldVisitEvidenceStep';
+import { FieldVisitInspectionStep } from '@/components/field-visit/steps/FieldVisitInspectionStep';
+import { FieldVisitOutcomeDetailsStep } from '@/components/field-visit/steps/FieldVisitOutcomeDetailsStep';
+import { FieldVisitOutcomeStep } from '@/components/field-visit/steps/FieldVisitOutcomeStep';
+import { FieldVisitReviewStep } from '@/components/field-visit/steps/FieldVisitReviewStep';
+import { FieldVisitStartStep } from '@/components/field-visit/steps/FieldVisitStartStep';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
+import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { useFieldOps } from '@/hooks/useFieldOps';
+import { parseContainerScan, validateContainerAgainstStop } from '@/lib/containerScan';
 import {
   clearPersistedFieldEvidenceSyncFailuresForVisit,
   listFieldEvidenceDrafts,
@@ -33,20 +48,72 @@ import {
   type FieldEvidenceDraft,
   type FieldEvidenceDraftSyncFailure,
 } from '@/lib/fieldEvidenceDrafts';
-import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import {
-  getFieldVisitCompletionChecklistItems,
-  validateFieldVisitCompletion,
-  validateFieldVisitStartCoordinates,
-} from '@/lib/fieldVisitCompletionValidation';
-import { cn } from '@/lib/cn';
-import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
+  describeGovernanceDeadline,
+  type GovernanceDeadlineTone,
+} from '@/lib/governanceDeadlines';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
-import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import {
+  getFieldVisitCompletionChecklistItems,
+  summarizeCompletionChecklist,
+  validateFieldVisitCompletion,
+  validateFieldVisitOutcomeEvidence,
+  validateFieldVisitStartCoordinates,
+} from '@/lib/fieldVisitCompletionValidation';
+import { getFieldVisitDeficiencyPrompts } from '@/lib/fieldVisitDeficiencyPrompts';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
-import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
+import { getFieldVisitQaPrompts } from '@/lib/fieldVisitQaPrompts';
+import { getFieldVisitReviewHooks } from '@/lib/fieldVisitReviewHooks';
+import { buildFieldVisitRequirementsModel } from '@/lib/fieldVisitRequirements';
+import { getOutcomeQuickPhrases } from '@/lib/fieldVisitTemplates';
+import {
+  fieldMeasurementInputPlaceholder,
+  findSavedMeasurementForRequirement,
+  measurementMatchesRequiredFieldMeasurement,
+} from '@/lib/fieldMeasurementPrefill';
+import {
+  countPhotosByCategory,
+  getPhotoBucketDefinition,
+  getRequiredPhotoCategories,
+  getSuggestedPhotoCategory,
+  parsePhotoEvidenceCategory,
+  serializePhotoEvidenceCategory,
+} from '@/lib/photoEvidenceBuckets';
+import {
+  fetchOpenMeteoCurrentSnapshot,
+  formatWeatherForPersistence,
+  isWeatherFetchEnabled,
+  observedWeatherFromPersisted,
+} from '@/lib/weatherAtVisitStart';
+import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
+import { FIELD_VISIT_WIZARD_COPY } from '@/lib/fieldVisitWizardCopy';
+import {
+  FIELD_VISIT_WIZARD_STEPS,
+  getFieldVisitWizardStep,
+  getNextFieldVisitWizardStep,
+  getPreviousFieldVisitWizardStep,
+  persistFieldVisitWizardStep,
+  readStoredFieldVisitWizardStep,
+  type FieldVisitWizardStepId,
+} from '@/lib/fieldVisitWizard';
+import {
+  getFieldVisitWizardRecommendedStep,
+  isFieldVisitWizardStepComplete,
+  validateFieldVisitWizardAdvanceStep,
+  validateFieldVisitWizardStepAccess,
+} from '@/lib/fieldVisitWizardGuards';
+import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import type {
+  FieldVisitDetails,
+  FieldVisitContainerCaptureMethod,
+  FieldVisitScannedContainer,
+  FieldVisitOutcome,
+  FieldVisitPhotoCategory,
+  GovernanceIssueRecord,
+  OutletInspectionRecord,
+} from '@/types';
 
 function deadlineToneClass(tone: GovernanceDeadlineTone) {
   switch (tone) {
@@ -78,12 +145,26 @@ async function captureBrowserCoordinates() {
   });
 }
 
+function formatOutcomeLabel(outcome: FieldVisitOutcome) {
+  switch (outcome) {
+    case 'sample_collected':
+      return 'Sample collected';
+    case 'no_discharge':
+      return 'No discharge';
+    case 'access_issue':
+      return 'Access issue';
+    default:
+      return String(outcome).replace(/_/g, ' ');
+  }
+}
+
 export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
 
   const {
     detail,
     detailLoading,
+    detailLoadSource,
     loading: fieldQueueLoading,
     lastSyncedAt,
     outboundPendingCount,
@@ -111,15 +192,18 @@ export function FieldVisitPage() {
     obstruction_details: '',
     inspector_notes: '',
   });
-  const [measurementName, setMeasurementName] = useState('');
-  const [measurementValue, setMeasurementValue] = useState('');
-  const [measurementText, setMeasurementText] = useState('');
-  const [measurementUnit, setMeasurementUnit] = useState('');
   const [cocContainerId, setCocContainerId] = useState('');
   const [cocPreservativeConfirmed, setCocPreservativeConfirmed] = useState(false);
-  const [weatherConditions, setWeatherConditions] = useState('');
+  const [cocCaptureMethod, setCocCaptureMethod] = useState<FieldVisitContainerCaptureMethod>('manual');
+  const [cocRawScanValue, setCocRawScanValue] = useState('');
+  const [observedSiteConditions, setObservedSiteConditions] = useState('');
+  const [systemWeather, setSystemWeather] = useState<{ summary: string; fetchedAtIso: string } | null>(null);
+  const [systemWeatherLoading, setSystemWeatherLoading] = useState(false);
+  const [systemWeatherError, setSystemWeatherError] = useState<string | null>(null);
+  const systemWeatherDedupeRef = useRef<string | null>(null);
   const [fieldNotes, setFieldNotes] = useState('');
   const [outcome, setOutcome] = useState<FieldVisitOutcome>('sample_collected');
+  const [outcomeExplicitlySelected, setOutcomeExplicitlySelected] = useState(false);
   const [potentialForceMajeure, setPotentialForceMajeure] = useState(false);
   const [potentialForceMajeureNotes, setPotentialForceMajeureNotes] = useState('');
   const [noDischargeNarrative, setNoDischargeNarrative] = useState('');
@@ -133,10 +217,24 @@ export function FieldVisitPage() {
   const [contactOutcome, setContactOutcome] = useState('');
   const [startCoords, setStartCoords] = useState({ latitude: '', longitude: '' });
   const [completeCoords, setCompleteCoords] = useState({ latitude: '', longitude: '' });
+  const [requiredMeasurementDrafts, setRequiredMeasurementDrafts] = useState<Record<string, string>>({});
+  const [selectedPhotoCategory, setSelectedPhotoCategory] = useState<FieldVisitPhotoCategory>('outlet_signage');
+  const [activeStep, setActiveStep] = useState<FieldVisitWizardStepId>('start_visit');
+  const [wizardStateReady, setWizardStateReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
   const [evidenceUploadFailures, setEvidenceUploadFailures] = useState<FieldEvidenceDraftSyncFailure[]>([]);
   const [loadAttempted, setLoadAttempted] = useState(false);
+  const latestPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
+  const uploadPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
+  const wizardHydratedForVisitRef = useRef<string | null>(null);
+
+  const goToStep = useCallback((stepId: FieldVisitWizardStepId) => {
+    setActiveStep(stepId);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
 
   const refreshPendingEvidenceDrafts = useCallback(async (visitId: string) => {
     try {
@@ -146,7 +244,6 @@ export function FieldVisitPage() {
     }
   }, []);
 
-  /** Phase 4: same path as sync bar — flush queue + evidence drafts, reload visit failures */
   const handleFieldSyncRefresh = useCallback(async () => {
     if (!id) return { success: false };
     const fieldQueueResult = await refreshFieldQueue();
@@ -181,9 +278,24 @@ export function FieldVisitPage() {
   }, [id, loadVisitDetails, refreshPendingEvidenceDrafts]);
 
   useEffect(() => {
+    setSystemWeather(null);
+    setSystemWeatherError(null);
+    setSystemWeatherLoading(false);
+    systemWeatherDedupeRef.current = null;
+    wizardHydratedForVisitRef.current = null;
+    setWizardStateReady(false);
+  }, [id]);
+
+  useEffect(() => {
     if (!id) return;
     void refreshPendingEvidenceDrafts(id);
   }, [id, detail?.evidence.length, refreshPendingEvidenceDrafts]);
+
+  useEffect(() => {
+    const suggested = getSuggestedPhotoCategory(outcome);
+    setSelectedPhotoCategory(suggested);
+    latestPhotoCategoryRef.current = suggested;
+  }, [outcome]);
 
   useEffect(() => {
     if (!detail) return;
@@ -197,9 +309,10 @@ export function FieldVisitPage() {
       obstruction_details: '',
       inspector_notes: '',
     });
-    setWeatherConditions(detail.visit.weather_conditions ?? '');
+    setObservedSiteConditions(observedWeatherFromPersisted(detail.visit.weather_conditions ?? ''));
     setFieldNotes(detail.visit.field_notes ?? '');
     setOutcome(detail.visit.outcome ?? 'sample_collected');
+    setOutcomeExplicitlySelected(detail.visit.outcome != null);
     setPotentialForceMajeure(detail.visit.potential_force_majeure);
     setPotentialForceMajeureNotes(detail.visit.potential_force_majeure_notes ?? '');
     setStartCoords({
@@ -224,7 +337,33 @@ export function FieldVisitPage() {
     );
     setCocContainerId(cocRow?.measured_text ?? '');
     setCocPreservativeConfirmed(Boolean(cocRow?.metadata?.preservative_confirmed));
+    setCocCaptureMethod(
+      cocRow?.metadata?.capture_method === 'scan' ? 'scan' : 'manual',
+    );
+    setCocRawScanValue(
+      typeof cocRow?.metadata?.raw_scan === 'string'
+        ? cocRow.metadata.raw_scan
+        : cocRow?.measured_text ?? '',
+    );
+    setRequiredMeasurementDrafts(
+      Object.fromEntries(
+        (detail.required_field_measurements ?? []).map((measurement) => {
+          const latest = findSavedMeasurementForRequirement(detail.measurements, measurement);
+          return [
+            measurement.key,
+            latest?.measured_value?.toString() ?? latest?.measured_text ?? '',
+          ];
+        }),
+      ),
+    );
+    wizardHydratedForVisitRef.current = null;
+    setWizardStateReady(true);
   }, [detail]);
+
+  useEffect(() => {
+    if (!id || !wizardStateReady || wizardHydratedForVisitRef.current !== id) return;
+    persistFieldVisitWizardStep(id, activeStep);
+  }, [activeStep, id, wizardStateReady]);
 
   const outfallMapsHref = useMemo(() => {
     if (!detail) return '';
@@ -238,7 +377,6 @@ export function FieldVisitPage() {
   }, [detail]);
 
   const visitOutboundQueuedCount = useMemo(() => {
-    // Re-run when useFieldOps refreshes queue length (same-tab enqueue/flush).
     void outboundPendingCount;
     if (!id) return 0;
     return countOutboundQueueOpsForVisit(id);
@@ -253,15 +391,77 @@ export function FieldVisitPage() {
     [pendingEvidenceDrafts],
   );
   const totalPhotoCount = photoCount + pendingPhotoCount;
+  const uploadedPhotoCounts = useMemo(
+    () => countPhotosByCategory(detail?.evidence ?? []),
+    [detail?.evidence],
+  );
+  const pendingPhotoCounts = useMemo(
+    () =>
+      countPhotosByCategory(
+        pendingEvidenceDrafts.map((draft) => ({
+          evidence_type: draft.evidenceType,
+          notes: draft.notes,
+        })),
+      ),
+    [pendingEvidenceDrafts],
+  );
   const visitLocked = detail?.visit.visit_status === 'completed';
   const outletInspectionObstructed =
     inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
-
   const isClientOnline = typeof navigator !== 'undefined' && navigator.onLine;
-
   const visitStarted = Boolean(detail?.visit.started_at);
-  /** Ready to attempt Complete (excludes validation — user may still need outlet/COC/photos). */
   const canAttemptComplete = visitStarted && !visitLocked;
+  const generalMeasurements = useMemo(
+    () =>
+      detail?.measurements.filter((m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) ??
+      [],
+    [detail?.measurements],
+  );
+  const requiredMeasurements = detail?.required_field_measurements ?? [];
+  const additionalFieldObservations = useMemo(
+    () =>
+      generalMeasurements.filter(
+        (measurement) =>
+          !requiredMeasurements.some((requirement) =>
+            measurementMatchesRequiredFieldMeasurement(measurement.parameter_name, requirement),
+          ),
+      ),
+    [generalMeasurements, requiredMeasurements],
+  );
+  const requiredFieldMeasurementsComplete = useMemo(
+    () =>
+      requiredMeasurements.every((measurement) =>
+        generalMeasurements.some((entry) =>
+          measurementMatchesRequiredFieldMeasurement(entry.parameter_name, measurement),
+        ),
+      ),
+    [generalMeasurements, requiredMeasurements],
+  );
+  const cocParsedScan = useMemo<FieldVisitScannedContainer | null>(() => {
+    const sourceValue = (cocRawScanValue || cocContainerId).trim();
+    if (!sourceValue) return null;
+    return parseContainerScan(sourceValue);
+  }, [cocContainerId, cocRawScanValue]);
+  const cocValidation = useMemo(
+    () => validateContainerAgainstStop(cocParsedScan, detail?.stop_requirements ?? []),
+    [cocParsedScan, detail?.stop_requirements],
+  );
+  const cocSaveMetadata = useMemo<Record<string, unknown>>(
+    () => ({
+      capture_method: cocCaptureMethod,
+      raw_scan: cocRawScanValue.trim() || cocContainerId.trim(),
+      parsed_container_id: cocParsedScan?.container_id ?? (cocContainerId.trim() || null),
+      parsed_serial_id: cocParsedScan?.serial_id ?? null,
+      parsed_bottle_type: cocParsedScan?.bottle_type ?? null,
+      preservative_hint: cocParsedScan?.preservative_hint ?? null,
+      validation_status: cocValidation.status,
+      validation_blocking: cocValidation.blocking,
+      validation_message: cocValidation.message,
+      expected_bottle_types: cocValidation.expected_bottle_types,
+      actual_bottle_type: cocValidation.actual_bottle_type,
+    }),
+    [cocCaptureMethod, cocContainerId, cocParsedScan, cocRawScanValue, cocValidation],
+  );
 
   const completionChecklistItems = useMemo(() => {
     if (!detail) return [];
@@ -269,6 +469,9 @@ export function FieldVisitPage() {
     const lng = Number(completeCoords.longitude);
     return getFieldVisitCompletionChecklistItems({
       visitStarted,
+      outcomeSelected: outcomeExplicitlySelected,
+      requiredFieldMeasurementsComplete,
+      containerValidationBlocking: cocValidation.blocking,
       completeLatitude: lat,
       completeLongitude: lng,
       inspectionFlowStatus: inspection.flow_status,
@@ -288,6 +491,9 @@ export function FieldVisitPage() {
   }, [
     detail,
     visitStarted,
+    outcomeExplicitlySelected,
+    requiredFieldMeasurementsComplete,
+    cocValidation.blocking,
     completeCoords.latitude,
     completeCoords.longitude,
     inspection.flow_status,
@@ -304,6 +510,7 @@ export function FieldVisitPage() {
     noDischargeObstructionDetails,
     accessIssueNarrative,
   ]);
+
   const evidenceFailureByDraftId = useMemo(() => {
     const m = new Map<string, string>();
     for (const f of evidenceUploadFailures) {
@@ -311,12 +518,6 @@ export function FieldVisitPage() {
     }
     return m;
   }, [evidenceUploadFailures]);
-  const generalMeasurements = useMemo(
-    () =>
-      detail?.measurements.filter((m) => m.parameter_name !== FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) ??
-      [],
-    [detail?.measurements],
-  );
 
   const visitSiblingOutfallConflicts = useMemo(() => {
     if (!id || !detail) return [];
@@ -329,6 +530,356 @@ export function FieldVisitPage() {
     if (siblings.length === 0) return [];
     return groupSameOutfallSameDay([detail.visit, ...siblings]);
   }, [id, detail, fieldQueueVisits]);
+  const sameDaySiblingCount = useMemo(
+    () => visitSiblingOutfallConflicts[0]?.visits.length ? visitSiblingOutfallConflicts[0].visits.length - 1 : 0,
+    [visitSiblingOutfallConflicts],
+  );
+
+  const weatherCoordinateSummary = useMemo(() => {
+    if (!detail) return null;
+    const lat =
+      detail.visit.started_latitude != null
+        ? Number(detail.visit.started_latitude)
+        : Number(startCoords.latitude);
+    const lng =
+      detail.visit.started_longitude != null
+        ? Number(detail.visit.started_longitude)
+        : Number(startCoords.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }, [detail, startCoords.latitude, startCoords.longitude]);
+
+  const startLatitude = Number(startCoords.latitude);
+  const startLongitude = Number(startCoords.longitude);
+  const completeLatitude = Number(completeCoords.latitude);
+  const completeLongitude = Number(completeCoords.longitude);
+  const completionCoordsReady =
+    Number.isFinite(completeLatitude) && Number.isFinite(completeLongitude);
+  const inspectionReady =
+    (inspection.flow_status ?? 'unknown') !== 'unknown' &&
+    (!outletInspectionObstructed || Boolean((inspection.obstruction_details ?? '').trim()));
+  const noDischargeDetailsReady =
+    Boolean(noDischargeNarrative.trim()) &&
+    totalPhotoCount >= 1 &&
+    (!noDischargeObstructionObserved || Boolean(noDischargeObstructionDetails.trim()));
+  const accessIssueDetailsReady = Boolean(accessIssueNarrative.trim()) && totalPhotoCount >= 1;
+  const sampleCollectedDetailsReady =
+    !cocValidation.blocking &&
+    requiredFieldMeasurementsComplete &&
+    Boolean(cocContainerId.trim()) &&
+    cocPreservativeConfirmed;
+  const outcomeDetailsReady =
+    outcome === 'sample_collected'
+      ? sampleCollectedDetailsReady
+      : outcome === 'no_discharge'
+        ? noDischargeDetailsReady
+        : accessIssueDetailsReady;
+  const reviewReady = visitLocked || (canAttemptComplete && completionChecklistItems.every((item) => item.done));
+  const readinessSummary = useMemo(
+    () => summarizeCompletionChecklist(completionChecklistItems),
+    [completionChecklistItems],
+  );
+  const deficiencyPrompts = useMemo(
+    () => getFieldVisitDeficiencyPrompts({
+      inspection,
+      outcome,
+      existingGovernanceIssueCount: detail?.governanceIssues.length ?? 0,
+    }),
+    [detail?.governanceIssues.length, inspection, outcome],
+  );
+  const reviewHooks = useMemo(
+    () => getFieldVisitReviewHooks({
+      outcome,
+      totalPhotoCount,
+      siblingVisitCount: sameDaySiblingCount,
+      governanceIssues: detail?.governanceIssues ?? [],
+      deficiencyPromptCount: deficiencyPrompts.length,
+      contactAttempted,
+      accessIssueType,
+      potentialForceMajeure,
+      outboundPendingCount,
+      evidenceFailureCount: evidenceUploadFailures.length,
+    }),
+    [
+      accessIssueType,
+      contactAttempted,
+      deficiencyPrompts.length,
+      detail?.governanceIssues,
+      evidenceUploadFailures.length,
+      outboundPendingCount,
+      outcome,
+      potentialForceMajeure,
+      sameDaySiblingCount,
+      totalPhotoCount,
+    ],
+  );
+  const qaPrompts = useMemo(
+    () =>
+      getFieldVisitQaPrompts({
+        outcome,
+        siblingVisitCount: sameDaySiblingCount,
+        stopRequirements: detail?.stop_requirements ?? [],
+        routePriorityReason: detail?.visit.route_priority_reason,
+        totalPhotoCount,
+        potentialForceMajeure,
+      }),
+    [
+      detail?.stop_requirements,
+      detail?.visit.route_priority_reason,
+      outcome,
+      potentialForceMajeure,
+      sameDaySiblingCount,
+      totalPhotoCount,
+    ],
+  );
+  const requirementsModel = useMemo(
+    () =>
+      detail
+        ? buildFieldVisitRequirementsModel({
+            visit: detail.visit,
+            outcome,
+            stopRequirements: detail.stop_requirements,
+            requiredMeasurements: detail.required_field_measurements,
+          })
+        : null,
+    [detail, outcome],
+  );
+  const evidenceValidation = useMemo(
+    () => validateFieldVisitOutcomeEvidence(outcome, photoCount, pendingPhotoCount, isClientOnline),
+    [isClientOnline, outcome, pendingPhotoCount, photoCount],
+  );
+  const evidenceReady = outcome === 'sample_collected' ? true : evidenceValidation.ok;
+  const startBlockerMessage = useMemo(() => {
+    const startCheck = validateFieldVisitStartCoordinates(startLatitude, startLongitude);
+    return startCheck.ok ? 'Start the visit before moving on.' : startCheck.message;
+  }, [startLatitude, startLongitude]);
+  const inspectionBlockerMessage = useMemo(() => {
+    if ((inspection.flow_status ?? 'unknown') === 'unknown') return FIELD_VISIT_COPY.outletFlowRequired;
+    if (outletInspectionObstructed && !(inspection.obstruction_details ?? '').trim()) {
+      return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
+    }
+    return 'Save the outlet inspection before moving on.';
+  }, [inspection.flow_status, inspection.obstruction_details, outletInspectionObstructed]);
+  const outcomeDetailsBlockerMessage = useMemo(() => {
+    if (outcome === 'sample_collected') {
+      if (cocValidation.blocking) return FIELD_VISIT_COPY.sampleContainerMismatch;
+      if (!requiredFieldMeasurementsComplete) return FIELD_VISIT_COPY.sampleFieldMeasurementsRequired;
+      if (!cocContainerId.trim()) return FIELD_VISIT_COPY.sampleCocContainerRequired;
+      if (!cocPreservativeConfirmed) return FIELD_VISIT_COPY.sampleCocPreservativeRequired;
+      return 'Finish custody and required field readings before moving on.';
+    }
+    if (outcome === 'no_discharge') {
+      if (!noDischargeNarrative.trim()) return FIELD_VISIT_COPY.noDischargeNarrativeRequired;
+      if (noDischargeObstructionObserved && !noDischargeObstructionDetails.trim()) {
+        return FIELD_VISIT_COPY.noDischargeObstructionDetailsRequired;
+      }
+      return 'Finish the no-discharge record before moving on.';
+    }
+    if (!accessIssueNarrative.trim()) return FIELD_VISIT_COPY.accessIssueNarrativeRequired;
+    return 'Finish the access issue record before moving on.';
+  }, [
+    accessIssueNarrative,
+    cocContainerId,
+    cocPreservativeConfirmed,
+    cocValidation.blocking,
+    noDischargeNarrative,
+    noDischargeObstructionDetails,
+    noDischargeObstructionObserved,
+    outcome,
+    requiredFieldMeasurementsComplete,
+  ]);
+  const wizardGuardState = useMemo(
+    () => ({
+      visitStarted,
+      inspectionReady,
+      outcomeSelected: outcomeExplicitlySelected,
+      outcomeDetailsReady,
+      evidenceReady,
+      startBlockerMessage,
+      inspectionBlockerMessage,
+      outcomeBlockerMessage: FIELD_VISIT_COPY.outcomeRequired,
+      outcomeDetailsBlockerMessage,
+      evidenceBlockerMessage: evidenceValidation.ok
+        ? 'Evidence looks ready.'
+        : evidenceValidation.message,
+    }),
+    [
+      evidenceReady,
+      evidenceValidation,
+      inspectionBlockerMessage,
+      inspectionReady,
+      outcomeDetailsBlockerMessage,
+      outcomeDetailsReady,
+      outcomeExplicitlySelected,
+      startBlockerMessage,
+      visitStarted,
+    ],
+  );
+  const recommendedStep = useMemo(
+    () => (visitLocked ? 'review_complete' : getFieldVisitWizardRecommendedStep(wizardGuardState)),
+    [visitLocked, wizardGuardState],
+  );
+  const progressSteps = useMemo<FieldVisitWizardProgressStep[]>(
+    () =>
+      FIELD_VISIT_WIZARD_STEPS.map((step) => ({
+        ...step,
+        status: activeStep === step.id
+          ? 'current'
+          : isFieldVisitWizardStepComplete(step.id, wizardGuardState)
+            ? 'complete'
+            : 'upcoming',
+      })),
+    [activeStep, wizardGuardState],
+  );
+
+  useEffect(() => {
+    if (!id || !detail || !wizardStateReady || wizardHydratedForVisitRef.current === id) return;
+    const storedStep = readStoredFieldVisitWizardStep(id);
+    if (storedStep) {
+      const access = validateFieldVisitWizardStepAccess({
+        currentStep: recommendedStep,
+        targetStep: storedStep,
+        state: wizardGuardState,
+      });
+      setActiveStep(access.ok ? storedStep : recommendedStep);
+    } else {
+      setActiveStep(recommendedStep);
+    }
+    wizardHydratedForVisitRef.current = id;
+  }, [detail, id, recommendedStep, wizardGuardState, wizardStateReady]);
+
+  const fetchSystemWeather = useCallback(
+    async (opts?: { manual?: boolean; lat?: number; lng?: number }) => {
+      if (!detail || visitLocked) return;
+      if (!isWeatherFetchEnabled()) {
+        if (opts?.manual) toast.message('Weather automation is disabled for this build.');
+        return;
+      }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSystemWeatherError('Connect to the network to load system weather.');
+        if (opts?.manual) toast.error('Offline — cannot refresh system weather.');
+        return;
+      }
+      const lat =
+        opts?.lat ??
+        (detail.visit.started_latitude != null
+          ? Number(detail.visit.started_latitude)
+          : Number(startCoords.latitude));
+      const lng =
+        opts?.lng ??
+        (detail.visit.started_longitude != null
+          ? Number(detail.visit.started_longitude)
+          : Number(startCoords.longitude));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        setSystemWeatherError('Start GPS is required before system weather can load.');
+        if (opts?.manual) toast.error('Capture start coordinates before refreshing weather.');
+        return;
+      }
+      const dedupeKey = `${detail.visit.id}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
+      if (!opts?.manual && systemWeatherDedupeRef.current === dedupeKey) return;
+
+      setSystemWeatherLoading(true);
+      setSystemWeatherError(null);
+      try {
+        const snap = await fetchOpenMeteoCurrentSnapshot({ latitude: lat, longitude: lng });
+        if (!opts?.manual) systemWeatherDedupeRef.current = dedupeKey;
+        setSystemWeather(snap);
+        if (opts?.manual) toast.success('System weather updated');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Weather fetch failed';
+        setSystemWeatherError(msg);
+        setSystemWeather(null);
+        if (opts?.manual) toast.error(msg);
+      } finally {
+        setSystemWeatherLoading(false);
+      }
+    },
+    [detail, visitLocked, startCoords.latitude, startCoords.longitude],
+  );
+
+  useEffect(() => {
+    if (!detail || !visitStarted || visitLocked) return;
+    void fetchSystemWeather();
+  }, [
+    detail,
+    visitStarted,
+    visitLocked,
+    fetchSystemWeather,
+    startCoords.latitude,
+    startCoords.longitude,
+  ]);
+
+  const handleApplySystemToObserved = useCallback(() => {
+    if (!systemWeather) return;
+    setObservedSiteConditions((prev) => {
+      const line = `System snapshot: ${systemWeather.summary}`;
+      const t = prev.trim();
+      return t ? `${t}\n${line}` : line;
+    });
+    toast.success('Inserted system weather line into observed conditions');
+  }, [systemWeather]);
+
+  const applyPreviousInspectionSummary = useCallback(() => {
+    const previous = detail?.previous_visit_context;
+    if (!previous) return;
+    setInspection((current) => ({
+      ...current,
+      flow_status: previous.inspection_flow_status ?? current.flow_status ?? 'unknown',
+      signage_condition: previous.signage_condition ?? current.signage_condition ?? '',
+      pipe_condition: previous.pipe_condition ?? current.pipe_condition ?? '',
+      erosion_observed: previous.erosion_observed,
+      obstruction_observed: previous.obstruction_observed,
+      obstruction_details: previous.obstruction_details ?? current.obstruction_details ?? '',
+      inspector_notes: previous.inspector_notes ?? current.inspector_notes ?? '',
+    }));
+    toast.success('Applied last inspection summary');
+  }, [detail?.previous_visit_context]);
+
+  const appendFollowUpNote = useCallback((note: string) => {
+    setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${note}` : note));
+    toast.success('Added follow-up note');
+  }, []);
+
+  const routeSafetyHazard = useCallback(() => {
+    setOutcome('access_issue');
+    setOutcomeExplicitlySelected(true);
+    setAccessIssueType('safety_hazard');
+    setAccessIssueNarrative((current) =>
+      current.trim()
+        ? current
+        : 'Sampling did not proceed because site conditions were unsafe at the time of visit.',
+    );
+    setFieldNotes((current) =>
+      current.trim()
+        ? `${current.trim()}\nSafety action: routed to safety hazard outcome.`
+        : 'Safety action: routed to safety hazard outcome.',
+    );
+    goToStep('outcome_details');
+    toast.success('Visit routed to safety hazard outcome');
+  }, [goToStep]);
+
+  const flagUnsafeToProceed = useCallback(() => {
+    appendFollowUpNote('Safety action: unsafe to proceed. Sampling halted pending safer conditions or direction.');
+  }, [appendFollowUpNote]);
+
+  const recordLoneWorkerEscalation = useCallback(() => {
+    appendFollowUpNote('Safety action: lone-worker escalation noted for this stop.');
+  }, [appendFollowUpNote]);
+
+  const focusForceMajeureEvidence = useCallback(() => {
+    setPotentialForceMajeure(true);
+    setSelectedPhotoCategory('site_weather');
+    latestPhotoCategoryRef.current = 'site_weather';
+    goToStep('evidence');
+    toast.success('Focused site/weather evidence for force majeure documentation');
+  }, [goToStep]);
+
+  const focusPhotoBucket = useCallback((bucket: FieldVisitPhotoCategory) => {
+    setSelectedPhotoCategory(bucket);
+    latestPhotoCategoryRef.current = bucket;
+    goToStep('evidence');
+    toast.success('Focused evidence bucket');
+  }, [goToStep]);
 
   async function handleCaptureStartCoords() {
     try {
@@ -356,12 +907,10 @@ export function FieldVisitPage() {
     }
   }
 
-  async function handleStartVisit() {
+  const handleStartVisit = useCallback(async () => {
     if (!detail) return;
-    const latitude = Number(startCoords.latitude);
-    const longitude = Number(startCoords.longitude);
 
-    const startCheck = validateFieldVisitStartCoordinates(latitude, longitude);
+    const startCheck = validateFieldVisitStartCoordinates(startLatitude, startLongitude);
     if (!startCheck.ok) {
       toast.error(startCheck.message);
       return;
@@ -369,18 +918,23 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      const { queued } = await startVisit(detail.visit.id, { latitude, longitude });
+      const { queued } = await startVisit(detail.visit.id, {
+        latitude: startLatitude,
+        longitude: startLongitude,
+      });
       toast.success(
         queued
           ? 'Visit started on this device; will sync when you are back online'
           : 'Visit started',
       );
+      void fetchSystemWeather({ lat: startLatitude, lng: startLongitude });
+      goToStep('inspection');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to start visit');
     } finally {
       setSaving(false);
     }
-  }
+  }, [detail, fetchSystemWeather, goToStep, startLatitude, startLongitude, startVisit]);
 
   async function handleSaveInspection() {
     if (!detail || visitLocked) return;
@@ -393,6 +947,7 @@ export function FieldVisitPage() {
           ? 'Inspection saved on this device; will upload when you are back online'
           : 'Inspection saved',
       );
+      goToStep(outcomeExplicitlySelected ? 'outcome_details' : 'choose_outcome');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save inspection');
     } finally {
@@ -400,34 +955,31 @@ export function FieldVisitPage() {
     }
   }
 
-  async function handleAddMeasurement() {
+  async function handleSaveRequiredMeasurement(
+    requirement: FieldVisitDetails['required_field_measurements'][number],
+  ) {
     if (!detail || visitLocked) return;
-    if (!measurementName.trim()) {
-      toast.error(FIELD_VISIT_COPY.measurementNameRequired);
+    const rawValue = (requiredMeasurementDrafts[requirement.key] ?? '').trim();
+    if (!rawValue) {
+      toast.error(FIELD_VISIT_COPY.measurementValueRequired);
       return;
     }
-
-    if (measurementName.trim() === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) {
-      toast.error(FIELD_VISIT_COPY.measurementUseCocSection);
-      return;
-    }
+    const numericValue = Number(rawValue);
+    const measuredValue = Number.isFinite(numericValue) ? numericValue : undefined;
+    const measuredText = Number.isFinite(numericValue) ? undefined : rawValue;
 
     try {
       setSaving(true);
       const { queued } = await addMeasurement(detail.visit.id, {
-        parameterName: measurementName.trim(),
-        measuredValue: measurementValue ? Number(measurementValue) : undefined,
-        measuredText: measurementText.trim() || undefined,
-        unit: measurementUnit.trim() || undefined,
+        parameterName: requirement.parameter_name,
+        measuredValue,
+        measuredText,
+        unit: requirement.default_unit ?? undefined,
       });
-      setMeasurementName('');
-      setMeasurementValue('');
-      setMeasurementText('');
-      setMeasurementUnit('');
       toast.success(
         queued
           ? 'Saved on this device; will upload when you are back online'
-          : 'Field measurement added',
+          : `${requirement.display_label} captured`,
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to add field measurement');
@@ -436,10 +988,22 @@ export function FieldVisitPage() {
     }
   }
 
+  function handleContainerScanDetected(rawValue: string) {
+    const parsed = parseContainerScan(rawValue);
+    setCocRawScanValue(rawValue);
+    setCocCaptureMethod('scan');
+    setCocContainerId(parsed.container_id);
+    toast.success('Primary container captured from scan');
+  }
+
   async function handleSaveCoc() {
     if (!detail || visitLocked) return;
     if (!cocContainerId.trim()) {
       toast.error(FIELD_VISIT_COPY.saveCocContainerRequired);
+      return;
+    }
+    if (cocValidation.blocking) {
+      toast.error(FIELD_VISIT_COPY.sampleContainerMismatch);
       return;
     }
     if (!cocPreservativeConfirmed) {
@@ -453,6 +1017,7 @@ export function FieldVisitPage() {
         detail.visit.id,
         cocContainerId,
         cocPreservativeConfirmed,
+        cocSaveMetadata,
       );
       toast.success(
         queued
@@ -469,16 +1034,15 @@ export function FieldVisitPage() {
   async function handleCompletion() {
     if (!detail) return;
 
-    const latitude = Number(completeCoords.latitude);
-    const longitude = Number(completeCoords.longitude);
-    const inspectionObstructionDetails = (inspection.obstruction_details ?? '').trim();
-
     const completionCheck = validateFieldVisitCompletion({
-      completeLatitude: latitude,
-      completeLongitude: longitude,
+      outcomeSelected: outcomeExplicitlySelected,
+      requiredFieldMeasurementsComplete,
+      containerValidationBlocking: cocValidation.blocking,
+      completeLatitude,
+      completeLongitude,
       inspectionFlowStatus: inspection.flow_status,
       outletInspectionObstructed,
-      inspectionObstructionDetailsTrimmed: inspectionObstructionDetails,
+      inspectionObstructionDetailsTrimmed: (inspection.obstruction_details ?? '').trim(),
       outcome,
       cocContainerIdTrimmed: cocContainerId.trim(),
       cocPreservativeConfirmed,
@@ -493,6 +1057,7 @@ export function FieldVisitPage() {
 
     if (!completionCheck.ok) {
       toast.error(completionCheck.message);
+      goToStep(recommendedStep);
       return;
     }
 
@@ -503,13 +1068,14 @@ export function FieldVisitPage() {
           detail.visit.id,
           cocContainerId,
           cocPreservativeConfirmed,
+          cocSaveMetadata,
         );
       }
       await saveInspection(detail.visit.id, inspection);
       const { queued, result } = await completeVisit(detail.visit, {
         outcome,
-        completedCoords: { latitude, longitude },
-        weatherConditions,
+        completedCoords: { latitude: completeLatitude, longitude: completeLongitude },
+        weatherConditions: formatWeatherForPersistence(observedSiteConditions, systemWeather),
         fieldNotes,
         potentialForceMajeure,
         potentialForceMajeureNotes,
@@ -597,6 +1163,1026 @@ export function FieldVisitPage() {
 
   const orgScopedPrefix = `${detail.visit.organization_id}/field-visits/`;
 
+  const renderEvidenceContent = (allowedCategories?: FieldVisitPhotoCategory[]) => (
+    <>
+      <FieldVisitPhotoBuckets
+        outcome={outcome}
+        selectedCategory={selectedPhotoCategory}
+        uploadedCounts={uploadedPhotoCounts}
+        pendingCounts={pendingPhotoCounts}
+        allowedCategories={allowedCategories}
+        onSelectCategory={(category) => {
+          setSelectedPhotoCategory(category);
+          latestPhotoCategoryRef.current = category;
+        }}
+      />
+
+      <div className="mt-4">
+        <EvidenceCaptureUpload
+          submissionType="field_visit"
+          referenceId={detail.visit.id}
+          bucket="field-inspections"
+          pathPrefix={orgScopedPrefix}
+          acceptedTypes={['.pdf', '.png', '.jpg', '.jpeg', '.heic', '.webp']}
+          disabled={visitLocked}
+          onFileAccepted={async (file) => {
+            const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+            const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
+            const category = latestPhotoCategoryRef.current;
+            const notes = evidenceType === 'photo' ? serializePhotoEvidenceCategory(category) : null;
+
+            if (typeof navigator !== 'undefined' && navigator.onLine) {
+              uploadPhotoCategoryRef.current = category;
+              return { handled: false };
+            }
+
+            await saveFieldEvidenceDraft({
+              fieldVisitId: detail.visit.id,
+              bucket: 'field-inspections',
+              pathPrefix: orgScopedPrefix,
+              file,
+              evidenceType,
+              notes,
+              latitude: completeCoords.latitude ? Number(completeCoords.latitude) : null,
+              longitude: completeCoords.longitude ? Number(completeCoords.longitude) : null,
+            });
+            await refreshPendingEvidenceDrafts(detail.visit.id);
+            void refreshOutboundPendingCount();
+
+            return {
+              handled: true,
+              message: 'Evidence saved on this device; it will upload when you are back online',
+            };
+          }}
+          onUploaded={(path) => {
+            const ext = path.split('.').pop()?.toLowerCase() ?? '';
+            const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
+            const notes = evidenceType === 'photo'
+              ? serializePhotoEvidenceCategory(uploadPhotoCategoryRef.current)
+              : undefined;
+            recordEvidenceAsset({
+              fieldVisitId: detail.visit.id,
+              storagePath: path,
+              bucket: 'field-inspections',
+              evidenceType,
+              notes,
+              coords: completeCoords.latitude && completeCoords.longitude
+                ? {
+                    latitude: Number(completeCoords.latitude),
+                    longitude: Number(completeCoords.longitude),
+                  }
+                : undefined,
+            }).catch((error) => {
+              toast.error(error instanceof Error ? error.message : 'Failed to record evidence');
+            });
+          }}
+        />
+      </div>
+
+      {pendingEvidenceDrafts.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.07] px-3 py-2">
+            <p className="text-xs text-amber-100/90">
+              Pending on this device — upload when online.
+            </p>
+            <button
+              type="button"
+              disabled={fieldQueueLoading || detailLoading}
+              onClick={() => {
+                void handleFieldSyncRefresh().catch((err) => {
+                  toast.error(err instanceof Error ? err.message : 'Retry failed');
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
+                aria-hidden
+              />
+              Retry pending uploads
+            </button>
+          </div>
+          {pendingEvidenceDrafts.map((draft) => (
+            <div
+              key={draft.id}
+              className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm"
+            >
+              <div className="font-medium text-amber-100">{draft.fileName}</div>
+              <div className="mt-1 text-xs text-amber-200/80">
+                {draft.evidenceType === 'photo' && parsePhotoEvidenceCategory(draft.notes)
+                  ? `${getPhotoBucketDefinition(parsePhotoEvidenceCategory(draft.notes)!).label} photo pending sync`
+                  : `${draft.evidenceType.replace('_', ' ')} pending sync`}
+              </div>
+              {evidenceFailureByDraftId.get(draft.id) ? (
+                <div className="mt-2 text-xs text-red-200/95">
+                  Last upload attempt: {evidenceFailureByDraftId.get(draft.id)}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4">
+        <SubmissionEvidenceViewer
+          bucket="field-inspections"
+          paths={detail.evidence.map((asset) => asset.storage_path)}
+        />
+      </div>
+    </>
+  );
+
+  const renderOperationalNotes = () => (
+    <>
+      <FieldVisitWeatherCard
+        visitLocked={visitLocked}
+        visitStarted={visitStarted}
+        fetchEnabled={isWeatherFetchEnabled()}
+        isOnline={isClientOnline}
+        coordinateSummary={weatherCoordinateSummary}
+        systemWeather={systemWeather}
+        systemLoading={systemWeatherLoading}
+        systemError={systemWeatherError}
+        observedSiteConditions={observedSiteConditions}
+        onObservedChange={setObservedSiteConditions}
+        onRefreshSystem={() => void fetchSystemWeather({ manual: true })}
+        onApplySystemToObserved={handleApplySystemToObserved}
+      />
+
+      <label className="block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Field notes
+        </span>
+        <input
+          value={fieldNotes}
+          onChange={(e) => setFieldNotes(e.target.value)}
+          disabled={visitLocked}
+          placeholder="Context that will help review, lab intake, or follow-up."
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+        />
+      </label>
+
+      <FieldVisitForceMajeureAssistPanel
+        checked={potentialForceMajeure}
+        notes={potentialForceMajeureNotes}
+        outcome={outcome}
+        disabled={visitLocked}
+        selectedEvidenceBucketFocused={selectedPhotoCategory === 'site_weather'}
+        existingIssue={detail.governanceIssues.find((issue) => issue.issue_type === 'potential_force_majeure') ?? null}
+        onCheckedChange={setPotentialForceMajeure}
+        onNotesChange={setPotentialForceMajeureNotes}
+        onAppendNote={(text) =>
+          setPotentialForceMajeureNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))
+        }
+        onReplaceNote={setPotentialForceMajeureNotes}
+        onFocusEvidence={focusForceMajeureEvidence}
+      />
+
+      {outcome === 'sample_collected' ? (
+        <QuickPhrasePicker
+          title="Collection note templates"
+          description="Use a template to seed field notes, then edit to match the actual stop."
+          templates={getOutcomeQuickPhrases('sample_collected')}
+          disabled={visitLocked}
+          onAppend={(text) => setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+          onReplace={setFieldNotes}
+        />
+      ) : null}
+    </>
+  );
+
+  const renderSampleCollectedContent = () => (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.06] p-5">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+          Guided custody lane
+        </h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {[
+            '1. Scan or enter the primary container.',
+            '2. Confirm bottle and preservative match the plan.',
+            '3. Save chain of custody before leaving the collection lane.',
+            '4. Record only the on-site field measurements required for this stop.',
+          ].map((step) => (
+            <div key={step} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm text-text-secondary">
+              {step}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <CustodyScanPanel
+        containerId={cocContainerId}
+        captureMethod={cocCaptureMethod}
+        preservativeConfirmed={cocPreservativeConfirmed}
+        validation={cocValidation}
+        disabled={visitLocked}
+        saving={saving}
+        onContainerIdChange={(value) => {
+          setCocContainerId(value);
+          setCocRawScanValue(value);
+        }}
+        onCaptureMethodChange={setCocCaptureMethod}
+        onPreservativeConfirmedChange={setCocPreservativeConfirmed}
+        onScanDetected={handleContainerScanDetected}
+        onSave={handleSaveCoc}
+      />
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+          On-Site Field Measurements
+        </h3>
+        <p className="mt-2 text-sm text-text-secondary">{FIELD_VISIT_COPY.fieldMeasurementsNotLab}</p>
+
+        <div className="mt-5 space-y-3">
+          {detail.required_field_measurements.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/[0.1] bg-black/10 px-4 py-3 text-sm text-text-muted">
+              No field meter readings are currently required from the scheduled parameter set for this stop.
+            </div>
+          ) : (
+            detail.required_field_measurements.map((measurement) => {
+              const latestSaved = findSavedMeasurementForRequirement(generalMeasurements, measurement);
+
+              return (
+                <div key={measurement.key} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4 text-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-text-primary">
+                        {measurement.display_label}
+                        {measurement.default_unit ? ` · ${measurement.default_unit}` : ''}
+                      </div>
+                      <div className="mt-1 text-xs text-text-secondary">{measurement.rationale}</div>
+                      <div className="mt-1 text-xs text-cyan-200/85">
+                        Required because this stop includes: {measurement.source_parameter_names.join(', ')}
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-text-secondary">
+                      Latest saved:{' '}
+                      <span className="font-medium text-text-primary">
+                        {latestSaved
+                          ? `${latestSaved.measured_value ?? latestSaved.measured_text ?? '—'}${latestSaved.unit ? ` ${latestSaved.unit}` : ''}`
+                          : 'Not recorded'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                      value={requiredMeasurementDrafts[measurement.key] ?? ''}
+                      onChange={(event) => setRequiredMeasurementDrafts((current) => ({
+                        ...current,
+                        [measurement.key]: event.target.value,
+                      }))}
+                      placeholder={fieldMeasurementInputPlaceholder(measurement)}
+                      disabled={visitLocked}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveRequiredMeasurement(measurement)}
+                      disabled={saving || visitLocked}
+                      className="rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
+                    >
+                      Save reading
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {additionalFieldObservations.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+              Additional recorded field observations
+            </div>
+            <p className="text-xs text-text-secondary">{FIELD_VISIT_COPY.additionalFieldObservationsExplainer}</p>
+            {additionalFieldObservations.map((measurement) => (
+              <div key={measurement.id} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm">
+                <div className="font-medium text-text-primary">{measurement.parameter_name}</div>
+                <div className="mt-1 text-text-secondary">
+                  {measurement.measured_value ?? measurement.measured_text ?? '—'} {measurement.unit ?? ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const renderNoDischargeContent = () => (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+        No-discharge record
+      </h3>
+      <label className="mt-4 block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Narrative <span className="text-amber-200/90">(required)</span>
+        </span>
+        <textarea
+          value={noDischargeNarrative}
+          onChange={(e) => setNoDischargeNarrative(e.target.value)}
+          rows={4}
+          disabled={visitLocked}
+          placeholder="Describe the no-flow condition at the actual sampling point."
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+        />
+      </label>
+
+      <label className="mt-4 block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Observed condition
+        </span>
+        <textarea
+          value={noDischargeCondition}
+          onChange={(e) => setNoDischargeCondition(e.target.value)}
+          rows={3}
+          disabled={visitLocked}
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+        />
+      </label>
+
+      <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
+        <input
+          type="checkbox"
+          checked={noDischargeObstructionObserved}
+          onChange={(e) => setNoDischargeObstructionObserved(e.target.checked)}
+          disabled={visitLocked}
+        />
+        Obstruction observed
+      </label>
+
+      <label className="mt-4 block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Obstruction details
+        </span>
+        <textarea
+          value={noDischargeObstructionDetails}
+          onChange={(e) => setNoDischargeObstructionDetails(e.target.value)}
+          rows={3}
+          disabled={visitLocked}
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+        />
+      </label>
+
+      {detail?.previous_visit_context?.no_discharge_narrative ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={visitLocked}
+            onClick={() => setNoDischargeNarrative(detail.previous_visit_context?.no_discharge_narrative ?? '')}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+          >
+            Copy last no-discharge note
+          </button>
+        </div>
+      ) : null}
+
+      <div className="mt-4">
+        <QuickPhrasePicker
+          title="No-discharge quick phrases"
+          description="Seed the narrative with a common field pattern, then edit it to the actual conditions."
+          templates={getOutcomeQuickPhrases('no_discharge')}
+          disabled={visitLocked}
+          onAppend={(text) => setNoDischargeNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+          onReplace={setNoDischargeNarrative}
+        />
+      </div>
+    </div>
+  );
+
+  const renderAccessIssueContent = () => (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+        Access issue escalation
+      </h3>
+
+      <label className="mt-4 block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Issue type
+        </span>
+        <select
+          value={accessIssueType}
+          onChange={(e) => setAccessIssueType(e.target.value)}
+          disabled={visitLocked}
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+        >
+          <option value="access_issue">Access issue</option>
+          <option value="road_blocked">Road blocked</option>
+          <option value="locked_gate">Locked gate</option>
+          <option value="weather">Weather</option>
+          <option value="safety_hazard">Safety hazard</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label className="mt-4 block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Obstruction narrative <span className="text-rose-200/90">(required)</span>
+        </span>
+        <textarea
+          value={accessIssueNarrative}
+          onChange={(e) => setAccessIssueNarrative(e.target.value)}
+          rows={4}
+          disabled={visitLocked}
+          placeholder="Describe the physical access problem and why sampling could not proceed."
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+        />
+      </label>
+
+      <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
+        <input
+          type="checkbox"
+          checked={contactAttempted}
+          onChange={(e) => setContactAttempted(e.target.checked)}
+          disabled={visitLocked}
+        />
+        Contact attempted
+      </label>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <input
+          value={contactName}
+          onChange={(e) => setContactName(e.target.value)}
+          placeholder="Contact name"
+          disabled={visitLocked}
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+        />
+        <input
+          value={contactOutcome}
+          onChange={(e) => setContactOutcome(e.target.value)}
+          placeholder="Contact outcome"
+          disabled={visitLocked}
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+        />
+      </div>
+
+      {detail?.previous_visit_context?.access_issue_narrative ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={visitLocked}
+            onClick={() => {
+              setAccessIssueNarrative(detail.previous_visit_context?.access_issue_narrative ?? '');
+              if (detail.previous_visit_context?.access_issue_type) {
+                setAccessIssueType(detail.previous_visit_context.access_issue_type);
+              }
+            }}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+          >
+            Copy last access issue
+          </button>
+        </div>
+      ) : null}
+
+      <div className="mt-4">
+        <QuickPhrasePicker
+          title="Access issue quick phrases"
+          description="Use a controlled phrase to reduce typing, then tailor it to the real blockage or hazard."
+          templates={getOutcomeQuickPhrases('access_issue')}
+          disabled={visitLocked}
+          onAppend={(text) => setAccessIssueNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+          onReplace={setAccessIssueNarrative}
+        />
+      </div>
+    </div>
+  );
+
+  const evidenceCategories = useMemo(() => {
+    const categories = new Set<FieldVisitPhotoCategory>(getRequiredPhotoCategories(outcome));
+
+    for (const prompt of qaPrompts) {
+      categories.add(prompt.focusBucket);
+    }
+
+    if (potentialForceMajeure) {
+      categories.add('site_weather');
+    }
+
+    if (deficiencyPrompts.length > 0 || outcome === 'access_issue') {
+      categories.add('obstruction_deficiency');
+    }
+
+    return Array.from(categories);
+  }, [deficiencyPrompts.length, outcome, potentialForceMajeure, qaPrompts]);
+
+  useEffect(() => {
+    if (evidenceCategories.length === 0) return;
+    if (evidenceCategories.includes(selectedPhotoCategory)) return;
+    const fallback = evidenceCategories[0]!;
+    setSelectedPhotoCategory(fallback);
+    latestPhotoCategoryRef.current = fallback;
+  }, [evidenceCategories, selectedPhotoCategory]);
+
+  const handleWizardStepSelect = useCallback((targetStep: FieldVisitWizardStepId) => {
+    if (visitLocked) {
+      goToStep(targetStep);
+      return;
+    }
+
+    const access = validateFieldVisitWizardStepAccess({
+      currentStep: activeStep,
+      targetStep,
+      state: wizardGuardState,
+    });
+
+    if (!access.ok) {
+      toast.error(access.message);
+      goToStep(access.blockedStep);
+      return;
+    }
+
+    goToStep(targetStep);
+  }, [activeStep, goToStep, visitLocked, wizardGuardState]);
+
+  const handleWizardAdvance = useCallback(async () => {
+    if (visitLocked && activeStep !== 'review_complete') {
+      const nextStep = getNextFieldVisitWizardStep(activeStep);
+      if (nextStep) {
+        goToStep(nextStep);
+      }
+      return;
+    }
+
+    switch (activeStep) {
+      case 'start_visit':
+        if (visitStarted) {
+          goToStep('inspection');
+          return;
+        }
+        await handleStartVisit();
+        return;
+      case 'inspection': {
+        const inspectionAdvance = validateFieldVisitWizardAdvanceStep('inspection', wizardGuardState);
+        if (!inspectionAdvance.ok) {
+          toast.error(inspectionAdvance.message);
+          return;
+        }
+        await handleSaveInspection();
+        return;
+      }
+      case 'choose_outcome': {
+        const outcomeAdvance = validateFieldVisitWizardAdvanceStep('choose_outcome', wizardGuardState);
+        if (!outcomeAdvance.ok) {
+          toast.error(outcomeAdvance.message);
+          return;
+        }
+        goToStep('outcome_details');
+        return;
+      }
+      case 'outcome_details': {
+        const outcomeDetailsAdvance = validateFieldVisitWizardAdvanceStep('outcome_details', wizardGuardState);
+        if (!outcomeDetailsAdvance.ok) {
+          toast.error(outcomeDetailsAdvance.message);
+          return;
+        }
+        goToStep('evidence');
+        return;
+      }
+      case 'evidence': {
+        const evidenceAdvance = validateFieldVisitWizardAdvanceStep('evidence', wizardGuardState);
+        if (!evidenceAdvance.ok) {
+          toast.error(evidenceAdvance.message);
+          return;
+        }
+        goToStep('review_complete');
+        return;
+      }
+      case 'review_complete':
+        await handleCompletion();
+        return;
+      default:
+        return;
+    }
+  }, [
+    activeStep,
+    goToStep,
+    handleStartVisit,
+    visitStarted,
+    visitLocked,
+    wizardGuardState,
+  ]);
+
+  const previousStep = getPreviousFieldVisitWizardStep(activeStep);
+  const currentStepMeta = getFieldVisitWizardStep(activeStep);
+  const recommendedStepMeta = getFieldVisitWizardStep(recommendedStep);
+
+  const sameAsLastHelpers = detail.previous_visit_context ? (
+    <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+            Same-as-last helpers
+          </div>
+          <div className="mt-2 text-sm text-text-secondary">
+            Reuse the prior inspection summary when the stop conditions are unchanged, then edit only what differs.
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={visitLocked}
+            onClick={applyPreviousInspectionSummary}
+            className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+          >
+            Apply last inspection
+          </button>
+          {detail.previous_visit_context.signage_condition ? (
+            <button
+              type="button"
+              disabled={visitLocked}
+              onClick={() => setInspection((prev) => ({
+                ...prev,
+                signage_condition: detail.previous_visit_context?.signage_condition ?? prev.signage_condition ?? '',
+              }))}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              Copy signage
+            </button>
+          ) : null}
+          {detail.previous_visit_context.pipe_condition ? (
+            <button
+              type="button"
+              disabled={visitLocked}
+              onClick={() => setInspection((prev) => ({
+                ...prev,
+                pipe_condition: detail.previous_visit_context?.pipe_condition ?? prev.pipe_condition ?? '',
+              }))}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              Copy pipe condition
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const deficiencyPromptsNode = (
+    <FieldVisitDeficiencyPrompts
+      prompts={deficiencyPrompts}
+      disabled={visitLocked}
+      onSetDeficiencyBucket={() => {
+        setSelectedPhotoCategory('obstruction_deficiency');
+        latestPhotoCategoryRef.current = 'obstruction_deficiency';
+        toast.success('Photo bucket set to obstruction / deficiency');
+      }}
+      onAppendFollowUpNote={appendFollowUpNote}
+    />
+  );
+
+  const qaPromptsNode = (
+    <FieldVisitQaPromptsPanel
+      prompts={qaPrompts}
+      disabled={visitLocked}
+      onAppendNote={appendFollowUpNote}
+      onFocusBucket={focusPhotoBucket}
+    />
+  );
+
+  const safetyActionsNode = (
+    <SafetyActionsPanel
+      disabled={visitLocked}
+      onRouteSafetyHazard={routeSafetyHazard}
+      onFlagUnsafeToProceed={flagUnsafeToProceed}
+      onRecordLoneWorkerEscalation={recordLoneWorkerEscalation}
+    />
+  );
+
+  const evidenceFocusPrompts = (
+    <div className="space-y-3">
+      {qaPrompts.length > 0 ? (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+            Evidence focus prompts
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {qaPrompts.map((prompt) => (
+              <button
+                key={prompt.id}
+                type="button"
+                disabled={visitLocked}
+                onClick={() => focusPhotoBucket(prompt.focusBucket)}
+                className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+              >
+                Focus {getPhotoBucketDefinition(prompt.focusBucket).label.toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {potentialForceMajeure ? (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Force majeure is flagged. Make sure the <span className="font-medium">Site / weather</span> bucket shows the conditions that support the timing narrative.
+        </div>
+      ) : null}
+
+      {deficiencyPrompts.length > 0 ? (
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          Inspection follow-up is active. Keep the <span className="font-medium">Obstruction / deficiency</span> bucket current before review.
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const reviewSummaryCards = (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Outcome</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">{formatOutcomeLabel(outcome)}</div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Completion GPS</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">
+            {completionCoordsReady ? 'Recorded' : 'Missing'}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Evidence</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">
+            {photoCount} uploaded / {pendingPhotoCount} pending
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Governance issues</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">{detail.governanceIssues.length}</div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Primary blockers</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">{readinessSummary.blockerCount}</div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Follow-up prompts</div>
+          <div className="mt-2 text-sm font-medium text-text-primary">{deficiencyPrompts.length + qaPrompts.length}</div>
+        </div>
+      </div>
+
+      <FieldVisitRequirementsCard
+        stopRequirements={detail.stop_requirements}
+        requiredMeasurements={detail.required_field_measurements}
+        model={requirementsModel ?? buildFieldVisitRequirementsModel({
+          visit: detail.visit,
+          outcome,
+          stopRequirements: detail.stop_requirements,
+          requiredMeasurements: detail.required_field_measurements,
+        })}
+      />
+    </div>
+  );
+
+  const reviewCompletionLocation = (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+            Completion location
+          </h3>
+          <p className="mt-2 text-sm text-text-secondary">
+            Capture the completion GPS here before finalizing the visit record.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleCaptureCompleteCoords}
+          disabled={visitLocked}
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary disabled:opacity-60"
+        >
+          Capture completion GPS
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <label className="space-y-2" htmlFor="field-visit-complete-lat">
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Completion latitude</span>
+          <input
+            id="field-visit-complete-lat"
+            name="field-visit-complete-lat"
+            inputMode="decimal"
+            autoComplete="off"
+            value={completeCoords.latitude}
+            onChange={(event) => setCompleteCoords((prev) => ({ ...prev, latitude: event.target.value }))}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          />
+        </label>
+        <label className="space-y-2" htmlFor="field-visit-complete-lng">
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Completion longitude</span>
+          <input
+            id="field-visit-complete-lng"
+            name="field-visit-complete-lng"
+            inputMode="decimal"
+            autoComplete="off"
+            value={completeCoords.longitude}
+            onChange={(event) => setCompleteCoords((prev) => ({ ...prev, longitude: event.target.value }))}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          />
+        </label>
+      </div>
+    </div>
+  );
+
+  const governanceIssuesNode = detail.governanceIssues.length > 0 ? (
+    <div className="space-y-3">
+      {detail.governanceIssues.map((issue: GovernanceIssueRecord) => {
+        const response = describeGovernanceDeadline(issue.response_deadline);
+        const notice = describeGovernanceDeadline(issue.notice_deadline);
+        const written = describeGovernanceDeadline(issue.written_deadline);
+        const isFm = issue.issue_type === 'potential_force_majeure';
+        return (
+          <div
+            key={issue.id}
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              isFm ? 'border-amber-500/25 bg-amber-500/5' : 'border-white/[0.06] bg-white/[0.02]'
+            }`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="font-medium text-text-primary">{issue.title}</div>
+                <div className="mt-0.5 text-xs text-text-muted">
+                  {issue.issue_type.replace(/_/g, ' ')} · Step {issue.current_step} · {issue.current_status.replace(/_/g, ' ')}
+                </div>
+              </div>
+              {isFm ? (
+                <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-200">
+                  FM candidate
+                </span>
+              ) : null}
+            </div>
+            <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+              <div>
+                <dt className="text-text-muted">Response</dt>
+                <dd className={`mt-0.5 font-medium ${deadlineToneClass(response.tone)}`}>{response.text}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted">Notice target</dt>
+                <dd className={`mt-0.5 font-medium ${deadlineToneClass(notice.tone)}`}>{notice.text}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted">Written target</dt>
+                <dd className={`mt-0.5 font-medium ${deadlineToneClass(written.tone)}`}>{written.text}</dd>
+              </div>
+            </dl>
+          </div>
+        );
+      })}
+      <div className="text-sm text-text-secondary">
+        <Link to="/governance/issues" className="text-cyan-300 hover:text-cyan-200">
+          Open governance inbox
+        </Link>
+      </div>
+    </div>
+  ) : null;
+
+  const forceMajeureBanner = potentialForceMajeure ? (
+    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+      Potential force majeure is flagged on this visit. Review the timing language, site/weather evidence, and governance deadlines before completion.
+    </div>
+  ) : null;
+
+  const syncGuidance = (!isClientOnline || visitOutboundQueuedCount > 0 || evidenceUploadFailures.length > 0 || outboundQueueDiagnostic) ? (
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200/85">
+        Sync guidance
+      </div>
+      <div className="mt-2 space-y-1 text-sm text-text-primary">
+        {!isClientOnline ? <div>Reconnect before trusting the final server record. Device changes remain local while offline.</div> : null}
+        {visitOutboundQueuedCount > 0 ? <div>Use Refresh in the sync bar after connectivity is stable to flush queued visit actions.</div> : null}
+        {evidenceUploadFailures.length > 0 ? <div>Retry failed photo uploads before treating the evidence package as complete.</div> : null}
+        {outboundQueueDiagnostic ? <div>The queue is blocked. Review the sync-health details before making more changes to this stop.</div> : null}
+      </div>
+    </div>
+  ) : null;
+
+  const lockedBanner = visitLocked ? (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      This visit record is complete and locked from further field edits.
+    </div>
+  ) : null;
+
+  const currentStepContent = (() => {
+    switch (activeStep) {
+      case 'start_visit':
+        return (
+          <FieldVisitStartStep
+            startLatitude={startCoords.latitude}
+            startLongitude={startCoords.longitude}
+            onStartLatitudeChange={(value) => setStartCoords((prev) => ({ ...prev, latitude: value }))}
+            onStartLongitudeChange={(value) => setStartCoords((prev) => ({ ...prev, longitude: value }))}
+            onCaptureStartCoords={() => {
+              void handleCaptureStartCoords();
+            }}
+            visitStarted={visitStarted}
+            visitLocked={visitLocked}
+            outfallMapsHref={outfallMapsHref}
+            syncGuidance={syncGuidance}
+            weatherCard={
+              <FieldVisitWeatherCard
+                visitLocked={visitLocked}
+                visitStarted={visitStarted}
+                fetchEnabled={isWeatherFetchEnabled()}
+                isOnline={isClientOnline}
+                coordinateSummary={weatherCoordinateSummary}
+                systemWeather={systemWeather}
+                systemLoading={systemWeatherLoading}
+                systemError={systemWeatherError}
+                observedSiteConditions={observedSiteConditions}
+                onObservedChange={setObservedSiteConditions}
+                onRefreshSystem={() => void fetchSystemWeather({ manual: true })}
+                onApplySystemToObserved={handleApplySystemToObserved}
+              />
+            }
+          />
+        );
+      case 'inspection':
+        return (
+          <FieldVisitInspectionStep
+            inspection={inspection}
+            outletInspectionObstructed={outletInspectionObstructed}
+            visitLocked={visitLocked}
+            onInspectionChange={(patch) => setInspection((prev) => ({ ...prev, ...patch }))}
+            sameAsLastHelpers={sameAsLastHelpers}
+            deficiencyPrompts={deficiencyPromptsNode}
+          />
+        );
+      case 'choose_outcome':
+        return (
+          <FieldVisitOutcomeStep
+            outcome={outcome}
+            visitLocked={visitLocked}
+            potentialForceMajeure={potentialForceMajeure}
+            onOutcomeSelect={(nextOutcome) => {
+              setOutcome(nextOutcome);
+              setOutcomeExplicitlySelected(true);
+            }}
+          />
+        );
+      case 'outcome_details':
+        return (
+          <FieldVisitOutcomeDetailsStep
+            outcome={outcome}
+            totalPhotoCount={totalPhotoCount}
+            pendingPhotoCount={pendingPhotoCount}
+            syncedPhotoCount={photoCount}
+            isOnline={isClientOnline}
+            requirementsCard={
+              <FieldVisitRequirementsCard
+                stopRequirements={detail.stop_requirements}
+                requiredMeasurements={detail.required_field_measurements}
+                model={requirementsModel ?? buildFieldVisitRequirementsModel({
+                  visit: detail.visit,
+                  outcome,
+                  stopRequirements: detail.stop_requirements,
+                  requiredMeasurements: detail.required_field_measurements,
+                })}
+              />
+            }
+            lastContextCard={<FieldVisitLastContextCard context={detail.previous_visit_context} />}
+            qaPrompts={qaPromptsNode}
+            safetyActions={safetyActionsNode}
+            outcomeContent={
+              outcome === 'sample_collected'
+                ? renderSampleCollectedContent()
+                : outcome === 'no_discharge'
+                  ? renderNoDischargeContent()
+                  : renderAccessIssueContent()
+            }
+            notesContent={renderOperationalNotes()}
+          />
+        );
+      case 'evidence':
+        return (
+          <FieldVisitEvidenceStep
+            outcome={outcome}
+            totalPhotoCount={totalPhotoCount}
+            pendingPhotoCount={pendingPhotoCount}
+            syncedPhotoCount={photoCount}
+            requiredPrompt={evidenceValidation.ok ? 'Required evidence for this outcome is in place. Add more context if the stop conditions are ambiguous.' : evidenceValidation.message}
+            focusPrompts={evidenceFocusPrompts}
+            evidenceContent={renderEvidenceContent(evidenceCategories)}
+          />
+        );
+      case 'review_complete':
+        return (
+          <FieldVisitReviewStep
+            summaryCards={reviewSummaryCards}
+            completionLocation={reviewCompletionLocation}
+            checklist={!visitLocked ? <FieldVisitRequiredChecklist items={completionChecklistItems} /> : null}
+            reviewHooks={<FieldVisitReviewHooksPanel hooks={reviewHooks} />}
+            governanceIssues={governanceIssuesNode}
+            lockedBanner={lockedBanner}
+            forceMajeureBanner={forceMajeureBanner}
+          />
+        );
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -608,6 +2194,17 @@ export function FieldVisitPage() {
             {detail.visit.permit_number ?? 'Permit'} / {detail.visit.outfall_number ?? 'Outfall'} scheduled for{' '}
             {new Date(`${detail.visit.scheduled_date}T00:00:00`).toLocaleDateString()}
           </p>
+          {outboundQueueDiagnostic || evidenceUploadFailures.length > 0 ? (
+            <p className="mt-2">
+              <a
+                href="#field-sync-health"
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-400/35 bg-red-500/12 px-2.5 py-1 text-xs font-medium text-red-100 transition-colors hover:bg-red-500/20"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Sync needs attention — view details
+              </a>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -656,7 +2253,7 @@ export function FieldVisitPage() {
         </div>
       ) : null}
 
-      {id && (
+      {id ? (
         <FieldDataSyncBar
           loading={fieldQueueLoading || detailLoading}
           lastSyncedAt={lastSyncedAt}
@@ -665,10 +2262,24 @@ export function FieldVisitPage() {
           onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
           onRefresh={handleFieldSyncRefresh}
           auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
+          evidenceSyncFailures={evidenceUploadFailures}
+          onRetryEvidenceSync={() => {
+            void handleFieldSyncRefresh().catch((err) => {
+              toast.error(err instanceof Error ? err.message : 'Retry failed');
+            });
+          }}
+          onDismissEvidenceFailures={() => {
+            clearPersistedFieldEvidenceSyncFailuresForVisit(id);
+            setEvidenceUploadFailures([]);
+          }}
         />
-      )}
+      ) : null}
 
       {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
+
+      {detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live' ? (
+        <FieldDataSourceBanner variant="visit" source={detailLoadSource} />
+      ) : null}
 
       {visitOutboundQueuedCount > 0 ? (
         <div
@@ -688,7 +2299,7 @@ export function FieldVisitPage() {
         </div>
       ) : null}
 
-      {visitNeedsDisposition(detail.visit) && (
+      {visitNeedsDisposition(detail.visit) ? (
         <div
           className="flex items-start gap-3 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100"
           role="status"
@@ -698,27 +2309,22 @@ export function FieldVisitPage() {
           <div>
             <p className="font-medium text-cyan-50">Open visit — disposition required</p>
             <p className="mt-1 text-xs text-cyan-200/85">
-              This stop is still assigned or in progress. Finish sampling documentation (or no-discharge / access issue)
-              and complete the visit so the route shows a clear outcome. Queued offline actions sync when you are back
-              online.
-            </p>
-            <p className="mt-2 text-xs text-cyan-200/70">
-              Use <strong className="font-medium text-cyan-100/90">Outlet Inspection</strong>,{' '}
-              <strong className="font-medium text-cyan-100/90">Chain of custody</strong> (if sampling),{' '}
-              <strong className="font-medium text-cyan-100/90">Evidence</strong>, and the{' '}
-              <strong className="font-medium text-cyan-100/90">Completion Gate</strong> checklist below — scroll on small
-              screens.
+              This stop is still assigned or in progress. Work top-to-bottom through the guided steps so the route ends with a clear outcome and a complete record.
             </p>
           </div>
         </div>
-      )}
+      ) : null}
+
+      {requirementsModel ? (
+        <FieldVisitShortHoldAlert flags={requirementsModel.urgencyFlags} />
+      ) : null}
 
       <FieldSameOutfallDayWarning
         groups={visitSiblingOutfallConflicts}
         contextLabel="this visit"
       />
 
-      {detail.visit.linked_sampling_event_id && (
+      {detail.visit.linked_sampling_event_id ? (
         <div
           className="flex flex-col gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between"
           role="region"
@@ -745,808 +2351,55 @@ export function FieldVisitPage() {
             Copy ID
           </button>
         </div>
-      )}
+      ) : null}
 
-      {id && evidenceUploadFailures.length > 0 && (
-        <div
-          className="flex flex-wrap items-start gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm"
-          role="alert"
-        >
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-200" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <div className="font-medium text-red-100">Photo or file upload needs a retry</div>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-text-secondary">
-              {evidenceUploadFailures.map((f) => (
-                <li key={f.draftId}>
-                  <span className="font-medium text-text-primary">{f.fileName}</span>
-                  <span className="text-text-muted"> — {f.message}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-text-muted">
-              Stay online, then retry below or use Refresh in the sync bar. Files stay on this device until they upload
-              successfully.
-            </p>
+      <FieldVisitWizardShell
+        stepNumber={FIELD_VISIT_WIZARD_STEPS.findIndex((step) => step.id === activeStep) + 1}
+        stepTitle={currentStepMeta.label}
+        stepDescription={currentStepMeta.description}
+        progress={
+          <FieldVisitWizardProgress
+            activeStep={activeStep}
+            steps={progressSteps}
+            onStepSelect={handleWizardStepSelect}
+          />
+        }
+        backAction={previousStep ? {
+          label: 'Back',
+          onClick: () => goToStep(previousStep),
+          disabled: saving,
+        } : null}
+        primaryAction={visitLocked && activeStep === 'review_complete'
+          ? null
+          : {
+              label: activeStep === 'start_visit' && visitStarted
+                ? 'Continue to inspection'
+                : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
+              onClick: () => {
+                void handleWizardAdvance();
+              },
+              disabled:
+                saving ||
+                (activeStep === 'review_complete' && !canAttemptComplete) ||
+                (activeStep === 'choose_outcome' && !outcomeExplicitlySelected),
+              variant: activeStep === 'review_complete' ? 'success' : 'primary',
+            }}
+        stepMeta={!visitLocked ? (
+          <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+            {activeStep === recommendedStep
+              ? reviewReady
+                ? 'Ready for review'
+                : 'Recommended now'
+              : `Recommended: ${recommendedStepMeta.label}`}
           </div>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
-            <button
-              type="button"
-              disabled={fieldQueueLoading || detailLoading}
-              onClick={() => {
-                void handleFieldSyncRefresh().catch((err) => {
-                  toast.error(err instanceof Error ? err.message : 'Retry failed');
-                });
-              }}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-400/35 bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-50 transition-colors hover:bg-red-500/30 disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
-                aria-hidden
-              />
-              Retry uploads
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearPersistedFieldEvidenceSyncFailuresForVisit(id);
-                setEvidenceUploadFailures([]);
-              }}
-              className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
-            >
-              Dismiss
-            </button>
+        ) : (
+          <div className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            Visit locked
           </div>
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <SpotlightCard className="p-6">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-cyan-300" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                Visit Control
-              </h2>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2" htmlFor="field-visit-start-lat">
-                <span className="text-xs font-medium text-text-muted">Start latitude</span>
-                <input
-                  id="field-visit-start-lat"
-                  name="field-visit-start-lat"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={startCoords.latitude}
-                  onChange={(e) => setStartCoords((prev) => ({ ...prev, latitude: e.target.value }))}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-              <label className="space-y-2" htmlFor="field-visit-start-lng">
-                <span className="text-xs font-medium text-text-muted">Start longitude</span>
-                <input
-                  id="field-visit-start-lng"
-                  name="field-visit-start-lng"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={startCoords.longitude}
-                  onChange={(e) => setStartCoords((prev) => ({ ...prev, longitude: e.target.value }))}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                onClick={handleCaptureStartCoords}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
-              >
-                Capture browser GPS
-              </button>
-            {detail.visit.visit_status === 'assigned' && !visitLocked && (
-                <button
-                  onClick={handleStartVisit}
-                  disabled={saving}
-                  className="rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
-                >
-                  Start visit
-                </button>
-              )}
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2" htmlFor="field-visit-complete-lat">
-                <span className="text-xs font-medium text-text-muted">Completion latitude</span>
-                <input
-                  id="field-visit-complete-lat"
-                  name="field-visit-complete-lat"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={completeCoords.latitude}
-                  onChange={(e) => setCompleteCoords((prev) => ({ ...prev, latitude: e.target.value }))}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-              <label className="space-y-2" htmlFor="field-visit-complete-lng">
-                <span className="text-xs font-medium text-text-muted">Completion longitude</span>
-                <input
-                  id="field-visit-complete-lng"
-                  name="field-visit-complete-lng"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={completeCoords.longitude}
-                  onChange={(e) => setCompleteCoords((prev) => ({ ...prev, longitude: e.target.value }))}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="mt-4">
-              <button
-                onClick={handleCaptureCompleteCoords}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
-              >
-                Capture completion GPS
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Weather conditions</span>
-                <input
-                  value={weatherConditions}
-                  onChange={(e) => setWeatherConditions(e.target.value)}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Visit outcome</span>
-                <select
-                  value={outcome}
-                  onChange={(e) => setOutcome(e.target.value as FieldVisitOutcome)}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                >
-                  <option value="sample_collected">Sample collected</option>
-                  <option value="no_discharge">No discharge</option>
-                  <option value="access_issue">Access issue</option>
-                </select>
-              </label>
-            </div>
-
-            <label className="mt-4 block space-y-2">
-              <span className="text-xs font-medium text-text-muted">Field notes</span>
-              <textarea
-                value={fieldNotes}
-                onChange={(e) => setFieldNotes(e.target.value)}
-                rows={4}
-                disabled={visitLocked}
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-              />
-            </label>
-
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-              <div className="flex-1">
-                <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={potentialForceMajeure}
-                    onChange={(e) => setPotentialForceMajeure(e.target.checked)}
-                    disabled={visitLocked}
-                  />
-                  Potential force majeure candidate
-                </label>
-                <textarea
-                  value={potentialForceMajeureNotes}
-                  onChange={(e) => setPotentialForceMajeureNotes(e.target.value)}
-                  rows={3}
-                  disabled={visitLocked}
-                  placeholder="Why this may trigger decree notice timing."
-                  className="mt-3 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </div>
-            </div>
-          </SpotlightCard>
-
-          <SpotlightCard className="p-6">
-            <div className="flex items-center gap-2">
-              <Waves className="h-4 w-4 text-cyan-300" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                Outlet Inspection
-              </h2>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">
-                  Flow status <span className="text-cyan-200/90">(required before complete)</span>
-                </span>
-                <select
-                  value={inspection.flow_status ?? 'unknown'}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, flow_status: e.target.value as OutletInspectionRecord['flow_status'] }))}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                >
-                  <option value="unknown">Unknown</option>
-                  <option value="flowing">Flowing</option>
-                  <option value="no_flow">No flow</option>
-                  <option value="obstructed">Obstructed</option>
-                </select>
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Signage condition</span>
-                <input
-                  value={inspection.signage_condition ?? ''}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, signage_condition: e.target.value }))}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Pipe condition</span>
-                <input
-                  value={inspection.pipe_condition ?? ''}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, pipe_condition: e.target.value }))}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">
-                  Obstruction details{' '}
-                  {outletInspectionObstructed ? (
-                    <span className="text-cyan-200/90">(required)</span>
-                  ) : (
-                    <span className="text-text-muted/70">(required if obstructed)</span>
-                  )}
-                </span>
-                <textarea
-                  value={inspection.obstruction_details ?? ''}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, obstruction_details: e.target.value }))}
-                  disabled={visitLocked}
-                  rows={3}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-4 text-sm text-text-secondary">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={inspection.erosion_observed ?? false}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, erosion_observed: e.target.checked }))}
-                  disabled={visitLocked}
-                />
-                Erosion observed
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={inspection.obstruction_observed ?? false}
-                  onChange={(e) => setInspection((prev) => ({ ...prev, obstruction_observed: e.target.checked }))}
-                  disabled={visitLocked}
-                />
-                Obstruction observed
-              </label>
-            </div>
-
-            <label className="mt-4 block space-y-2">
-              <span className="text-xs font-medium text-text-muted">Inspection notes</span>
-              <textarea
-                value={inspection.inspector_notes ?? ''}
-                onChange={(e) => setInspection((prev) => ({ ...prev, inspector_notes: e.target.value }))}
-                rows={3}
-                disabled={visitLocked}
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-              />
-            </label>
-
-            <button
-              onClick={handleSaveInspection}
-              disabled={saving || visitLocked}
-              className="mt-4 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
-            >
-              {visitLocked ? 'Inspection locked' : 'Save inspection'}
-            </button>
-          </SpotlightCard>
-
-          {(outcome === 'sample_collected' || detail.visit.outcome === 'sample_collected') && (
-            <SpotlightCard className="p-6">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-cyan-300" />
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                  Chain of custody (collection)
-                </h2>
-              </div>
-              <p className="mt-2 text-sm text-text-secondary">
-                Primary container ID and preservative confirmation are required before you can complete a
-                sample-collected visit. Stored as a field measurement for audit.
-              </p>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Primary container ID</span>
-                <input
-                  value={cocContainerId}
-                  onChange={(e) => setCocContainerId(e.target.value)}
-                  disabled={visitLocked}
-                  placeholder="e.g. bottle label / cooler slot ID"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </label>
-
-              <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={cocPreservativeConfirmed}
-                  onChange={(e) => setCocPreservativeConfirmed(e.target.checked)}
-                  disabled={visitLocked}
-                />
-                Bottle and preservative match the parameters scheduled for this sample
-              </label>
-
-              {!visitLocked && (
-                <button
-                  type="button"
-                  onClick={handleSaveCoc}
-                  disabled={saving}
-                  className="mt-4 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
-                >
-                  Save chain of custody
-                </button>
-              )}
-            </SpotlightCard>
-          )}
-
-          <SpotlightCard className="p-6">
-            <div className="flex items-center gap-2">
-              <Droplets className="h-4 w-4 text-cyan-300" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                Field Measurements
-              </h2>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-4">
-              <input
-              value={measurementName}
-              onChange={(e) => setMeasurementName(e.target.value)}
-              placeholder="Parameter"
-              disabled={visitLocked}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-            />
-              <input
-              value={measurementValue}
-              onChange={(e) => setMeasurementValue(e.target.value)}
-              placeholder="Numeric value"
-              disabled={visitLocked}
-              inputMode="decimal"
-              autoComplete="off"
-              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-            />
-              <input
-              value={measurementText}
-              onChange={(e) => setMeasurementText(e.target.value)}
-              placeholder="Text value"
-              disabled={visitLocked}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-            />
-              <input
-              value={measurementUnit}
-              onChange={(e) => setMeasurementUnit(e.target.value)}
-              placeholder="Unit"
-              disabled={visitLocked}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-            />
-            </div>
-
-            <button
-              onClick={handleAddMeasurement}
-              disabled={saving || visitLocked}
-              className="mt-4 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
-            >
-              {visitLocked ? 'Measurements locked' : 'Add measurement'}
-            </button>
-
-            <div className="mt-4 space-y-2">
-              {generalMeasurements.map((measurement) => (
-                <div key={measurement.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
-                  <div className="font-medium text-text-primary">{measurement.parameter_name}</div>
-                  <div className="mt-1 text-text-secondary">
-                    {measurement.measured_value ?? measurement.measured_text ?? '—'} {measurement.unit ?? ''}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SpotlightCard>
-        </div>
-
-        <div className="space-y-6">
-          <SpotlightCard className="p-6">
-            <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-cyan-300" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                Evidence
-              </h2>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
-              {totalPhotoCount} photo evidence item{totalPhotoCount === 1 ? '' : 's'} attached
-              {pendingPhotoCount > 0 && (
-                <span className="ml-2 text-amber-200">
-                  ({pendingPhotoCount} pending sync on this device)
-                </span>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <EvidenceCaptureUpload
-                submissionType="field_visit"
-                referenceId={detail.visit.id}
-                bucket="field-inspections"
-                pathPrefix={orgScopedPrefix}
-                acceptedTypes={['.pdf', '.png', '.jpg', '.jpeg', '.heic', '.webp']}
-                disabled={visitLocked}
-                onFileAccepted={async (file) => {
-                  if (typeof navigator !== 'undefined' && navigator.onLine) {
-                    return { handled: false };
-                  }
-
-                  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-                  const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
-
-                  await saveFieldEvidenceDraft({
-                    fieldVisitId: detail.visit.id,
-                    bucket: 'field-inspections',
-                    pathPrefix: orgScopedPrefix,
-                    file,
-                    evidenceType,
-                    latitude: completeCoords.latitude ? Number(completeCoords.latitude) : null,
-                    longitude: completeCoords.longitude ? Number(completeCoords.longitude) : null,
-                  });
-                  await refreshPendingEvidenceDrafts(detail.visit.id);
-                  void refreshOutboundPendingCount();
-
-                  return {
-                    handled: true,
-                    message: 'Evidence saved on this device; it will upload when you are back online',
-                  };
-                }}
-                onUploaded={(path) => {
-                  const ext = path.split('.').pop()?.toLowerCase() ?? '';
-                  const evidenceType = ['png', 'jpg', 'jpeg', 'heic', 'webp'].includes(ext) ? 'photo' : 'document';
-                  recordEvidenceAsset({
-                    fieldVisitId: detail.visit.id,
-                    storagePath: path,
-                    bucket: 'field-inspections',
-                    evidenceType,
-                    coords: completeCoords.latitude && completeCoords.longitude
-                      ? {
-                          latitude: Number(completeCoords.latitude),
-                          longitude: Number(completeCoords.longitude),
-                        }
-                      : undefined,
-                  }).catch((error) => {
-                    toast.error(error instanceof Error ? error.message : 'Failed to record evidence');
-                  });
-                }}
-              />
-            </div>
-
-            {pendingEvidenceDrafts.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.07] px-3 py-2">
-                  <p className="text-xs text-amber-100/90">
-                    Pending on this device — upload when online (same as top Refresh).
-                  </p>
-                  <button
-                    type="button"
-                    disabled={fieldQueueLoading || detailLoading}
-                    onClick={() => {
-                      void handleFieldSyncRefresh().catch((err) => {
-                        toast.error(err instanceof Error ? err.message : 'Retry failed');
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
-                      aria-hidden
-                    />
-                    Retry pending uploads
-                  </button>
-                </div>
-                {pendingEvidenceDrafts.map((draft) => (
-                  <div
-                    key={draft.id}
-                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm"
-                  >
-                    <div className="font-medium text-amber-100">{draft.fileName}</div>
-                    <div className="mt-1 text-xs text-amber-200/80">
-                      {draft.evidenceType.replace('_', ' ')} pending sync
-                    </div>
-                    {evidenceFailureByDraftId.get(draft.id) ? (
-                      <div className="mt-2 text-xs text-red-200/95">
-                        Last upload attempt: {evidenceFailureByDraftId.get(draft.id)}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-4">
-              <SubmissionEvidenceViewer
-                bucket="field-inspections"
-                paths={detail.evidence.map((asset) => asset.storage_path)}
-              />
-            </div>
-          </SpotlightCard>
-
-          {outcome === 'no_discharge' && (
-            <SpotlightCard className="p-6">
-              <div className="flex items-center gap-2">
-                <Wind className="h-4 w-4 text-amber-300" />
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                  No-Discharge Documentation
-                </h2>
-              </div>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">
-                  Narrative <span className="text-amber-200/90">(required)</span>
-                </span>
-                <textarea
-                  value={noDischargeNarrative}
-                  onChange={(e) => setNoDischargeNarrative(e.target.value)}
-                  rows={4}
-                  disabled={visitLocked}
-                  placeholder="Describe the no-flow condition at the actual sampling point."
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </label>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Observed condition</span>
-                <textarea
-                  value={noDischargeCondition}
-                  onChange={(e) => setNoDischargeCondition(e.target.value)}
-                  rows={3}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </label>
-
-              <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={noDischargeObstructionObserved}
-                  onChange={(e) => setNoDischargeObstructionObserved(e.target.checked)}
-                  disabled={visitLocked}
-                />
-                Obstruction observed
-              </label>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">
-                  Obstruction details{' '}
-                  {noDischargeObstructionObserved ? (
-                    <span className="text-amber-200/90">(required if obstruction observed)</span>
-                  ) : null}
-                </span>
-                <textarea
-                  value={noDischargeObstructionDetails}
-                  onChange={(e) => setNoDischargeObstructionDetails(e.target.value)}
-                  rows={3}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </label>
-            </SpotlightCard>
-          )}
-
-          {outcome === 'access_issue' && (
-            <SpotlightCard className="p-6">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-red-300" />
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                  Access Issue Escalation
-                </h2>
-              </div>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Issue type</span>
-                <select
-                  value={accessIssueType}
-                  onChange={(e) => setAccessIssueType(e.target.value)}
-                  disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                >
-                  <option value="access_issue">Access issue</option>
-                  <option value="road_blocked">Road blocked</option>
-                  <option value="locked_gate">Locked gate</option>
-                  <option value="weather">Weather</option>
-                  <option value="safety_hazard">Safety hazard</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">
-                  Obstruction narrative <span className="text-rose-200/90">(required)</span>
-                </span>
-                <textarea
-                  value={accessIssueNarrative}
-                  onChange={(e) => setAccessIssueNarrative(e.target.value)}
-                  rows={4}
-                  disabled={visitLocked}
-                  placeholder="Describe the physical access problem and why sampling could not proceed."
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-                />
-              </label>
-
-              <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={contactAttempted}
-                  onChange={(e) => setContactAttempted(e.target.checked)}
-                  disabled={visitLocked}
-                />
-                Contact attempted
-              </label>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <input
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Contact name"
-                  disabled={visitLocked}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-                <input
-                  value={contactOutcome}
-                  onChange={(e) => setContactOutcome(e.target.value)}
-                  placeholder="Contact outcome"
-                  disabled={visitLocked}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-                />
-              </div>
-            </SpotlightCard>
-          )}
-
-          <SpotlightCard className="p-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
-                Completion Gate
-              </h2>
-            </div>
-
-            <div className="mt-4 space-y-2 text-sm text-text-secondary">
-              <p>Outcome: <span className="font-medium text-text-primary">{outcome.replace('_', ' ')}</span></p>
-              <p>
-                Photos — synced: <span className="font-medium text-text-primary">{photoCount}</span>
-                {' · '}
-                pending on device: <span className="font-medium text-text-primary">{pendingPhotoCount}</span>
-                {' · '}
-                total: <span className="font-medium text-text-primary">{totalPhotoCount}</span>
-              </p>
-              {isClientOnline && (outcome === 'no_discharge' || outcome === 'access_issue') && (
-                <p className="text-xs text-text-muted">
-                  Completing online requires at least one photo uploaded to the server. If you only see pending on device,
-                  use Refresh in the sync bar first.
-                </p>
-              )}
-              <p>Linked governance issues: <span className="font-medium text-text-primary">{detail.governanceIssues.length}</span></p>
-              {detail.visit.potential_force_majeure && (
-                <p className="text-amber-200/90">
-                  Potential force majeure was flagged on this visit. Notice and written targets below are set from completion time (see governance inbox for the official queue).
-                </p>
-              )}
-            </div>
-
-            {!visitLocked && completionChecklistItems.length > 0 && (
-              <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Before you complete</p>
-                <ul className="mt-3 space-y-2 text-sm" aria-label="Completion requirements checklist">
-                  {completionChecklistItems.map((item) => (
-                    <li key={item.id} className="flex items-start gap-2">
-                      <span
-                        className={cn(
-                          'mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold',
-                          item.done
-                            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                            : 'border-amber-500/35 bg-amber-500/10 text-amber-200/90',
-                        )}
-                        aria-hidden
-                      >
-                        {item.done ? '✓' : '!'}
-                      </span>
-                      <span className={item.done ? 'text-text-secondary' : 'text-amber-100/90'}>{item.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {detail.governanceIssues.length > 0 && (
-              <div className="mt-4 space-y-3">
-                {detail.governanceIssues.map((issue: GovernanceIssueRecord) => {
-                  const response = describeGovernanceDeadline(issue.response_deadline);
-                  const notice = describeGovernanceDeadline(issue.notice_deadline);
-                  const written = describeGovernanceDeadline(issue.written_deadline);
-                  const isFm = issue.issue_type === 'potential_force_majeure';
-                  return (
-                    <div
-                      key={issue.id}
-                      className={`rounded-xl border px-4 py-3 text-sm ${
-                        isFm ? 'border-amber-500/25 bg-amber-500/5' : 'border-white/[0.06] bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <div className="font-medium text-text-primary">{issue.title}</div>
-                          <div className="mt-0.5 text-xs text-text-muted">
-                            {issue.issue_type.replace(/_/g, ' ')} · Step {issue.current_step} · {issue.current_status.replace(/_/g, ' ')}
-                          </div>
-                        </div>
-                        {isFm && (
-                          <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-200">
-                            FM candidate
-                          </span>
-                        )}
-                      </div>
-                      <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-                        <div>
-                          <dt className="text-text-muted">Response</dt>
-                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(response.tone)}`}>{response.text}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">Notice target</dt>
-                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(notice.tone)}`}>{notice.text}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">Written target</dt>
-                          <dd className={`mt-0.5 font-medium ${deadlineToneClass(written.tone)}`}>{written.text}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  );
-                })}
-                <div className="text-sm text-text-secondary">
-                  <Link to="/governance/issues" className="text-cyan-300 hover:text-cyan-200">
-                    Open governance inbox
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {visitLocked && (
-              <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                This visit record is complete and locked from further field edits.
-              </div>
-            )}
-
-            {!visitLocked && !visitStarted && (
-              <p className="mt-4 text-sm text-amber-200/90">
-                Start the visit with start GPS before you can complete. Use <strong className="font-medium">Start visit</strong>{' '}
-                above.
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={handleCompletion}
-              disabled={saving || !canAttemptComplete}
-              title={!visitStarted && !visitLocked ? 'Start the visit before completing' : undefined}
-              className="mt-5 w-full rounded-xl bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25 disabled:opacity-60"
-            >
-              {visitLocked ? 'Visit already completed' : !visitStarted ? 'Start visit first' : 'Complete visit'}
-            </button>
-          </SpotlightCard>
-        </div>
-      </div>
+        )}
+      >
+        {currentStepContent}
+      </FieldVisitWizardShell>
     </div>
   );
 }

@@ -10,6 +10,9 @@ import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
  * When offline, pending device drafts count toward the gate (evidence sync runs before queue flush).
  */
 export interface FieldVisitCompletionValidationInput {
+  outcomeSelected: boolean;
+  requiredFieldMeasurementsComplete: boolean;
+  containerValidationBlocking: boolean;
   completeLatitude: number;
   completeLongitude: number;
   inspectionFlowStatus: string | null | undefined;
@@ -45,7 +48,7 @@ export function validateFieldVisitStartCoordinates(
   return { ok: true };
 }
 
-function validatePhotoEvidenceForOutcome(
+export function validateFieldVisitOutcomeEvidence(
   outcome: FieldVisitOutcome,
   syncedPhotoCount: number,
   pendingPhotoCount: number,
@@ -85,6 +88,9 @@ export function validateFieldVisitCompletion(
   input: FieldVisitCompletionValidationInput,
 ): FieldVisitCompletionValidationResult {
   const {
+    outcomeSelected,
+    requiredFieldMeasurementsComplete,
+    containerValidationBlocking,
     completeLatitude: lat,
     completeLongitude: lng,
     inspectionFlowStatus,
@@ -106,6 +112,10 @@ export function validateFieldVisitCompletion(
     return { ok: false, message: FIELD_VISIT_COPY.completeGpsRequired };
   }
 
+  if (!outcomeSelected) {
+    return { ok: false, message: FIELD_VISIT_COPY.outcomeRequired };
+  }
+
   if ((inspectionFlowStatus ?? 'unknown') === 'unknown') {
     return { ok: false, message: FIELD_VISIT_COPY.outletFlowRequired };
   }
@@ -115,6 +125,12 @@ export function validateFieldVisitCompletion(
   }
 
   if (outcome === 'sample_collected') {
+    if (containerValidationBlocking) {
+      return { ok: false, message: FIELD_VISIT_COPY.sampleContainerMismatch };
+    }
+    if (!requiredFieldMeasurementsComplete) {
+      return { ok: false, message: FIELD_VISIT_COPY.sampleFieldMeasurementsRequired };
+    }
     if (!cocContainerIdTrimmed) {
       return { ok: false, message: FIELD_VISIT_COPY.sampleCocContainerRequired };
     }
@@ -123,7 +139,7 @@ export function validateFieldVisitCompletion(
     }
   }
 
-  const photoCheck = validatePhotoEvidenceForOutcome(
+  const photoCheck = validateFieldVisitOutcomeEvidence(
     outcome,
     syncedPhotoCount,
     pendingPhotoCount,
@@ -156,6 +172,9 @@ export function validateFieldVisitCompletion(
 
 export interface FieldVisitCompletionChecklistInput {
   visitStarted: boolean;
+  outcomeSelected: boolean;
+  requiredFieldMeasurementsComplete: boolean;
+  containerValidationBlocking: boolean;
   completeLatitude: number;
   completeLongitude: number;
   inspectionFlowStatus: string | null | undefined;
@@ -179,11 +198,21 @@ export interface CompletionChecklistItem {
   done: boolean;
 }
 
+export interface CompletionReadinessSummary {
+  blockerCount: number;
+  completedCount: number;
+  totalCount: number;
+  blockerLabels: string[];
+}
+
 export function getFieldVisitCompletionChecklistItems(
   input: FieldVisitCompletionChecklistInput,
 ): CompletionChecklistItem[] {
   const {
     visitStarted,
+    outcomeSelected,
+    requiredFieldMeasurementsComplete,
+    containerValidationBlocking,
     completeLatitude: lat,
     completeLongitude: lng,
     inspectionFlowStatus,
@@ -215,6 +244,7 @@ export function getFieldVisitCompletionChecklistItems(
 
   const items: CompletionChecklistItem[] = [
     { id: 'started', label: 'Visit started (start GPS recorded)', done: visitStarted },
+    { id: 'outcome_selected', label: 'Outcome selected', done: outcomeSelected },
     { id: 'outlet_flow', label: 'Outlet flow status set (not Unknown)', done: flowKnown },
     {
       id: 'obstruction_details',
@@ -230,7 +260,21 @@ export function getFieldVisitCompletionChecklistItems(
 
   if (outcome === 'sample_collected') {
     items.push(
-      { id: 'coc_id', label: 'Primary container ID in chain of custody', done: Boolean(cocContainerIdTrimmed) },
+      {
+        id: 'required_field_measurements',
+        label: 'Required field measurements captured for this stop',
+        done: requiredFieldMeasurementsComplete,
+      },
+      {
+        id: 'coc_id',
+        label: 'Container scanned or entered in chain of custody',
+        done: Boolean(cocContainerIdTrimmed),
+      },
+      {
+        id: 'coc_match',
+        label: 'Known bottle or kit mismatch cleared',
+        done: !containerValidationBlocking,
+      },
       {
         id: 'coc_preservative',
         label: 'Bottle / preservative confirmation checked',
@@ -266,4 +310,16 @@ export function getFieldVisitCompletionChecklistItems(
   }
 
   return items;
+}
+
+export function summarizeCompletionChecklist(
+  items: CompletionChecklistItem[],
+): CompletionReadinessSummary {
+  const blockerLabels = items.filter((item) => !item.done).map((item) => item.label);
+  return {
+    blockerCount: blockerLabels.length,
+    completedCount: items.length - blockerLabels.length,
+    totalCount: items.length,
+    blockerLabels,
+  };
 }

@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   getFieldVisitCompletionChecklistItems,
+  summarizeCompletionChecklist,
   validateFieldVisitCompletion,
   validateFieldVisitStartCoordinates,
 } from '@/lib/fieldVisitCompletionValidation';
 import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 
 const base = () => ({
+  outcomeSelected: true,
+  requiredFieldMeasurementsComplete: true,
+  containerValidationBlocking: false,
   completeLatitude: 38.0,
   completeLongitude: -81.0,
   inspectionFlowStatus: 'flowing' as const,
@@ -44,6 +48,15 @@ describe('validateFieldVisitStartCoordinates', () => {
 describe('validateFieldVisitCompletion', () => {
   it('passes for valid sample_collected', () => {
     expect(validateFieldVisitCompletion(base())).toEqual({ ok: true });
+  });
+
+  it('fails when no outcome was explicitly selected', () => {
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      outcomeSelected: false,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.outcomeRequired);
   });
 
   it('fails when completion coordinates are not finite (A3)', () => {
@@ -199,12 +212,33 @@ describe('validateFieldVisitCompletion', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.accessIssueNarrativeRequired);
   });
+
+  it('fails sample_collected when required field measurements are still missing', () => {
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      requiredFieldMeasurementsComplete: false,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.sampleFieldMeasurementsRequired);
+  });
+
+  it('fails sample_collected when a known bottle mismatch is still present', () => {
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      containerValidationBlocking: true,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.sampleContainerMismatch);
+  });
 });
 
 describe('getFieldVisitCompletionChecklistItems', () => {
   it('marks photo item done when online and synced photos exist', () => {
     const items = getFieldVisitCompletionChecklistItems({
       visitStarted: true,
+      outcomeSelected: true,
+      requiredFieldMeasurementsComplete: true,
+      containerValidationBlocking: false,
       completeLatitude: 38,
       completeLongitude: -81,
       inspectionFlowStatus: 'flowing',
@@ -222,5 +256,16 @@ describe('getFieldVisitCompletionChecklistItems', () => {
       accessIssueNarrativeTrimmed: '',
     });
     expect(items.find((i) => i.id === 'photos')?.done).toBe(true);
+  });
+
+  it('summarizes blockers from checklist items', () => {
+    const summary = summarizeCompletionChecklist([
+      { id: 'a', label: 'Start visit', done: false },
+      { id: 'b', label: 'Outcome selected', done: true },
+      { id: 'c', label: 'Completion GPS', done: false },
+    ]);
+
+    expect(summary.blockerCount).toBe(2);
+    expect(summary.blockerLabels).toEqual(['Start visit', 'Completion GPS']);
   });
 });

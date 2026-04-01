@@ -13,14 +13,23 @@ export const FIELD_VISIT_COPY = {
   outletFlowRequired:
     'Select outlet flow status before completing: flowing, no flow, or obstructed. This inspection item is required for a complete outlet record.',
 
+  outcomeRequired:
+    'Choose the stop outcome before completing. The workflow changes based on whether you collected a sample, documented no discharge, or recorded an access issue.',
+
   outletObstructionDetailsRequired:
     'When the outlet is obstructed, describe the obstruction in the inspection. Auditors expect specifics, not a blank field.',
 
   sampleCocContainerRequired:
     'Record the primary sample container ID in Chain of custody before completing a sample-collected visit.',
 
+  sampleFieldMeasurementsRequired:
+    'Capture the required on-site field measurements for this stop before completing the sample-collected visit.',
+
   sampleCocPreservativeRequired:
     'Confirm bottle and preservative match the sampling plan before completing or saving chain of custody.',
+
+  sampleContainerMismatch:
+    'The captured bottle or kit does not match this stop. Rescan the correct container or switch to the right bottle before completing.',
 
   saveCocContainerRequired: 'Enter a primary container ID for the chain of custody record.',
 
@@ -44,7 +53,14 @@ export const FIELD_VISIT_COPY = {
     'Describe the access issue (what blocked sampling and what you did). Narrative is required before completing.',
 
   measurementNameRequired: 'Enter a parameter or measurement name before saving.',
+  measurementValueRequired: 'Enter a field reading before saving.',
 
   measurementUseCocSection:
     'Use the Chain of custody section to record the primary container ID (not ad-hoc measurements).',
+
+  fieldMeasurementsNotLab:
+    'This section is for on-site meter readings only. Certified lab results are never entered here — they arrive through lab EDD import and attach to the sampling event after the visit.',
+
+  additionalFieldObservationsExplainer:
+    'Extra readings below are field observations recorded on this visit but not driven by the current stop requirement list. They are still field data, not laboratory analytical results.',
 } as const;

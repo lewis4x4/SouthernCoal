@@ -8,6 +8,36 @@ import {
 } from '../fieldVisitLocalCache';
 import type { FieldVisitDetails, FieldVisitListItem } from '@/types';
 
+function installMockStorage() {
+  const store = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) ?? null : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+  };
+
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: storage,
+  });
+  return storage;
+}
+
 const minimalVisit = (over: Partial<FieldVisitListItem> = {}): FieldVisitListItem => ({
   id: 'v1',
   organization_id: 'o1',
@@ -50,6 +80,9 @@ const minimalDetail = (over: Partial<FieldVisitDetails> = {}): FieldVisitDetails
   governanceIssues: [],
   scheduled_parameter_label: null,
   schedule_instructions: null,
+  stop_requirements: [],
+  required_field_measurements: [],
+  previous_visit_context: null,
   ...over,
 });
 
@@ -61,7 +94,8 @@ const scope = (over: Partial<FieldVisitCacheScope> = {}): FieldVisitCacheScope =
 
 describe('fieldVisitLocalCache', () => {
   beforeEach(() => {
-    localStorage.clear();
+    installMockStorage();
+    clearAllFieldVisitCaches();
   });
 
   it('saves and loads visit detail cache', () => {
@@ -100,7 +134,7 @@ describe('fieldVisitLocalCache', () => {
   });
 
   it('returns false when storage write fails', () => {
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('QuotaExceededError');
     });
     expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(false);
