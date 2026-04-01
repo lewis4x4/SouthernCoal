@@ -68,7 +68,12 @@ vi.mock('@/lib/fieldOutboundQueueDiagnostic', () => ({
 }));
 
 vi.mock('@/lib/npdesPermitState', () => ({
-  stateCodeFromPermitSiteEmbed: () => 'WV',
+  loadPermitsWithStateCodes: vi.fn().mockResolvedValue({
+    rawPermits: [],
+    siteIdToState: new Map<string, string>(),
+    permitError: null,
+    sitesStateError: null,
+  }),
 }));
 
 vi.mock('@/lib/fieldSyncPending', () => ({
@@ -158,6 +163,7 @@ describe('didDispatchContextLoadSucceed', () => {
       didDispatchContextLoadSucceed({
         flushFailed: null,
         permitError: null,
+        sitesStateError: null,
         userError: null,
         visitError: null,
       }),
@@ -169,6 +175,7 @@ describe('didDispatchContextLoadSucceed', () => {
       didDispatchContextLoadSucceed({
         flushFailed: null,
         permitError: { message: 'permits failed' },
+        sitesStateError: null,
         userError: null,
         visitError: null,
       }),
@@ -180,6 +187,19 @@ describe('didDispatchContextLoadSucceed', () => {
       didDispatchContextLoadSucceed({
         flushFailed: new Error('queue blocked'),
         permitError: null,
+        sitesStateError: null,
+        userError: null,
+        visitError: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when sites→states lookup fails', () => {
+    expect(
+      didDispatchContextLoadSucceed({
+        flushFailed: null,
+        permitError: null,
+        sitesStateError: { message: 'sites rls' },
         userError: null,
         visitError: null,
       }),

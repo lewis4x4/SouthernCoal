@@ -16,7 +16,10 @@ import {
   processFieldOutboundQueue,
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
-import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import {
+  FIELD_DISPATCH_STATE_CODE,
+  FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+} from '@/lib/fieldOpsConstants';
 import {
   clearPersistedFieldEvidenceSyncFailures,
   persistFieldEvidenceSyncFailures,
@@ -30,7 +33,7 @@ import {
   readStoredOutboundQueueDiagnostic,
   OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
 } from '@/lib/fieldOutboundQueueDiagnostic';
-import { stateCodeFromPermitSiteEmbed } from '@/lib/npdesPermitState';
+import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
 import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
 import {
@@ -101,10 +104,18 @@ export interface DispatchContextLoadResult {
 export function didDispatchContextLoadSucceed(input: {
   flushFailed: Error | null;
   permitError: { message: string } | null;
+  /** Fails load when `sites`/`states` resolution for permit state breaks (WV filter needs this). */
+  sitesStateError: { message: string } | null;
   userError: { message: string } | null;
   visitError: { message: string } | null;
 }) {
-  return !input.flushFailed && !input.permitError && !input.userError && !input.visitError;
+  return (
+    !input.flushFailed &&
+    !input.permitError &&
+    !input.sitesStateError &&
+    !input.userError &&
+    !input.visitError
+  );
 }
 
 function displayName(user: Partial<FieldOpsUser>) {
@@ -504,12 +515,11 @@ export function useFieldOps() {
 
     setLoading(true);
 
-    const [permitRes, userRes, visitRes] = await Promise.all([
-      supabase
-        .from('npdes_permits')
-        .select('id, permit_number, permittee_name, sites(states(code))')
-        .eq('organization_id', organizationId)
-        .order('permit_number'),
+    const [permitLoad, userRes, visitRes] = await Promise.all([
+      loadPermitsWithStateCodes(supabase, {
+        kind: 'field_dispatch',
+        organizationId,
+      }),
       supabase
         .from('user_profiles')
         .select('id, email, first_name, last_name, is_active')
@@ -523,20 +533,26 @@ export function useFieldOps() {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (permitRes.error) toast.error(`Failed to load WV permits: ${permitRes.error.message}`);
+    if (permitLoad.permitError) {
+      toast.error(`Failed to load permits: ${permitLoad.permitError.message}`);
+    }
+    if (permitLoad.sitesStateError) {
+      toast.error(`Failed to load permit states: ${permitLoad.sitesStateError.message}`);
+    }
     if (userRes.error) toast.error(`Failed to load users: ${userRes.error.message}`);
     if (visitRes.error) toast.error(`Failed to load field visits: ${visitRes.error.message}`);
 
-    const permitRows = (permitRes.data ?? [])
+    const rawPermits = permitLoad.rawPermits;
+    const siteIdToState = permitLoad.siteIdToState;
+
+    const permitRows = rawPermits
       .map((row) => ({
-        id: row.id as string,
-        permit_number: row.permit_number as string,
-        permittee_name: (row.permittee_name as string | null) ?? null,
-        state_code: stateCodeFromPermitSiteEmbed(
-          (row as { sites?: unknown }).sites,
-        ),
+        id: row.id,
+        permit_number: row.permit_number,
+        permittee_name: row.permittee_name ?? null,
+        state_code: row.site_id ? siteIdToState.get(row.site_id) ?? null : null,
       }))
-      .filter((p) => p.state_code === 'WV');
+      .filter((p) => p.state_code === FIELD_DISPATCH_STATE_CODE);
     const permitIds = permitRows.map((permit) => permit.id);
 
     let outfallRows: OutfallOption[] = [];
@@ -547,7 +563,11 @@ export function useFieldOps() {
         .in('permit_id', permitIds)
         .order('outfall_number');
 
-      if (outfallRes.error) toast.error(`Failed to load WV outfalls: ${outfallRes.error.message}`);
+      if (outfallRes.error) {
+        toast.error(
+          `Failed to load ${FIELD_DISPATCH_STATE_CODE} outfalls: ${outfallRes.error.message}`,
+        );
+      }
       outfallRows = (outfallRes.data ?? []).map((row) => {
         const coords = parseOutfallCoords(row.latitude, row.longitude);
         return {
@@ -649,7 +669,8 @@ export function useFieldOps() {
     return finish({
       success: didDispatchContextLoadSucceed({
         flushFailed: flushResult.failed,
-        permitError: permitRes.error,
+        permitError: permitLoad.permitError,
+        sitesStateError: permitLoad.sitesStateError,
         userError: userRes.error,
         visitError: visitRes.error,
       }),

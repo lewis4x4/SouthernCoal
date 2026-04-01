@@ -18,6 +18,7 @@ export interface FieldOpsUser {
   role_name: string | null;
 }
 
+/** Permit row for field dispatch UI; `state_code` comes from `sites` → `states.code` (see `fetchSiteIdToStateCodeMap`). Filter uses `FIELD_DISPATCH_STATE_CODE`. */
 export interface PermitOption {
   id: string;
   permit_number: string;

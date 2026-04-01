@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { stateCodeFromPermitSiteEmbed } from '@/lib/npdesPermitState';
+import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -26,23 +26,22 @@ export function DataQualityPanel() {
 
   useEffect(() => {
     async function fetch() {
-      const { data } = await supabase
-        .from('npdes_permits')
-        .select(
-          'id, permit_number, permittee_name, expiration_date, status, administratively_continued, sites(states(code))',
-        )
-        .eq('status', 'expired')
-        .is('administratively_continued', null)
-        .order('permit_number');
-      const rows = (data ?? []) as Array<
-        UnconfirmedPermit & { sites?: unknown }
-      >;
+      const { rawPermits: rows, siteIdToState, permitError, sitesStateError } =
+        await loadPermitsWithStateCodes(supabase, { kind: 'data_quality_expired' });
+      if (permitError) {
+        toast.error(`Failed to load permits: ${permitError.message}`);
+        setLoading(false);
+        return;
+      }
+      if (sitesStateError) {
+        toast.error(`Failed to load permit states: ${sitesStateError.message}`);
+      }
       const mapped: UnconfirmedPermit[] = rows
         .map((row) => ({
           id: row.id,
           permit_number: row.permit_number,
-          permittee_name: row.permittee_name,
-          state_code: stateCodeFromPermitSiteEmbed(row.sites) ?? 'Unknown',
+          permittee_name: row.permittee_name ?? '',
+          state_code: (row.site_id ? siteIdToState.get(row.site_id) : null) ?? 'Unknown',
           expiration_date: row.expiration_date,
           status: row.status,
           administratively_continued: row.administratively_continued,

@@ -3,3 +3,6 @@
  * Do not use these keys in the generic “add measurement” form.
  */
 export const FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER = 'scc.coc.primary_container_id' as const;
+
+/** Field dispatch permit list is filtered to this `states.code` (from site → state). */
+export const FIELD_DISPATCH_STATE_CODE = 'WV' as const;
