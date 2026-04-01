@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, getFreshToken } from '@/lib/supabase';
 import { useUploadStore } from '@/stores/upload';
 import { useStagingStore } from '@/stores/staging';
 import { useQueueStore } from '@/stores/queue';
@@ -39,39 +39,6 @@ export function useFileUpload() {
       workerRef.current = null;
     };
   }, []);
-
-  /**
-   * Get a fresh auth token before each upload.
-   * v6 Section 11: refresh if expiring within 60 seconds.
-   */
-  async function getFreshToken(): Promise<string> {
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    // Session missing or expired — try refresh before redirecting
-    if (error || !session) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshed.session) {
-        window.location.href = '/login?reason=session_expired';
-        throw new Error('Session expired');
-      }
-      return refreshed.session.access_token;
-    }
-
-    const expiresAt = session.expires_at ?? 0;
-    const now = Math.floor(Date.now() / 1000);
-    const REFRESH_THRESHOLD = 60;
-
-    if (expiresAt - now < REFRESH_THRESHOLD) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshed.session) {
-        window.location.href = '/login?reason=refresh_failed';
-        throw new Error('Token refresh failed');
-      }
-      return refreshed.session.access_token;
-    }
-
-    return session.access_token;
-  }
 
   /**
    * Compute SHA-256 hash in Web Worker (JIT — only when file is about to upload).

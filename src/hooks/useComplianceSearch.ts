@@ -6,7 +6,7 @@ import type { ComplianceSearchResponse, SearchContext } from '@/types/search';
 
 /**
  * Compliance search hook — calls the compliance-search Edge Function.
- * Uses getFreshToken() pattern from useFileUpload.ts for JWT refresh.
+ * Uses getFreshToken() from @/lib/supabase for JWT refresh.
  */
 export function useComplianceSearch() {
   const { isLoading, results, error, suggestion, reviewMode } = useSearchStore();
