@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { formatDiscrepancyReviewerLabel, selfReviewDisplayNameFromProfile } from '@/lib/reviewQueueDisplay';
 import type { DiscrepancyRow, DiscrepancySeverity } from '@/stores/reviewQueue';
 
 const SEVERITY_BADGE: Record<DiscrepancySeverity, string> = {
@@ -10,6 +14,8 @@ const SEVERITY_BADGE: Record<DiscrepancySeverity, string> = {
   medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
+
+const NO_VERIFY_TRIAGE_TITLE = 'Requires verify permission to change discrepancy status';
 
 const DISMISS_REASONS = [
   'Data timing difference — external data delayed',
@@ -30,6 +36,15 @@ interface Props {
 }
 
 export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Props) {
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const canTriage = can('verify');
+  const { profile } = useUserProfile();
+  const reviewerLabel = formatDiscrepancyReviewerLabel(
+    d.reviewed_by,
+    user?.id ?? null,
+    selfReviewDisplayNameFromProfile(profile),
+  );
   const [notes, setNotes] = useState(d.review_notes || '');
   const [dismissReason, setDismissReason] = useState('');
   const [showDismiss, setShowDismiss] = useState(false);
@@ -119,8 +134,10 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            readOnly={!canTriage}
+            title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
             rows={3}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20"
+            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
             placeholder="Add review notes..."
           />
         </div>
@@ -134,7 +151,9 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
             <select
               value={dismissReason}
               onChange={(e) => setDismissReason(e.target.value)}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20"
+              disabled={!canTriage}
+              title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">Select reason...</option>
               {DISMISS_REASONS.map((r) => (
@@ -148,8 +167,10 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
                 type="text"
                 value={customDismissText}
                 onChange={(e) => setCustomDismissText(e.target.value)}
+                readOnly={!canTriage}
+                title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
                 placeholder="Describe reason..."
-                className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20"
+                className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
               />
             )}
           </div>
@@ -160,8 +181,10 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
           <div className="flex flex-wrap gap-2 pt-2">
             {d.status === 'pending' && (
               <button
+                type="button"
                 onClick={() => handleAction('reviewed')}
-                disabled={busy}
+                disabled={busy || !canTriage}
+                title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
                 className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
               >
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
@@ -170,8 +193,10 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
             )}
 
             <button
+              type="button"
               onClick={() => handleAction('escalated')}
-              disabled={busy}
+              disabled={busy || !canTriage}
+              title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
               className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-4 py-2 text-sm font-medium text-purple-400 transition-colors hover:bg-purple-500/20 disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
@@ -179,14 +204,22 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
             </button>
 
             <button
+              type="button"
               onClick={() => {
+                if (!canTriage) return;
                 if (!showDismiss) {
                   setShowDismiss(true);
                   return;
                 }
                 handleAction('dismissed');
               }}
-              disabled={busy || (showDismiss && !dismissReason) || (showDismiss && dismissReason === 'Other' && !customDismissText.trim())}
+              disabled={
+                !canTriage
+                || busy
+                || (showDismiss && !dismissReason)
+                || (showDismiss && dismissReason === 'Other' && !customDismissText.trim())
+              }
+              title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
               className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-white/[0.06] disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
@@ -194,8 +227,10 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
             </button>
 
             <button
+              type="button"
               onClick={() => handleAction('resolved')}
-              disabled={busy}
+              disabled={busy || !canTriage}
+              title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
               className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
@@ -205,12 +240,19 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
         )}
 
         {/* Previous review info */}
-        {d.reviewed_at && (
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-            <p className="text-[10px] text-text-muted">
-              Reviewed {new Date(d.reviewed_at).toLocaleString()}
-              {d.dismiss_reason && ` — ${d.dismiss_reason}`}
-            </p>
+        {(d.reviewed_at || d.reviewed_by) && (
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-1">
+            {d.reviewed_at && (
+              <p className="text-[10px] text-text-muted">
+                Reviewed {new Date(d.reviewed_at).toLocaleString()}
+                {d.dismiss_reason && ` — ${d.dismiss_reason}`}
+              </p>
+            )}
+            {d.reviewed_by && (
+              <p className="text-[10px] text-text-muted">
+                Reviewer: <span className="text-text-secondary font-medium">{reviewerLabel}</span>
+              </p>
+            )}
           </div>
         )}
       </div>

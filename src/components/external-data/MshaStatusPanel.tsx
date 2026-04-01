@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function MshaStatusPanel({ mineId }: Props) {
-  const { mshaInspections, loading, refetchMsha } = useExternalData(undefined, mineId);
+  const { mshaInspections, mshaLoading, refetchMsha } = useExternalData(undefined, mineId);
 
   const configured = !!mineId;
   const hasData = mshaInspections.length > 0;
@@ -24,11 +24,11 @@ export function MshaStatusPanel({ mineId }: Props) {
         </div>
         <button
           onClick={refetchMsha}
-          disabled={loading || !configured}
+          disabled={mshaLoading || !configured}
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
           title="Refresh MSHA data"
         >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {mshaLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
 
@@ -44,7 +44,7 @@ export function MshaStatusPanel({ mineId }: Props) {
         </div>
       ) : !hasData ? (
         <p className="text-xs text-text-muted py-4 text-center">
-          {loading ? 'Loading...' : 'No MSHA data synced for this mine'}
+          {mshaLoading ? 'Loading...' : 'No MSHA data synced for this mine'}
         </p>
       ) : (
         <div className="space-y-2">

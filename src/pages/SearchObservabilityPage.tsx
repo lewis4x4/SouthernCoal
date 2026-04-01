@@ -6,7 +6,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { useExternalSyncLogRealtime } from '@/hooks/useExternalSyncLogRealtime';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/lib/supabase';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -23,17 +25,29 @@ interface AuditEntry {
   description: string;
 }
 
+type SyncLogRow = {
+  id: string;
+  source: string;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  records_synced: number;
+  records_failed: number;
+};
+
 export function SearchObservabilityPage() {
   const { getEffectiveRole } = usePermissions();
+  const { profile } = useUserProfile();
   const navigate = useNavigate();
   const role = getEffectiveRole();
+  const organizationId = profile?.organization_id ?? null;
 
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [docEntries, setDocEntries] = useState<AuditEntry[]>([]);
   const [chunkStats, setChunkStats] = useState<{ totalChunks: number; docsWithChunks: number; totalParsed: number; avgChunksPerDoc: number }>({
     totalChunks: 0, docsWithChunks: 0, totalParsed: 0, avgChunksPerDoc: 0,
   });
-  const [syncLogs, setSyncLogs] = useState<{ id: string; source: string; status: string; started_at: string; completed_at: string | null; records_synced: number; records_failed: number }[]>([]);
+  const [syncLogs, setSyncLogs] = useState<SyncLogRow[]>([]);
   const [discrepancyTrend, setDiscrepancyTrend] = useState<{ date: string; count: number }[]>([]);
   const [triageStats, setTriageStats] = useState<{ avgHours: number; totalTriaged: number; pending: number }>({ avgHours: 0, totalTriaged: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
@@ -97,13 +111,17 @@ export function SearchObservabilityPage() {
       avgChunksPerDoc: docsWithChunks > 0 ? Math.round((totalChunks || 0) / docsWithChunks) : 0,
     });
 
-    // Sync health data
-    const { data: syncData } = await supabase
+    // Sync health data (explicit org filter aligns with Realtime + RLS)
+    let syncQuery = supabase
       .from('external_sync_log')
       .select('id, source, status, started_at, completed_at, records_synced, records_failed')
       .order('started_at', { ascending: false })
       .limit(20);
-    setSyncLogs((syncData || []) as typeof syncLogs);
+    if (organizationId) {
+      syncQuery = syncQuery.eq('organization_id', organizationId);
+    }
+    const { data: syncData } = await syncQuery;
+    setSyncLogs((syncData || []) as SyncLogRow[]);
 
     // Discrepancy trend (30d)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -151,7 +169,21 @@ export function SearchObservabilityPage() {
 
     setLoading(false);
     setLastRefresh(new Date());
-  }, []);
+  }, [organizationId]);
+
+  const refreshSyncLogsOnly = useCallback(async () => {
+    if (!organizationId) return;
+    const { data: syncData } = await supabase
+      .from('external_sync_log')
+      .select('id, source, status, started_at, completed_at, records_synced, records_failed')
+      .eq('organization_id', organizationId)
+      .order('started_at', { ascending: false })
+      .limit(20);
+    setSyncLogs((syncData || []) as SyncLogRow[]);
+    setLastRefresh(new Date());
+  }, [organizationId]);
+
+  useExternalSyncLogRealtime(organizationId, refreshSyncLogsOnly);
 
   useEffect(() => {
     fetchData();

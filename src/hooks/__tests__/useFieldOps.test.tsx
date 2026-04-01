@@ -313,4 +313,95 @@ describe('useFieldOps loadVisitDetails cache ownership', () => {
     });
     expect(localStorage.getItem('scc.fieldVisitCache.v1.visit-1')).toBeNull();
   });
+
+  it('rejects cached detail when embedded visit org disagrees with the cache scope', async () => {
+    localStorage.setItem('scc.fieldVisitCache.v1.visit-1', JSON.stringify({
+      version: 2,
+      visitId: 'visit-1',
+      organizationId: 'org-1',
+      viewerUserId: 'user-1',
+      detail: minimalDetail({
+        visit: minimalVisit({ organization_id: 'org-9' }),
+      }),
+    }));
+
+    const { result } = renderHook(() => useFieldOps());
+
+    act(() => {
+      void result.current.loadVisitDetails('visit-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.detail).toBeNull();
+    });
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.visit-1')).toBeNull();
+  });
+
+  it('does not hydrate route shell fallback while organization scope is still unknown', async () => {
+    useUserProfileMock.mockReturnValue({
+      profile: {
+        organization_id: null,
+        first_name: 'Field',
+        last_name: 'Tester',
+      },
+    });
+    findVisitInFieldRouteCacheAsyncMock.mockResolvedValue(minimalVisit());
+
+    const { result } = renderHook(() => useFieldOps());
+
+    act(() => {
+      void result.current.loadVisitDetails('visit-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.detail).toBeNull();
+    });
+    expect(findVisitInFieldRouteCacheAsyncMock).not.toHaveBeenCalled();
+  });
+
+  it('clears stale in-memory detail after viewer scope changes so it is not re-saved', async () => {
+    localStorage.setItem('scc.fieldVisitCache.v1.visit-1', JSON.stringify({
+      version: 2,
+      visitId: 'visit-1',
+      organizationId: 'org-1',
+      viewerUserId: 'user-1',
+      detail: minimalDetail(),
+    }));
+
+    const { result, rerender } = renderHook(() => useFieldOps());
+
+    act(() => {
+      void result.current.loadVisitDetails('visit-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.detail?.visit.id).toBe('visit-1');
+    });
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-2',
+        email: 'field2@example.com',
+      },
+    });
+    useUserProfileMock.mockReturnValue({
+      profile: {
+        organization_id: 'org-2',
+        first_name: 'Field',
+        last_name: 'Tester',
+      },
+    });
+
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.detail).toBeNull();
+    });
+
+    const rewritten = localStorage.getItem('scc.fieldVisitCache.v1.visit-1');
+    expect(rewritten).toContain('"organizationId":"org-1"');
+    expect(rewritten).toContain('"viewerUserId":"user-1"');
+    expect(rewritten).not.toContain('"organizationId":"org-2"');
+    expect(rewritten).not.toContain('"viewerUserId":"user-2"');
+  });
 });

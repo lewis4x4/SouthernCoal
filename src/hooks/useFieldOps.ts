@@ -187,6 +187,10 @@ export function useFieldOps() {
     readStoredOutboundQueueDiagnostic(),
   );
   const lastDetailVisitIdRef = useRef<string | null>(null);
+  const detailOwnerScopeRef = useRef<{ organizationId: string | null; viewerUserId: string | null }>({
+    organizationId: null,
+    viewerUserId: null,
+  });
   const detailRequestIdRef = useRef(0);
   const dispatchRequestIdRef = useRef(0);
   /** Keeps flushOutboundIfOnline stable so loadDispatchContext does not churn when permit/outfall maps update. */
@@ -226,6 +230,15 @@ export function useFieldOps() {
     detailRequestIdRef.current = requestId;
     const commitDetail = (nextDetail: FieldVisitDetails | null, detailVisitId: string | null) => {
       if (detailRequestIdRef.current !== requestId) return false;
+      detailOwnerScopeRef.current = nextDetail
+        ? {
+            organizationId,
+            viewerUserId: userId,
+          }
+        : {
+            organizationId: null,
+            viewerUserId: null,
+          };
       setDetail(nextDetail);
       lastDetailVisitIdRef.current = detailVisitId;
       setDetailLoading(false);
@@ -245,10 +258,12 @@ export function useFieldOps() {
     }
 
     if (offline) {
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
-        viewerUserId: userId,
-        organizationId,
-      });
+      const routeListItem = organizationId
+        ? await findVisitInFieldRouteCacheAsync(visitId, {
+            viewerUserId: userId,
+            organizationId,
+          })
+        : null;
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
         if (commitDetail(shell, visitId)) {
@@ -285,10 +300,12 @@ export function useFieldOps() {
         commitDetail(cachedDetail, visitId);
         return cachedDetail;
       }
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
-        viewerUserId: userId,
-        organizationId,
-      });
+      const routeListItem = organizationId
+        ? await findVisitInFieldRouteCacheAsync(visitId, {
+            viewerUserId: userId,
+            organizationId,
+          })
+        : null;
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
         toast.error(
@@ -408,11 +425,36 @@ export function useFieldOps() {
   loadVisitDetailsRef.current = loadVisitDetails;
 
   useEffect(() => {
-    if (detail) {
+    if (
+      detail
+      && organizationId
+      && userId
+      && detail.visit.organization_id === organizationId
+      && detailOwnerScopeRef.current.organizationId === organizationId
+      && detailOwnerScopeRef.current.viewerUserId === userId
+    ) {
       saveFieldVisitCache(detail, {
         organizationId,
         viewerUserId: userId,
       });
+    }
+  }, [detail, organizationId, userId]);
+
+  useEffect(() => {
+    if (!detail) return;
+    if (
+      !organizationId
+      || !userId
+      || detail.visit.organization_id !== organizationId
+      || detailOwnerScopeRef.current.organizationId !== organizationId
+      || detailOwnerScopeRef.current.viewerUserId !== userId
+    ) {
+      detailOwnerScopeRef.current = {
+        organizationId: null,
+        viewerUserId: null,
+      };
+      lastDetailVisitIdRef.current = null;
+      setDetail(null);
     }
   }, [detail, organizationId, userId]);
 

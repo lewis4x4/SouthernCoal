@@ -66,6 +66,7 @@ export function loadFieldVisitCache(visitId: string, scope: FieldVisitCacheScope
       || envelope.organizationId !== scope.organizationId
       || envelope.viewerUserId !== scope.viewerUserId
       || envelope.detail.visit.id !== visitId
+      || envelope.detail.visit.organization_id !== scope.organizationId
     ) {
       clearFieldVisitCache(visitId);
       return null;
@@ -79,6 +80,7 @@ export function loadFieldVisitCache(visitId: string, scope: FieldVisitCacheScope
 export function saveFieldVisitCache(detail: FieldVisitDetails, scope: FieldVisitCacheScope): boolean {
   if (typeof localStorage === 'undefined') return false;
   if (!scope.organizationId || !scope.viewerUserId) return false;
+  if (detail.visit.organization_id !== scope.organizationId) return false;
   try {
     const envelope: FieldVisitCacheEnvelope = {
       version: FIELD_VISIT_CACHE_VERSION,

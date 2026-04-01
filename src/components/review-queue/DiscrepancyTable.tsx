@@ -1,4 +1,9 @@
+import { useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/lib/cn';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { formatDiscrepancyReviewerLabel, selfReviewDisplayNameFromProfile } from '@/lib/reviewQueueDisplay';
 import { useReviewQueueStore } from '@/stores/reviewQueue';
 import type { DiscrepancyRow, DiscrepancySeverity, DiscrepancyStatus, DiscrepancyType } from '@/stores/reviewQueue';
 
@@ -28,12 +33,18 @@ const SEVERITY_OPTIONS: DiscrepancySeverity[] = ['critical', 'high', 'medium', '
 const STATUS_OPTIONS: DiscrepancyStatus[] = ['pending', 'reviewed', 'dismissed', 'escalated', 'resolved'];
 const SOURCE_OPTIONS = ['echo', 'msha'];
 
+/** Fixed row height for virtualizer (single-line cells). */
+const ROW_HEIGHT_PX = 52;
+
 interface Props {
   rows: DiscrepancyRow[];
   onSelect: (id: string) => void;
 }
 
 export function DiscrepancyTable({ rows, onSelect }: Props) {
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
+  const selfName = selfReviewDisplayNameFromProfile(profile);
   const { filters, setFilters } = useReviewQueueStore();
 
   // Apply filters
@@ -48,6 +59,19 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
   function toggleFilter<K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) {
     setFilters({ ...filters, [key]: filters[key] === value ? undefined : value });
   }
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT_PX,
+    overscan: 10,
+  });
+  const virtualItems = virtualizer.getVirtualItems();
+  const firstItem = virtualItems[0];
+  const lastItem = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1] : undefined;
+  const paddingTop = firstItem?.start ?? 0;
+  const paddingBottom = lastItem ? virtualizer.getTotalSize() - lastItem.end : 0;
 
   return (
     <div className="space-y-4">
@@ -100,84 +124,129 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table — virtualized body for large discrepancy lists */}
       <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Permit / Mine
-              </th>
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Type
-              </th>
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Severity
-              </th>
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Status
-              </th>
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Source
-              </th>
-              <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                Detected
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
+        <div
+          ref={scrollRef}
+          className="max-h-[min(70vh,640px)] overflow-auto"
+          role="region"
+          aria-label="Discrepancy list"
+        >
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[8%]" />
+              <col className="w-[12%]" />
+              <col className="w-[22%]" />
+            </colgroup>
+            <thead className="sticky top-0 z-[1] border-b border-white/[0.06] bg-crystal-surface/95 backdrop-blur-md">
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-text-muted text-sm">
-                  No discrepancies match the current filters
-                </td>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Permit / Mine
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Severity
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Source
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Detected
+                </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Reviewer
+                </th>
               </tr>
-            )}
-            {filtered.map((row) => (
-              <tr
-                key={row.id}
-                onClick={() => onSelect(row.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(row.id); } }}
-                tabIndex={0}
-                role="row"
-                className="cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] focus:bg-white/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/30"
-              >
-                <td className="px-4 py-3 font-mono text-xs text-text-primary">
-                  {row.npdes_id || row.mine_id || '—'}
-                </td>
-                <td className="px-4 py-3 text-xs text-text-secondary">
-                  {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      SEVERITY_COLORS[row.severity],
-                    )}
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-text-muted text-sm">
+                    No discrepancies match the current filters
+                  </td>
+                </tr>
+              )}
+              {filtered.length > 0 && paddingTop > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={7} className="p-0 border-0" style={{ height: paddingTop, lineHeight: 0 }} />
+                </tr>
+              )}
+              {virtualItems.map((vRow) => {
+                const row = filtered[vRow.index]!;
+                return (
+                  <tr
+                    key={row.id}
+                    data-index={vRow.index}
+                    ref={virtualizer.measureElement}
+                    onClick={() => onSelect(row.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelect(row.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="row"
+                    className="cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] focus:bg-white/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/30"
                   >
-                    {row.severity}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      STATUS_COLORS[row.status],
-                    )}
-                  >
-                    {row.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-[10px] uppercase text-text-muted font-medium">
-                  {row.source}
-                </td>
-                <td className="px-4 py-3 text-xs text-text-muted">
-                  {new Date(row.detected_at).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td className="px-4 py-3 font-mono text-xs text-text-primary truncate" title={row.npdes_id || row.mine_id || undefined}>
+                      {row.npdes_id || row.mine_id || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-text-secondary truncate" title={TYPE_LABELS[row.discrepancy_type]}>
+                      {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                          SEVERITY_COLORS[row.severity],
+                        )}
+                      >
+                        {row.severity}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                          STATUS_COLORS[row.status],
+                        )}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[10px] uppercase text-text-muted font-medium">
+                      {row.source}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-text-muted whitespace-nowrap">
+                      {new Date(row.detected_at).toLocaleDateString()}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-xs text-text-muted truncate"
+                      title={row.reviewed_by ?? undefined}
+                    >
+                      {formatDiscrepancyReviewerLabel(row.reviewed_by, user?.id ?? null, selfName)}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length > 0 && paddingBottom > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={7} className="p-0 border-0" style={{ height: paddingBottom, lineHeight: 0 }} />
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <p className="text-[11px] text-text-muted">

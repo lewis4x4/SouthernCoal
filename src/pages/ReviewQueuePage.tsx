@@ -11,10 +11,8 @@ export function ReviewQueuePage() {
   const { rows, loading, error, counts, refetch, updateStatus } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { selectedId, setSelectedId } = useReviewQueueStore();
-  const { getEffectiveRole } = usePermissions();
-
-  const role = getEffectiveRole();
-  const canTriage = role === 'environmental_manager' || role === 'executive' || role === 'admin';
+  const { can } = usePermissions();
+  const canRunEchoSync = can('bulk_process');
 
   const selectedRow = selectedId ? rows.find((r) => r.id === selectedId) : null;
 
@@ -42,16 +40,20 @@ export function ReviewQueuePage() {
             Refresh
           </button>
 
-          {canTriage && (
-            <button
-              onClick={triggerEchoSync}
-              disabled={syncing.echo}
-              className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
-            >
-              {syncing.echo ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              Sync ECHO
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={triggerEchoSync}
+            disabled={syncing.echo || !canRunEchoSync}
+            title={
+              !canRunEchoSync
+                ? 'Requires bulk_process permission to run ECHO sync'
+                : 'Sync internal data with EPA ECHO'
+            }
+            className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+          >
+            {syncing.echo ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Sync ECHO
+          </button>
         </div>
       </div>
 

@@ -65,6 +65,12 @@ const ROUTE_CACHE_STORE = 'snapshots';
 const ROUTE_CACHE_IDB_VERSION = 1;
 const ROUTE_CACHE_KEY = 'current';
 
+function warnIdb(label: string, err: unknown) {
+  if (import.meta.env.DEV) {
+    console.warn(`[fieldRouteCache] ${label}`, err);
+  }
+}
+
 function openRouteCacheIdb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
@@ -102,7 +108,7 @@ export async function loadFieldRouteCacheFromIdb(): Promise<FieldRouteCachePaylo
       });
       const payload = validateFieldRouteCacheRecord(raw);
       if (raw != null && !payload) {
-        void clearFieldRouteCacheFromIdb();
+        void clearFieldRouteCacheFromIdb().catch((err) => warnIdb('clear after corrupt IDB snapshot', err));
       }
       return payload;
     } finally {
@@ -266,7 +272,7 @@ export function saveFieldRouteCache(payload: {
       /* quota */
     }
   }
-  void saveFieldRouteCacheToIdb(full).catch(() => {});
+  void saveFieldRouteCacheToIdb(full).catch((err) => warnIdb('IDB mirror save failed', err));
   return lsOk;
 }
 
@@ -278,7 +284,7 @@ export function clearFieldRouteCache(): void {
       /* ignore */
     }
   }
-  void clearFieldRouteCacheFromIdb();
+  void clearFieldRouteCacheFromIdb().catch((err) => warnIdb('IDB clear failed', err));
 }
 
 /** Find a visit row in the last saved offline route snapshot (single-slot cache). */
@@ -296,6 +302,7 @@ function matchesOfflineVisitContext(
   context?: { viewerUserId?: string | null; organizationId?: string | null },
 ): boolean {
   if (!context) return true;
+  if (!context.organizationId) return false;
   if (context.organizationId && payload.organizationId !== context.organizationId) return false;
   if (context.organizationId && row.organization_id !== context.organizationId) return false;
   if (payload.scope === 'mine' && payload.viewerUserId !== (context.viewerUserId ?? null)) return false;

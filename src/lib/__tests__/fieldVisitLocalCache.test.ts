@@ -136,8 +136,35 @@ describe('fieldVisitLocalCache', () => {
     expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
   });
 
+  it('rejects and clears cache whose embedded visit org mismatches the requested scope', () => {
+    localStorage.setItem('scc.fieldVisitCache.v1.v1', JSON.stringify({
+      version: 2,
+      visitId: 'v1',
+      organizationId: 'o1',
+      viewerUserId: 'u1',
+      detail: minimalDetail({
+        visit: minimalVisit({ organization_id: 'o9' }),
+      }),
+    }));
+
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
   it('does not save cache entries without full viewer scope', () => {
     expect(saveFieldVisitCache(minimalDetail(), scope({ viewerUserId: null }))).toBe(false);
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
+  it('does not save cache entries when detail org disagrees with viewer scope', () => {
+    expect(
+      saveFieldVisitCache(
+        minimalDetail({
+          visit: minimalVisit({ organization_id: 'o9' }),
+        }),
+        scope(),
+      ),
+    ).toBe(false);
     expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
   });
 });

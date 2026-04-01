@@ -103,6 +103,15 @@ export function useDiscrepancies() {
       status: DiscrepancyStatus,
       extra?: { review_notes?: string; dismiss_reason?: string },
     ) => {
+      const recordsActor =
+        status === 'reviewed' ||
+        status === 'dismissed' ||
+        status === 'escalated' ||
+        status === 'resolved';
+      if (recordsActor && !userId) {
+        return 'Sign in to record who performed this review action';
+      }
+
       const now = new Date().toISOString();
       const updates: Record<string, unknown> = {
         status,
@@ -145,9 +154,22 @@ export function useDiscrepancies() {
           return prev.filter((r) => r.id !== id);
         }
         // Row stays visible — update it in place
-        return prev.map((r) =>
-          r.id === id ? { ...r, status, ...(extra?.review_notes ? { review_notes: extra.review_notes } : {}), ...(extra?.dismiss_reason ? { dismiss_reason: extra.dismiss_reason } : {}), updated_at: now } as DiscrepancyRow : r,
-        );
+        return prev.map((r) => {
+          if (r.id !== id) return r;
+          const next: DiscrepancyRow = {
+            ...r,
+            status,
+            updated_at: now,
+            ...(extra?.review_notes !== undefined ? { review_notes: extra.review_notes || null } : {}),
+            ...(extra?.dismiss_reason !== undefined ? { dismiss_reason: extra.dismiss_reason || null } : {}),
+          };
+          // Only pending → reviewed keeps the row in this list; other actions remove it.
+          if (status === 'reviewed') {
+            next.reviewed_at = now;
+            next.reviewed_by = userId;
+          }
+          return next;
+        });
       });
 
       // Update counts optimistically

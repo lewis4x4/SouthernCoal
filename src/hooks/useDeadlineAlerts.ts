@@ -101,8 +101,10 @@ export function useDeadlineAlerts() {
         });
 
         // Try email alert (fire-and-forget)
-        sendEmailAlert(alert).catch(() => {
-          // Non-critical — Resend may not be configured yet
+        sendEmailAlert(alert).catch((err) => {
+          if (import.meta.env.DEV) {
+            console.warn('[deadlineAlerts] sendEmailAlert failed', err);
+          }
         });
       }
 

@@ -143,14 +143,22 @@ export function useEchoCoverage() {
           // Refresh data when sync completes
           if (entry.status === 'completed' || entry.status === 'failed') {
             setSyncing(false);
-            fetchCoverage();
+            void fetchCoverage().catch((err) => {
+              if (import.meta.env.DEV) {
+                console.warn('[useEchoCoverage] fetchCoverage after sync event failed', err);
+              }
+            });
           }
         },
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((err) => {
+        if (import.meta.env.DEV) {
+          console.warn('[useEchoCoverage] removeChannel failed', err);
+        }
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on stable IDs
   }, [user?.id, profile?.organization_id, fetchCoverage]);

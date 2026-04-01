@@ -36,6 +36,10 @@ export interface MshaInspection {
   synced_at: string;
 }
 
+/**
+ * Fetches EPA ECHO + DMR summary for `npdesId` and/or MSHA inspections for `mineId`.
+ * Prefer `echoLoading`, `dmrLoading`, and `mshaLoading` in UI; `loading` is the OR of all three for backward compatibility.
+ */
 export function useExternalData(npdesId?: string, mineId?: string) {
   const [echoFacility, setEchoFacility] = useState<EchoFacility | null>(null);
   const [dmrSummary, setDmrSummary] = useState<EchoDmrSummary | null>(null);
@@ -45,7 +49,6 @@ export function useExternalData(npdesId?: string, mineId?: string) {
   const [mshaLoading, setMshaLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Backward-compatible aggregate loading flag */
   const loading = echoLoading || dmrLoading || mshaLoading;
 
   const fetchEcho = useCallback(async () => {
@@ -63,46 +66,52 @@ export function useExternalData(npdesId?: string, mineId?: string) {
     if (facErr) {
       setError(facErr.message);
       setEchoLoading(false);
+      setDmrSummary(null);
+      setDmrLoading(false);
       return;
     }
 
     setEchoFacility(facility as EchoFacility | null);
     setEchoLoading(false);
 
-    if (facility) {
-      setDmrLoading(true);
-
-      const [totalRes, violRes, latestRes] = await Promise.all([
-        supabase
-          .from('external_echo_dmrs')
-          .select('id', { count: 'exact', head: true })
-          .eq('npdes_id', npdesId),
-        supabase
-          .from('external_echo_dmrs')
-          .select('id', { count: 'exact', head: true })
-          .eq('npdes_id', npdesId)
-          .not('violation_code', 'is', null),
-        supabase
-          .from('external_echo_dmrs')
-          .select('monitoring_period_end')
-          .eq('npdes_id', npdesId)
-          .order('monitoring_period_end', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-
-      if (totalRes.error || violRes.error || latestRes.error) {
-        setError(totalRes.error?.message || violRes.error?.message || latestRes.error?.message || 'Failed to fetch DMR summary');
-      } else {
-        setDmrSummary({
-          total: totalRes.count ?? 0,
-          withViolations: violRes.count ?? 0,
-          latestPeriod: latestRes.data?.monitoring_period_end ?? null,
-        });
-      }
-
+    if (!facility) {
+      setDmrSummary(null);
       setDmrLoading(false);
+      return;
     }
+
+    setDmrLoading(true);
+
+    const [totalRes, violRes, latestRes] = await Promise.all([
+      supabase
+        .from('external_echo_dmrs')
+        .select('id', { count: 'exact', head: true })
+        .eq('npdes_id', npdesId),
+      supabase
+        .from('external_echo_dmrs')
+        .select('id', { count: 'exact', head: true })
+        .eq('npdes_id', npdesId)
+        .not('violation_code', 'is', null),
+      supabase
+        .from('external_echo_dmrs')
+        .select('monitoring_period_end')
+        .eq('npdes_id', npdesId)
+        .order('monitoring_period_end', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (totalRes.error || violRes.error || latestRes.error) {
+      setError(totalRes.error?.message || violRes.error?.message || latestRes.error?.message || 'Failed to fetch DMR summary');
+    } else {
+      setDmrSummary({
+        total: totalRes.count ?? 0,
+        withViolations: violRes.count ?? 0,
+        latestPeriod: latestRes.data?.monitoring_period_end ?? null,
+      });
+    }
+
+    setDmrLoading(false);
   }, [npdesId]);
 
   const fetchMsha = useCallback(async () => {

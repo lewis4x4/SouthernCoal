@@ -50,6 +50,7 @@ function ComplianceBadge({ status }: { status: string | null }) {
 
 export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
   const { echoFacility, dmrSummary, echoLoading, dmrLoading, refetchEcho } = useExternalData(npdesId);
+  const echoBusy = echoLoading || dmrLoading;
 
   const f = echoFacility as EchoFacility | null;
   const dmr = dmrSummary as EchoDmrSummary | null;
@@ -63,11 +64,11 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
         </div>
         <button
           onClick={refetchEcho}
-          disabled={echoLoading}
+          disabled={echoBusy}
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
           title="Refresh ECHO data"
         >
-          {echoLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {echoBusy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
 

@@ -90,6 +90,46 @@ describe('FieldVisitPage', () => {
     });
   });
 
+  it('keeps the loading spinner visible while detail is still loading', () => {
+    const loadVisitDetails = vi.fn(() => new Promise(() => {}));
+    useFieldOpsMock.mockReturnValue({
+      detail: null,
+      detailLoading: true,
+      loading: false,
+      lastSyncedAt: null,
+      outboundPendingCount: 0,
+      outboundQueueDiagnostic: null,
+      clearOutboundQueueDiagnostic: vi.fn(),
+      visits: [],
+      loadVisitDetails,
+      refreshOutboundPendingCount: vi.fn(),
+      refresh: vi.fn().mockResolvedValue({ success: false }),
+      startVisit: vi.fn(),
+      saveInspection: vi.fn(),
+      addMeasurement: vi.fn(),
+      saveCocPrimaryContainer: vi.fn(),
+      recordEvidenceAsset: vi.fn(),
+      completeVisit: vi.fn(),
+    });
+
+    const { container } = render(
+      <MemoryRouter
+        initialEntries={['/field/visits/visit-1']}
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector('.animate-spin')).not.toBeNull();
+    expect(screen.queryByText('Field visit unavailable')).not.toBeInTheDocument();
+  });
+
   it('shows a recoverable unavailable state after a hard visit-load miss', async () => {
     render(
       <MemoryRouter
