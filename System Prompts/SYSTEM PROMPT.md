@@ -53,6 +53,18 @@ Sub-agent defaults:
 - Migration Integrity Agent: schema or migration changes
 - Release Gate Agent: optional final aggregator if present
 
+RBAC enforcement:
+Every new route, sidebar item, Quick Access tile, and dashboard card MUST declare which roles can access it.
+This is enforced by TypeScript at compile time — omitting roles is a build error.
+When adding any new page:
+1. Choose or create a role group in `src/lib/rbac.ts` (single source of truth for role constants).
+2. Add a `RouteConfig` entry in `APP_ROUTES` (`src/App.tsx`) — `roles` is required by TypeScript.
+3. Add a `NavItem` in `NAV_GROUPS` (`src/components/navigation/Sidebar.tsx`) — `roles` is required by TypeScript.
+4. If adding Quick Access tiles, include `roles` in the tile definition.
+5. If adding dashboard content, scope it by role in `Dashboard.tsx`'s role switch.
+Never duplicate role arrays — always import from `src/lib/rbac.ts`.
+Never add a route without specifying roles.
+
 Git rules:
 - Stage only completed segment files
 - No mixed commits

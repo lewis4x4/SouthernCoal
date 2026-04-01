@@ -27,6 +27,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFtsNavBadge } from '@/hooks/useFtsNavBadge';
 import type { Role } from '@/types/auth';
+import {
+  ALL_ROLES,
+  COMPLIANCE_UPLOAD_ROLES,
+  COMPLIANCE_FULL_ROLES,
+  COMPLIANCE_ADVANCED_ROLES,
+  CORRECTIVE_ACTION_ROLES,
+  REPORTING_ROLES,
+  ADMIN_ROLES,
+  FIELD_ROUTE_ROLES,
+  FIELD_SCHEDULE_ROLES,
+  GOVERNANCE_ROUTE_ROLES,
+} from '@/lib/rbac';
 
 const ROLE_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -43,7 +55,7 @@ type NavItem = {
   label: string;
   href: string;
   icon: typeof Home;
-  roles?: Role[];
+  roles: Role[];
 };
 
 type NavGroup = {
@@ -54,25 +66,12 @@ type NavGroup = {
   accentColor: string;
 };
 
-// ---------------------------------------------------------------------------
-// Role-group constants — mirrors App.tsx route guards
-// ---------------------------------------------------------------------------
-const COMPLIANCE_UPLOAD_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech'];
-const COMPLIANCE_FULL_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager'];
-const COMPLIANCE_ADVANCED_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
-const CORRECTIVE_ACTION_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler'];
-const REPORTING_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
-const ADMIN_ROLES: Role[] = ['admin', 'executive'];
-const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
-const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
-const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
-
 const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Main',
     items: [
-      { label: 'Home', href: '/dashboard', icon: Home },
-      { label: 'Search', href: '/search', icon: Search },
+      { label: 'Home', href: '/dashboard', icon: Home, roles: ALL_ROLES },
+      { label: 'Search', href: '/search', icon: Search, roles: ALL_ROLES },
     ],
     activeColor: 'bg-white/10 text-white shadow-lg shadow-white/5',
     hoverColor: 'hover:text-text-secondary',
@@ -159,7 +158,7 @@ export function Sidebar() {
   const visibleGroups = NAV_GROUPS
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.roles || item.roles.includes(role)),
+      items: group.items.filter((item) => item.roles.includes(role)),
     }))
     .filter((group) => group.items.length > 0);
 

@@ -273,6 +273,21 @@ No segment is complete without gate evidence.
 7. Migration Integrity
 8. Release Gate
 
+## RBAC Enforcement — MANDATORY for Every New Page/Module
+
+Every new route, sidebar item, Quick Access tile, and dashboard card MUST declare which roles can access it. This is enforced by TypeScript at compile time — omitting roles is a build error, not a suggestion.
+
+When adding any new page or module:
+1. Choose or create a role group in `src/lib/rbac.ts` (single source of truth).
+2. Add a `RouteConfig` entry in `APP_ROUTES` (`src/App.tsx`) — `roles` field is required by TypeScript.
+3. Add a `NavItem` in `NAV_GROUPS` (`src/components/navigation/Sidebar.tsx`) — `roles` field is required by TypeScript.
+4. If adding Quick Access tiles, include `roles` in the tile definition.
+5. If adding dashboard content, scope it by role in `Dashboard.tsx`'s role switch.
+
+Never duplicate role arrays — always import from `src/lib/rbac.ts`.
+Never add a route without specifying roles. The system is designed to make this a compile error.
+When in doubt about which roles need access to a new feature, ask before implementing.
+
 ## Non-Negotiable Rules
 
 - No architecture reset without explicit approval
