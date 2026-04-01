@@ -189,6 +189,8 @@ export function useFieldOps() {
   const lastDetailVisitIdRef = useRef<string | null>(null);
   const detailRequestIdRef = useRef(0);
   const dispatchRequestIdRef = useRef(0);
+  /** Keeps flushOutboundIfOnline stable so loadDispatchContext does not churn when permit/outfall maps update. */
+  const loadVisitDetailsRef = useRef<(visitId: string) => Promise<FieldVisitDetails | null>>(async () => null);
 
   const clearOutboundQueueDiagnostic = useCallback(() => {
     clearStoredOutboundQueueDiagnostic();
@@ -403,6 +405,8 @@ export function useFieldOps() {
     return nextDetail;
   }, [organizationId, outfallMap, permitMap, userId, userMap]);
 
+  loadVisitDetailsRef.current = loadVisitDetails;
+
   useEffect(() => {
     if (detail) {
       saveFieldVisitCache(detail, {
@@ -481,7 +485,7 @@ export function useFieldOps() {
 
     const vid = lastDetailVisitIdRef.current;
     if ((totalProcessed > 0 || evidenceSyncResult.syncedVisitIds.includes(vid ?? '')) && vid) {
-      await loadVisitDetails(vid);
+      await loadVisitDetailsRef.current(vid);
     }
 
     return {
@@ -491,7 +495,7 @@ export function useFieldOps() {
           ? new Error(evidenceSyncResult.failures[0].message)
           : flushResult.failed,
     };
-  }, [loadVisitDetails, organizationId, userId, refreshOutboundPendingCount]);
+  }, [organizationId, userId, refreshOutboundPendingCount]);
 
   const loadDispatchContext = useCallback(async (
     options?: { markSuccessfulSync?: boolean },
