@@ -27,8 +27,8 @@ export function getFieldVisitDeficiencyPrompts(input: {
   if (input.inspection.erosion_observed) {
     prompts.push({
       id: 'erosion',
-      title: 'Erosion follow-up suggested',
-      body: 'Erosion was observed during inspection. Capture deficiency photos and leave a follow-up note before closing the visit.',
+      title: 'Erosion photo required',
+      body: 'Take a photo of the erosion area before you leave the stop.',
       suggestedNote: 'Deficiency follow-up: erosion observed at or near the outlet. Review whether maintenance or site follow-up is required.',
       needsPhotoBucket: true,
     });
@@ -37,10 +37,10 @@ export function getFieldVisitDeficiencyPrompts(input: {
   if (input.inspection.obstruction_observed || input.inspection.flow_status === 'obstructed') {
     prompts.push({
       id: 'obstruction',
-      title: 'Obstruction follow-up suggested',
+      title: 'Obstruction photo required',
       body: obstruction.type
-        ? `Outlet obstruction is part of this record. Route ${obstruction.type.toLowerCase()} evidence into the obstruction / deficiency bucket and leave a specific follow-up note.`
-        : 'Outlet obstruction is part of this record. Add evidence in the obstruction / deficiency bucket and leave a specific follow-up note.',
+        ? `Take a photo of the ${obstruction.type.toLowerCase()} blocking the outlet.`
+        : 'Take a photo of what is blocking the outlet.',
       suggestedNote: obstructionNarrative
         ? `Deficiency follow-up: ${obstruction.type ? `${obstruction.type.toLowerCase()} obstruction` : 'obstruction'} observed at the outlet. Detail: ${obstructionNarrative}`
         : 'Deficiency follow-up: obstruction observed at the outlet. Photos and inspection detail captured for review.',
@@ -51,8 +51,8 @@ export function getFieldVisitDeficiencyPrompts(input: {
   if (signageConditionNeedsFollowUp(input.inspection.signage_condition)) {
     prompts.push({
       id: 'signage',
-      title: 'Signage deficiency suggested',
-      body: 'The signage status needs downstream correction. Capture the affected signage, then hand off a deficiency or governance follow-up to the correct owner.',
+      title: 'Signage photo required',
+      body: 'Take a photo of the signage condition before you continue.',
       suggestedNote: `Deficiency follow-up: signage status recorded as "${input.inspection.signage_condition?.trim()}". Capture corrective owner and target repair action.`,
       needsPhotoBucket: true,
     });
@@ -61,8 +61,8 @@ export function getFieldVisitDeficiencyPrompts(input: {
   if (pipeConditionNeedsFollowUp(input.inspection.pipe_condition)) {
     prompts.push({
       id: 'pipe',
-      title: 'Pipe condition follow-up suggested',
-      body: 'The pipe status needs follow-up. Capture the affected area and note whether maintenance, repair, or route escalation is required.',
+      title: 'Pipe condition photo required',
+      body: 'Take a photo of the pipe condition before you continue.',
       suggestedNote: `Deficiency follow-up: pipe status recorded as "${input.inspection.pipe_condition?.trim()}". Capture the corrective action owner and urgency.`,
       needsPhotoBucket: true,
     });
@@ -71,8 +71,8 @@ export function getFieldVisitDeficiencyPrompts(input: {
   if (input.outcome === 'access_issue' && input.existingGovernanceIssueCount === 0) {
     prompts.push({
       id: 'access_escalation',
-      title: 'Access issue escalation check',
-      body: 'This stop closed as an access issue. Confirm that the narrative and evidence are strong enough for immediate follow-up.',
+      title: 'Access issue photo required',
+      body: 'Take a photo that shows why access blocked the stop.',
       suggestedNote: 'Deficiency follow-up: access issue blocked sampling and should be reviewed for route or site action.',
       needsPhotoBucket: true,
     });

@@ -732,7 +732,7 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByDisplayValue(/QA prompt: same-day duplicate visit exists/i)).toBeInTheDocument();
   });
 
-  it('disables governance inbox links for field sampler handoff prompts instead of routing to home', async () => {
+  it('shows a single required-photo action for inspection follow-up prompts', async () => {
     const user = userEvent.setup();
     renderPage(buildStartedDetail({
       inspection: {
@@ -747,9 +747,10 @@ describe('FieldVisitPage wizard', () => {
     await user.click(getWizardButton(/Outlet Inspection/i));
     await waitForStepHeading('Outlet Inspection');
 
-    const disabledButton = screen.getByRole('button', { name: 'Open governance inbox' });
-    expect(disabledButton).toBeDisabled();
-    expect(screen.getByText(/Governance inbox opens for environmental manager/i)).toBeInTheDocument();
+    expect(screen.getByText('Capture before you continue')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Take required photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open governance inbox' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Append follow-up note' })).not.toBeInTheDocument();
   });
 
   it('routes deficiency photo-bucket action into the evidence step and focuses the obstruction bucket', async () => {
@@ -766,7 +767,7 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
     await user.click(getWizardButton(/Outlet Inspection/i));
     await waitForStepHeading('Outlet Inspection');
-    await user.click(screen.getByRole('button', { name: 'Set photo bucket to obstruction / deficiency' }));
+    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
 
     await waitForStepHeading('Evidence');
     expect(
@@ -789,7 +790,10 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
     await user.click(getWizardButton(/Outlet Inspection/i));
     await waitForStepHeading('Outlet Inspection');
-    await user.click(screen.getByRole('button', { name: 'Append follow-up note' }));
+    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
+    await waitForStepHeading('Evidence');
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
 
     expect(
       (screen.getByRole('textbox', { name: /Inspection notes/i }) as HTMLTextAreaElement).value,
@@ -876,6 +880,7 @@ describe('FieldVisitPage wizard', () => {
     await waitFor(() => {
       expect(saveInspection).toHaveBeenCalled();
     });
+    await waitForStepHeading('Choose Outcome');
 
     view.rerender(
       <MemoryRouter initialEntries={['/field/visits/visit-1']}>
@@ -886,6 +891,7 @@ describe('FieldVisitPage wizard', () => {
       </MemoryRouter>,
     );
 
+    await waitForStepHeading('Choose Outcome');
     await user.click(getWizardButton(/Outlet Inspection/i));
     await waitForStepHeading('Outlet Inspection');
 

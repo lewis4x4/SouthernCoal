@@ -368,7 +368,6 @@ export function FieldVisitPage() {
         }),
       ),
     );
-    wizardHydratedForVisitRef.current = null;
     setWizardStateReady(true);
   }, [detail]);
 
@@ -865,8 +864,10 @@ export function FieldVisitPage() {
   const applyPreviousInspectionSummary = useCallback(() => {
     const previous = detail?.previous_visit_context;
     if (!previous) return;
+    const stampedAt = new Date().toISOString();
     setInspection((current) => ({
       ...current,
+      field_visit_id: detail?.visit.id ?? current.field_visit_id,
       flow_status: previous.inspection_flow_status ?? current.flow_status ?? 'unknown',
       signage_condition: normalizeSignageCondition(previous.signage_condition) || current.signage_condition || '',
       pipe_condition: normalizePipeCondition(previous.pipe_condition) || current.pipe_condition || '',
@@ -874,6 +875,7 @@ export function FieldVisitPage() {
       obstruction_observed: previous.obstruction_observed,
       obstruction_details: previous.obstruction_details ?? current.obstruction_details ?? '',
       inspector_notes: previous.inspector_notes ?? current.inspector_notes ?? '',
+      updated_at: stampedAt,
     }));
     toast.success('Applied last inspection summary');
   }, [detail?.previous_visit_context]);
@@ -884,14 +886,17 @@ export function FieldVisitPage() {
   }, []);
 
   const appendInspectionFollowUpNote = useCallback((note: string) => {
+    const stampedAt = new Date().toISOString();
     setInspection((current) => ({
       ...current,
+      field_visit_id: detail?.visit.id ?? current.field_visit_id,
       inspector_notes: current.inspector_notes?.trim()
         ? `${current.inspector_notes.trim()}\n${note}`
         : note,
+      updated_at: stampedAt,
     }));
     toast.success('Added follow-up note to inspection notes');
-  }, []);
+  }, [detail?.visit.id]);
 
   const routeSafetyHazard = useCallback(() => {
     setOutcome('access_issue');
@@ -935,14 +940,20 @@ export function FieldVisitPage() {
   }, [goToStep]);
 
   const handleInspectionChange = useCallback((patch: Partial<OutletInspectionRecord>) => {
+    const stampedAt = new Date().toISOString();
     setInspection((prev) => {
-      const next = { ...prev, ...patch };
+      const next = {
+        ...prev,
+        ...patch,
+        field_visit_id: detail?.visit.id ?? prev.field_visit_id,
+        updated_at: stampedAt,
+      };
       if (patch.flow_status === 'obstructed' || patch.pipe_condition === 'Obstructed') {
         next.obstruction_observed = true;
       }
       return next;
     });
-  }, []);
+  }, [detail?.visit.id]);
 
   async function handleCaptureStartCoords() {
     try {
@@ -1891,15 +1902,13 @@ export function FieldVisitPage() {
     <FieldVisitDeficiencyPrompts
       prompts={deficiencyPrompts}
       disabled={visitLocked}
-      onSetDeficiencyBucket={() => {
+      onCaptureRequiredPhoto={(note) => {
+        appendInspectionFollowUpNote(note);
         focusPhotoBucket(
           'obstruction_deficiency',
-          'Focused obstruction / deficiency evidence bucket',
+          'Ready to capture the required follow-up photo',
         );
       }}
-      onAppendFollowUpNote={appendInspectionFollowUpNote}
-      governanceInboxHref={governanceInboxHref}
-      governanceDisabledReason={governanceDisabledReason}
     />
   );
 
