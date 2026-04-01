@@ -64,6 +64,8 @@
 
 Next focus: run the QA checklist in staging, then close Milestone 1 or open gaps as tickets.
 
+**Staging closure worksheet + blocker intake:** [`LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md`](./LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md) — A1–A6 runbook, SQL checks, gap ticket templates, real-world data gathering.
+
 ---
 
 ## Code map
