@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ScrollText, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
@@ -30,17 +29,10 @@ const ACTION_COLORS: Record<string, string> = {
 const DEFAULT_ACTION_COLOR = 'bg-white/5 text-text-secondary border-white/10';
 
 export function AuditLogPage() {
-  const navigate = useNavigate();
-  const { getEffectiveRole } = usePermissions();
+  const { getEffectiveRole, loading: permissionsLoading } = usePermissions();
   const { log } = useAuditLog();
   const role = getEffectiveRole();
-
-  // RBAC gate — only executive, environmental_manager, admin
-  useEffect(() => {
-    if (!['executive', 'environmental_manager', 'admin'].includes(role)) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [role, navigate]);
+  const canViewAuditLog = ['executive', 'environmental_manager', 'admin'].includes(role);
 
   const [filters, setFilters] = useState<AuditLogFilters>({
     dateFrom: null,
@@ -50,12 +42,16 @@ export function AuditLogPage() {
     action: null,
   });
 
-  const { entries, loading, hasMore, totalCount, loadMore } = useAuditLogQuery(filters);
+  const { entries, loading, hasMore, totalCount, loadMore } = useAuditLogQuery(
+    filters,
+    !permissionsLoading && canViewAuditLog,
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // Load user names for display
   useEffect(() => {
+    if (permissionsLoading || !canViewAuditLog) return;
     async function loadUsers() {
       const { data } = await supabase
         .from('user_profiles')
@@ -69,7 +65,7 @@ export function AuditLogPage() {
       setUserMap(map);
     }
     loadUsers();
-  }, []);
+  }, [canViewAuditLog, permissionsLoading]);
 
   // Unique modules and actions for filter dropdowns
   const modules = useMemo(() => {

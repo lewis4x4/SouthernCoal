@@ -428,6 +428,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_org_id uuid;
+  v_outfall_permit_id uuid;
   v_schedule_id uuid;
   v_calendar_id uuid;
   v_entry_type text := lower(COALESCE(NULLIF(trim(p_entry_type), ''), 'manual'));
@@ -447,6 +448,19 @@ BEGIN
 
   IF v_org_id <> get_user_org_id() THEN
     RAISE EXCEPTION 'Permit % is outside the active organization scope', p_permit_id;
+  END IF;
+
+  SELECT permit_id
+  INTO v_outfall_permit_id
+  FROM outfalls
+  WHERE id = p_outfall_id;
+
+  IF v_outfall_permit_id IS NULL THEN
+    RAISE EXCEPTION 'Outfall % was not found', p_outfall_id;
+  END IF;
+
+  IF v_outfall_permit_id <> p_permit_id THEN
+    RAISE EXCEPTION 'Outfall % does not belong to permit %', p_outfall_id, p_permit_id;
   END IF;
 
   INSERT INTO sampling_schedules (

@@ -8,8 +8,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").trim();
+const SERVICE_KEY = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim();
 const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173";
 const SIGNED_URL_EXPIRY = 3600; // 1 hour
 
@@ -33,6 +33,9 @@ function json(body: Record<string, unknown>, status = 200): Response {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+  if (!SUPABASE_URL || !SERVICE_KEY) {
+    return json({ error: "Server misconfiguration" }, 503);
   }
   if (req.method !== "GET") {
     return json({ error: "Method not allowed" }, 405);

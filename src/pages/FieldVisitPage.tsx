@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  Beaker,
   Camera,
   CheckCircle2,
   ClipboardList,
+  Copy,
   Droplets,
+  ExternalLink,
   MapPin,
+  Navigation,
   Package,
   RefreshCw,
   ShieldAlert,
@@ -30,6 +34,13 @@ import {
 } from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import {
+  validateFieldVisitCompletion,
+  validateFieldVisitStartCoordinates,
+} from '@/lib/fieldVisitCompletionValidation';
+import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
+import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
+import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
 import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
@@ -71,6 +82,7 @@ export function FieldVisitPage() {
     detail,
     detailLoading,
     loading: fieldQueueLoading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
@@ -120,6 +132,7 @@ export function FieldVisitPage() {
   const [saving, setSaving] = useState(false);
   const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
   const [evidenceUploadFailures, setEvidenceUploadFailures] = useState<FieldEvidenceDraftSyncFailure[]>([]);
+  const [loadAttempted, setLoadAttempted] = useState(false);
 
   const refreshPendingEvidenceDrafts = useCallback(async (visitId: string) => {
     try {
@@ -131,16 +144,32 @@ export function FieldVisitPage() {
 
   /** Phase 4: same path as sync bar — flush queue + evidence drafts, reload visit failures */
   const handleFieldSyncRefresh = useCallback(async () => {
-    if (!id) return;
-    await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
+    if (!id) return { success: false };
+    const fieldQueueResult = await refreshFieldQueue();
+    await Promise.all([loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
     setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
+    return fieldQueueResult;
   }, [id, loadVisitDetails, refreshFieldQueue, refreshPendingEvidenceDrafts]);
+
+  const handleCopySamplingEventId = useCallback(async () => {
+    const sid = detail?.visit.linked_sampling_event_id;
+    if (!sid) return;
+    try {
+      await navigator.clipboard.writeText(sid);
+      toast.success('Sampling event ID copied');
+    } catch {
+      toast.error('Could not copy — select the ID and copy manually');
+    }
+  }, [detail?.visit.linked_sampling_event_id]);
 
   useEffect(() => {
     if (id) {
+      setLoadAttempted(false);
       loadVisitDetails(id).catch((error) => {
         console.error('[FieldVisitPage] Failed to load visit details:', error);
         toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
+      }).finally(() => {
+        setLoadAttempted(true);
       });
       void refreshPendingEvidenceDrafts(id);
       setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
@@ -193,6 +222,24 @@ export function FieldVisitPage() {
     setCocPreservativeConfirmed(Boolean(cocRow?.metadata?.preservative_confirmed));
   }, [detail]);
 
+  const outfallMapsHref = useMemo(() => {
+    if (!detail) return '';
+    const lat = detail.visit.outfall_latitude;
+    const lng = detail.visit.outfall_longitude;
+    if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+      return mapsSearchUrl(lat, lng);
+    }
+    const q = [detail.visit.permit_number, detail.visit.outfall_number].filter(Boolean).join(' ');
+    return mapsSearchQueryUrl(q);
+  }, [detail]);
+
+  const visitOutboundQueuedCount = useMemo(() => {
+    // Re-run when useFieldOps refreshes queue length (same-tab enqueue/flush).
+    void outboundPendingCount;
+    if (!id) return 0;
+    return countOutboundQueueOpsForVisit(id);
+  }, [id, outboundPendingCount]);
+
   const photoCount = useMemo(
     () => detail?.evidence.filter((asset) => asset.evidence_type === 'photo').length ?? 0,
     [detail?.evidence],
@@ -216,6 +263,9 @@ export function FieldVisitPage() {
     [detail?.measurements],
   );
   const visitLocked = detail?.visit.visit_status === 'completed';
+
+  const outletInspectionObstructed =
+    inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
 
   const visitSiblingOutfallConflicts = useMemo(() => {
     if (!id || !detail) return [];
@@ -260,8 +310,9 @@ export function FieldVisitPage() {
     const latitude = Number(startCoords.latitude);
     const longitude = Number(startCoords.longitude);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error('Start latitude and longitude are required');
+    const startCheck = validateFieldVisitStartCoordinates(latitude, longitude);
+    if (!startCheck.ok) {
+      toast.error(startCheck.message);
       return;
     }
 
@@ -299,13 +350,14 @@ export function FieldVisitPage() {
   }
 
   async function handleAddMeasurement() {
-    if (!detail || visitLocked || !measurementName.trim()) {
-      toast.error('Parameter name is required');
+    if (!detail || visitLocked) return;
+    if (!measurementName.trim()) {
+      toast.error(FIELD_VISIT_COPY.measurementNameRequired);
       return;
     }
 
     if (measurementName.trim() === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) {
-      toast.error('Use the Chain of custody section to record the primary container ID');
+      toast.error(FIELD_VISIT_COPY.measurementUseCocSection);
       return;
     }
 
@@ -336,11 +388,11 @@ export function FieldVisitPage() {
   async function handleSaveCoc() {
     if (!detail || visitLocked) return;
     if (!cocContainerId.trim()) {
-      toast.error('Enter a primary container ID');
+      toast.error(FIELD_VISIT_COPY.saveCocContainerRequired);
       return;
     }
     if (!cocPreservativeConfirmed) {
-      toast.error('Confirm bottle / preservative match before saving');
+      toast.error(FIELD_VISIT_COPY.sampleCocPreservativeRequired);
       return;
     }
 
@@ -368,30 +420,26 @@ export function FieldVisitPage() {
 
     const latitude = Number(completeCoords.latitude);
     const longitude = Number(completeCoords.longitude);
+    const inspectionObstructionDetails = (inspection.obstruction_details ?? '').trim();
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error('Completion latitude and longitude are required');
-      return;
-    }
+    const completionCheck = validateFieldVisitCompletion({
+      completeLatitude: latitude,
+      completeLongitude: longitude,
+      inspectionFlowStatus: inspection.flow_status,
+      outletInspectionObstructed,
+      inspectionObstructionDetailsTrimmed: inspectionObstructionDetails,
+      outcome,
+      cocContainerIdTrimmed: cocContainerId.trim(),
+      cocPreservativeConfirmed,
+      totalPhotoCount,
+      noDischargeNarrativeTrimmed: noDischargeNarrative.trim(),
+      noDischargeObstructionObserved,
+      noDischargeObstructionDetailsTrimmed: noDischargeObstructionDetails.trim(),
+      accessIssueNarrativeTrimmed: accessIssueNarrative.trim(),
+    });
 
-    if (outcome === 'sample_collected') {
-      if (!cocContainerId.trim()) {
-        toast.error('Record primary container ID before completing a sample-collected visit');
-        return;
-      }
-      if (!cocPreservativeConfirmed) {
-        toast.error('Confirm bottle / preservative match before completing');
-        return;
-      }
-    }
-
-    if (outcome === 'no_discharge' && totalPhotoCount < 1) {
-      toast.error('At least one photo must be uploaded before completing a no-discharge visit');
-      return;
-    }
-
-    if (outcome === 'access_issue' && totalPhotoCount < 1) {
-      toast.error('At least one photo must be uploaded before completing an access issue visit');
+    if (!completionCheck.ok) {
+      toast.error(completionCheck.message);
       return;
     }
 
@@ -404,6 +452,7 @@ export function FieldVisitPage() {
           cocPreservativeConfirmed,
         );
       }
+      await saveInspection(detail.visit.id, inspection);
       const { queued, result } = await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude, longitude },
@@ -439,10 +488,56 @@ export function FieldVisitPage() {
     }
   }
 
-  if (detailLoading || !detail) {
+  if (detailLoading || (!loadAttempted && !detail)) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
+            <div>
+              <h1 className="text-lg font-semibold text-text-primary">Field visit unavailable</h1>
+              <p className="mt-2 text-sm text-text-secondary">
+                We could not load this visit after checking the scoped cache, saved route shell, and live data.
+                Refresh the field queue or go back and retry once you have the right org/user context or a better connection.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  to="/field/dispatch"
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                >
+                  Back to field queue
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!id) return;
+                    setLoadAttempted(false);
+                    loadVisitDetails(id)
+                      .catch((error) => {
+                        console.error('[FieldVisitPage] Failed to retry visit details:', error);
+                        toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
+                      })
+                      .finally(() => {
+                        setLoadAttempted(true);
+                      });
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-100 transition-colors hover:bg-red-500/20"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  Retry visit load
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -461,17 +556,57 @@ export function FieldVisitPage() {
             {new Date(`${detail.visit.scheduled_date}T00:00:00`).toLocaleDateString()}
           </p>
         </div>
-        <Link
-          to="/field/dispatch"
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
-        >
-          Back to field queue
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/field/dispatch"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+          >
+            Back to field queue
+          </Link>
+          {outfallMapsHref ? (
+            <a
+              href={outfallMapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+            >
+              <Navigation className="h-4 w-4 shrink-0" aria-hidden />
+              Open in Maps
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+            </a>
+          ) : null}
+        </div>
       </div>
+
+      {detail.scheduled_parameter_label ? (
+        <div
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm"
+          role="region"
+          aria-label="Scheduled sample parameter"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Scheduled parameter</p>
+          <p className="mt-1 font-medium text-text-primary">{detail.scheduled_parameter_label}</p>
+          <p className="mt-1 text-xs text-text-secondary">
+            From the sampling calendar for this stop — use when verifying bottles, preservatives, and chain of custody.
+          </p>
+        </div>
+      ) : null}
+
+      {detail.schedule_instructions ? (
+        <div
+          className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="region"
+          aria-label="Schedule instructions"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-200/80">Schedule instructions</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-text-primary">{detail.schedule_instructions}</p>
+        </div>
+      ) : null}
 
       {id && (
         <FieldDataSyncBar
           loading={fieldQueueLoading || detailLoading}
+          lastSyncedAt={lastSyncedAt}
           pendingOutboundCount={outboundPendingCount}
           queueFlushDiagnostic={outboundQueueDiagnostic}
           onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
@@ -479,6 +614,24 @@ export function FieldVisitPage() {
           auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
         />
       )}
+
+      {visitOutboundQueuedCount > 0 ? (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
+          <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
+          <div>
+            <p className="font-medium text-amber-50">
+              {visitOutboundQueuedCount} queued action{visitOutboundQueuedCount === 1 ? '' : 's'} for this visit
+            </p>
+            <p className="mt-1 text-xs text-amber-200/85">
+              Saved on this device; uploads when you are online. Use Refresh above to retry the outbound queue.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {visitNeedsDisposition(detail.visit) && (
         <div
@@ -502,6 +655,35 @@ export function FieldVisitPage() {
         groups={visitSiblingOutfallConflicts}
         contextLabel="this visit"
       />
+
+      {detail.visit.linked_sampling_event_id && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between"
+          role="region"
+          aria-label="Linked sampling event"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <Beaker className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden />
+            <div className="min-w-0">
+              <p className="font-medium text-emerald-50">Sampling event (lab linkage)</p>
+              <p className="mt-1 text-xs text-emerald-200/85">
+                This visit is tied to a sampling_events row. Lab EDD imports and results attach to this ID.
+              </p>
+              <p className="mt-2 break-all font-mono text-xs text-text-primary">
+                {detail.visit.linked_sampling_event_id}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleCopySamplingEventId()}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-xs font-medium text-emerald-50 transition-colors hover:bg-emerald-500/25"
+          >
+            <Copy className="h-3.5 w-3.5" aria-hidden />
+            Copy ID
+          </button>
+        </div>
+      )}
 
       {id && evidenceUploadFailures.length > 0 && (
         <div
@@ -700,7 +882,9 @@ export function FieldVisitPage() {
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Flow status</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Flow status <span className="text-cyan-200/90">(required before complete)</span>
+                </span>
                 <select
                   value={inspection.flow_status ?? 'unknown'}
                   onChange={(e) => setInspection((prev) => ({ ...prev, flow_status: e.target.value as OutletInspectionRecord['flow_status'] }))}
@@ -732,7 +916,14 @@ export function FieldVisitPage() {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction details</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction details{' '}
+                  {outletInspectionObstructed ? (
+                    <span className="text-cyan-200/90">(required)</span>
+                  ) : (
+                    <span className="text-text-muted/70">(required if obstructed)</span>
+                  )}
+                </span>
                 <input
                   value={inspection.obstruction_details ?? ''}
                   onChange={(e) => setInspection((prev) => ({ ...prev, obstruction_details: e.target.value }))}
@@ -1022,7 +1213,9 @@ export function FieldVisitPage() {
               </div>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Narrative</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Narrative <span className="text-amber-200/90">(required)</span>
+                </span>
                 <textarea
                   value={noDischargeNarrative}
                   onChange={(e) => setNoDischargeNarrative(e.target.value)}
@@ -1055,7 +1248,12 @@ export function FieldVisitPage() {
               </label>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction details</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction details{' '}
+                  {noDischargeObstructionObserved ? (
+                    <span className="text-amber-200/90">(required if obstruction observed)</span>
+                  ) : null}
+                </span>
                 <textarea
                   value={noDischargeObstructionDetails}
                   onChange={(e) => setNoDischargeObstructionDetails(e.target.value)}
@@ -1094,7 +1292,9 @@ export function FieldVisitPage() {
               </label>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction narrative</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction narrative <span className="text-rose-200/90">(required)</span>
+                </span>
                 <textarea
                   value={accessIssueNarrative}
                   onChange={(e) => setAccessIssueNarrative(e.target.value)}

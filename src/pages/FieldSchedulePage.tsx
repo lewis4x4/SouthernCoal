@@ -174,6 +174,7 @@ export function FieldSchedulePage() {
     users,
     visits,
     loading: fieldQueueLoading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
@@ -647,11 +648,14 @@ export function FieldSchedulePage() {
 
       <FieldDataSyncBar
         loading={loading || fieldQueueLoading}
+        lastSyncedAt={lastSyncedAt}
         pendingOutboundCount={outboundPendingCount}
         queueFlushDiagnostic={outboundQueueDiagnostic}
         onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
         onRefresh={async () => {
-          await Promise.all([refreshVisits(), refreshCalendar()]);
+          const visitRefreshResult = await refreshVisits();
+          await refreshCalendar();
+          return visitRefreshResult;
         }}
         auditRefreshPayload={{ surface: 'field_schedule' }}
       />

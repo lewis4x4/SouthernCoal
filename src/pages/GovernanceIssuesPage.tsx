@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Clock3, FileWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
@@ -7,6 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useGovernanceIssues, type GovernanceInboxFilter } from '@/hooks/useGovernanceIssues';
 import { cn } from '@/lib/cn';
 import { governanceInboxUrgentLine, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
+import { GOVERNANCE_INBOX_QUERY_KEY, parseGovernanceInboxParam } from '@/lib/governanceInboxNav';
 import type { GovernanceIssueStatus } from '@/types';
 const EDIT_ROLES = ['environmental_manager', 'admin'];
 
@@ -42,11 +43,17 @@ export function GovernanceIssuesPage() {
 
   const { issues, events, loading, loadEvents, updateIssue, inboxFilter, setInboxFilter } =
     useGovernanceIssues();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<GovernanceIssueStatus>('open');
   const [finalDisposition, setFinalDisposition] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const parsed = parseGovernanceInboxParam(searchParams.get(GOVERNANCE_INBOX_QUERY_KEY));
+    if (parsed && parsed !== inboxFilter) setInboxFilter(parsed);
+  }, [searchParams, setInboxFilter, inboxFilter]);
 
   useEffect(() => {
     if (!selectedId && issues.length > 0) {
@@ -122,7 +129,17 @@ export function GovernanceIssuesPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setInboxFilter(tab.id)}
+                onClick={() => {
+                  setInboxFilter(tab.id);
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set(GOVERNANCE_INBOX_QUERY_KEY, tab.id);
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
                 className={cn(
                   'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                   inboxFilter === tab.id

@@ -18,7 +18,8 @@ function humanizeOutboundOpKind(kind: string): string {
 type Props = {
   /** True while server fetch for this surface is in flight */
   loading: boolean;
-  onRefresh: () => Promise<void>;
+  lastSyncedAt: Date | null;
+  onRefresh: () => Promise<{ success: boolean }>;
   /** Phase 4: outbound action queue (localStorage) + offline evidence drafts (IndexedDB) not yet uploaded */
   pendingOutboundCount?: number;
   /** Phase 4: first op that failed during last flush (from `processFieldOutboundQueue`) */
@@ -33,6 +34,7 @@ type Props = {
  */
 export function FieldDataSyncBar({
   loading,
+  lastSyncedAt,
   onRefresh,
   pendingOutboundCount = 0,
   queueFlushDiagnostic = null,
@@ -40,7 +42,6 @@ export function FieldDataSyncBar({
   auditRefreshPayload,
 }: Props) {
   const { log } = useAuditLog();
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [manualBusy, setManualBusy] = useState(false);
   const [online, setOnline] = useState(
     () => typeof navigator !== 'undefined' && navigator.onLine,
@@ -57,17 +58,11 @@ export function FieldDataSyncBar({
     };
   }, []);
 
-  useEffect(() => {
-    if (!loading && !manualBusy) {
-      setLastSyncedAt(new Date());
-    }
-  }, [loading, manualBusy]);
-
   const handleRefresh = useCallback(async () => {
     setManualBusy(true);
     try {
-      await onRefresh();
-      if (auditRefreshPayload) {
+      const result = await onRefresh();
+      if (result.success && auditRefreshPayload) {
         log('field_sync_manual_refresh', auditRefreshPayload, {
           module: 'field_operations',
           tableName: 'field_visits',

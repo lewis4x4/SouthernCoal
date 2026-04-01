@@ -228,6 +228,24 @@ function writeQueue(ops: FieldOutboundOp[]): boolean {
   }
 }
 
+function mergeQueueById(existing: FieldOutboundOp[], incoming: FieldOutboundOp[]): FieldOutboundOp[] {
+  if (incoming.length === 0) return existing;
+  const merged = [...existing];
+  const seen = new Set(existing.map((op) => op.id));
+  for (const op of incoming) {
+    if (seen.has(op.id)) continue;
+    merged.push(op);
+    seen.add(op.id);
+  }
+  return merged;
+}
+
+function updateQueue(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]): boolean {
+  const latest = readQueue();
+  const next = mutator(latest);
+  return writeQueue(next);
+}
+
 export function getFieldOutboundQueue(): FieldOutboundOp[] {
   return readQueue();
 }
@@ -260,6 +278,10 @@ export function getFieldOutboundQueueLength(): number {
   return readQueue().length;
 }
 
+export function countOutboundQueueOpsForVisit(visitId: string): number {
+  return readQueue().filter((op) => op.visitId === visitId).length;
+}
+
 export function getPendingMeasurementInsertsForVisit(
   visitId: string,
 ): Extract<FieldOutboundOp, { kind: 'field_measurement_insert' }>[] {
@@ -277,8 +299,7 @@ export function enqueueFieldMeasurementInsert(params: {
   measuredText?: string | null;
   unit?: string | null;
 }): boolean {
-  const queue = readQueue();
-  queue.push({
+  const op: FieldOutboundOp = {
     kind: 'field_measurement_insert',
     id: params.id,
     visitId: params.visitId,
@@ -287,8 +308,8 @@ export function enqueueFieldMeasurementInsert(params: {
     measuredText: params.measuredText ?? null,
     unit: params.unit ?? null,
     enqueuedAt: new Date().toISOString(),
-  });
-  return writeQueue(queue);
+  };
+  return updateQueue((latest) => mergeQueueById(latest, [op]));
 }
 
 export function enqueueOutletInspectionUpsert(params: {
@@ -302,8 +323,7 @@ export function enqueueOutletInspectionUpsert(params: {
   obstructionDetails: string | null;
   inspectorNotes: string | null;
 }): boolean {
-  const queue = readQueue();
-  queue.push({
+  const op: FieldOutboundOp = {
     kind: 'outlet_inspection_upsert',
     id: params.id,
     visitId: params.visitId,
@@ -315,8 +335,8 @@ export function enqueueOutletInspectionUpsert(params: {
     obstructionDetails: params.obstructionDetails,
     inspectorNotes: params.inspectorNotes,
     enqueuedAt: new Date().toISOString(),
-  });
-  return writeQueue(queue);
+  };
+  return updateQueue((latest) => mergeQueueById(latest, [op]));
 }
 
 export function enqueueFieldVisitStart(params: {
@@ -326,8 +346,7 @@ export function enqueueFieldVisitStart(params: {
   latitude: number;
   longitude: number;
 }): boolean {
-  const queue = readQueue();
-  queue.push({
+  const op: FieldOutboundOp = {
     kind: 'field_visit_start',
     id: params.id,
     visitId: params.visitId,
@@ -335,8 +354,8 @@ export function enqueueFieldVisitStart(params: {
     latitude: params.latitude,
     longitude: params.longitude,
     enqueuedAt: new Date().toISOString(),
-  });
-  return writeQueue(queue);
+  };
+  return updateQueue((latest) => mergeQueueById(latest, [op]));
 }
 
 export function enqueueCocPrimaryUpsert(params: {
@@ -345,16 +364,15 @@ export function enqueueCocPrimaryUpsert(params: {
   containerText: string;
   preservativeConfirmed: boolean;
 }): boolean {
-  const queue = readQueue();
-  queue.push({
+  const op: FieldOutboundOp = {
     kind: 'coc_primary_upsert',
     id: params.id,
     visitId: params.visitId,
     containerText: params.containerText,
     preservativeConfirmed: params.preservativeConfirmed,
     enqueuedAt: new Date().toISOString(),
-  });
-  return writeQueue(queue);
+  };
+  return updateQueue((latest) => mergeQueueById(latest, [op]));
 }
 
 export function enqueueFieldVisitComplete(params: {
@@ -379,8 +397,7 @@ export function enqueueFieldVisitComplete(params: {
   accessIssueContactOutcome: string | null;
   actorName: string;
 }): boolean {
-  const queue = readQueue();
-  queue.push({
+  const op: FieldOutboundOp = {
     kind: 'field_visit_complete',
     id: params.id,
     visitId: params.visitId,
@@ -403,8 +420,8 @@ export function enqueueFieldVisitComplete(params: {
     accessIssueContactOutcome: params.accessIssueContactOutcome,
     actorName: params.actorName,
     enqueuedAt: new Date().toISOString(),
-  });
-  return writeQueue(queue);
+  };
+  return updateQueue((latest) => mergeQueueById(latest, [op]));
 }
 
 function getLatestPendingStartForVisit(
@@ -608,129 +625,143 @@ export type FieldOutboundQueueFlushResult = {
   blockedOp: { kind: FieldOutboundOp['kind']; visitId: string } | null;
 };
 
+const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
+
 let outboundProcessChain: Promise<FieldOutboundQueueFlushResult> | null = null;
+
+async function processFieldOutboundQueueUnlocked(
+  client: SupabaseClient,
+): Promise<FieldOutboundQueueFlushResult> {
+  let processed = 0;
+  for (;;) {
+    const queue = readQueue();
+    if (queue.length === 0) {
+      return { processed, failed: null, blockedOp: null };
+    }
+    const op = queue[0]!;
+    try {
+      if (op.kind === 'field_measurement_insert') {
+        const { error } = await client.from('field_measurements').insert({
+          field_visit_id: op.visitId,
+          parameter_name: op.parameterName,
+          measured_value: op.measuredValue,
+          measured_text: op.measuredText,
+          unit: op.unit,
+        });
+        if (error) throw new Error(error.message);
+      } else if (op.kind === 'outlet_inspection_upsert') {
+        const { error } = await client.from('outlet_inspections').upsert(
+          {
+            field_visit_id: op.visitId,
+            flow_status: op.flowStatus,
+            signage_condition: op.signageCondition,
+            pipe_condition: op.pipeCondition,
+            erosion_observed: op.erosionObserved,
+            obstruction_observed: op.obstructionObserved,
+            obstruction_details: op.obstructionDetails,
+            inspector_notes: op.inspectorNotes,
+          },
+          { onConflict: 'field_visit_id' },
+        );
+        if (error) throw new Error(error.message);
+      } else if (op.kind === 'field_visit_start') {
+        const { error } = await client
+          .from('field_visits')
+          .update({
+            visit_status: 'in_progress',
+            started_at: op.startedAt,
+            started_latitude: op.latitude,
+            started_longitude: op.longitude,
+          })
+          .eq('id', op.visitId);
+        if (error) throw new Error(error.message);
+      } else if (op.kind === 'coc_primary_upsert') {
+        const metadata = {
+          preservative_confirmed: op.preservativeConfirmed,
+          source: 'field_visit_coc_v1',
+        };
+        const { data: existing, error: selectError } = await client
+          .from('field_measurements')
+          .select('id')
+          .eq('field_visit_id', op.visitId)
+          .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
+          .maybeSingle();
+        if (selectError) throw new Error(selectError.message);
+        if (existing?.id) {
+          const { error } = await client
+            .from('field_measurements')
+            .update({
+              measured_text: op.containerText,
+              measured_value: null,
+              unit: null,
+              metadata,
+            })
+            .eq('id', existing.id);
+          if (error) throw new Error(error.message);
+        } else {
+          const { error } = await client.from('field_measurements').insert({
+            field_visit_id: op.visitId,
+            parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+            measured_text: op.containerText,
+            measured_value: null,
+            unit: null,
+            metadata,
+          });
+          if (error) throw new Error(error.message);
+        }
+      } else if (op.kind === 'field_visit_complete') {
+        const { error } = await client.rpc('complete_field_visit', {
+          p_field_visit_id: op.visitId,
+          p_outcome: op.outcome,
+          p_completed_latitude: op.completedLatitude,
+          p_completed_longitude: op.completedLongitude,
+          p_weather_conditions: op.weatherConditions,
+          p_field_notes: op.fieldNotes,
+          p_potential_force_majeure: op.potentialForceMajeure,
+          p_potential_force_majeure_notes: op.potentialForceMajeureNotes,
+          p_no_discharge_narrative: op.noDischargeNarrative,
+          p_no_discharge_observed_condition: op.noDischargeObservedCondition,
+          p_no_discharge_obstruction_observed: op.noDischargeObstructionObserved,
+          p_no_discharge_obstruction_details: op.noDischargeObstructionDetails,
+          p_access_issue_type: op.accessIssueType ?? 'access_issue',
+          p_access_issue_obstruction_narrative: op.accessIssueObstructionNarrative,
+          p_access_issue_contact_attempted: op.accessIssueContactAttempted,
+          p_access_issue_contact_name: op.accessIssueContactName,
+          p_access_issue_contact_outcome: op.accessIssueContactOutcome,
+          p_actor_name: op.actorName,
+        });
+        if (error) throw new Error(error.message);
+      }
+      if (!updateQueue((latest) => latest.filter((queued) => queued.id !== op.id))) {
+        throw new Error('Failed to update outbound queue after upload');
+      }
+      processed += 1;
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      return {
+        processed,
+        failed: err,
+        blockedOp: { kind: op.kind, visitId: op.visitId },
+      };
+    }
+  }
+}
+
+async function withOutboundQueueLock<T>(work: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks?.request) {
+    return work();
+  }
+
+  return locks.request(OUTBOUND_QUEUE_LOCK, () => work());
+}
 
 export async function processFieldOutboundQueue(client: SupabaseClient): Promise<FieldOutboundQueueFlushResult> {
   if (outboundProcessChain) {
     return outboundProcessChain;
   }
 
-  outboundProcessChain = (async () => {
-    let processed = 0;
-    for (;;) {
-      const queue = readQueue();
-      if (queue.length === 0) {
-        return { processed, failed: null, blockedOp: null };
-      }
-      const op = queue[0]!;
-      try {
-        if (op.kind === 'field_measurement_insert') {
-          const { error } = await client.from('field_measurements').insert({
-            field_visit_id: op.visitId,
-            parameter_name: op.parameterName,
-            measured_value: op.measuredValue,
-            measured_text: op.measuredText,
-            unit: op.unit,
-          });
-          if (error) throw new Error(error.message);
-        } else if (op.kind === 'outlet_inspection_upsert') {
-          const { error } = await client.from('outlet_inspections').upsert(
-            {
-              field_visit_id: op.visitId,
-              flow_status: op.flowStatus,
-              signage_condition: op.signageCondition,
-              pipe_condition: op.pipeCondition,
-              erosion_observed: op.erosionObserved,
-              obstruction_observed: op.obstructionObserved,
-              obstruction_details: op.obstructionDetails,
-              inspector_notes: op.inspectorNotes,
-            },
-            { onConflict: 'field_visit_id' },
-          );
-          if (error) throw new Error(error.message);
-        } else if (op.kind === 'field_visit_start') {
-          const { error } = await client
-            .from('field_visits')
-            .update({
-              visit_status: 'in_progress',
-              started_at: op.startedAt,
-              started_latitude: op.latitude,
-              started_longitude: op.longitude,
-            })
-            .eq('id', op.visitId);
-          if (error) throw new Error(error.message);
-        } else if (op.kind === 'coc_primary_upsert') {
-          const metadata = {
-            preservative_confirmed: op.preservativeConfirmed,
-            source: 'field_visit_coc_v1',
-          };
-          const { data: existing, error: selectError } = await client
-            .from('field_measurements')
-            .select('id')
-            .eq('field_visit_id', op.visitId)
-            .eq('parameter_name', FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER)
-            .maybeSingle();
-          if (selectError) throw new Error(selectError.message);
-          if (existing?.id) {
-            const { error } = await client
-              .from('field_measurements')
-              .update({
-                measured_text: op.containerText,
-                measured_value: null,
-                unit: null,
-                metadata,
-              })
-              .eq('id', existing.id);
-            if (error) throw new Error(error.message);
-          } else {
-            const { error } = await client.from('field_measurements').insert({
-              field_visit_id: op.visitId,
-              parameter_name: FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
-              measured_text: op.containerText,
-              measured_value: null,
-              unit: null,
-              metadata,
-            });
-            if (error) throw new Error(error.message);
-          }
-        } else if (op.kind === 'field_visit_complete') {
-          const { error } = await client.rpc('complete_field_visit', {
-            p_field_visit_id: op.visitId,
-            p_outcome: op.outcome,
-            p_completed_latitude: op.completedLatitude,
-            p_completed_longitude: op.completedLongitude,
-            p_weather_conditions: op.weatherConditions,
-            p_field_notes: op.fieldNotes,
-            p_potential_force_majeure: op.potentialForceMajeure,
-            p_potential_force_majeure_notes: op.potentialForceMajeureNotes,
-            p_no_discharge_narrative: op.noDischargeNarrative,
-            p_no_discharge_observed_condition: op.noDischargeObservedCondition,
-            p_no_discharge_obstruction_observed: op.noDischargeObstructionObserved,
-            p_no_discharge_obstruction_details: op.noDischargeObstructionDetails,
-            p_access_issue_type: op.accessIssueType ?? 'access_issue',
-            p_access_issue_obstruction_narrative: op.accessIssueObstructionNarrative,
-            p_access_issue_contact_attempted: op.accessIssueContactAttempted,
-            p_access_issue_contact_name: op.accessIssueContactName,
-            p_access_issue_contact_outcome: op.accessIssueContactOutcome,
-            p_actor_name: op.actorName,
-          });
-          if (error) throw new Error(error.message);
-        }
-        const next = queue.slice(1);
-        if (!writeQueue(next)) {
-          throw new Error('Failed to update outbound queue after upload');
-        }
-        processed += 1;
-      } catch (e) {
-        const err = e instanceof Error ? e : new Error(String(e));
-        return {
-          processed,
-          failed: err,
-          blockedOp: { kind: op.kind, visitId: op.visitId },
-        };
-      }
-    }
-  })();
+  outboundProcessChain = withOutboundQueueLock(() => processFieldOutboundQueueUnlocked(client));
 
   try {
     return await outboundProcessChain;

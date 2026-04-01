@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -25,14 +26,32 @@ export function DataQualityPanel() {
 
   useEffect(() => {
     async function fetch() {
-      const { data } = await supabase
-        .from('npdes_permits')
-        .select('id, permit_number, permittee_name, state_code, expiration_date, status, administratively_continued')
-        .eq('status', 'expired')
-        .is('administratively_continued', null)
-        .order('state_code')
-        .order('permit_number');
-      setPermits(data ?? []);
+      const { rawPermits: rows, siteIdToState, permitError, sitesStateError } =
+        await loadPermitsWithStateCodes(supabase, { kind: 'data_quality_expired' });
+      if (permitError) {
+        toast.error(`Failed to load permits: ${permitError.message}`);
+        setLoading(false);
+        return;
+      }
+      if (sitesStateError) {
+        toast.error(`Failed to load permit states: ${sitesStateError.message}`);
+      }
+      const mapped: UnconfirmedPermit[] = rows
+        .map((row) => ({
+          id: row.id,
+          permit_number: row.permit_number,
+          permittee_name: row.permittee_name ?? '',
+          state_code: (row.site_id ? siteIdToState.get(row.site_id) : null) ?? 'Unknown',
+          expiration_date: row.expiration_date,
+          status: row.status,
+          administratively_continued: row.administratively_continued,
+        }))
+        .sort(
+          (a, b) =>
+            a.state_code.localeCompare(b.state_code) ||
+            a.permit_number.localeCompare(b.permit_number),
+        );
+      setPermits(mapped);
       setLoading(false);
     }
     fetch();

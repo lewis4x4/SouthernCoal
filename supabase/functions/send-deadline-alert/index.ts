@@ -60,31 +60,47 @@ serve(async (req) => {
       });
     }
 
-    // Verify user has appropriate role (admin, environmental_manager, or executive)
-    const { data: roleData } = await supabase
+    const ALLOWED_ROLES = ["admin", "environmental_manager", "executive"];
+
+    const { data: roleRows, error: roleError } = await supabase
       .from("user_role_assignments")
       .select("roles(name)")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single();
+      .eq("user_id", user.id);
 
-    const userRole = (
-      roleData?.roles &&
-      typeof roleData.roles === "object" &&
-      "name" in roleData.roles
-    )
-      ? (roleData.roles as { name: string }).name
-      : null;
+    if (roleError) {
+      console.error("[send-deadline-alert] role lookup:", roleError.message);
+      return new Response(JSON.stringify({ error: "Role lookup failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const ALLOWED_ROLES = ["admin", "environmental_manager", "executive"];
-    if (!userRole || !ALLOWED_ROLES.includes(userRole)) {
+    const roleNames: string[] = [];
+    for (const row of roleRows ?? []) {
+      const r = row.roles && typeof row.roles === "object" && "name" in row.roles
+        ? String((row.roles as { name: string }).name)
+        : "";
+      if (r) roleNames.push(r);
+    }
+
+    const userRole = roleNames.find((n) => ALLOWED_ROLES.includes(n)) ?? null;
+    if (!userRole) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const body: RequestBody = await req.json();
+    let body: RequestBody;
+    try {
+      body = await req.json() as RequestBody;
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const {
       obligation_name,
       days_late,
@@ -104,6 +120,20 @@ serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(recipient_email)) {
       return new Response(JSON.stringify({ error: "Invalid email address" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (typeof days_late !== "number" || !Number.isFinite(days_late)) {
+      return new Response(JSON.stringify({ error: "days_late must be a finite number" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (typeof accrued_penalty !== "number" || !Number.isFinite(accrued_penalty)) {
+      return new Response(JSON.stringify({ error: "accrued_penalty must be a finite number" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -175,7 +205,13 @@ serve(async (req) => {
       }),
     });
 
-    const resendData = await resendResponse.json();
+    const resendText = await resendResponse.text();
+    let resendData: { message?: string; id?: string } = {};
+    try {
+      resendData = resendText ? JSON.parse(resendText) as typeof resendData : {};
+    } catch {
+      resendData = { message: resendText.slice(0, 200) || "Non-JSON error body" };
+    }
 
     if (!resendResponse.ok) {
       console.error("[send-deadline-alert] Resend error:", resendData);

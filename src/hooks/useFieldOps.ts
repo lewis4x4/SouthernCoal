@@ -16,7 +16,10 @@ import {
   processFieldOutboundQueue,
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
-import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import {
+  FIELD_DISPATCH_STATE_CODE,
+  FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+} from '@/lib/fieldOpsConstants';
 import {
   clearPersistedFieldEvidenceSyncFailures,
   persistFieldEvidenceSyncFailures,
@@ -30,11 +33,18 @@ import {
   readStoredOutboundQueueDiagnostic,
   OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
 } from '@/lib/fieldOutboundQueueDiagnostic';
+import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
 import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
+import {
+  enrichFieldVisitsWithScheduleHints,
+  formatScheduledParameterLabel,
+} from '@/lib/fieldVisitScheduleHints';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
+import { LANE_A_MILESTONE_1_ID } from '@/lib/laneAMilestone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type {
   AccessIssueRecord,
@@ -89,6 +99,27 @@ interface CompletionInput {
   };
 }
 
+export interface DispatchContextLoadResult {
+  success: boolean;
+}
+
+export function didDispatchContextLoadSucceed(input: {
+  flushFailed: Error | null;
+  permitError: { message: string } | null;
+  /** Fails load when `sites`/`states` resolution for permit state breaks (WV filter needs this). */
+  sitesStateError: { message: string } | null;
+  userError: { message: string } | null;
+  visitError: { message: string } | null;
+}) {
+  return (
+    !input.flushFailed &&
+    !input.permitError &&
+    !input.sitesStateError &&
+    !input.userError &&
+    !input.visitError
+  );
+}
+
 function displayName(user: Partial<FieldOpsUser>) {
   const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
   return full || user.email || 'Unassigned';
@@ -98,6 +129,15 @@ function createOutboundOpId() {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function parseOutfallCoords(latitude: unknown, longitude: unknown): Pick<OutfallOption, 'latitude' | 'longitude'> {
+  const lat = latitude != null ? Number(latitude) : NaN;
+  const lng = longitude != null ? Number(longitude) : NaN;
+  return {
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+  };
 }
 
 function fieldVisitShellFromRouteListItem(
@@ -116,12 +156,15 @@ function fieldVisitShellFromRouteListItem(
     noDischarge: mergeNoDischargeWithQueuedCompletion(visitId, null, userId),
     accessIssue: mergeAccessIssueWithQueuedCompletion(visitId, null, userId),
     governanceIssues: [],
+    scheduled_parameter_label: listItem.scheduled_parameter_label ?? null,
+    schedule_instructions: listItem.schedule_instructions ?? null,
   };
 }
 
 export function useFieldOps() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
+  const { log: auditLog } = useAuditLog();
   const organizationId = profile?.organization_id ?? null;
   const userId = user?.id ?? null;
   const actorName = displayName({
@@ -135,6 +178,7 @@ export function useFieldOps() {
   const [users, setUsers] = useState<FieldOpsUser[]>([]);
   const [visits, setVisits] = useState<FieldVisitListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<FieldVisitDetails | null>(null);
   const [outboundPendingCount, setOutboundPendingCount] = useState(0);
@@ -143,6 +187,8 @@ export function useFieldOps() {
     readStoredOutboundQueueDiagnostic(),
   );
   const lastDetailVisitIdRef = useRef<string | null>(null);
+  const detailRequestIdRef = useRef(0);
+  const dispatchRequestIdRef = useRef(0);
 
   const clearOutboundQueueDiagnostic = useCallback(() => {
     clearStoredOutboundQueueDiagnostic();
@@ -174,25 +220,41 @@ export function useFieldOps() {
   );
 
   const loadVisitDetails = useCallback(async (visitId: string) => {
+    const requestId = detailRequestIdRef.current + 1;
+    detailRequestIdRef.current = requestId;
+    const commitDetail = (nextDetail: FieldVisitDetails | null, detailVisitId: string | null) => {
+      if (detailRequestIdRef.current !== requestId) return false;
+      setDetail(nextDetail);
+      lastDetailVisitIdRef.current = detailVisitId;
+      setDetailLoading(false);
+      return true;
+    };
+
     setDetailLoading(true);
 
-    const cachedDetail = loadFieldVisitCache(visitId);
+    const cachedDetail = loadFieldVisitCache(visitId, {
+      organizationId,
+      viewerUserId: userId,
+    });
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
     if (offline && cachedDetail) {
-      setDetail(cachedDetail);
-      lastDetailVisitIdRef.current = visitId;
-      setDetailLoading(false);
+      commitDetail(cachedDetail, visitId);
       return cachedDetail;
     }
 
     if (offline) {
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
+        viewerUserId: userId,
+        organizationId,
+      });
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
-        setDetail(shell);
-        saveFieldVisitCache(shell);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        if (commitDetail(shell, visitId)) {
+          saveFieldVisitCache(shell, {
+            organizationId,
+            viewerUserId: userId,
+          });
+        }
         return shell;
       }
     }
@@ -218,51 +280,87 @@ export function useFieldOps() {
     if (visitRes.error || !visitRes.data) {
       if (cachedDetail) {
         toast.error('Showing cached field visit copy because the live load failed');
-        setDetail(cachedDetail);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        commitDetail(cachedDetail, visitId);
         return cachedDetail;
       }
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
+        viewerUserId: userId,
+        organizationId,
+      });
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
         toast.error(
           'Live load failed; showing your saved route copy for this stop. Reconnect and tap Refresh when you can.',
         );
-        setDetail(shell);
-        saveFieldVisitCache(shell);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        if (commitDetail(shell, visitId)) {
+          saveFieldVisitCache(shell, {
+            organizationId,
+            viewerUserId: userId,
+          });
+        }
         return shell;
       }
       toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
-      setDetail(null);
-      lastDetailVisitIdRef.current = null;
-      setDetailLoading(false);
+      commitDetail(null, null);
       return null;
     }
 
     const visit = visitRes.data as FieldVisitRecord;
 
     let routeStopSequence: number | null = null;
+    let scheduledParameterLabel: string | null = null;
+    let scheduleInstructions: string | null = null;
     if (visit.sampling_calendar_id) {
-      const stopRes = await supabase
-        .from('sampling_route_stops')
-        .select('stop_sequence')
-        .eq('calendar_id', visit.sampling_calendar_id)
-        .maybeSingle();
+      const [stopRes, calRes] = await Promise.all([
+        supabase
+          .from('sampling_route_stops')
+          .select('stop_sequence')
+          .eq('calendar_id', visit.sampling_calendar_id)
+          .maybeSingle(),
+        supabase
+          .from('sampling_calendar')
+          .select('parameter_id, schedule_id')
+          .eq('id', visit.sampling_calendar_id)
+          .maybeSingle(),
+      ]);
       if (!stopRes.error && stopRes.data) {
         routeStopSequence = stopRes.data.stop_sequence as number;
       }
+      const parameterId = calRes.data?.parameter_id as string | undefined;
+      const scheduleId = calRes.data?.schedule_id as string | undefined;
+
+      const [paramRes, schedRes] = await Promise.all([
+        parameterId
+          ? supabase.from('parameters').select('name, short_name').eq('id', parameterId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        scheduleId
+          ? supabase.from('sampling_schedules').select('instructions').eq('id', scheduleId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (!paramRes.error) {
+        scheduledParameterLabel = formatScheduledParameterLabel(
+          paramRes.data as { name: string | null; short_name: string | null } | null,
+        );
+      }
+      const rawInstr = schedRes.data?.instructions;
+      if (typeof rawInstr === 'string' && rawInstr.trim()) {
+        scheduleInstructions = rawInstr.trim();
+      }
     }
 
+    const of = outfallMap.get(visit.outfall_id);
     const baseListItem: FieldVisitListItem = {
       ...visit,
       route_batch_id: visit.route_batch_id ?? null,
       permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
-      outfall_number: outfallMap.get(visit.outfall_id)?.outfall_number ?? null,
+      outfall_number: of?.outfall_number ?? null,
+      outfall_latitude: of?.latitude ?? null,
+      outfall_longitude: of?.longitude ?? null,
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
+      scheduled_parameter_label: scheduledParameterLabel,
+      schedule_instructions: scheduleInstructions,
     };
     const listItem = mergeVisitWithQueuedLifecycle(baseListItem);
 
@@ -292,20 +390,27 @@ export function useFieldOps() {
         userId,
       ),
       governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
+      scheduled_parameter_label: scheduledParameterLabel,
+      schedule_instructions: scheduleInstructions,
     };
 
-    setDetail(nextDetail);
-    saveFieldVisitCache(nextDetail);
-    lastDetailVisitIdRef.current = visitId;
-    setDetailLoading(false);
+    if (commitDetail(nextDetail, visitId)) {
+      saveFieldVisitCache(nextDetail, {
+        organizationId,
+        viewerUserId: userId,
+      });
+    }
     return nextDetail;
-  }, [outfallMap, permitMap, userId, userMap]);
+  }, [organizationId, outfallMap, permitMap, userId, userMap]);
 
   useEffect(() => {
     if (detail) {
-      saveFieldVisitCache(detail);
+      saveFieldVisitCache(detail, {
+        organizationId,
+        viewerUserId: userId,
+      });
     }
-  }, [detail]);
+  }, [detail, organizationId, userId]);
 
   const flushOutboundIfOnline = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.onLine) {
@@ -388,23 +493,36 @@ export function useFieldOps() {
     };
   }, [loadVisitDetails, organizationId, userId, refreshOutboundPendingCount]);
 
-  const loadDispatchContext = useCallback(async () => {
-    await flushOutboundIfOnline();
+  const loadDispatchContext = useCallback(async (
+    options?: { markSuccessfulSync?: boolean },
+  ): Promise<DispatchContextLoadResult> => {
+    const requestId = dispatchRequestIdRef.current + 1;
+    dispatchRequestIdRef.current = requestId;
+
+    const isCurrentRequest = () => dispatchRequestIdRef.current === requestId;
+    const finish = (result: DispatchContextLoadResult) => {
+      if (isCurrentRequest()) {
+        setLoading(false);
+        if (result.success && options?.markSuccessfulSync) {
+          setLastSyncedAt(new Date());
+        }
+      }
+      return result;
+    };
+
+    const flushResult = await flushOutboundIfOnline();
 
     if (!organizationId) {
-      setLoading(false);
-      return;
+      return finish({ success: false });
     }
 
     setLoading(true);
 
-    const [permitRes, userRes, visitRes] = await Promise.all([
-      supabase
-        .from('npdes_permits')
-        .select('id, permit_number, state_code, permittee_name')
-        .eq('organization_id', organizationId)
-        .eq('state_code', 'WV')
-        .order('permit_number'),
+    const [permitLoad, userRes, visitRes] = await Promise.all([
+      loadPermitsWithStateCodes(supabase, {
+        kind: 'field_dispatch',
+        organizationId,
+      }),
       supabase
         .from('user_profiles')
         .select('id, email, first_name, last_name, is_active')
@@ -418,23 +536,50 @@ export function useFieldOps() {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (permitRes.error) toast.error(`Failed to load WV permits: ${permitRes.error.message}`);
+    if (permitLoad.permitError) {
+      toast.error(`Failed to load permits: ${permitLoad.permitError.message}`);
+    }
+    if (permitLoad.sitesStateError) {
+      toast.error(`Failed to load permit states: ${permitLoad.sitesStateError.message}`);
+    }
     if (userRes.error) toast.error(`Failed to load users: ${userRes.error.message}`);
     if (visitRes.error) toast.error(`Failed to load field visits: ${visitRes.error.message}`);
 
-    const permitRows = (permitRes.data ?? []) as PermitOption[];
+    const rawPermits = permitLoad.rawPermits;
+    const siteIdToState = permitLoad.siteIdToState;
+
+    const permitRows = rawPermits
+      .map((row) => ({
+        id: row.id,
+        permit_number: row.permit_number,
+        permittee_name: row.permittee_name ?? null,
+        state_code: row.site_id ? siteIdToState.get(row.site_id) ?? null : null,
+      }))
+      .filter((p) => p.state_code === FIELD_DISPATCH_STATE_CODE);
     const permitIds = permitRows.map((permit) => permit.id);
 
     let outfallRows: OutfallOption[] = [];
     if (permitIds.length > 0) {
       const outfallRes = await supabase
         .from('outfalls')
-        .select('id, permit_id, outfall_number')
+        .select('id, permit_id, outfall_number, latitude, longitude')
         .in('permit_id', permitIds)
         .order('outfall_number');
 
-      if (outfallRes.error) toast.error(`Failed to load WV outfalls: ${outfallRes.error.message}`);
-      outfallRows = (outfallRes.data ?? []) as OutfallOption[];
+      if (outfallRes.error) {
+        toast.error(
+          `Failed to load ${FIELD_DISPATCH_STATE_CODE} outfalls: ${outfallRes.error.message}`,
+        );
+      }
+      outfallRows = (outfallRes.data ?? []).map((row) => {
+        const coords = parseOutfallCoords(row.latitude, row.longitude);
+        return {
+          id: row.id as string,
+          permit_id: row.permit_id as string,
+          outfall_number: row.outfall_number as string,
+          ...coords,
+        };
+      });
     }
 
     const assignmentMap = new Map<string, string>();
@@ -494,22 +639,45 @@ export function useFieldOps() {
     const outfallLookup = new Map(outfallRows.map((outfall) => [outfall.id, outfall]));
     const userLookup = new Map(userRows.map((fieldUser) => [fieldUser.id, fieldUser]));
 
+    if (!isCurrentRequest()) {
+      return { success: false };
+    }
+
     setPermits(permitRows);
     setOutfalls(outfallRows);
     setUsers(userRows);
-    setVisits(
-      visitRows.map((visit) => mergeVisitWithQueuedLifecycle({
+    const mergedVisits = visitRows.map((visit) => {
+      const of = outfallLookup.get(visit.outfall_id);
+      return mergeVisitWithQueuedLifecycle({
         ...visit,
         route_batch_id: visit.route_batch_id ?? null,
         permit_number: permitLookup.get(visit.permit_id)?.permit_number ?? null,
-        outfall_number: outfallLookup.get(visit.outfall_id)?.outfall_number ?? null,
+        outfall_number: of?.outfall_number ?? null,
+        outfall_latitude: of?.latitude ?? null,
+        outfall_longitude: of?.longitude ?? null,
         assigned_to_name: displayName(userLookup.get(visit.assigned_to) ?? {}),
         route_stop_sequence: visit.sampling_calendar_id
           ? routeStopByCalendar.get(visit.sampling_calendar_id) ?? null
           : null,
-      })),
-    );
-    setLoading(false);
+      });
+    });
+    const withHints = await enrichFieldVisitsWithScheduleHints(mergedVisits);
+
+    if (!isCurrentRequest()) {
+      return { success: false };
+    }
+
+    setVisits(withHints);
+
+    return finish({
+      success: didDispatchContextLoadSucceed({
+        flushFailed: flushResult.failed,
+        permitError: permitLoad.permitError,
+        sitesStateError: permitLoad.sitesStateError,
+        userError: userRes.error,
+        visitError: visitRes.error,
+      }),
+    });
   }, [organizationId, flushOutboundIfOnline]);
 
   const createVisit = useCallback(async (input: DispatchVisitInput) => {
@@ -891,6 +1059,20 @@ export function useFieldOps() {
       )));
       void refreshOutboundPendingCount();
 
+      auditLog(
+        'field_visit_completion_queued',
+        {
+          milestone_id: LANE_A_MILESTONE_1_ID,
+          field_visit_id: visit.id,
+          outcome: input.outcome,
+        },
+        {
+          module: 'field_ops',
+          tableName: 'field_visits',
+          recordId: visit.id,
+        },
+      );
+
       return {
         queued: true,
         result: {
@@ -934,15 +1116,33 @@ export function useFieldOps() {
       throw new Error(error.message);
     }
 
+    const result = (data ?? {
+      linked_sampling_event_id: visit.linked_sampling_event_id,
+      governance_issue_id: null,
+    }) as CompleteFieldVisitResult;
+
+    auditLog(
+      'field_visit_completed',
+      {
+        milestone_id: LANE_A_MILESTONE_1_ID,
+        field_visit_id: visit.id,
+        outcome: input.outcome,
+        governance_issue_id: result.governance_issue_id ?? null,
+      },
+      {
+        module: 'field_ops',
+        tableName: 'field_visits',
+        recordId: visit.id,
+        newValues: { outcome: input.outcome, visit_status: 'completed' },
+      },
+    );
+
     await Promise.all([loadDispatchContext(), loadVisitDetails(visit.id)]);
     return {
       queued: false,
-      result: (data ?? {
-        linked_sampling_event_id: visit.linked_sampling_event_id,
-        governance_issue_id: null,
-      }) as CompleteFieldVisitResult,
+      result,
     };
-  }, [actorName, loadDispatchContext, loadVisitDetails, organizationId, refreshOutboundPendingCount, userId]);
+  }, [actorName, auditLog, loadDispatchContext, loadVisitDetails, organizationId, refreshOutboundPendingCount, userId]);
 
   useEffect(() => {
     void refreshOutboundPendingCount();
@@ -950,7 +1150,7 @@ export function useFieldOps() {
 
   useEffect(() => {
     if (organizationId) {
-      loadDispatchContext().catch((err) => {
+      loadDispatchContext({ markSuccessfulSync: true }).catch((err) => {
         console.error('[useFieldOps] Failed to load context:', err);
         toast.error(err instanceof Error ? err.message : 'Failed to load field operations');
       });
@@ -988,12 +1188,13 @@ export function useFieldOps() {
     users,
     visits,
     loading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
     detail,
     detailLoading,
-    refresh: loadDispatchContext,
+    refresh: () => loadDispatchContext({ markSuccessfulSync: true }),
     refreshOutboundPendingCount,
     loadVisitDetails,
     createVisit,
