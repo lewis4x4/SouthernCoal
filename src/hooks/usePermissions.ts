@@ -69,15 +69,7 @@ const CACHE_KEY = 'scc_role_assignments';
 export function usePermissions() {
   const { user } = useAuth();
   const fetchingRef = useRef(false);
-  const prevUserIdRef = useRef<string | null>(null);
-  const [assignments, setAssignments] = useState<RoleAssignment[]>(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [assignments, setAssignments] = useState<RoleAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,12 +79,22 @@ export function usePermissions() {
       return;
     }
 
-    // When user id changes (login as different user), clear stale cache immediately
-    if (prevUserIdRef.current !== null && prevUserIdRef.current !== user.id) {
-      try { localStorage.removeItem(CACHE_KEY); } catch { /* non-critical */ }
+    // Validate cache: only hydrate if cached assignments belong to THIS user.
+    // Prevents stale admin-level access when switching users.
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed: RoleAssignment[] = JSON.parse(cached);
+        if (parsed.length > 0 && parsed[0]?.user_id === user.id) {
+          setAssignments(parsed);
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+          setAssignments([]);
+        }
+      }
+    } catch {
       setAssignments([]);
     }
-    prevUserIdRef.current = user.id;
 
     async function fetchAssignments() {
       // Prevent concurrent fetches from multiple renders exhausting the pool
