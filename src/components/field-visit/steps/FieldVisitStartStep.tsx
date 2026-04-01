@@ -83,7 +83,7 @@ export function FieldVisitStartStep({
       <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4 text-sm text-text-secondary">
         {visitStarted
           ? 'This visit is already started on this device. You can review or adjust weather and observed conditions before moving on.'
-          : 'Start GPS is the anchor for the field record. Capture it before advancing so the rest of the wizard stays tied to a real visit start.'}
+          : 'Start GPS is the anchor for the field record. Capture it first, then start the visit. System weather is pulled after the visit start succeeds.'}
       </div>
 
       {weatherCard}

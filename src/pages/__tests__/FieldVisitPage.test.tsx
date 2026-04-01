@@ -417,6 +417,7 @@ describe('FieldVisitPage wizard', () => {
 
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start visit & continue' })).toBeInTheDocument();
+    expect(screen.getByText(/System weather will load automatically after you press/i)).toBeInTheDocument();
   });
 
   it('blocks jumping ahead when prerequisite wizard steps are incomplete', async () => {

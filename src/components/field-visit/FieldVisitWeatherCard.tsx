@@ -35,6 +35,7 @@ export function FieldVisitWeatherCard({
   onApplySystemToObserved,
 }: FieldVisitWeatherCardProps) {
   const showSystemSection = fetchEnabled && visitStarted && !visitLocked;
+  const canLoadWeatherAfterStart = fetchEnabled && !visitStarted && !visitLocked;
 
   return (
     <div
@@ -49,7 +50,7 @@ export function FieldVisitWeatherCard({
           </h3>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             <span className="font-medium text-cyan-200/90">System weather</span> is pulled from Open-Meteo at your
-            start GPS when you are online (reference only).{' '}
+            start GPS when you start the visit and are online (reference only).{' '}
             <span className="font-medium text-text-primary">Observed at site</span> is what you see at the outlet —
             always review and supplement.
           </p>
@@ -73,6 +74,13 @@ export function FieldVisitWeatherCard({
         <p className="mt-3 text-xs text-text-muted">
           Automated weather fetch is turned off (build flag). Record observed conditions only.
         </p>
+      ) : null}
+
+      {canLoadWeatherAfterStart ? (
+        <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">
+          System weather will load automatically after you press <span className="font-medium">Start visit &amp; continue</span>.
+          Capture start GPS first so the request uses the correct coordinates.
+        </div>
       ) : null}
 
       {showSystemSection ? (
@@ -126,7 +134,9 @@ export function FieldVisitWeatherCard({
           </p>
         </div>
       ) : !visitStarted ? (
-        <p className="mt-3 text-xs text-text-muted">Start the visit with GPS to enable system weather.</p>
+        <p className="mt-3 text-xs text-text-muted">
+          Start the visit with GPS to load the system weather snapshot for this stop.
+        </p>
       ) : null}
 
       <label className="mt-5 block space-y-2">
