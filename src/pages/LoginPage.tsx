@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { DisclaimerFooter } from '@/components/legal/DisclaimerFooter';
 
 export function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
@@ -46,15 +47,19 @@ export function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-text-muted border-t-status-queued rounded-full animate-spin" />
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-text-muted border-t-status-queued rounded-full animate-spin" />
+        </div>
+        <DisclaimerFooter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex flex-col px-4">
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
             SCC Compliance Monitor
@@ -113,11 +118,9 @@ export function LoginPage() {
             {submitting ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-[11px] text-text-muted leading-relaxed max-w-xs mx-auto">
-          This software is a compliance monitoring tool only. Not an EMS. Not legal advice.
-        </p>
+        </div>
       </div>
+      <DisclaimerFooter />
     </div>
   );
 }
