@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  Beaker,
   Camera,
   CheckCircle2,
   ClipboardList,
+  Copy,
   Droplets,
+  ExternalLink,
   MapPin,
+  Navigation,
   Package,
   RefreshCw,
   ShieldAlert,
@@ -30,6 +34,7 @@ import {
 } from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
@@ -136,6 +141,17 @@ export function FieldVisitPage() {
     setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
   }, [id, loadVisitDetails, refreshFieldQueue, refreshPendingEvidenceDrafts]);
 
+  const handleCopySamplingEventId = useCallback(async () => {
+    const sid = detail?.visit.linked_sampling_event_id;
+    if (!sid) return;
+    try {
+      await navigator.clipboard.writeText(sid);
+      toast.success('Sampling event ID copied');
+    } catch {
+      toast.error('Could not copy — select the ID and copy manually');
+    }
+  }, [detail?.visit.linked_sampling_event_id]);
+
   useEffect(() => {
     if (id) {
       loadVisitDetails(id).catch((error) => {
@@ -191,6 +207,17 @@ export function FieldVisitPage() {
     );
     setCocContainerId(cocRow?.measured_text ?? '');
     setCocPreservativeConfirmed(Boolean(cocRow?.metadata?.preservative_confirmed));
+  }, [detail]);
+
+  const outfallMapsHref = useMemo(() => {
+    if (!detail) return '';
+    const lat = detail.visit.outfall_latitude;
+    const lng = detail.visit.outfall_longitude;
+    if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+      return mapsSearchUrl(lat, lng);
+    }
+    const q = [detail.visit.permit_number, detail.visit.outfall_number].filter(Boolean).join(' ');
+    return mapsSearchQueryUrl(q);
   }, [detail]);
 
   const photoCount = useMemo(
@@ -461,13 +488,52 @@ export function FieldVisitPage() {
             {new Date(`${detail.visit.scheduled_date}T00:00:00`).toLocaleDateString()}
           </p>
         </div>
-        <Link
-          to="/field/dispatch"
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
-        >
-          Back to field queue
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/field/dispatch"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+          >
+            Back to field queue
+          </Link>
+          {outfallMapsHref ? (
+            <a
+              href={outfallMapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+            >
+              <Navigation className="h-4 w-4 shrink-0" aria-hidden />
+              Open in Maps
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+            </a>
+          ) : null}
+        </div>
       </div>
+
+      {detail.scheduled_parameter_label ? (
+        <div
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm"
+          role="region"
+          aria-label="Scheduled sample parameter"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Scheduled parameter</p>
+          <p className="mt-1 font-medium text-text-primary">{detail.scheduled_parameter_label}</p>
+          <p className="mt-1 text-xs text-text-secondary">
+            From the sampling calendar for this stop — use when verifying bottles, preservatives, and chain of custody.
+          </p>
+        </div>
+      ) : null}
+
+      {detail.schedule_instructions ? (
+        <div
+          className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="region"
+          aria-label="Schedule instructions"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-200/80">Schedule instructions</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-text-primary">{detail.schedule_instructions}</p>
+        </div>
+      ) : null}
 
       {id && (
         <FieldDataSyncBar
@@ -502,6 +568,35 @@ export function FieldVisitPage() {
         groups={visitSiblingOutfallConflicts}
         contextLabel="this visit"
       />
+
+      {detail.visit.linked_sampling_event_id && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between"
+          role="region"
+          aria-label="Linked sampling event"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <Beaker className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden />
+            <div className="min-w-0">
+              <p className="font-medium text-emerald-50">Sampling event (lab linkage)</p>
+              <p className="mt-1 text-xs text-emerald-200/85">
+                This visit is tied to a sampling_events row. Lab EDD imports and results attach to this ID.
+              </p>
+              <p className="mt-2 break-all font-mono text-xs text-text-primary">
+                {detail.visit.linked_sampling_event_id}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleCopySamplingEventId()}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-xs font-medium text-emerald-50 transition-colors hover:bg-emerald-500/25"
+          >
+            <Copy className="h-3.5 w-3.5" aria-hidden />
+            Copy ID
+          </button>
+        </div>
+      )}
 
       {id && evidenceUploadFailures.length > 0 && (
         <div

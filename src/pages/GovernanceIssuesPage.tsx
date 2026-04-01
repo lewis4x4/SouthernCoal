@@ -52,8 +52,8 @@ export function GovernanceIssuesPage() {
 
   useEffect(() => {
     const parsed = parseGovernanceInboxParam(searchParams.get(GOVERNANCE_INBOX_QUERY_KEY));
-    if (parsed) setInboxFilter(parsed);
-  }, [searchParams, setInboxFilter]);
+    if (parsed && parsed !== inboxFilter) setInboxFilter(parsed);
+  }, [searchParams, setInboxFilter, inboxFilter]);
 
   useEffect(() => {
     if (!selectedId && issues.length > 0) {

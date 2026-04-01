@@ -456,6 +456,17 @@ export function FieldDispatchPage() {
                   </div>
                 </div>
 
+                {(visit.scheduled_parameter_label || visit.schedule_instructions) && (
+                  <div className="mt-3 space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs">
+                    {visit.scheduled_parameter_label ? (
+                      <p className="font-medium text-text-primary">{visit.scheduled_parameter_label}</p>
+                    ) : null}
+                    {visit.schedule_instructions ? (
+                      <p className="line-clamp-2 text-text-muted">{visit.schedule_instructions}</p>
+                    ) : null}
+                  </div>
+                )}
+
                 {visit.field_notes && (
                   <p className="mt-4 line-clamp-2 text-sm text-text-secondary">
                     {visit.field_notes}

@@ -13,6 +13,8 @@ export default defineConfig({
       includeAssets: ['app-icon.svg', 'noise.svg'],
       workbox: {
         navigateFallback: '/index.html',
+        // Avoid workbox/terser parallel minify flakes in sandboxed or low-resource CI
+        ...(process.env.CI === 'true' ? { mode: 'development' as const } : {}),
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {

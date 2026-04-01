@@ -46,6 +46,8 @@ const minimalDetail = (over: Partial<FieldVisitDetails> = {}): FieldVisitDetails
   noDischarge: null,
   accessIssue: null,
   governanceIssues: [],
+  scheduled_parameter_label: null,
+  schedule_instructions: null,
   ...over,
 });
 

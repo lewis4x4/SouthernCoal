@@ -32,6 +32,10 @@ import {
 } from '@/lib/fieldOutboundQueueDiagnostic';
 import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
+import {
+  enrichFieldVisitsWithScheduleHints,
+  formatScheduledParameterLabel,
+} from '@/lib/fieldVisitScheduleHints';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -100,6 +104,15 @@ function createOutboundOpId() {
     : `local-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+function parseOutfallCoords(latitude: unknown, longitude: unknown): Pick<OutfallOption, 'latitude' | 'longitude'> {
+  const lat = latitude != null ? Number(latitude) : NaN;
+  const lng = longitude != null ? Number(longitude) : NaN;
+  return {
+    latitude: Number.isFinite(lat) ? lat : null,
+    longitude: Number.isFinite(lng) ? lng : null,
+  };
+}
+
 function fieldVisitShellFromRouteListItem(
   visitId: string,
   routeListItem: FieldVisitListItem,
@@ -116,6 +129,8 @@ function fieldVisitShellFromRouteListItem(
     noDischarge: mergeNoDischargeWithQueuedCompletion(visitId, null, userId),
     accessIssue: mergeAccessIssueWithQueuedCompletion(visitId, null, userId),
     governanceIssues: [],
+    scheduled_parameter_label: listItem.scheduled_parameter_label ?? null,
+    schedule_instructions: listItem.schedule_instructions ?? null,
   };
 }
 
@@ -245,24 +260,59 @@ export function useFieldOps() {
     const visit = visitRes.data as FieldVisitRecord;
 
     let routeStopSequence: number | null = null;
+    let scheduledParameterLabel: string | null = null;
+    let scheduleInstructions: string | null = null;
     if (visit.sampling_calendar_id) {
-      const stopRes = await supabase
-        .from('sampling_route_stops')
-        .select('stop_sequence')
-        .eq('calendar_id', visit.sampling_calendar_id)
-        .maybeSingle();
+      const [stopRes, calRes] = await Promise.all([
+        supabase
+          .from('sampling_route_stops')
+          .select('stop_sequence')
+          .eq('calendar_id', visit.sampling_calendar_id)
+          .maybeSingle(),
+        supabase
+          .from('sampling_calendar')
+          .select('parameter_id, schedule_id')
+          .eq('id', visit.sampling_calendar_id)
+          .maybeSingle(),
+      ]);
       if (!stopRes.error && stopRes.data) {
         routeStopSequence = stopRes.data.stop_sequence as number;
       }
+      const parameterId = calRes.data?.parameter_id as string | undefined;
+      const scheduleId = calRes.data?.schedule_id as string | undefined;
+
+      const [paramRes, schedRes] = await Promise.all([
+        parameterId
+          ? supabase.from('parameters').select('name, short_name').eq('id', parameterId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        scheduleId
+          ? supabase.from('sampling_schedules').select('instructions').eq('id', scheduleId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (!paramRes.error) {
+        scheduledParameterLabel = formatScheduledParameterLabel(
+          paramRes.data as { name: string | null; short_name: string | null } | null,
+        );
+      }
+      const rawInstr = schedRes.data?.instructions;
+      if (typeof rawInstr === 'string' && rawInstr.trim()) {
+        scheduleInstructions = rawInstr.trim();
+      }
     }
 
+    const of = outfallMap.get(visit.outfall_id);
     const baseListItem: FieldVisitListItem = {
       ...visit,
       route_batch_id: visit.route_batch_id ?? null,
       permit_number: permitMap.get(visit.permit_id)?.permit_number ?? null,
-      outfall_number: outfallMap.get(visit.outfall_id)?.outfall_number ?? null,
+      outfall_number: of?.outfall_number ?? null,
+      outfall_latitude: of?.latitude ?? null,
+      outfall_longitude: of?.longitude ?? null,
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
+      scheduled_parameter_label: scheduledParameterLabel,
+      schedule_instructions: scheduleInstructions,
     };
     const listItem = mergeVisitWithQueuedLifecycle(baseListItem);
 
@@ -292,6 +342,8 @@ export function useFieldOps() {
         userId,
       ),
       governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
+      scheduled_parameter_label: scheduledParameterLabel,
+      schedule_instructions: scheduleInstructions,
     };
 
     setDetail(nextDetail);
@@ -429,12 +481,20 @@ export function useFieldOps() {
     if (permitIds.length > 0) {
       const outfallRes = await supabase
         .from('outfalls')
-        .select('id, permit_id, outfall_number')
+        .select('id, permit_id, outfall_number, latitude, longitude')
         .in('permit_id', permitIds)
         .order('outfall_number');
 
       if (outfallRes.error) toast.error(`Failed to load WV outfalls: ${outfallRes.error.message}`);
-      outfallRows = (outfallRes.data ?? []) as OutfallOption[];
+      outfallRows = (outfallRes.data ?? []).map((row) => {
+        const coords = parseOutfallCoords(row.latitude, row.longitude);
+        return {
+          id: row.id as string,
+          permit_id: row.permit_id as string,
+          outfall_number: row.outfall_number as string,
+          ...coords,
+        };
+      });
     }
 
     const assignmentMap = new Map<string, string>();
@@ -497,18 +557,23 @@ export function useFieldOps() {
     setPermits(permitRows);
     setOutfalls(outfallRows);
     setUsers(userRows);
-    setVisits(
-      visitRows.map((visit) => mergeVisitWithQueuedLifecycle({
+    const mergedVisits = visitRows.map((visit) => {
+      const of = outfallLookup.get(visit.outfall_id);
+      return mergeVisitWithQueuedLifecycle({
         ...visit,
         route_batch_id: visit.route_batch_id ?? null,
         permit_number: permitLookup.get(visit.permit_id)?.permit_number ?? null,
-        outfall_number: outfallLookup.get(visit.outfall_id)?.outfall_number ?? null,
+        outfall_number: of?.outfall_number ?? null,
+        outfall_latitude: of?.latitude ?? null,
+        outfall_longitude: of?.longitude ?? null,
         assigned_to_name: displayName(userLookup.get(visit.assigned_to) ?? {}),
         route_stop_sequence: visit.sampling_calendar_id
           ? routeStopByCalendar.get(visit.sampling_calendar_id) ?? null
           : null,
-      })),
-    );
+      });
+    });
+    const withHints = await enrichFieldVisitsWithScheduleHints(mergedVisits);
+    setVisits(withHints);
     setLoading(false);
   }, [organizationId, flushOutboundIfOnline]);
 

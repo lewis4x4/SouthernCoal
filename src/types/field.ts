@@ -29,6 +29,8 @@ export interface OutfallOption {
   id: string;
   permit_id: string;
   outfall_number: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface FieldVisitRecord {
@@ -64,6 +66,12 @@ export interface FieldVisitListItem extends FieldVisitRecord {
   assigned_to_name: string;
   /** Stop order within a dispatched route batch (from sampling_route_stops). */
   route_stop_sequence: number | null;
+  /** From `outfalls` when loaded; used for Maps links on visit detail. */
+  outfall_latitude?: number | null;
+  outfall_longitude?: number | null;
+  /** Filled when saving offline route copy or loading visit detail; used offline on visit shell. */
+  scheduled_parameter_label?: string | null;
+  schedule_instructions?: string | null;
 }
 
 export interface OutletInspectionRecord {
@@ -329,4 +337,8 @@ export interface FieldVisitDetails {
   noDischarge: NoDischargeRecord | null;
   accessIssue: AccessIssueRecord | null;
   governanceIssues: GovernanceIssueRecord[];
+  /** Resolved from sampling_calendar.parameter_id → parameters when the visit is calendar-driven. */
+  scheduled_parameter_label: string | null;
+  /** From sampling_schedules.instructions via sampling_calendar.schedule_id when set. */
+  schedule_instructions: string | null;
 }

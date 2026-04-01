@@ -19,6 +19,7 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
+import { mapsDirUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import {
   fieldRouteCacheMatchesView,
@@ -32,6 +33,7 @@ import {
   governanceIssuesInboxHref,
 } from '@/lib/governanceInboxNav';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
+import { enrichFieldVisitsWithScheduleHints } from '@/lib/fieldVisitScheduleHints';
 import { supabase } from '@/lib/supabase';
 import type { FieldVisitListItem } from '@/types';
 
@@ -53,16 +55,6 @@ function getServerSnapshot() {
 }
 
 const MANAGER_ROLES = ['site_manager', 'environmental_manager', 'executive', 'admin'];
-
-function mapsSearchUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
-}
-
-function mapsDirUrl(coords: Array<{ lat: number; lng: number }>) {
-  if (coords.length === 0) return '';
-  const path = coords.map((c) => `${c.lat},${c.lng}`).join('/');
-  return `https://www.google.com/maps/dir/${path}`;
-}
 
 function sortVisitsForRoute(a: FieldVisitListItem, b: FieldVisitListItem) {
   const sa = a.route_stop_sequence;
@@ -230,11 +222,12 @@ export function FieldRouteTodayPage() {
         const c = outfallCoords[id];
         if (c) coords[id] = c;
       }
+      const visitsForCache = await enrichFieldVisitsWithScheduleHints(dayVisitsLive);
       const { ok, snapshot } = await saveFieldRouteCacheDual({
         routeDate,
         scope,
         viewerUserId: cacheViewerId,
-        visits: dayVisitsLive,
+        visits: visitsForCache,
         outfallCoords: coords,
       });
       if (fieldRouteCacheMatchesView(snapshot, routeDate, scope, cacheViewerId)) {
