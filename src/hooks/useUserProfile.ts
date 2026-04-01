@@ -26,49 +26,66 @@ export function useUserProfile() {
     }
 
     async function fetchProfile() {
-      // Fetch profile WITHOUT organizations join to avoid circular RLS dependency
-      // (organizations policy references user_profiles → 500 error when joined)
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, email, first_name, last_name, organization_id, created_at')
-        .eq('id', user!.id)
-        .single();
-
-      if (error) {
-        console.error('[profile] Failed to fetch profile:', error.message);
-        setState((s) => ({ ...s, loading: false, error: error.message }));
-        return;
-      }
-
-      // Fetch org name separately to avoid circular RLS
-      let orgName: string | null = null;
-      if (data.organization_id) {
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', data.organization_id)
+      try {
+        // Fetch profile WITHOUT organizations join to avoid circular RLS dependency
+        // (organizations policy references user_profiles → 500 error when joined)
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('id, email, first_name, last_name, organization_id, created_at')
+          .eq('id', user!.id)
           .single();
-        orgName = orgData?.name ?? null;
+
+        if (error) {
+          console.error('[profile] Failed to fetch profile:', error.message);
+          setState((s) => ({ ...s, loading: false, error: error.message }));
+          return;
+        }
+
+        if (!data) {
+          setState((s) => ({
+            ...s,
+            loading: false,
+            error: 'Profile not found',
+          }));
+          return;
+        }
+
+        // Fetch org name separately to avoid circular RLS
+        let orgName: string | null = null;
+        if (data.organization_id) {
+          const { data: orgData, error: orgErr } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', data.organization_id)
+            .maybeSingle();
+          if (!orgErr) {
+            orgName = orgData?.name ?? null;
+          }
+        }
+
+        if (import.meta.env.DEV) console.log('[profile] Loaded:', { id: data.id, org: orgName });
+
+        setState({
+          profile: {
+            id: data.id,
+            email: data.email,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            organization_id: data.organization_id,
+            created_at: data.created_at,
+          },
+          organizationName: orgName,
+          loading: false,
+          error: null,
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load profile';
+        console.error('[profile] Unexpected error:', e);
+        setState((s) => ({ ...s, loading: false, error: message }));
       }
-
-      if (import.meta.env.DEV) console.log('[profile] Loaded:', { id: data.id, org: orgName });
-
-      setState({
-        profile: {
-          id: data.id,
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          organization_id: data.organization_id,
-          created_at: data.created_at,
-        },
-        organizationName: orgName,
-        loading: false,
-        error: null,
-      });
     }
 
-    fetchProfile();
+    void fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
   }, [user?.id, isAuthenticated]);
 

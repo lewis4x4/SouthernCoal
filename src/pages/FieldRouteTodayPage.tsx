@@ -103,12 +103,19 @@ export function FieldRouteTodayPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const p = await loadFieldRouteCacheFromIdb();
-      if (cancelled) return;
-      if (p && fieldRouteCacheMatchesView(p, routeDate, scope, cacheViewerId)) {
-        setIdbRouteSnapshot(p);
-      } else {
-        setIdbRouteSnapshot(null);
+      try {
+        const p = await loadFieldRouteCacheFromIdb();
+        if (cancelled) return;
+        if (p && fieldRouteCacheMatchesView(p, routeDate, scope, cacheViewerId)) {
+          setIdbRouteSnapshot(p);
+        } else {
+          setIdbRouteSnapshot(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error('[FieldRouteTodayPage] loadFieldRouteCacheFromIdb failed', e);
+          setIdbRouteSnapshot(null);
+        }
       }
     })();
     return () => {
@@ -155,25 +162,30 @@ export function FieldRouteTodayPage() {
       setOutfallCoords({});
       return;
     }
-    const { data, error } = await supabase
-      .from('outfalls')
-      .select('id, latitude, longitude')
-      .in('id', ids);
+    try {
+      const { data, error } = await supabase
+        .from('outfalls')
+        .select('id, latitude, longitude')
+        .in('id', ids);
 
-    if (error) {
-      toast.error(`Could not load outfall locations: ${error.message}`);
-      return;
-    }
-
-    const next: Record<string, { lat: number; lng: number }> = {};
-    for (const row of data ?? []) {
-      const lat = row.latitude != null ? Number(row.latitude) : NaN;
-      const lng = row.longitude != null ? Number(row.longitude) : NaN;
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        next[row.id as string] = { lat, lng };
+      if (error) {
+        toast.error(`Could not load outfall locations: ${error.message}`);
+        return;
       }
+
+      const next: Record<string, { lat: number; lng: number }> = {};
+      for (const row of data ?? []) {
+        const lat = row.latitude != null ? Number(row.latitude) : NaN;
+        const lng = row.longitude != null ? Number(row.longitude) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          next[row.id as string] = { lat, lng };
+        }
+      }
+      setOutfallCoords(next);
+    } catch (e) {
+      console.error('[FieldRouteTodayPage] loadCoords failed', e);
+      toast.error(e instanceof Error ? e.message : 'Could not load outfall locations');
     }
-    setOutfallCoords(next);
   }, []);
 
   useEffect(() => {
@@ -216,29 +228,36 @@ export function FieldRouteTodayPage() {
         }
         return;
       }
-      const ids = [...new Set(dayVisitsLive.map((v) => v.outfall_id))];
-      const coords: Record<string, { lat: number; lng: number }> = {};
-      for (const id of ids) {
-        const c = outfallCoords[id];
-        if (c) coords[id] = c;
-      }
-      const visitsForCache = await enrichFieldVisitsWithScheduleHints(dayVisitsLive);
-      const { ok, snapshot } = await saveFieldRouteCacheDual({
-        routeDate,
-        scope,
-        viewerUserId: cacheViewerId,
-        visits: visitsForCache,
-        outfallCoords: coords,
-      });
-      if (fieldRouteCacheMatchesView(snapshot, routeDate, scope, cacheViewerId)) {
-        setIdbRouteSnapshot(snapshot);
-      }
-      if (ok) {
-        if (showToast) {
-          toast.success('Offline route copy updated on this device');
+      try {
+        const ids = [...new Set(dayVisitsLive.map((v) => v.outfall_id))];
+        const coords: Record<string, { lat: number; lng: number }> = {};
+        for (const id of ids) {
+          const c = outfallCoords[id];
+          if (c) coords[id] = c;
         }
-      } else if (showToast) {
-        toast.error('Could not save offline copy (storage blocked or full)');
+        const visitsForCache = await enrichFieldVisitsWithScheduleHints(dayVisitsLive);
+        const { ok, snapshot } = await saveFieldRouteCacheDual({
+          routeDate,
+          scope,
+          viewerUserId: cacheViewerId,
+          visits: visitsForCache,
+          outfallCoords: coords,
+        });
+        if (fieldRouteCacheMatchesView(snapshot, routeDate, scope, cacheViewerId)) {
+          setIdbRouteSnapshot(snapshot);
+        }
+        if (ok) {
+          if (showToast) {
+            toast.success('Offline route copy updated on this device');
+          }
+        } else if (showToast) {
+          toast.error('Could not save offline copy (storage blocked or full)');
+        }
+      } catch (e) {
+        console.error('[FieldRouteTodayPage] persistOfflineCopy failed', e);
+        if (showToast) {
+          toast.error(e instanceof Error ? e.message : 'Could not update offline route copy');
+        }
       }
     },
     [cacheViewerId, dayVisitsLive, online, outfallCoords, routeDate, scope],

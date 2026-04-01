@@ -244,6 +244,9 @@ export function FieldVisitPage() {
   );
   const visitLocked = detail?.visit.visit_status === 'completed';
 
+  const outletInspectionObstructed =
+    inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
+
   const visitSiblingOutfallConflicts = useMemo(() => {
     if (!id || !detail) return [];
     const siblings = siblingVisitsSameOutfallSameDay(
@@ -401,6 +404,17 @@ export function FieldVisitPage() {
       return;
     }
 
+    if ((inspection.flow_status ?? 'unknown') === 'unknown') {
+      toast.error('Select outlet flow status (flowing, no flow, or obstructed) before completing');
+      return;
+    }
+
+    const inspectionObstructionDetails = (inspection.obstruction_details ?? '').trim();
+    if (outletInspectionObstructed && !inspectionObstructionDetails) {
+      toast.error('Enter obstruction details in the outlet inspection before completing');
+      return;
+    }
+
     if (outcome === 'sample_collected') {
       if (!cocContainerId.trim()) {
         toast.error('Record primary container ID before completing a sample-collected visit');
@@ -417,8 +431,27 @@ export function FieldVisitPage() {
       return;
     }
 
+    if (outcome === 'no_discharge' && !noDischargeNarrative.trim()) {
+      toast.error('Enter a no-discharge narrative before completing');
+      return;
+    }
+
+    if (
+      outcome === 'no_discharge' &&
+      noDischargeObstructionObserved &&
+      !noDischargeObstructionDetails.trim()
+    ) {
+      toast.error('Describe the obstruction before completing a no-discharge visit');
+      return;
+    }
+
     if (outcome === 'access_issue' && totalPhotoCount < 1) {
       toast.error('At least one photo must be uploaded before completing an access issue visit');
+      return;
+    }
+
+    if (outcome === 'access_issue' && !accessIssueNarrative.trim()) {
+      toast.error('Enter an access-issue narrative before completing');
       return;
     }
 
@@ -431,6 +464,7 @@ export function FieldVisitPage() {
           cocPreservativeConfirmed,
         );
       }
+      await saveInspection(detail.visit.id, inspection);
       const { queued, result } = await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude, longitude },
@@ -795,7 +829,9 @@ export function FieldVisitPage() {
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Flow status</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Flow status <span className="text-cyan-200/90">(required before complete)</span>
+                </span>
                 <select
                   value={inspection.flow_status ?? 'unknown'}
                   onChange={(e) => setInspection((prev) => ({ ...prev, flow_status: e.target.value as OutletInspectionRecord['flow_status'] }))}
@@ -827,7 +863,14 @@ export function FieldVisitPage() {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction details</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction details{' '}
+                  {outletInspectionObstructed ? (
+                    <span className="text-cyan-200/90">(required)</span>
+                  ) : (
+                    <span className="text-text-muted/70">(required if obstructed)</span>
+                  )}
+                </span>
                 <input
                   value={inspection.obstruction_details ?? ''}
                   onChange={(e) => setInspection((prev) => ({ ...prev, obstruction_details: e.target.value }))}
@@ -1117,7 +1160,9 @@ export function FieldVisitPage() {
               </div>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Narrative</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Narrative <span className="text-amber-200/90">(required)</span>
+                </span>
                 <textarea
                   value={noDischargeNarrative}
                   onChange={(e) => setNoDischargeNarrative(e.target.value)}
@@ -1150,7 +1195,12 @@ export function FieldVisitPage() {
               </label>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction details</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction details{' '}
+                  {noDischargeObstructionObserved ? (
+                    <span className="text-amber-200/90">(required if obstruction observed)</span>
+                  ) : null}
+                </span>
                 <textarea
                   value={noDischargeObstructionDetails}
                   onChange={(e) => setNoDischargeObstructionDetails(e.target.value)}
@@ -1189,7 +1239,9 @@ export function FieldVisitPage() {
               </label>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-xs font-medium text-text-muted">Obstruction narrative</span>
+                <span className="text-xs font-medium text-text-muted">
+                  Obstruction narrative <span className="text-rose-200/90">(required)</span>
+                </span>
                 <textarea
                   value={accessIssueNarrative}
                   onChange={(e) => setAccessIssueNarrative(e.target.value)}

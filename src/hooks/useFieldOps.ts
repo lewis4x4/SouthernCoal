@@ -30,6 +30,7 @@ import {
   readStoredOutboundQueueDiagnostic,
   OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
 } from '@/lib/fieldOutboundQueueDiagnostic';
+import { stateCodeFromPermitSiteEmbed } from '@/lib/npdesPermitState';
 import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
 import {
@@ -453,9 +454,8 @@ export function useFieldOps() {
     const [permitRes, userRes, visitRes] = await Promise.all([
       supabase
         .from('npdes_permits')
-        .select('id, permit_number, state_code, permittee_name')
+        .select('id, permit_number, permittee_name, sites(states(code))')
         .eq('organization_id', organizationId)
-        .eq('state_code', 'WV')
         .order('permit_number'),
       supabase
         .from('user_profiles')
@@ -474,7 +474,16 @@ export function useFieldOps() {
     if (userRes.error) toast.error(`Failed to load users: ${userRes.error.message}`);
     if (visitRes.error) toast.error(`Failed to load field visits: ${visitRes.error.message}`);
 
-    const permitRows = (permitRes.data ?? []) as PermitOption[];
+    const permitRows = (permitRes.data ?? [])
+      .map((row) => ({
+        id: row.id as string,
+        permit_number: row.permit_number as string,
+        permittee_name: (row.permittee_name as string | null) ?? null,
+        state_code: stateCodeFromPermitSiteEmbed(
+          (row as { sites?: unknown }).sites,
+        ),
+      }))
+      .filter((p) => p.state_code === 'WV');
     const permitIds = permitRows.map((permit) => permit.id);
 
     let outfallRows: OutfallOption[] = [];
