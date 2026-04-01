@@ -18,7 +18,8 @@ export function OperationalStatusCard() {
     permitCount: number;
     outfallCount: number;
     violationCount: number;
-    ftsQuarters: number;
+    /** Rows in fts_uploads with parse_status = completed (not calendar quarters). */
+    ftsCompletedUploads: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const queueEntries = useQueueStore((s) => s.entries);
@@ -54,7 +55,7 @@ export function OperationalStatusCard() {
               permitCount: 0,
               outfallCount: 0,
               violationCount: 0,
-              ftsQuarters: 0,
+              ftsCompletedUploads: 0,
             });
             return;
           }
@@ -64,7 +65,7 @@ export function OperationalStatusCard() {
             permitCount: permitsRes.count ?? 0,
             outfallCount: outfallsRes.count ?? 0,
             violationCount: violationsRes.count ?? 0,
-            ftsQuarters: ftsUploadsRes.count ?? 0,
+            ftsCompletedUploads: ftsUploadsRes.count ?? 0,
           });
         } catch {
           if (!cancelled) {
@@ -73,7 +74,7 @@ export function OperationalStatusCard() {
               permitCount: 0,
               outfallCount: 0,
               violationCount: 0,
-              ftsQuarters: 0,
+              ftsCompletedUploads: 0,
             });
           }
         } finally {
@@ -97,7 +98,7 @@ export function OperationalStatusCard() {
   const permitCount = dbStats?.permitCount ?? 0;
   const outfallCount = dbStats?.outfallCount ?? 0;
   const violationCount = dbStats?.violationCount ?? 0;
-  const ftsQuarters = dbStats?.ftsQuarters ?? 0;
+  const ftsCompletedUploads = dbStats?.ftsCompletedUploads ?? 0;
 
   const stats: StatRow[] = [
     {
@@ -110,7 +111,10 @@ export function OperationalStatusCard() {
     {
       label: 'FTS Violations',
       value: violationCount.toLocaleString(),
-      subtext: ftsQuarters > 0 ? `${ftsQuarters} quarter${ftsQuarters !== 1 ? 's' : ''} processed` : 'Upload penalty files to populate',
+      subtext:
+        ftsCompletedUploads > 0
+          ? `${ftsCompletedUploads} FTS file${ftsCompletedUploads !== 1 ? 's' : ''} parsed`
+          : 'Upload penalty files to populate',
       icon: AlertTriangle,
       status: violationCount > 1000 ? 'critical' : violationCount > 0 ? 'warning' : 'good',
     },
