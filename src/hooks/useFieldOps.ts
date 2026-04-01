@@ -94,6 +94,19 @@ interface CompletionInput {
   };
 }
 
+export interface DispatchContextLoadResult {
+  success: boolean;
+}
+
+export function didDispatchContextLoadSucceed(input: {
+  flushFailed: Error | null;
+  permitError: { message: string } | null;
+  userError: { message: string } | null;
+  visitError: { message: string } | null;
+}) {
+  return !input.flushFailed && !input.permitError && !input.userError && !input.visitError;
+}
+
 function displayName(user: Partial<FieldOpsUser>) {
   const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
   return full || user.email || 'Unassigned';
@@ -151,6 +164,7 @@ export function useFieldOps() {
   const [users, setUsers] = useState<FieldOpsUser[]>([]);
   const [visits, setVisits] = useState<FieldVisitListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<FieldVisitDetails | null>(null);
   const [outboundPendingCount, setOutboundPendingCount] = useState(0);
@@ -159,6 +173,8 @@ export function useFieldOps() {
     readStoredOutboundQueueDiagnostic(),
   );
   const lastDetailVisitIdRef = useRef<string | null>(null);
+  const detailRequestIdRef = useRef(0);
+  const dispatchRequestIdRef = useRef(0);
 
   const clearOutboundQueueDiagnostic = useCallback(() => {
     clearStoredOutboundQueueDiagnostic();
@@ -190,25 +206,41 @@ export function useFieldOps() {
   );
 
   const loadVisitDetails = useCallback(async (visitId: string) => {
+    const requestId = detailRequestIdRef.current + 1;
+    detailRequestIdRef.current = requestId;
+    const commitDetail = (nextDetail: FieldVisitDetails | null, detailVisitId: string | null) => {
+      if (detailRequestIdRef.current !== requestId) return false;
+      setDetail(nextDetail);
+      lastDetailVisitIdRef.current = detailVisitId;
+      setDetailLoading(false);
+      return true;
+    };
+
     setDetailLoading(true);
 
-    const cachedDetail = loadFieldVisitCache(visitId);
+    const cachedDetail = loadFieldVisitCache(visitId, {
+      organizationId,
+      viewerUserId: userId,
+    });
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
     if (offline && cachedDetail) {
-      setDetail(cachedDetail);
-      lastDetailVisitIdRef.current = visitId;
-      setDetailLoading(false);
+      commitDetail(cachedDetail, visitId);
       return cachedDetail;
     }
 
     if (offline) {
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
+        viewerUserId: userId,
+        organizationId,
+      });
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
-        setDetail(shell);
-        saveFieldVisitCache(shell);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        if (commitDetail(shell, visitId)) {
+          saveFieldVisitCache(shell, {
+            organizationId,
+            viewerUserId: userId,
+          });
+        }
         return shell;
       }
     }
@@ -234,27 +266,28 @@ export function useFieldOps() {
     if (visitRes.error || !visitRes.data) {
       if (cachedDetail) {
         toast.error('Showing cached field visit copy because the live load failed');
-        setDetail(cachedDetail);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        commitDetail(cachedDetail, visitId);
         return cachedDetail;
       }
-      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId);
+      const routeListItem = await findVisitInFieldRouteCacheAsync(visitId, {
+        viewerUserId: userId,
+        organizationId,
+      });
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
         toast.error(
           'Live load failed; showing your saved route copy for this stop. Reconnect and tap Refresh when you can.',
         );
-        setDetail(shell);
-        saveFieldVisitCache(shell);
-        lastDetailVisitIdRef.current = visitId;
-        setDetailLoading(false);
+        if (commitDetail(shell, visitId)) {
+          saveFieldVisitCache(shell, {
+            organizationId,
+            viewerUserId: userId,
+          });
+        }
         return shell;
       }
       toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
-      setDetail(null);
-      lastDetailVisitIdRef.current = null;
-      setDetailLoading(false);
+      commitDetail(null, null);
       return null;
     }
 
@@ -347,18 +380,23 @@ export function useFieldOps() {
       schedule_instructions: scheduleInstructions,
     };
 
-    setDetail(nextDetail);
-    saveFieldVisitCache(nextDetail);
-    lastDetailVisitIdRef.current = visitId;
-    setDetailLoading(false);
+    if (commitDetail(nextDetail, visitId)) {
+      saveFieldVisitCache(nextDetail, {
+        organizationId,
+        viewerUserId: userId,
+      });
+    }
     return nextDetail;
-  }, [outfallMap, permitMap, userId, userMap]);
+  }, [organizationId, outfallMap, permitMap, userId, userMap]);
 
   useEffect(() => {
     if (detail) {
-      saveFieldVisitCache(detail);
+      saveFieldVisitCache(detail, {
+        organizationId,
+        viewerUserId: userId,
+      });
     }
-  }, [detail]);
+  }, [detail, organizationId, userId]);
 
   const flushOutboundIfOnline = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.onLine) {
@@ -441,12 +479,27 @@ export function useFieldOps() {
     };
   }, [loadVisitDetails, organizationId, userId, refreshOutboundPendingCount]);
 
-  const loadDispatchContext = useCallback(async () => {
-    await flushOutboundIfOnline();
+  const loadDispatchContext = useCallback(async (
+    options?: { markSuccessfulSync?: boolean },
+  ): Promise<DispatchContextLoadResult> => {
+    const requestId = dispatchRequestIdRef.current + 1;
+    dispatchRequestIdRef.current = requestId;
+
+    const isCurrentRequest = () => dispatchRequestIdRef.current === requestId;
+    const finish = (result: DispatchContextLoadResult) => {
+      if (isCurrentRequest()) {
+        setLoading(false);
+        if (result.success && options?.markSuccessfulSync) {
+          setLastSyncedAt(new Date());
+        }
+      }
+      return result;
+    };
+
+    const flushResult = await flushOutboundIfOnline();
 
     if (!organizationId) {
-      setLoading(false);
-      return;
+      return finish({ success: false });
     }
 
     setLoading(true);
@@ -563,6 +616,10 @@ export function useFieldOps() {
     const outfallLookup = new Map(outfallRows.map((outfall) => [outfall.id, outfall]));
     const userLookup = new Map(userRows.map((fieldUser) => [fieldUser.id, fieldUser]));
 
+    if (!isCurrentRequest()) {
+      return { success: false };
+    }
+
     setPermits(permitRows);
     setOutfalls(outfallRows);
     setUsers(userRows);
@@ -582,8 +639,21 @@ export function useFieldOps() {
       });
     });
     const withHints = await enrichFieldVisitsWithScheduleHints(mergedVisits);
+
+    if (!isCurrentRequest()) {
+      return { success: false };
+    }
+
     setVisits(withHints);
-    setLoading(false);
+
+    return finish({
+      success: didDispatchContextLoadSucceed({
+        flushFailed: flushResult.failed,
+        permitError: permitRes.error,
+        userError: userRes.error,
+        visitError: visitRes.error,
+      }),
+    });
   }, [organizationId, flushOutboundIfOnline]);
 
   const createVisit = useCallback(async (input: DispatchVisitInput) => {
@@ -1024,7 +1094,7 @@ export function useFieldOps() {
 
   useEffect(() => {
     if (organizationId) {
-      loadDispatchContext().catch((err) => {
+      loadDispatchContext({ markSuccessfulSync: true }).catch((err) => {
         console.error('[useFieldOps] Failed to load context:', err);
         toast.error(err instanceof Error ? err.message : 'Failed to load field operations');
       });
@@ -1062,12 +1132,13 @@ export function useFieldOps() {
     users,
     visits,
     loading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
     detail,
     detailLoading,
-    refresh: loadDispatchContext,
+    refresh: () => loadDispatchContext({ markSuccessfulSync: true }),
     refreshOutboundPendingCount,
     loadVisitDetails,
     createVisit,

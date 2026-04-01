@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearFieldVisitCache,
+  clearAllFieldVisitCaches,
+  type FieldVisitCacheScope,
   loadFieldVisitCache,
   saveFieldVisitCache,
 } from '../fieldVisitLocalCache';
@@ -51,6 +53,12 @@ const minimalDetail = (over: Partial<FieldVisitDetails> = {}): FieldVisitDetails
   ...over,
 });
 
+const scope = (over: Partial<FieldVisitCacheScope> = {}): FieldVisitCacheScope => ({
+  organizationId: 'o1',
+  viewerUserId: 'u1',
+  ...over,
+});
+
 describe('fieldVisitLocalCache', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -58,26 +66,78 @@ describe('fieldVisitLocalCache', () => {
 
   it('saves and loads visit detail cache', () => {
     const detail = minimalDetail();
-    expect(saveFieldVisitCache(detail)).toBe(true);
-    expect(loadFieldVisitCache('v1')?.visit.id).toBe('v1');
+    expect(saveFieldVisitCache(detail, scope())).toBe(true);
+    expect(loadFieldVisitCache('v1', scope())?.visit.id).toBe('v1');
   });
 
-  it('returns null for invalid cache contents', () => {
+  it('rejects and clears legacy cache contents without ownership metadata', () => {
     localStorage.setItem('scc.fieldVisitCache.v1.v1', '{"bad":true}');
-    expect(loadFieldVisitCache('v1')).toBeNull();
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
   });
 
   it('clears cached visit detail', () => {
-    expect(saveFieldVisitCache(minimalDetail())).toBe(true);
+    expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(true);
     clearFieldVisitCache('v1');
-    expect(loadFieldVisitCache('v1')).toBeNull();
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+  });
+
+  it('clears all cached visit details', () => {
+    expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(true);
+    expect(
+      saveFieldVisitCache(
+        minimalDetail({
+          visit: minimalVisit({ id: 'v2' }),
+        }),
+        scope(),
+      ),
+    ).toBe(true);
+
+    clearAllFieldVisitCaches();
+
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+    expect(loadFieldVisitCache('v2', scope())).toBeNull();
   });
 
   it('returns false when storage write fails', () => {
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('QuotaExceededError');
     });
-    expect(saveFieldVisitCache(minimalDetail())).toBe(false);
+    expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(false);
     spy.mockRestore();
+  });
+
+  it('rejects and clears same-org cache from a different user', () => {
+    expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(true);
+
+    expect(loadFieldVisitCache('v1', scope({ viewerUserId: 'u9' }))).toBeNull();
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
+  it('rejects and clears cross-org cache reuse', () => {
+    expect(saveFieldVisitCache(minimalDetail(), scope())).toBe(true);
+
+    expect(loadFieldVisitCache('v1', scope({ organizationId: 'o9' }))).toBeNull();
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
+  it('rejects and clears cache whose embedded visit id mismatches the key', () => {
+    localStorage.setItem('scc.fieldVisitCache.v1.v1', JSON.stringify({
+      version: 2,
+      visitId: 'v1',
+      organizationId: 'o1',
+      viewerUserId: 'u1',
+      detail: minimalDetail({
+        visit: minimalVisit({ id: 'v2' }),
+      }),
+    }));
+
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
+  it('does not save cache entries without full viewer scope', () => {
+    expect(saveFieldVisitCache(minimalDetail(), scope({ viewerUserId: null }))).toBe(false);
+    expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
   });
 });

@@ -48,6 +48,7 @@ const GovernanceIssuesPage = lazyRoute(() => import('@/pages/GovernanceIssuesPag
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
 const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
+const AUDIT_LOG_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
 
 /**
  * Page loading fallback — matches Living Crystal design system
@@ -73,7 +74,12 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Toaster
         position="top-right"
         toastOptions={{
@@ -178,9 +184,11 @@ export function App() {
           path="/admin/audit-log"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><AuditLogPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={AUDIT_LOG_ROUTE_ROLES}>
+                <AppShell>
+                  <LazyPage><AuditLogPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />

@@ -33,7 +33,7 @@ export function useUserProfile() {
           .from('user_profiles')
           .select('id, email, first_name, last_name, organization_id, created_at')
           .eq('id', user!.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('[profile] Failed to fetch profile:', error.message);

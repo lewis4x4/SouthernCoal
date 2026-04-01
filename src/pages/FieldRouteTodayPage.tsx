@@ -19,11 +19,12 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { mapsDirUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import {
   fieldRouteCacheMatchesView,
-  loadFieldRouteCacheFromIdb,
+  loadFieldRouteCacheFromIdbMatching,
   loadFieldRouteCacheMatching,
   saveFieldRouteCacheDual,
   type FieldRouteCachePayload,
@@ -67,6 +68,7 @@ function sortVisitsForRoute(a: FieldVisitListItem, b: FieldVisitListItem) {
 
 export function FieldRouteTodayPage() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { getEffectiveRole } = usePermissions();
   const role = getEffectiveRole();
   const canSeeOrgWide = MANAGER_ROLES.includes(role);
@@ -74,6 +76,7 @@ export function FieldRouteTodayPage() {
   const {
     visits,
     loading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
@@ -85,28 +88,30 @@ export function FieldRouteTodayPage() {
   const today = new Date().toISOString().slice(0, 10);
   const [routeDate, setRouteDate] = useState(today);
   const [scope, setScope] = useState<'mine' | 'org'>(canSeeOrgWide ? 'org' : 'mine');
+  const [openStopsOnly, setOpenStopsOnly] = useState(false);
   const [outfallCoords, setOutfallCoords] = useState<Record<string, { lat: number; lng: number }>>({});
   const [idbRouteSnapshot, setIdbRouteSnapshot] = useState<FieldRouteCachePayload | null>(null);
   const lastAutoSavedKeyRef = useRef<string | null>(null);
 
   const cacheViewerId = scope === 'mine' ? user?.id ?? null : null;
+  const cacheOrganizationId = profile?.organization_id ?? null;
 
   useEffect(() => {
     if (!canSeeOrgWide) setScope('mine');
   }, [canSeeOrgWide]);
 
   const routeCache = useMemo(
-    () => loadFieldRouteCacheMatching(routeDate, scope, cacheViewerId),
-    [routeDate, scope, cacheViewerId],
+    () => loadFieldRouteCacheMatching(routeDate, scope, cacheViewerId, cacheOrganizationId),
+    [routeDate, scope, cacheViewerId, cacheOrganizationId],
   );
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const p = await loadFieldRouteCacheFromIdb();
+        const p = await loadFieldRouteCacheFromIdbMatching(routeDate, scope, cacheViewerId, cacheOrganizationId);
         if (cancelled) return;
-        if (p && fieldRouteCacheMatchesView(p, routeDate, scope, cacheViewerId)) {
+        if (p && fieldRouteCacheMatchesView(p, routeDate, scope, cacheViewerId, cacheOrganizationId)) {
           setIdbRouteSnapshot(p);
         } else {
           setIdbRouteSnapshot(null);
@@ -121,7 +126,7 @@ export function FieldRouteTodayPage() {
     return () => {
       cancelled = true;
     };
-  }, [routeDate, scope, cacheViewerId]);
+  }, [routeDate, scope, cacheViewerId, cacheOrganizationId]);
 
   const effectiveRouteCache = useMemo(() => {
     if (idbRouteSnapshot) return idbRouteSnapshot;
@@ -146,7 +151,15 @@ export function FieldRouteTodayPage() {
     return effectiveRouteCache?.visits ?? [];
   }, [online, effectiveRouteCache, dayVisitsLive]);
 
-  const routeOutfallDayConflicts = useMemo(() => groupSameOutfallSameDay(dayVisits), [dayVisits]);
+  const displayDayVisits = useMemo(() => {
+    if (!openStopsOnly) return dayVisits;
+    return dayVisits.filter((v) => visitNeedsDisposition(v));
+  }, [dayVisits, openStopsOnly]);
+
+  const routeOutfallDayConflicts = useMemo(
+    () => groupSameOutfallSameDay(displayDayVisits),
+    [displayDayVisits],
+  );
 
   useEffect(() => {
     if (!online && effectiveRouteCache?.outfallCoords) {
@@ -194,16 +207,19 @@ export function FieldRouteTodayPage() {
   }, [dayVisits, loadCoords]);
 
   const routeLineCoords = useMemo(() => {
-    const ordered = [...dayVisits].sort(sortVisitsForRoute);
+    const ordered = [...displayDayVisits].sort(sortVisitsForRoute);
     const coords: Array<{ lat: number; lng: number }> = [];
     for (const v of ordered) {
       const c = outfallCoords[v.outfall_id];
       if (c) coords.push(c);
     }
     return coords;
-  }, [dayVisits, outfallCoords]);
+  }, [displayDayVisits, outfallCoords]);
 
-  const completedCount = dayVisits.filter((v) => v.visit_status === 'completed').length;
+  const completedCount = useMemo(
+    () => displayDayVisits.filter((v) => v.visit_status === 'completed').length,
+    [displayDayVisits],
+  );
   const openStopsCount = useMemo(
     () => dayVisits.filter((v) => visitNeedsDisposition(v)).length,
     [dayVisits],
@@ -215,6 +231,14 @@ export function FieldRouteTodayPage() {
   const accessIssueOutcomeCount = useMemo(
     () => dayVisits.filter((v) => v.outcome === 'access_issue').length,
     [dayVisits],
+  );
+  const displayForceMajeureCount = useMemo(
+    () => displayDayVisits.filter((v) => v.potential_force_majeure).length,
+    [displayDayVisits],
+  );
+  const displayAccessIssueCount = useMemo(
+    () => displayDayVisits.filter((v) => v.outcome === 'access_issue').length,
+    [displayDayVisits],
   );
   const fullRouteHref = routeLineCoords.length >= 2 ? mapsDirUrl(routeLineCoords) : '';
 
@@ -236,14 +260,21 @@ export function FieldRouteTodayPage() {
           if (c) coords[id] = c;
         }
         const visitsForCache = await enrichFieldVisitsWithScheduleHints(dayVisitsLive);
+        if (!cacheOrganizationId) {
+          if (showToast) {
+            toast.error('Could not save offline copy without an organization context');
+          }
+          return;
+        }
         const { ok, snapshot } = await saveFieldRouteCacheDual({
           routeDate,
+          organizationId: cacheOrganizationId,
           scope,
           viewerUserId: cacheViewerId,
           visits: visitsForCache,
           outfallCoords: coords,
         });
-        if (fieldRouteCacheMatchesView(snapshot, routeDate, scope, cacheViewerId)) {
+        if (fieldRouteCacheMatchesView(snapshot, routeDate, scope, cacheViewerId, cacheOrganizationId)) {
           setIdbRouteSnapshot(snapshot);
         }
         if (ok) {
@@ -260,7 +291,7 @@ export function FieldRouteTodayPage() {
         }
       }
     },
-    [cacheViewerId, dayVisitsLive, online, outfallCoords, routeDate, scope],
+    [cacheOrganizationId, cacheViewerId, dayVisitsLive, online, outfallCoords, routeDate, scope],
   );
 
   function handleSaveOffline() {
@@ -270,6 +301,7 @@ export function FieldRouteTodayPage() {
   useEffect(() => {
     if (!online || loading) return;
     const cacheKey = JSON.stringify({
+      organizationId: cacheOrganizationId,
       routeDate,
       scope,
       viewerUserId: cacheViewerId,
@@ -281,7 +313,7 @@ export function FieldRouteTodayPage() {
     if (lastAutoSavedKeyRef.current === cacheKey) return;
     void persistOfflineCopy(false);
     lastAutoSavedKeyRef.current = cacheKey;
-  }, [cacheViewerId, dayVisitsLive, loading, online, outfallCoords, persistOfflineCopy, routeDate, scope]);
+  }, [cacheOrganizationId, cacheViewerId, dayVisitsLive, loading, online, outfallCoords, persistOfflineCopy, routeDate, scope]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -301,6 +333,7 @@ export function FieldRouteTodayPage() {
 
       <FieldDataSyncBar
         loading={loading}
+        lastSyncedAt={lastSyncedAt}
         pendingOutboundCount={outboundPendingCount}
         queueFlushDiagnostic={outboundQueueDiagnostic}
         onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
@@ -481,6 +514,33 @@ export function FieldRouteTodayPage() {
               </div>
             </div>
           )}
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-text-muted">List</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setOpenStopsOnly(false)}
+                className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                  !openStopsOnly
+                    ? 'bg-emerald-500/20 text-emerald-200'
+                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                }`}
+              >
+                All stops
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenStopsOnly(true)}
+                className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                  openStopsOnly
+                    ? 'bg-emerald-500/20 text-emerald-200'
+                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                }`}
+              >
+                Open only
+              </button>
+            </div>
+          </div>
           {online && (
             <button
               type="button"
@@ -495,18 +555,21 @@ export function FieldRouteTodayPage() {
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-muted">
           <span className="inline-flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-emerald-300" />
-            {completedCount} / {dayVisits.length} completed
+            {completedCount} / {displayDayVisits.length} completed
+            {openStopsOnly && dayVisits.length > 0 ? (
+              <span className="text-text-muted/80">({dayVisits.length} on route)</span>
+            ) : null}
           </span>
-          {forceMajeureFlaggedCount > 0 && (
+          {displayForceMajeureCount > 0 && (
             <span className="inline-flex items-center gap-2 text-amber-200/90">
               <AlertTriangle className="h-4 w-4 text-amber-300" aria-hidden />
-              {forceMajeureFlaggedCount} FM candidate{forceMajeureFlaggedCount === 1 ? '' : 's'}
+              {displayForceMajeureCount} FM candidate{displayForceMajeureCount === 1 ? '' : 's'}
             </span>
           )}
-          {accessIssueOutcomeCount > 0 && (
+          {displayAccessIssueCount > 0 && (
             <span className="inline-flex items-center gap-2 text-rose-200/90">
               <ShieldAlert className="h-4 w-4 text-rose-300" aria-hidden />
-              {accessIssueOutcomeCount} access issue{accessIssueOutcomeCount === 1 ? '' : 's'}
+              {displayAccessIssueCount} access issue{displayAccessIssueCount === 1 ? '' : 's'}
             </span>
           )}
           {fullRouteHref && (
@@ -540,9 +603,16 @@ export function FieldRouteTodayPage() {
             </p>
           </SpotlightCard>
         ) : null
+      ) : openStopsOnly && displayDayVisits.length === 0 ? (
+        <SpotlightCard className="p-8">
+          <p className="text-sm text-text-muted">
+            No open stops for this date{scope === 'mine' ? ' assigned to you' : ''} — every visit on the list has a
+            disposition. Switch to &quot;All stops&quot; to review completed work.
+          </p>
+        </SpotlightCard>
       ) : (
         <ol className="space-y-3">
-          {dayVisits.map((visit) => {
+          {displayDayVisits.map((visit) => {
             const coord = outfallCoords[visit.outfall_id];
             const needsDisposition = visitNeedsDisposition(visit);
             return (

@@ -3,8 +3,9 @@ import type { FieldVisitListItem } from '@/types';
 const STORAGE_KEY = 'scc.fieldRouteCache.v1';
 
 export type FieldRouteCachePayload = {
-  version: 1;
+  version: 2;
   routeDate: string;
+  organizationId: string;
   scope: 'mine' | 'org';
   /** User id when scope is mine; null for org-wide cache */
   viewerUserId: string | null;
@@ -19,8 +20,9 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function validateFieldRouteCacheRecord(data: unknown): FieldRouteCachePayload | null {
   if (!isRecord(data)) return null;
-  if (data.version !== 1) return null;
+  if (data.version !== 2) return null;
   if (typeof data.routeDate !== 'string' || typeof data.scope !== 'string') return null;
+  if (typeof data.organizationId !== 'string' || data.organizationId.trim() === '') return null;
   if (data.scope !== 'mine' && data.scope !== 'org') return null;
   if (!Array.isArray(data.visits)) return null;
   if (typeof data.savedAt !== 'string') return null;
@@ -40,15 +42,17 @@ function parsePayload(raw: string | null): FieldRouteCachePayload | null {
 
 function toFullPayload(payload: {
   routeDate: string;
+  organizationId: string;
   scope: 'mine' | 'org';
   viewerUserId: string | null;
   visits: FieldVisitListItem[];
   outfallCoords: Record<string, { lat: number; lng: number }>;
 }): FieldRouteCachePayload {
   return {
-    version: 1,
+    version: 2,
     savedAt: new Date().toISOString(),
     routeDate: payload.routeDate,
+    organizationId: payload.organizationId,
     scope: payload.scope,
     viewerUserId: payload.scope === 'mine' ? payload.viewerUserId : null,
     visits: payload.visits,
@@ -96,13 +100,32 @@ export async function loadFieldRouteCacheFromIdb(): Promise<FieldRouteCachePaylo
         tx.oncomplete = () => res();
         tx.onerror = () => rej(tx.error ?? new Error('IDB tx failed'));
       });
-      return validateFieldRouteCacheRecord(raw);
+      const payload = validateFieldRouteCacheRecord(raw);
+      if (raw != null && !payload) {
+        void clearFieldRouteCacheFromIdb();
+      }
+      return payload;
     } finally {
       db.close();
     }
   } catch {
     return null;
   }
+}
+
+export async function loadFieldRouteCacheFromIdbMatching(
+  routeDate: string,
+  scope: 'mine' | 'org',
+  viewerUserId: string | null,
+  organizationId: string | null,
+): Promise<FieldRouteCachePayload | null> {
+  const payload = await loadFieldRouteCacheFromIdb();
+  if (!payload) return null;
+  if (!fieldRouteCacheMatchesView(payload, routeDate, scope, viewerUserId, organizationId)) {
+    await clearFieldRouteCacheFromIdb();
+    return null;
+  }
+  return payload;
 }
 
 export async function saveFieldRouteCacheToIdb(full: FieldRouteCachePayload): Promise<boolean> {
@@ -160,8 +183,11 @@ export function fieldRouteCacheMatchesView(
   routeDate: string,
   scope: 'mine' | 'org',
   viewerUserId: string | null,
+  organizationId: string | null,
 ): boolean {
+  if (!organizationId) return false;
   if (p.routeDate !== routeDate || p.scope !== scope) return false;
+  if (p.organizationId !== organizationId) return false;
   if (scope === 'mine' && p.viewerUserId !== viewerUserId) return false;
   return true;
 }
@@ -172,6 +198,7 @@ export function fieldRouteCacheMatchesView(
  */
 export async function saveFieldRouteCacheDual(payload: {
   routeDate: string;
+  organizationId: string;
   scope: 'mine' | 'org';
   viewerUserId: string | null;
   visits: FieldVisitListItem[];
@@ -194,7 +221,12 @@ export async function saveFieldRouteCacheDual(payload: {
 export function loadFieldRouteCache(): FieldRouteCachePayload | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    return parsePayload(localStorage.getItem(STORAGE_KEY));
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const payload = parsePayload(raw);
+    if (raw != null && !payload) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    return payload;
   } catch {
     return null;
   }
@@ -204,17 +236,21 @@ export function loadFieldRouteCacheMatching(
   routeDate: string,
   scope: 'mine' | 'org',
   viewerUserId: string | null,
+  organizationId: string | null,
 ): FieldRouteCachePayload | null {
   const p = loadFieldRouteCache();
   if (!p) return null;
-  if (p.routeDate !== routeDate || p.scope !== scope) return null;
-  if (scope === 'mine' && p.viewerUserId !== viewerUserId) return null;
+  if (!fieldRouteCacheMatchesView(p, routeDate, scope, viewerUserId, organizationId)) {
+    clearFieldRouteCache();
+    return null;
+  }
   return p;
 }
 
 /** Returns false if localStorage save fails. IndexedDB mirror is attempted in the background. */
 export function saveFieldRouteCache(payload: {
   routeDate: string;
+  organizationId: string;
   scope: 'mine' | 'org';
   viewerUserId: string | null;
   visits: FieldVisitListItem[];
@@ -254,13 +290,32 @@ export function findVisitInFieldRouteCache(visitId: string): FieldVisitListItem 
   return row ?? null;
 }
 
+function matchesOfflineVisitContext(
+  payload: FieldRouteCachePayload,
+  row: FieldVisitListItem,
+  context?: { viewerUserId?: string | null; organizationId?: string | null },
+): boolean {
+  if (!context) return true;
+  if (context.organizationId && payload.organizationId !== context.organizationId) return false;
+  if (context.organizationId && row.organization_id !== context.organizationId) return false;
+  if (payload.scope === 'mine' && payload.viewerUserId !== (context.viewerUserId ?? null)) return false;
+  return true;
+}
+
 /** Prefer IndexedDB snapshot, then localStorage — for visit bootstrap when LS missed or quota failed. */
-export async function findVisitInFieldRouteCacheAsync(visitId: string): Promise<FieldVisitListItem | null> {
+export async function findVisitInFieldRouteCacheAsync(
+  visitId: string,
+  context?: { viewerUserId?: string | null; organizationId?: string | null },
+): Promise<FieldVisitListItem | null> {
   if (!visitId) return null;
   const idbPayload = await loadFieldRouteCacheFromIdb();
   if (idbPayload?.visits?.length) {
     const row = idbPayload.visits.find((v) => v?.id === visitId);
-    if (row) return row;
+    if (row && matchesOfflineVisitContext(idbPayload, row, context)) return row;
   }
-  return findVisitInFieldRouteCache(visitId);
+  const localPayload = loadFieldRouteCache();
+  if (!localPayload?.visits?.length) return null;
+  const row = localPayload.visits.find((visit) => visit?.id === visitId);
+  if (!row || !matchesOfflineVisitContext(localPayload, row, context)) return null;
+  return row;
 }

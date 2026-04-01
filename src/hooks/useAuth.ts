@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import { clearFieldRouteCache } from '@/lib/fieldRouteLocalCache';
+import { clearAllFieldVisitCaches } from '@/lib/fieldVisitLocalCache';
 
 interface AuthState {
   user: User | null;
@@ -18,7 +20,10 @@ export function useAuth() {
   });
 
   useEffect(() => {
+    let previousUserId: string | null = null;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      previousUserId = session?.user?.id ?? null;
       setState({
         user: session?.user ?? null,
         session,
@@ -33,6 +38,16 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUserId = session?.user?.id ?? null;
+      if (previousUserId && previousUserId !== nextUserId) {
+        clearFieldRouteCache();
+        clearAllFieldVisitCaches();
+      }
+      if (previousUserId && nextUserId == null) {
+        clearFieldRouteCache();
+        clearAllFieldVisitCaches();
+      }
+      previousUserId = nextUserId;
       setState({
         user: session?.user ?? null,
         session,
@@ -50,6 +65,8 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
+    clearFieldRouteCache();
+    clearAllFieldVisitCaches();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { pathToFileURL } from 'node:url';
 import type { FieldVisitListItem } from '@/types';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import type { FieldMeasurementRecord } from '@/types';
@@ -9,6 +10,7 @@ import {
   enqueueFieldMeasurementInsert,
   enqueueFieldVisitStart,
   enqueueOutletInspectionUpsert,
+  countOutboundQueueOpsForVisit,
   getFieldOutboundQueue,
   getFieldOutboundQueueLength,
   getPendingMeasurementInsertsForVisit,
@@ -22,13 +24,28 @@ import {
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
 
+type NavigatorLocks = {
+  request: <T>(name: string, callback: () => Promise<T> | T) => Promise<T>;
+};
+
+function setNavigatorLocks(locks: NavigatorLocks | undefined) {
+  Object.defineProperty(navigator, 'locks', {
+    value: locks,
+    configurable: true,
+    writable: true,
+  });
+}
+
 describe('fieldOutboundQueue', () => {
   beforeEach(() => {
     localStorage.clear();
+    setNavigatorLocks(undefined);
   });
 
   afterEach(() => {
     localStorage.clear();
+    setNavigatorLocks(undefined);
+    vi.restoreAllMocks();
   });
 
   it('enqueue and read queue', () => {
@@ -48,6 +65,27 @@ describe('fieldOutboundQueue', () => {
     expect(q[0]?.kind === 'field_measurement_insert' && q[0].parameterName).toBe('pH');
     expect(getPendingMeasurementInsertsForVisit('v1')).toHaveLength(1);
     expect(getPendingMeasurementInsertsForVisit('other')).toHaveLength(0);
+  });
+
+  it('countOutboundQueueOpsForVisit counts ops for visit', () => {
+    enqueueFieldMeasurementInsert({
+      id: 'a1',
+      visitId: 'v1',
+      parameterName: 'pH',
+      measuredValue: 7,
+      measuredText: null,
+      unit: null,
+    });
+    enqueueFieldVisitStart({
+      id: 's1',
+      visitId: 'v2',
+      startedAt: new Date().toISOString(),
+      latitude: 1,
+      longitude: 2,
+    });
+    expect(countOutboundQueueOpsForVisit('v1')).toBe(1);
+    expect(countOutboundQueueOpsForVisit('v2')).toBe(1);
+    expect(countOutboundQueueOpsForVisit('v3')).toBe(0);
   });
 
   it('optimisticMeasurementsFromQueue builds records', () => {
@@ -98,6 +136,85 @@ describe('fieldOutboundQueue', () => {
     expect(getFieldOutboundQueueLength()).toBe(0);
   });
 
+  it('processFieldOutboundQueue preserves ops enqueued during an in-flight flush', async () => {
+    enqueueFieldMeasurementInsert({
+      id: 'existing-op',
+      visitId: 'v1',
+      parameterName: 'A',
+      measuredValue: 1,
+      measuredText: null,
+      unit: null,
+    });
+
+    const insert = vi.fn().mockImplementation(async () => {
+      enqueueFieldMeasurementInsert({
+        id: 'new-op',
+        visitId: 'v2',
+        parameterName: 'B',
+        measuredValue: 2,
+        measuredText: null,
+        unit: null,
+      });
+      return { error: null };
+    });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const fake = {
+      from: () => ({ insert, upsert }),
+    } as unknown as SupabaseClient;
+
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.failed).toBeNull();
+    expect(result.processed).toBe(2);
+    expect(getFieldOutboundQueueLength()).toBe(0);
+    expect(insert).toHaveBeenCalledTimes(2);
+  });
+
+  it('processFieldOutboundQueue prevents duplicate writes across overlapping runtimes', async () => {
+    enqueueFieldMeasurementInsert({
+      id: 'shared-op',
+      visitId: 'v1',
+      parameterName: 'A',
+      measuredValue: 1,
+      measuredText: null,
+      unit: null,
+    });
+
+    let lockChain = Promise.resolve();
+    const requestImpl: NavigatorLocks['request'] = async <T,>(
+      _name: string,
+      callback: () => Promise<T> | T,
+    ) => {
+      const run = lockChain.then(() => callback());
+      lockChain = run.then(() => undefined, () => undefined);
+      return run;
+    };
+    const request = vi.fn(requestImpl) as NavigatorLocks['request'];
+    setNavigatorLocks({ request });
+
+    const runtimeAPath = pathToFileURL(`${import.meta.dirname}/../fieldOutboundQueue.ts`).href;
+    const runtimeBPath = pathToFileURL(`${import.meta.dirname}/../fieldOutboundQueue.ts`).href;
+    const runtimeA = await import(`${runtimeAPath}?runtime=a`);
+    const runtimeB = await import(`${runtimeBPath}?runtime=b`);
+
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const fake = {
+      from: () => ({ insert, upsert }),
+    } as unknown as SupabaseClient;
+
+    const [resultA, resultB] = await Promise.all([
+      runtimeA.processFieldOutboundQueue(fake),
+      runtimeB.processFieldOutboundQueue(fake),
+    ]);
+
+    expect(resultA.failed).toBeNull();
+    expect(resultB.failed).toBeNull();
+    expect(resultA.processed + resultB.processed).toBe(1);
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(getFieldOutboundQueueLength()).toBe(0);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
   it('processFieldOutboundQueue stops on insert error and leaves queue intact', async () => {
     enqueueFieldMeasurementInsert({
       id: '1',
@@ -130,7 +247,6 @@ describe('fieldOutboundQueue', () => {
       unit: null,
     });
     expect(ok).toBe(false);
-    vi.restoreAllMocks();
   });
 
   it('detects transient outbound failures that should queue locally', () => {

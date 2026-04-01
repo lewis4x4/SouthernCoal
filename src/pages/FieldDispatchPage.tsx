@@ -49,6 +49,7 @@ export function FieldDispatchPage() {
     users,
     visits,
     loading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
@@ -56,7 +57,9 @@ export function FieldDispatchPage() {
     createVisit,
   } = useFieldOps();
 
-  const [queueFilter, setQueueFilter] = useState<'all' | 'mine' | 'today' | 'overdue'>('all');
+  const [queueFilter, setQueueFilter] = useState<
+    'all' | 'mine' | 'today' | 'needs_outcome' | 'overdue'
+  >('all');
   const [queueSort, setQueueSort] = useState<'newest' | 'route_order'>('newest');
 
   const [permitId, setPermitId] = useState('');
@@ -80,6 +83,9 @@ export function FieldDispatchPage() {
     }
     if (queueFilter === 'today') {
       list = list.filter((visit) => visit.scheduled_date === todayStr);
+    }
+    if (queueFilter === 'needs_outcome') {
+      list = list.filter((visit) => visitNeedsDisposition(visit));
     }
     if (queueFilter === 'overdue') {
       list = list.filter((visit) => visitIsOpenOverdue(visit, todayStr));
@@ -169,6 +175,7 @@ export function FieldDispatchPage() {
 
       <FieldDataSyncBar
         loading={loading}
+        lastSyncedAt={lastSyncedAt}
         pendingOutboundCount={outboundPendingCount}
         queueFlushDiagnostic={outboundQueueDiagnostic}
         onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
@@ -281,7 +288,7 @@ export function FieldDispatchPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-medium text-text-muted">Queue</span>
           <div className="flex flex-wrap gap-2">
-            {(['all', 'mine', 'today', 'overdue'] as const).map((key) => (
+            {(['all', 'mine', 'today', 'needs_outcome', 'overdue'] as const).map((key) => (
               <button
                 key={key}
                 type="button"
@@ -298,7 +305,9 @@ export function FieldDispatchPage() {
                     ? 'My assignments'
                     : key === 'today'
                       ? 'Today'
-                      : 'Overdue open'}
+                      : key === 'needs_outcome'
+                        ? 'Needs outcome'
+                        : 'Overdue open'}
               </button>
             ))}
           </div>

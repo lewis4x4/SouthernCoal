@@ -35,6 +35,7 @@ import {
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
+import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
 import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import type { FieldVisitOutcome, GovernanceIssueRecord, OutletInspectionRecord } from '@/types';
@@ -76,6 +77,7 @@ export function FieldVisitPage() {
     detail,
     detailLoading,
     loading: fieldQueueLoading,
+    lastSyncedAt,
     outboundPendingCount,
     outboundQueueDiagnostic,
     clearOutboundQueueDiagnostic,
@@ -125,6 +127,7 @@ export function FieldVisitPage() {
   const [saving, setSaving] = useState(false);
   const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
   const [evidenceUploadFailures, setEvidenceUploadFailures] = useState<FieldEvidenceDraftSyncFailure[]>([]);
+  const [loadAttempted, setLoadAttempted] = useState(false);
 
   const refreshPendingEvidenceDrafts = useCallback(async (visitId: string) => {
     try {
@@ -136,9 +139,11 @@ export function FieldVisitPage() {
 
   /** Phase 4: same path as sync bar — flush queue + evidence drafts, reload visit failures */
   const handleFieldSyncRefresh = useCallback(async () => {
-    if (!id) return;
-    await Promise.all([refreshFieldQueue(), loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
+    if (!id) return { success: false };
+    const fieldQueueResult = await refreshFieldQueue();
+    await Promise.all([loadVisitDetails(id), refreshPendingEvidenceDrafts(id)]);
     setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
+    return fieldQueueResult;
   }, [id, loadVisitDetails, refreshFieldQueue, refreshPendingEvidenceDrafts]);
 
   const handleCopySamplingEventId = useCallback(async () => {
@@ -154,9 +159,12 @@ export function FieldVisitPage() {
 
   useEffect(() => {
     if (id) {
+      setLoadAttempted(false);
       loadVisitDetails(id).catch((error) => {
         console.error('[FieldVisitPage] Failed to load visit details:', error);
         toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
+      }).finally(() => {
+        setLoadAttempted(true);
       });
       void refreshPendingEvidenceDrafts(id);
       setEvidenceUploadFailures(readPersistedFieldEvidenceSyncFailuresForVisit(id));
@@ -219,6 +227,13 @@ export function FieldVisitPage() {
     const q = [detail.visit.permit_number, detail.visit.outfall_number].filter(Boolean).join(' ');
     return mapsSearchQueryUrl(q);
   }, [detail]);
+
+  const visitOutboundQueuedCount = useMemo(() => {
+    // Re-run when useFieldOps refreshes queue length (same-tab enqueue/flush).
+    void outboundPendingCount;
+    if (!id) return 0;
+    return countOutboundQueueOpsForVisit(id);
+  }, [id, outboundPendingCount]);
 
   const photoCount = useMemo(
     () => detail?.evidence.filter((asset) => asset.evidence_type === 'photo').length ?? 0,
@@ -500,10 +515,56 @@ export function FieldVisitPage() {
     }
   }
 
-  if (detailLoading || !detail) {
+  if (detailLoading || (!loadAttempted && !detail)) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
+            <div>
+              <h1 className="text-lg font-semibold text-text-primary">Field visit unavailable</h1>
+              <p className="mt-2 text-sm text-text-secondary">
+                We could not load this visit after checking the scoped cache, saved route shell, and live data.
+                Refresh the field queue or go back and retry once you have the right org/user context or a better connection.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  to="/field/dispatch"
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                >
+                  Back to field queue
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!id) return;
+                    setLoadAttempted(false);
+                    loadVisitDetails(id)
+                      .catch((error) => {
+                        console.error('[FieldVisitPage] Failed to retry visit details:', error);
+                        toast.error(error instanceof Error ? error.message : 'Failed to load field visit');
+                      })
+                      .finally(() => {
+                        setLoadAttempted(true);
+                      });
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-100 transition-colors hover:bg-red-500/20"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  Retry visit load
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -572,6 +633,7 @@ export function FieldVisitPage() {
       {id && (
         <FieldDataSyncBar
           loading={fieldQueueLoading || detailLoading}
+          lastSyncedAt={lastSyncedAt}
           pendingOutboundCount={outboundPendingCount}
           queueFlushDiagnostic={outboundQueueDiagnostic}
           onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
@@ -579,6 +641,24 @@ export function FieldVisitPage() {
           auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
         />
       )}
+
+      {visitOutboundQueuedCount > 0 ? (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
+          <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
+          <div>
+            <p className="font-medium text-amber-50">
+              {visitOutboundQueuedCount} queued action{visitOutboundQueuedCount === 1 ? '' : 's'} for this visit
+            </p>
+            <p className="mt-1 text-xs text-amber-200/85">
+              Saved on this device; uploads when you are online. Use Refresh above to retry the outbound queue.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {visitNeedsDisposition(detail.visit) && (
         <div

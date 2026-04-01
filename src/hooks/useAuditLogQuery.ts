@@ -26,13 +26,20 @@ export interface AuditLogFilters {
 
 const PAGE_SIZE = 50;
 
-export function useAuditLogQuery(filters: AuditLogFilters) {
+export function useAuditLogQuery(filters: AuditLogFilters, enabled = true) {
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
   const fetchPage = useCallback(async (offset: number, append: boolean) => {
+    if (!enabled) {
+      setEntries([]);
+      setHasMore(false);
+      setTotalCount(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     let query = supabase
       .from('audit_log')
@@ -69,7 +76,7 @@ export function useAuditLogQuery(filters: AuditLogFilters) {
     setHasMore(rows.length === PAGE_SIZE);
     if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, [filters.dateFrom, filters.dateTo, filters.userId, filters.module, filters.action]);
+  }, [enabled, filters.dateFrom, filters.dateTo, filters.userId, filters.module, filters.action]);
 
   // Reset and fetch first page when filters change
   useEffect(() => {
