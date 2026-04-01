@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getFieldVisitCompletionChecklistItems,
   validateFieldVisitCompletion,
   validateFieldVisitStartCoordinates,
 } from '@/lib/fieldVisitCompletionValidation';
@@ -14,7 +15,9 @@ const base = () => ({
   outcome: 'sample_collected' as const,
   cocContainerIdTrimmed: 'BTL-001',
   cocPreservativeConfirmed: true,
-  totalPhotoCount: 0,
+  syncedPhotoCount: 0,
+  pendingPhotoCount: 0,
+  isOnline: true,
   noDischargeNarrativeTrimmed: '',
   noDischargeObstructionObserved: false,
   noDischargeObstructionDetailsTrimmed: '',
@@ -90,23 +93,59 @@ describe('validateFieldVisitCompletion', () => {
     if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.sampleCocPreservativeRequired);
   });
 
-  it('fails no_discharge without photo', () => {
+  it('fails no_discharge online without synced photo', () => {
     const r = validateFieldVisitCompletion({
       ...base(),
       outcome: 'no_discharge',
-      totalPhotoCount: 0,
+      syncedPhotoCount: 0,
+      pendingPhotoCount: 0,
+      isOnline: true,
       noDischargeNarrativeTrimmed: 'Dry channel.',
+      cocContainerIdTrimmed: '',
+      cocPreservativeConfirmed: false,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.noDischargePhotoRequired);
   });
 
-  it('passes no_discharge with photo and narrative', () => {
+  it('fails no_discharge online when only pending photos (RPC needs synced rows)', () => {
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      outcome: 'no_discharge',
+      syncedPhotoCount: 0,
+      pendingPhotoCount: 1,
+      isOnline: true,
+      noDischargeNarrativeTrimmed: 'Dry channel.',
+      cocContainerIdTrimmed: '',
+      cocPreservativeConfirmed: false,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.photoSyncBeforeCompleteOnline);
+  });
+
+  it('passes no_discharge offline with only pending photos', () => {
     expect(
       validateFieldVisitCompletion({
         ...base(),
         outcome: 'no_discharge',
-        totalPhotoCount: 1,
+        syncedPhotoCount: 0,
+        pendingPhotoCount: 1,
+        isOnline: false,
+        noDischargeNarrativeTrimmed: 'No flow observed.',
+        cocContainerIdTrimmed: '',
+        cocPreservativeConfirmed: false,
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it('passes no_discharge online with synced photo and narrative', () => {
+    expect(
+      validateFieldVisitCompletion({
+        ...base(),
+        outcome: 'no_discharge',
+        syncedPhotoCount: 1,
+        pendingPhotoCount: 0,
+        isOnline: true,
         noDischargeNarrativeTrimmed: 'No flow observed.',
         cocContainerIdTrimmed: '',
         cocPreservativeConfirmed: false,
@@ -118,7 +157,8 @@ describe('validateFieldVisitCompletion', () => {
     const r = validateFieldVisitCompletion({
       ...base(),
       outcome: 'no_discharge',
-      totalPhotoCount: 1,
+      syncedPhotoCount: 1,
+      isOnline: true,
       noDischargeNarrativeTrimmed: 'x',
       noDischargeObstructionObserved: true,
       noDischargeObstructionDetailsTrimmed: '',
@@ -131,11 +171,13 @@ describe('validateFieldVisitCompletion', () => {
     }
   });
 
-  it('fails access_issue without photo', () => {
+  it('fails access_issue online without photo', () => {
     const r = validateFieldVisitCompletion({
       ...base(),
       outcome: 'access_issue',
-      totalPhotoCount: 0,
+      syncedPhotoCount: 0,
+      pendingPhotoCount: 0,
+      isOnline: true,
       accessIssueNarrativeTrimmed: 'Gate locked.',
       cocContainerIdTrimmed: '',
       cocPreservativeConfirmed: false,
@@ -148,12 +190,37 @@ describe('validateFieldVisitCompletion', () => {
     const r = validateFieldVisitCompletion({
       ...base(),
       outcome: 'access_issue',
-      totalPhotoCount: 1,
+      syncedPhotoCount: 1,
+      isOnline: true,
       accessIssueNarrativeTrimmed: '',
       cocContainerIdTrimmed: '',
       cocPreservativeConfirmed: false,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.accessIssueNarrativeRequired);
+  });
+});
+
+describe('getFieldVisitCompletionChecklistItems', () => {
+  it('marks photo item done when online and synced photos exist', () => {
+    const items = getFieldVisitCompletionChecklistItems({
+      visitStarted: true,
+      completeLatitude: 38,
+      completeLongitude: -81,
+      inspectionFlowStatus: 'flowing',
+      outletInspectionObstructed: false,
+      inspectionObstructionDetailsTrimmed: '',
+      outcome: 'no_discharge',
+      cocContainerIdTrimmed: '',
+      cocPreservativeConfirmed: false,
+      syncedPhotoCount: 1,
+      pendingPhotoCount: 0,
+      isOnline: true,
+      noDischargeNarrativeTrimmed: 'ok',
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetailsTrimmed: '',
+      accessIssueNarrativeTrimmed: '',
+    });
+    expect(items.find((i) => i.id === 'photos')?.done).toBe(true);
   });
 });

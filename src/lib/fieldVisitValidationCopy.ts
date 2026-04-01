@@ -27,6 +27,10 @@ export const FIELD_VISIT_COPY = {
   noDischargePhotoRequired:
     'Add at least one site photo before completing a no-discharge visit. Photos support the no-discharge determination.',
 
+  /** Online complete: RPC counts only uploaded photos — drafts on device are not enough until they sync. */
+  photoSyncBeforeCompleteOnline:
+    'At least one photo must be uploaded to the server before completing online. Use Refresh in the sync bar if you have photos pending on this device, then try again.',
+
   noDischargeNarrativeRequired:
     'Enter a no-discharge narrative (what you observed and why there was no discharge). Narrative is required for this outcome.',
 

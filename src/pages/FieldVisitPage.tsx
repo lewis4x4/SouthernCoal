@@ -36,9 +36,11 @@ import {
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import {
+  getFieldVisitCompletionChecklistItems,
   validateFieldVisitCompletion,
   validateFieldVisitStartCoordinates,
 } from '@/lib/fieldVisitCompletionValidation';
+import { cn } from '@/lib/cn';
 import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
@@ -251,6 +253,57 @@ export function FieldVisitPage() {
     [pendingEvidenceDrafts],
   );
   const totalPhotoCount = photoCount + pendingPhotoCount;
+  const visitLocked = detail?.visit.visit_status === 'completed';
+  const outletInspectionObstructed =
+    inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
+
+  const isClientOnline = typeof navigator !== 'undefined' && navigator.onLine;
+
+  const visitStarted = Boolean(detail?.visit.started_at);
+  /** Ready to attempt Complete (excludes validation — user may still need outlet/COC/photos). */
+  const canAttemptComplete = visitStarted && !visitLocked;
+
+  const completionChecklistItems = useMemo(() => {
+    if (!detail) return [];
+    const lat = Number(completeCoords.latitude);
+    const lng = Number(completeCoords.longitude);
+    return getFieldVisitCompletionChecklistItems({
+      visitStarted,
+      completeLatitude: lat,
+      completeLongitude: lng,
+      inspectionFlowStatus: inspection.flow_status,
+      outletInspectionObstructed,
+      inspectionObstructionDetailsTrimmed: (inspection.obstruction_details ?? '').trim(),
+      outcome,
+      cocContainerIdTrimmed: cocContainerId.trim(),
+      cocPreservativeConfirmed,
+      syncedPhotoCount: photoCount,
+      pendingPhotoCount,
+      isOnline: isClientOnline,
+      noDischargeNarrativeTrimmed: noDischargeNarrative.trim(),
+      noDischargeObstructionObserved,
+      noDischargeObstructionDetailsTrimmed: noDischargeObstructionDetails.trim(),
+      accessIssueNarrativeTrimmed: accessIssueNarrative.trim(),
+    });
+  }, [
+    detail,
+    visitStarted,
+    completeCoords.latitude,
+    completeCoords.longitude,
+    inspection.flow_status,
+    inspection.obstruction_details,
+    outletInspectionObstructed,
+    outcome,
+    cocContainerId,
+    cocPreservativeConfirmed,
+    photoCount,
+    pendingPhotoCount,
+    isClientOnline,
+    noDischargeNarrative,
+    noDischargeObstructionObserved,
+    noDischargeObstructionDetails,
+    accessIssueNarrative,
+  ]);
   const evidenceFailureByDraftId = useMemo(() => {
     const m = new Map<string, string>();
     for (const f of evidenceUploadFailures) {
@@ -264,10 +317,6 @@ export function FieldVisitPage() {
       [],
     [detail?.measurements],
   );
-  const visitLocked = detail?.visit.visit_status === 'completed';
-
-  const outletInspectionObstructed =
-    inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
 
   const visitSiblingOutfallConflicts = useMemo(() => {
     if (!id || !detail) return [];
@@ -433,7 +482,9 @@ export function FieldVisitPage() {
       outcome,
       cocContainerIdTrimmed: cocContainerId.trim(),
       cocPreservativeConfirmed,
-      totalPhotoCount,
+      syncedPhotoCount: photoCount,
+      pendingPhotoCount,
+      isOnline: typeof navigator !== 'undefined' && navigator.onLine,
       noDischargeNarrativeTrimmed: noDischargeNarrative.trim(),
       noDischargeObstructionObserved,
       noDischargeObstructionDetailsTrimmed: noDischargeObstructionDetails.trim(),
@@ -651,6 +702,13 @@ export function FieldVisitPage() {
               and complete the visit so the route shows a clear outcome. Queued offline actions sync when you are back
               online.
             </p>
+            <p className="mt-2 text-xs text-cyan-200/70">
+              Use <strong className="font-medium text-cyan-100/90">Outlet Inspection</strong>,{' '}
+              <strong className="font-medium text-cyan-100/90">Chain of custody</strong> (if sampling),{' '}
+              <strong className="font-medium text-cyan-100/90">Evidence</strong>, and the{' '}
+              <strong className="font-medium text-cyan-100/90">Completion Gate</strong> checklist below — scroll on small
+              screens.
+            </p>
           </div>
         </div>
       )}
@@ -752,17 +810,25 @@ export function FieldVisitPage() {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
+              <label className="space-y-2" htmlFor="field-visit-start-lat">
                 <span className="text-xs font-medium text-text-muted">Start latitude</span>
                 <input
+                  id="field-visit-start-lat"
+                  name="field-visit-start-lat"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={startCoords.latitude}
                   onChange={(e) => setStartCoords((prev) => ({ ...prev, latitude: e.target.value }))}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
                 />
               </label>
-              <label className="space-y-2">
+              <label className="space-y-2" htmlFor="field-visit-start-lng">
                 <span className="text-xs font-medium text-text-muted">Start longitude</span>
                 <input
+                  id="field-visit-start-lng"
+                  name="field-visit-start-lng"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={startCoords.longitude}
                   onChange={(e) => setStartCoords((prev) => ({ ...prev, longitude: e.target.value }))}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
@@ -789,17 +855,25 @@ export function FieldVisitPage() {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
+              <label className="space-y-2" htmlFor="field-visit-complete-lat">
                 <span className="text-xs font-medium text-text-muted">Completion latitude</span>
                 <input
+                  id="field-visit-complete-lat"
+                  name="field-visit-complete-lat"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={completeCoords.latitude}
                   onChange={(e) => setCompleteCoords((prev) => ({ ...prev, latitude: e.target.value }))}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
                 />
               </label>
-              <label className="space-y-2">
+              <label className="space-y-2" htmlFor="field-visit-complete-lng">
                 <span className="text-xs font-medium text-text-muted">Completion longitude</span>
                 <input
+                  id="field-visit-complete-lng"
+                  name="field-visit-complete-lng"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={completeCoords.longitude}
                   onChange={(e) => setCompleteCoords((prev) => ({ ...prev, longitude: e.target.value }))}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
@@ -928,11 +1002,12 @@ export function FieldVisitPage() {
                     <span className="text-text-muted/70">(required if obstructed)</span>
                   )}
                 </span>
-                <input
+                <textarea
                   value={inspection.obstruction_details ?? ''}
                   onChange={(e) => setInspection((prev) => ({ ...prev, obstruction_details: e.target.value }))}
                   disabled={visitLocked}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                  rows={3}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
                 />
               </label>
             </div>
@@ -1046,6 +1121,8 @@ export function FieldVisitPage() {
               onChange={(e) => setMeasurementValue(e.target.value)}
               placeholder="Numeric value"
               disabled={visitLocked}
+              inputMode="decimal"
+              autoComplete="off"
               className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
             />
               <input
@@ -1348,7 +1425,19 @@ export function FieldVisitPage() {
 
             <div className="mt-4 space-y-2 text-sm text-text-secondary">
               <p>Outcome: <span className="font-medium text-text-primary">{outcome.replace('_', ' ')}</span></p>
-              <p>Photo evidence count: <span className="font-medium text-text-primary">{totalPhotoCount}</span></p>
+              <p>
+                Photos — synced: <span className="font-medium text-text-primary">{photoCount}</span>
+                {' · '}
+                pending on device: <span className="font-medium text-text-primary">{pendingPhotoCount}</span>
+                {' · '}
+                total: <span className="font-medium text-text-primary">{totalPhotoCount}</span>
+              </p>
+              {isClientOnline && (outcome === 'no_discharge' || outcome === 'access_issue') && (
+                <p className="text-xs text-text-muted">
+                  Completing online requires at least one photo uploaded to the server. If you only see pending on device,
+                  use Refresh in the sync bar first.
+                </p>
+              )}
               <p>Linked governance issues: <span className="font-medium text-text-primary">{detail.governanceIssues.length}</span></p>
               {detail.visit.potential_force_majeure && (
                 <p className="text-amber-200/90">
@@ -1356,6 +1445,30 @@ export function FieldVisitPage() {
                 </p>
               )}
             </div>
+
+            {!visitLocked && completionChecklistItems.length > 0 && (
+              <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Before you complete</p>
+                <ul className="mt-3 space-y-2 text-sm" aria-label="Completion requirements checklist">
+                  {completionChecklistItems.map((item) => (
+                    <li key={item.id} className="flex items-start gap-2">
+                      <span
+                        className={cn(
+                          'mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold',
+                          item.done
+                            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                            : 'border-amber-500/35 bg-amber-500/10 text-amber-200/90',
+                        )}
+                        aria-hidden
+                      >
+                        {item.done ? '✓' : '!'}
+                      </span>
+                      <span className={item.done ? 'text-text-secondary' : 'text-amber-100/90'}>{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {detail.governanceIssues.length > 0 && (
               <div className="mt-4 space-y-3">
@@ -1415,12 +1528,21 @@ export function FieldVisitPage() {
               </div>
             )}
 
+            {!visitLocked && !visitStarted && (
+              <p className="mt-4 text-sm text-amber-200/90">
+                Start the visit with start GPS before you can complete. Use <strong className="font-medium">Start visit</strong>{' '}
+                above.
+              </p>
+            )}
+
             <button
+              type="button"
               onClick={handleCompletion}
-              disabled={saving || visitLocked}
+              disabled={saving || !canAttemptComplete}
+              title={!visitStarted && !visitLocked ? 'Start the visit before completing' : undefined}
               className="mt-5 w-full rounded-xl bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25 disabled:opacity-60"
             >
-              {visitLocked ? 'Visit already completed' : 'Complete visit'}
+              {visitLocked ? 'Visit already completed' : !visitStarted ? 'Start visit first' : 'Complete visit'}
             </button>
           </SpotlightCard>
         </div>
