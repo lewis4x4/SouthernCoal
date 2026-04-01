@@ -26,31 +26,66 @@ export function OperationalStatusCard() {
   useEffect(() => {
     let cancelled = false;
 
-    const timer = setTimeout(async () => {
-      const [orgsRes, permitsRes, outfallsRes, violationsRes, ftsUploadsRes] = await Promise.all([
-        supabase.from('organizations').select('id', { count: 'exact', head: true }),
-        supabase.from('npdes_permits').select('id', { count: 'exact', head: true }),
-        supabase.from('outfalls').select('id', { count: 'exact', head: true }),
-        supabase.from('fts_violations').select('id', { count: 'exact', head: true }),
-        supabase
-          .from('fts_uploads')
-          .select('id')
-          .eq('parse_status', 'completed'),
-      ]);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const [orgsRes, permitsRes, outfallsRes, violationsRes, ftsUploadsRes] = await Promise.all([
+            supabase.from('organizations').select('id', { count: 'exact', head: true }),
+            supabase.from('npdes_permits').select('id', { count: 'exact', head: true }),
+            supabase.from('outfalls').select('id', { count: 'exact', head: true }),
+            supabase.from('fts_violations').select('id', { count: 'exact', head: true }),
+            supabase
+              .from('fts_uploads')
+              .select('id', { count: 'exact', head: true })
+              .eq('parse_status', 'completed'),
+          ]);
 
-      if (cancelled) return;
+          if (cancelled) return;
 
-      setDbStats({
-        orgCount: orgsRes.count ?? 0,
-        permitCount: permitsRes.count ?? 0,
-        outfallCount: outfallsRes.count ?? 0,
-        violationCount: violationsRes.count ?? 0,
-        ftsQuarters: ftsUploadsRes.data?.length ?? 0,
-      });
-      setLoading(false);
+          const queryError =
+            orgsRes.error ||
+            permitsRes.error ||
+            outfallsRes.error ||
+            violationsRes.error ||
+            ftsUploadsRes.error;
+          if (queryError) {
+            setDbStats({
+              orgCount: 0,
+              permitCount: 0,
+              outfallCount: 0,
+              violationCount: 0,
+              ftsQuarters: 0,
+            });
+            return;
+          }
+
+          setDbStats({
+            orgCount: orgsRes.count ?? 0,
+            permitCount: permitsRes.count ?? 0,
+            outfallCount: outfallsRes.count ?? 0,
+            violationCount: violationsRes.count ?? 0,
+            ftsQuarters: ftsUploadsRes.count ?? 0,
+          });
+        } catch {
+          if (!cancelled) {
+            setDbStats({
+              orgCount: 0,
+              permitCount: 0,
+              outfallCount: 0,
+              violationCount: 0,
+              ftsQuarters: 0,
+            });
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
     }, 300);
 
-    return () => { cancelled = true; clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
   const processingCount = queueEntries.filter(

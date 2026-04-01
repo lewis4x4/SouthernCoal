@@ -35,49 +35,72 @@ export function FinancialRiskCard() {
     let cancelled = false;
 
     async function fetchData() {
-      const [ftsRes, obligRes] = await Promise.all([
-        supabase
-          .from('fts_monthly_totals')
-          .select('*')
-          .order('monitoring_year', { ascending: true })
-          .order('monitoring_month', { ascending: true })
-          .limit(1000)
-          .returns<FtsMonthlyTotal[]>(),
-        supabase
-          .from('consent_decree_obligations')
-          .select('id, penalty_tier, accrued_penalty')
-          .in('status', ['pending', 'in_progress', 'overdue']),
-      ]);
+      try {
+        const [ftsRes, obligRes] = await Promise.all([
+          supabase
+            .from('fts_monthly_totals')
+            .select('*')
+            .order('monitoring_year', { ascending: true })
+            .order('monitoring_month', { ascending: true })
+            .limit(1000)
+            .returns<FtsMonthlyTotal[]>(),
+          supabase
+            .from('consent_decree_obligations')
+            .select('id, penalty_tier, accrued_penalty')
+            .in('status', ['pending', 'in_progress', 'overdue']),
+        ]);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (ftsRes.data) setMonthlyTotals(ftsRes.data);
-
-      if (obligRes.data) {
-        const tier1: ObligationTier = { count: 0, amount: 0 };
-        const tier2: ObligationTier = { count: 0, amount: 0 };
-        const tier3: ObligationTier = { count: 0, amount: 0 };
-
-        for (const row of obligRes.data) {
-          const tier = (row.penalty_tier as PenaltyTier) ?? 'none';
-          const accrued = (row.accrued_penalty as number) ?? 0;
-          if (tier === 'tier_1') { tier1.count++; tier1.amount += accrued; }
-          else if (tier === 'tier_2') { tier2.count++; tier2.amount += accrued; }
-          else if (tier === 'tier_3') { tier3.count++; tier3.amount += accrued; }
+        if (ftsRes.error || obligRes.error) {
+          setMonthlyTotals([]);
+          setObligations({
+            tier1: { count: 0, amount: 0 },
+            tier2: { count: 0, amount: 0 },
+            tier3: { count: 0, amount: 0 },
+            total: 0,
+          });
+          return;
         }
 
-        setObligations({
-          tier1,
-          tier2,
-          tier3,
-          total: tier1.amount + tier2.amount + tier3.amount,
-        });
-      }
+        if (ftsRes.data) setMonthlyTotals(ftsRes.data);
 
-      setLoading(false);
+        if (obligRes.data) {
+          const tier1: ObligationTier = { count: 0, amount: 0 };
+          const tier2: ObligationTier = { count: 0, amount: 0 };
+          const tier3: ObligationTier = { count: 0, amount: 0 };
+
+          for (const row of obligRes.data) {
+            const tier = (row.penalty_tier as PenaltyTier) ?? 'none';
+            const accrued = (row.accrued_penalty as number) ?? 0;
+            if (tier === 'tier_1') { tier1.count++; tier1.amount += accrued; }
+            else if (tier === 'tier_2') { tier2.count++; tier2.amount += accrued; }
+            else if (tier === 'tier_3') { tier3.count++; tier3.amount += accrued; }
+          }
+
+          setObligations({
+            tier1,
+            tier2,
+            tier3,
+            total: tier1.amount + tier2.amount + tier3.amount,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setMonthlyTotals([]);
+          setObligations({
+            tier1: { count: 0, amount: 0 },
+            tier2: { count: 0, amount: 0 },
+            tier3: { count: 0, amount: 0 },
+            total: 0,
+          });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    fetchData();
+    void fetchData();
     return () => { cancelled = true; };
   }, []);
 
