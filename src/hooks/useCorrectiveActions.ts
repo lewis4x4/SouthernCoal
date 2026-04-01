@@ -242,10 +242,16 @@ export function useCorrectiveActions() {
       .subscribe();
 
     return () => {
-      // Ensure proper cleanup to prevent memory leaks
-      channel.unsubscribe().then(() => {
-        supabase.removeChannel(channel);
-      });
+      void channel
+        .unsubscribe()
+        .then(() =>
+          supabase.removeChannel(channel).catch((err) => {
+            if (import.meta.env.DEV) console.warn('[corrective-actions] removeChannel failed', err);
+          }),
+        )
+        .catch((err) => {
+          if (import.meta.env.DEV) console.warn('[corrective-actions] unsubscribe failed', err);
+        });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to user.id, not user object
   }, [user?.id, channelName]); // Issue #13: Include channelName in deps

@@ -146,7 +146,9 @@ export function useExceedances(filters?: ExceedanceFilters): UseExceedancesRetur
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((err) => {
+        if (import.meta.env.DEV) console.warn('[exceedances] removeChannel failed', err);
+      });
     };
   }, [profile?.organization_id]);
 

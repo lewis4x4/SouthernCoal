@@ -90,7 +90,9 @@ export function useFtsData() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((err) => {
+        if (import.meta.env.DEV) console.warn('[fts] removeChannel failed', err);
+      });
     };
   }, [upsertUpload, fetchViolations, fetchMonthlyTotals]);
 

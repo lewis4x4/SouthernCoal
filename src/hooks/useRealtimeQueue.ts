@@ -151,7 +151,9 @@ export function useRealtimeQueue() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((err) => {
+        if (import.meta.env.DEV) console.warn('[queue] removeChannel failed', err);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on stable IDs, not objects
   }, [user?.id, profile?.organization_id, upsertEntry]);
