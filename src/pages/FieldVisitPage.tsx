@@ -34,6 +34,10 @@ import {
 } from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import {
+  validateFieldVisitCompletion,
+  validateFieldVisitStartCoordinates,
+} from '@/lib/fieldVisitCompletionValidation';
 import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
@@ -306,8 +310,9 @@ export function FieldVisitPage() {
     const latitude = Number(startCoords.latitude);
     const longitude = Number(startCoords.longitude);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error(FIELD_VISIT_COPY.startGpsRequired);
+    const startCheck = validateFieldVisitStartCoordinates(latitude, longitude);
+    if (!startCheck.ok) {
+      toast.error(startCheck.message);
       return;
     }
 
@@ -415,60 +420,26 @@ export function FieldVisitPage() {
 
     const latitude = Number(completeCoords.latitude);
     const longitude = Number(completeCoords.longitude);
-
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error(FIELD_VISIT_COPY.completeGpsRequired);
-      return;
-    }
-
-    if ((inspection.flow_status ?? 'unknown') === 'unknown') {
-      toast.error(FIELD_VISIT_COPY.outletFlowRequired);
-      return;
-    }
-
     const inspectionObstructionDetails = (inspection.obstruction_details ?? '').trim();
-    if (outletInspectionObstructed && !inspectionObstructionDetails) {
-      toast.error(FIELD_VISIT_COPY.outletObstructionDetailsRequired);
-      return;
-    }
 
-    if (outcome === 'sample_collected') {
-      if (!cocContainerId.trim()) {
-        toast.error(FIELD_VISIT_COPY.sampleCocContainerRequired);
-        return;
-      }
-      if (!cocPreservativeConfirmed) {
-        toast.error(FIELD_VISIT_COPY.sampleCocPreservativeRequired);
-        return;
-      }
-    }
+    const completionCheck = validateFieldVisitCompletion({
+      completeLatitude: latitude,
+      completeLongitude: longitude,
+      inspectionFlowStatus: inspection.flow_status,
+      outletInspectionObstructed,
+      inspectionObstructionDetailsTrimmed: inspectionObstructionDetails,
+      outcome,
+      cocContainerIdTrimmed: cocContainerId.trim(),
+      cocPreservativeConfirmed,
+      totalPhotoCount,
+      noDischargeNarrativeTrimmed: noDischargeNarrative.trim(),
+      noDischargeObstructionObserved,
+      noDischargeObstructionDetailsTrimmed: noDischargeObstructionDetails.trim(),
+      accessIssueNarrativeTrimmed: accessIssueNarrative.trim(),
+    });
 
-    if (outcome === 'no_discharge' && totalPhotoCount < 1) {
-      toast.error(FIELD_VISIT_COPY.noDischargePhotoRequired);
-      return;
-    }
-
-    if (outcome === 'no_discharge' && !noDischargeNarrative.trim()) {
-      toast.error(FIELD_VISIT_COPY.noDischargeNarrativeRequired);
-      return;
-    }
-
-    if (
-      outcome === 'no_discharge' &&
-      noDischargeObstructionObserved &&
-      !noDischargeObstructionDetails.trim()
-    ) {
-      toast.error(FIELD_VISIT_COPY.noDischargeObstructionDetailsRequired);
-      return;
-    }
-
-    if (outcome === 'access_issue' && totalPhotoCount < 1) {
-      toast.error(FIELD_VISIT_COPY.accessIssuePhotoRequired);
-      return;
-    }
-
-    if (outcome === 'access_issue' && !accessIssueNarrative.trim()) {
-      toast.error(FIELD_VISIT_COPY.accessIssueNarrativeRequired);
+    if (!completionCheck.ok) {
+      toast.error(completionCheck.message);
       return;
     }
 

@@ -70,7 +70,7 @@ Next focus: run the QA checklist in staging, then close Milestone 1 or open gaps
 
 | Area | Location |
 |------|----------|
-| Visit UI & validation | `src/pages/FieldVisitPage.tsx`, `src/lib/fieldVisitValidationCopy.ts` |
+| Visit UI & validation | `src/pages/FieldVisitPage.tsx`, `src/lib/fieldVisitValidationCopy.ts`, `src/lib/fieldVisitCompletionValidation.ts` (start + complete gates, A2/A3 tests) |
 | Dispatch / visits / complete RPC | `src/hooks/useFieldOps.ts` |
 | Outbound queue | `src/lib/fieldOutboundQueue.ts` |
 | Milestone constants | `src/lib/laneAMilestone.ts` |
