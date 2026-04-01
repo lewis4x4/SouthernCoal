@@ -8,6 +8,7 @@ import {
   MapPinned,
   Plus,
   Route,
+  ShieldAlert,
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +19,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import {
+  FIELD_HANDOFF_GOVERNANCE_INBOX,
+  governanceIssuesInboxHref,
+} from '@/lib/governanceInboxNav';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
 import type { FieldVisitListItem } from '@/types';
@@ -97,6 +102,16 @@ export function FieldDispatchPage() {
 
   const queueNeedsDispositionCount = useMemo(
     () => filteredVisits.filter((v) => visitNeedsDisposition(v)).length,
+    [filteredVisits],
+  );
+
+  const queueForceMajeureCount = useMemo(
+    () => filteredVisits.filter((v) => v.potential_force_majeure).length,
+    [filteredVisits],
+  );
+
+  const queueAccessIssueCount = useMemo(
+    () => filteredVisits.filter((v) => v.outcome === 'access_issue').length,
     [filteredVisits],
   );
 
@@ -314,13 +329,49 @@ export function FieldDispatchPage() {
             </button>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3 text-xs text-text-secondary">
-          <ClipboardList className="h-3.5 w-3.5 shrink-0 text-cyan-300" aria-hidden />
-          <span>
-            <span className="font-semibold text-cyan-200/90">{queueNeedsDispositionCount}</span>
-            {' of '}
-            {filteredVisits.length} shown still need a field outcome (complete the visit).
-          </span>
+        <div className="mt-3 space-y-2 border-t border-white/[0.06] pt-3 text-xs text-text-secondary">
+          <div className="flex flex-wrap items-center gap-2">
+            <ClipboardList className="h-3.5 w-3.5 shrink-0 text-cyan-300" aria-hidden />
+            <span>
+              <span className="font-semibold text-cyan-200/90">{queueNeedsDispositionCount}</span>
+              {' of '}
+              {filteredVisits.length} shown still need a field outcome (complete the visit).
+            </span>
+          </div>
+          {queueForceMajeureCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-amber-200/90">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+              <span>
+                <span className="font-semibold text-amber-200">{queueForceMajeureCount}</span>
+                {' visit'}
+                {queueForceMajeureCount === 1 ? '' : 's'} flagged potential force majeure — review visits and the{' '}
+                <Link
+                  to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                  className="font-semibold text-amber-100 underline decoration-amber-400/45 underline-offset-2 hover:text-white"
+                >
+                  governance inbox
+                </Link>
+                .
+              </span>
+            </div>
+          )}
+          {queueAccessIssueCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-rose-200/90">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-rose-300" aria-hidden />
+              <span>
+                <span className="font-semibold text-rose-200">{queueAccessIssueCount}</span>
+                {' visit'}
+                {queueAccessIssueCount === 1 ? '' : 's'} with access issue outcome — confirm documentation and{' '}
+                <Link
+                  to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                  className="font-semibold text-rose-100 underline decoration-rose-400/45 underline-offset-2 hover:text-white"
+                >
+                  governance follow-up
+                </Link>
+                .
+              </span>
+            </div>
+          )}
         </div>
       </SpotlightCard>
 
@@ -359,6 +410,18 @@ export function FieldDispatchPage() {
                         <span className="inline-flex items-center gap-1 rounded-full border border-red-500/35 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-200">
                           <AlertTriangle className="h-3 w-3" />
                           Overdue
+                        </span>
+                      )}
+                      {visit.potential_force_majeure && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
+                          FM candidate
+                        </span>
+                      )}
+                      {visit.outcome === 'access_issue' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-200">
+                          <ShieldAlert className="h-3 w-3" aria-hidden />
+                          Access issue
                         </span>
                       )}
                     </div>

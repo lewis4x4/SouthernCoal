@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  AlertTriangle,
   CalendarDays,
   ChevronRight,
   ClipboardList,
@@ -8,6 +9,7 @@ import {
   MapPin,
   Navigation,
   Route,
+  ShieldAlert,
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +27,10 @@ import {
   saveFieldRouteCacheDual,
   type FieldRouteCachePayload,
 } from '@/lib/fieldRouteLocalCache';
+import {
+  FIELD_HANDOFF_GOVERNANCE_INBOX,
+  governanceIssuesInboxHref,
+} from '@/lib/governanceInboxNav';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { supabase } from '@/lib/supabase';
 import type { FieldVisitListItem } from '@/types';
@@ -198,6 +204,14 @@ export function FieldRouteTodayPage() {
     () => dayVisits.filter((v) => visitNeedsDisposition(v)).length,
     [dayVisits],
   );
+  const forceMajeureFlaggedCount = useMemo(
+    () => dayVisits.filter((v) => v.potential_force_majeure).length,
+    [dayVisits],
+  );
+  const accessIssueOutcomeCount = useMemo(
+    () => dayVisits.filter((v) => v.outcome === 'access_issue').length,
+    [dayVisits],
+  );
   const fullRouteHref = routeLineCoords.length >= 2 ? mapsDirUrl(routeLineCoords) : '';
 
   const showRouteLoader = loading && online && dayVisits.length === 0;
@@ -302,6 +316,90 @@ export function FieldRouteTodayPage() {
               Assigned or in-progress visits still need a final disposition (complete or cancel in the field app, or sync
               queued work). Each outfall should end the day with a clear status.
             </p>
+            {forceMajeureFlaggedCount > 0 && (
+              <p className="mt-2 flex items-start gap-2 text-xs font-medium text-amber-200/95">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span>
+                  {forceMajeureFlaggedCount} visit{forceMajeureFlaggedCount === 1 ? '' : 's'} flagged as potential force
+                  majeure — open each visit for notes and check the{' '}
+                  <Link
+                    to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                    className="font-semibold text-cyan-50 underline decoration-cyan-400/45 underline-offset-2 hover:text-white"
+                  >
+                    governance inbox
+                  </Link>{' '}
+                  for review deadlines.
+                </span>
+              </p>
+            )}
+            {accessIssueOutcomeCount > 0 && (
+              <p className="mt-2 flex items-start gap-2 text-xs font-medium text-rose-200/95">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" aria-hidden />
+                <span>
+                  {accessIssueOutcomeCount} visit{accessIssueOutcomeCount === 1 ? '' : 's'} recorded an access issue —
+                  confirm documentation, photos, and{' '}
+                  <Link
+                    to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                    className="font-semibold text-rose-50 underline decoration-rose-400/45 underline-offset-2 hover:text-white"
+                  >
+                    governance follow-up
+                  </Link>
+                  .
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {dayVisits.length > 0 && openStopsCount === 0 && forceMajeureFlaggedCount > 0 && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
+          <div>
+            <p className="font-medium text-amber-50">
+              {forceMajeureFlaggedCount} force majeure candidate
+              {forceMajeureFlaggedCount === 1 ? '' : 's'} on this route date
+            </p>
+            <p className="mt-1 text-xs text-amber-200/90">
+              Stops are disposition-complete but still flagged for compliance review — confirm the{' '}
+              <Link
+                to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                className="font-semibold text-amber-50 underline decoration-amber-400/45 underline-offset-2 hover:text-white"
+              >
+                governance inbox
+              </Link>{' '}
+              and visit notes.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {dayVisits.length > 0 && openStopsCount === 0 && accessIssueOutcomeCount > 0 && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
+          role="status"
+          aria-live="polite"
+        >
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-200" aria-hidden />
+          <div>
+            <p className="font-medium text-rose-50">
+              {accessIssueOutcomeCount} access issue outcome
+              {accessIssueOutcomeCount === 1 ? '' : 's'} on this route date
+            </p>
+            <p className="mt-1 text-xs text-rose-200/90">
+              Review visit records and the{' '}
+              <Link
+                to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
+                className="font-semibold text-rose-50 underline decoration-rose-400/45 underline-offset-2 hover:text-white"
+              >
+                governance queue
+              </Link>{' '}
+              for escalation and resolution.
+            </p>
           </div>
         </div>
       )}
@@ -387,6 +485,18 @@ export function FieldRouteTodayPage() {
             <CalendarDays className="h-4 w-4 text-emerald-300" />
             {completedCount} / {dayVisits.length} completed
           </span>
+          {forceMajeureFlaggedCount > 0 && (
+            <span className="inline-flex items-center gap-2 text-amber-200/90">
+              <AlertTriangle className="h-4 w-4 text-amber-300" aria-hidden />
+              {forceMajeureFlaggedCount} FM candidate{forceMajeureFlaggedCount === 1 ? '' : 's'}
+            </span>
+          )}
+          {accessIssueOutcomeCount > 0 && (
+            <span className="inline-flex items-center gap-2 text-rose-200/90">
+              <ShieldAlert className="h-4 w-4 text-rose-300" aria-hidden />
+              {accessIssueOutcomeCount} access issue{accessIssueOutcomeCount === 1 ? '' : 's'}
+            </span>
+          )}
           {fullRouteHref && (
             <a
               href={fullRouteHref}
@@ -452,6 +562,18 @@ export function FieldRouteTodayPage() {
                           >
                             {visit.visit_status.replace('_', ' ')}
                           </span>
+                          {visit.potential_force_majeure && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                              <AlertTriangle className="h-3 w-3" aria-hidden />
+                              FM candidate
+                            </span>
+                          )}
+                          {visit.outcome === 'access_issue' && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-200">
+                              <ShieldAlert className="h-3 w-3" aria-hidden />
+                              Access issue
+                            </span>
+                          )}
                         </div>
                         {scope === 'org' && (
                           <div className="mt-2 inline-flex items-center gap-1 text-xs text-text-muted">

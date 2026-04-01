@@ -175,7 +175,13 @@ serve(async (req) => {
       }),
     });
 
-    const resendData = await resendResponse.json();
+    const resendText = await resendResponse.text();
+    let resendData: { message?: string; id?: string } = {};
+    try {
+      resendData = resendText ? JSON.parse(resendText) as typeof resendData : {};
+    } catch {
+      resendData = { message: resendText.slice(0, 200) || "Non-JSON error body" };
+    }
 
     if (!resendResponse.ok) {
       console.error("[send-deadline-alert] Resend error:", resendData);
