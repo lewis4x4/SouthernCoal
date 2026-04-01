@@ -1,6 +1,5 @@
-import { ArrowUpRight, CloudRain, TimerReset } from 'lucide-react';
+import { ArrowUpRight, CloudRain, Lock, TimerReset } from 'lucide-react';
 import { describeGovernanceDeadline } from '@/lib/governanceDeadlines';
-import { governanceIssuesInboxHref, FIELD_HANDOFF_GOVERNANCE_INBOX } from '@/lib/governanceInboxNav';
 import { getForceMajeureQuickPhrases } from '@/lib/fieldVisitTemplates';
 import { QuickPhrasePicker } from '@/components/field-visit/QuickPhrasePicker';
 import type { FieldVisitOutcome, GovernanceIssueRecord } from '@/types';
@@ -12,6 +11,8 @@ interface FieldVisitForceMajeureAssistPanelProps {
   disabled?: boolean;
   selectedEvidenceBucketFocused: boolean;
   existingIssue?: GovernanceIssueRecord | null;
+  governanceInboxHref?: string | null;
+  governanceDisabledReason?: string | null;
   onCheckedChange: (checked: boolean) => void;
   onNotesChange: (value: string) => void;
   onAppendNote: (value: string) => void;
@@ -39,6 +40,8 @@ export function FieldVisitForceMajeureAssistPanel({
   disabled = false,
   selectedEvidenceBucketFocused,
   existingIssue,
+  governanceInboxHref,
+  governanceDisabledReason,
   onCheckedChange,
   onNotesChange,
   onAppendNote,
@@ -132,14 +135,29 @@ export function FieldVisitForceMajeureAssistPanel({
               Site/weather bucket selected
             </span>
           ) : null}
-          <a
-            href={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08]"
-          >
-            Open governance inbox
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </a>
+          {governanceInboxHref ? (
+            <a
+              href={governanceInboxHref}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08]"
+            >
+              Open governance inbox
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
+            >
+              Open governance inbox
+              <Lock className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          )}
         </div>
+        {!governanceInboxHref && governanceDisabledReason ? (
+          <div className="mt-3 text-xs text-text-muted">{governanceDisabledReason}</div>
+        ) : null}
       </div>
 
       <label className="mt-4 block space-y-2">

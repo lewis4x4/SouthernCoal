@@ -1,4 +1,10 @@
 import type { FieldVisitOutcome, OutletInspectionRecord } from '@/types';
+import {
+  getInspectionObstructionNarrative,
+  parseInspectionObstructionDetails,
+  pipeConditionNeedsFollowUp,
+  signageConditionNeedsFollowUp,
+} from '@/lib/fieldVisitInspectionRouting';
 
 export type FieldVisitDeficiencyPrompt = {
   id: string;
@@ -8,20 +14,15 @@ export type FieldVisitDeficiencyPrompt = {
   needsPhotoBucket: boolean;
 };
 
-function looksDamaged(value: string | null | undefined): boolean {
-  const text = value?.trim().toLowerCase() ?? '';
-  if (!text) return false;
-  return ['damage', 'damaged', 'missing', 'broken', 'poor', 'illegible', 'leaning', 'corroded'].some((word) =>
-    text.includes(word),
-  );
-}
-
 export function getFieldVisitDeficiencyPrompts(input: {
   inspection: Partial<OutletInspectionRecord>;
   outcome: FieldVisitOutcome;
   existingGovernanceIssueCount: number;
 }): FieldVisitDeficiencyPrompt[] {
   const prompts: FieldVisitDeficiencyPrompt[] = [];
+
+  const obstruction = parseInspectionObstructionDetails(input.inspection.obstruction_details);
+  const obstructionNarrative = getInspectionObstructionNarrative(input.inspection.obstruction_details);
 
   if (input.inspection.erosion_observed) {
     prompts.push({
@@ -37,28 +38,32 @@ export function getFieldVisitDeficiencyPrompts(input: {
     prompts.push({
       id: 'obstruction',
       title: 'Obstruction follow-up suggested',
-      body: 'Outlet obstruction is part of this record. Add evidence in the obstruction / deficiency bucket and leave a specific follow-up note.',
-      suggestedNote: 'Deficiency follow-up: obstruction observed at the outlet. Photos and inspection detail captured for review.',
+      body: obstruction.type
+        ? `Outlet obstruction is part of this record. Route ${obstruction.type.toLowerCase()} evidence into the obstruction / deficiency bucket and leave a specific follow-up note.`
+        : 'Outlet obstruction is part of this record. Add evidence in the obstruction / deficiency bucket and leave a specific follow-up note.',
+      suggestedNote: obstructionNarrative
+        ? `Deficiency follow-up: ${obstruction.type ? `${obstruction.type.toLowerCase()} obstruction` : 'obstruction'} observed at the outlet. Detail: ${obstructionNarrative}`
+        : 'Deficiency follow-up: obstruction observed at the outlet. Photos and inspection detail captured for review.',
       needsPhotoBucket: true,
     });
   }
 
-  if (looksDamaged(input.inspection.signage_condition)) {
+  if (signageConditionNeedsFollowUp(input.inspection.signage_condition)) {
     prompts.push({
       id: 'signage',
       title: 'Signage deficiency suggested',
-      body: 'The signage condition reads like a deficiency. Capture the affected signage and note what needs correction.',
-      suggestedNote: `Deficiency follow-up: signage condition noted as "${input.inspection.signage_condition?.trim()}".`,
+      body: 'The signage status needs downstream correction. Capture the affected signage, then hand off a deficiency or governance follow-up to the correct owner.',
+      suggestedNote: `Deficiency follow-up: signage status recorded as "${input.inspection.signage_condition?.trim()}". Capture corrective owner and target repair action.`,
       needsPhotoBucket: true,
     });
   }
 
-  if (looksDamaged(input.inspection.pipe_condition)) {
+  if (pipeConditionNeedsFollowUp(input.inspection.pipe_condition)) {
     prompts.push({
       id: 'pipe',
       title: 'Pipe condition follow-up suggested',
-      body: 'The pipe condition reads like a deficiency. Capture the affected area and note the corrective follow-up needed.',
-      suggestedNote: `Deficiency follow-up: pipe condition noted as "${input.inspection.pipe_condition?.trim()}".`,
+      body: 'The pipe status needs follow-up. Capture the affected area and note whether maintenance, repair, or route escalation is required.',
+      suggestedNote: `Deficiency follow-up: pipe status recorded as "${input.inspection.pipe_condition?.trim()}". Capture the corrective action owner and urgency.`,
       needsPhotoBucket: true,
     });
   }

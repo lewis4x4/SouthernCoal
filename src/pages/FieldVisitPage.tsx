@@ -39,6 +39,7 @@ import { FieldVisitStartStep } from '@/components/field-visit/steps/FieldVisitSt
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { useFieldOps } from '@/hooks/useFieldOps';
+import { usePermissions } from '@/hooks/usePermissions';
 import { parseContainerScan, validateContainerAgainstStop } from '@/lib/containerScan';
 import {
   clearPersistedFieldEvidenceSyncFailuresForVisit,
@@ -53,6 +54,7 @@ import {
   describeGovernanceDeadline,
   type GovernanceDeadlineTone,
 } from '@/lib/governanceDeadlines';
+import { FIELD_HANDOFF_GOVERNANCE_INBOX, governanceIssuesInboxHref } from '@/lib/governanceInboxNav';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
 import {
@@ -67,6 +69,11 @@ import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { getFieldVisitQaPrompts } from '@/lib/fieldVisitQaPrompts';
 import { getFieldVisitReviewHooks } from '@/lib/fieldVisitReviewHooks';
 import { buildFieldVisitRequirementsModel } from '@/lib/fieldVisitRequirements';
+import {
+  getInspectionObstructionNarrative,
+  normalizePipeCondition,
+  normalizeSignageCondition,
+} from '@/lib/fieldVisitInspectionRouting';
 import { getOutcomeQuickPhrases } from '@/lib/fieldVisitTemplates';
 import {
   fieldMeasurementInputPlaceholder,
@@ -105,6 +112,7 @@ import {
   validateFieldVisitWizardStepAccess,
 } from '@/lib/fieldVisitWizardGuards';
 import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
+import { GOVERNANCE_ROUTE_ROLES } from '@/lib/rbac';
 import type {
   FieldVisitDetails,
   FieldVisitContainerCaptureMethod,
@@ -127,6 +135,16 @@ function deadlineToneClass(tone: GovernanceDeadlineTone) {
       return 'text-text-muted';
   }
 }
+
+const EMPTY_INSPECTION_STATE: Partial<OutletInspectionRecord> = {
+  flow_status: 'unknown',
+  signage_condition: '',
+  pipe_condition: '',
+  erosion_observed: false,
+  obstruction_observed: false,
+  obstruction_details: '',
+  inspector_notes: '',
+};
 
 async function captureBrowserCoordinates() {
   if (!navigator.geolocation) {
@@ -160,6 +178,7 @@ function formatOutcomeLabel(outcome: FieldVisitOutcome) {
 
 export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
+  const { getEffectiveRole } = usePermissions();
 
   const {
     detail,
@@ -184,13 +203,7 @@ export function FieldVisitPage() {
   } = useFieldOps();
 
   const [inspection, setInspection] = useState<Partial<OutletInspectionRecord>>({
-    flow_status: 'unknown',
-    signage_condition: '',
-    pipe_condition: '',
-    erosion_observed: false,
-    obstruction_observed: false,
-    obstruction_details: '',
-    inspector_notes: '',
+    ...EMPTY_INSPECTION_STATE,
   });
   const [cocContainerId, setCocContainerId] = useState('');
   const [cocPreservativeConfirmed, setCocPreservativeConfirmed] = useState(false);
@@ -228,6 +241,14 @@ export function FieldVisitPage() {
   const latestPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
   const uploadPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
   const wizardHydratedForVisitRef = useRef<string | null>(null);
+  const effectiveRole = getEffectiveRole();
+  const canOpenGovernanceInbox = GOVERNANCE_ROUTE_ROLES.includes(effectiveRole);
+  const governanceInboxHref = canOpenGovernanceInbox
+    ? governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)
+    : null;
+  const governanceDisabledReason = canOpenGovernanceInbox
+    ? null
+    : 'Governance inbox opens for environmental manager, executive, or admin review. Capture the evidence and follow-up note here for handoff.';
 
   const goToStep = useCallback((stepId: FieldVisitWizardStepId) => {
     setActiveStep(stepId);
@@ -300,15 +321,6 @@ export function FieldVisitPage() {
   useEffect(() => {
     if (!detail) return;
 
-    setInspection(detail.inspection ?? {
-      flow_status: 'unknown',
-      signage_condition: '',
-      pipe_condition: '',
-      erosion_observed: false,
-      obstruction_observed: false,
-      obstruction_details: '',
-      inspector_notes: '',
-    });
     setObservedSiteConditions(observedWeatherFromPersisted(detail.visit.weather_conditions ?? ''));
     setFieldNotes(detail.visit.field_notes ?? '');
     setOutcome(detail.visit.outcome ?? 'sample_collected');
@@ -359,6 +371,31 @@ export function FieldVisitPage() {
     wizardHydratedForVisitRef.current = null;
     setWizardStateReady(true);
   }, [detail]);
+
+  useEffect(() => {
+    if (!detail) return;
+    setInspection((current) => {
+      const incoming = detail.inspection
+        ? {
+            ...detail.inspection,
+            signage_condition: normalizeSignageCondition(detail.inspection.signage_condition) || '',
+            pipe_condition: normalizePipeCondition(detail.inspection.pipe_condition) || '',
+            obstruction_details: detail.inspection.obstruction_details ?? '',
+            inspector_notes: detail.inspection.inspector_notes ?? '',
+          }
+        : { ...EMPTY_INSPECTION_STATE };
+
+      const currentUpdatedAt = current.updated_at ? Date.parse(current.updated_at) : Number.NEGATIVE_INFINITY;
+      const incomingUpdatedAt = detail.inspection?.updated_at ? Date.parse(detail.inspection.updated_at) : Number.NEGATIVE_INFINITY;
+      const isSameVisit = current.field_visit_id === detail.visit.id || !current.field_visit_id;
+
+      if (isSameVisit && currentUpdatedAt > incomingUpdatedAt) {
+        return current;
+      }
+
+      return incoming;
+    });
+  }, [detail?.visit.id, detail?.inspection?.updated_at]);
 
   useEffect(() => {
     if (!id || !wizardStateReady || wizardHydratedForVisitRef.current !== id) return;
@@ -462,6 +499,10 @@ export function FieldVisitPage() {
     }),
     [cocCaptureMethod, cocContainerId, cocParsedScan, cocRawScanValue, cocValidation],
   );
+  const inspectionObstructionNarrative = useMemo(
+    () => getInspectionObstructionNarrative(inspection.obstruction_details),
+    [inspection.obstruction_details],
+  );
 
   const completionChecklistItems = useMemo(() => {
     if (!detail) return [];
@@ -476,7 +517,7 @@ export function FieldVisitPage() {
       completeLongitude: lng,
       inspectionFlowStatus: inspection.flow_status,
       outletInspectionObstructed,
-      inspectionObstructionDetailsTrimmed: (inspection.obstruction_details ?? '').trim(),
+      inspectionObstructionDetailsTrimmed: inspectionObstructionNarrative,
       outcome,
       cocContainerIdTrimmed: cocContainerId.trim(),
       cocPreservativeConfirmed,
@@ -497,7 +538,7 @@ export function FieldVisitPage() {
     completeCoords.latitude,
     completeCoords.longitude,
     inspection.flow_status,
-    inspection.obstruction_details,
+    inspectionObstructionNarrative,
     outletInspectionObstructed,
     outcome,
     cocContainerId,
@@ -557,7 +598,7 @@ export function FieldVisitPage() {
     Number.isFinite(completeLatitude) && Number.isFinite(completeLongitude);
   const inspectionReady =
     (inspection.flow_status ?? 'unknown') !== 'unknown' &&
-    (!outletInspectionObstructed || Boolean((inspection.obstruction_details ?? '').trim()));
+    (!outletInspectionObstructed || Boolean(inspectionObstructionNarrative));
   const noDischargeDetailsReady =
     Boolean(noDischargeNarrative.trim()) &&
     totalPhotoCount >= 1 &&
@@ -655,11 +696,11 @@ export function FieldVisitPage() {
   }, [startLatitude, startLongitude]);
   const inspectionBlockerMessage = useMemo(() => {
     if ((inspection.flow_status ?? 'unknown') === 'unknown') return FIELD_VISIT_COPY.outletFlowRequired;
-    if (outletInspectionObstructed && !(inspection.obstruction_details ?? '').trim()) {
+    if (outletInspectionObstructed && !inspectionObstructionNarrative) {
       return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
     }
     return 'Save the outlet inspection before moving on.';
-  }, [inspection.flow_status, inspection.obstruction_details, outletInspectionObstructed]);
+  }, [inspection.flow_status, inspectionObstructionNarrative, outletInspectionObstructed]);
   const outcomeDetailsBlockerMessage = useMemo(() => {
     if (outcome === 'sample_collected') {
       if (cocValidation.blocking) return FIELD_VISIT_COPY.sampleContainerMismatch;
@@ -827,8 +868,8 @@ export function FieldVisitPage() {
     setInspection((current) => ({
       ...current,
       flow_status: previous.inspection_flow_status ?? current.flow_status ?? 'unknown',
-      signage_condition: previous.signage_condition ?? current.signage_condition ?? '',
-      pipe_condition: previous.pipe_condition ?? current.pipe_condition ?? '',
+      signage_condition: normalizeSignageCondition(previous.signage_condition) || current.signage_condition || '',
+      pipe_condition: normalizePipeCondition(previous.pipe_condition) || current.pipe_condition || '',
       erosion_observed: previous.erosion_observed,
       obstruction_observed: previous.obstruction_observed,
       obstruction_details: previous.obstruction_details ?? current.obstruction_details ?? '',
@@ -840,6 +881,16 @@ export function FieldVisitPage() {
   const appendFollowUpNote = useCallback((note: string) => {
     setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${note}` : note));
     toast.success('Added follow-up note');
+  }, []);
+
+  const appendInspectionFollowUpNote = useCallback((note: string) => {
+    setInspection((current) => ({
+      ...current,
+      inspector_notes: current.inspector_notes?.trim()
+        ? `${current.inspector_notes.trim()}\n${note}`
+        : note,
+    }));
+    toast.success('Added follow-up note to inspection notes');
   }, []);
 
   const routeSafetyHazard = useCallback(() => {
@@ -876,12 +927,22 @@ export function FieldVisitPage() {
     toast.success('Focused site/weather evidence for force majeure documentation');
   }, [goToStep]);
 
-  const focusPhotoBucket = useCallback((bucket: FieldVisitPhotoCategory) => {
+  const focusPhotoBucket = useCallback((bucket: FieldVisitPhotoCategory, successMessage = 'Focused evidence bucket') => {
     setSelectedPhotoCategory(bucket);
     latestPhotoCategoryRef.current = bucket;
     goToStep('evidence');
-    toast.success('Focused evidence bucket');
+    toast.success(successMessage);
   }, [goToStep]);
+
+  const handleInspectionChange = useCallback((patch: Partial<OutletInspectionRecord>) => {
+    setInspection((prev) => {
+      const next = { ...prev, ...patch };
+      if (patch.flow_status === 'obstructed' || patch.pipe_condition === 'Obstructed') {
+        next.obstruction_observed = true;
+      }
+      return next;
+    });
+  }, []);
 
   async function handleCaptureStartCoords() {
     try {
@@ -1044,7 +1105,7 @@ export function FieldVisitPage() {
       completeLongitude,
       inspectionFlowStatus: inspection.flow_status,
       outletInspectionObstructed,
-      inspectionObstructionDetailsTrimmed: (inspection.obstruction_details ?? '').trim(),
+      inspectionObstructionDetailsTrimmed: inspectionObstructionNarrative,
       outcome,
       cocContainerIdTrimmed: cocContainerId.trim(),
       cocPreservativeConfirmed,
@@ -1446,6 +1507,8 @@ export function FieldVisitPage() {
         disabled={visitLocked}
         selectedEvidenceBucketFocused={selectedPhotoCategory === 'site_weather'}
         existingIssue={detail.governanceIssues.find((issue) => issue.issue_type === 'potential_force_majeure') ?? null}
+        governanceInboxHref={governanceInboxHref}
+        governanceDisabledReason={governanceDisabledReason}
         onCheckedChange={setPotentialForceMajeure}
         onNotesChange={setPotentialForceMajeureNotes}
         onAppendNote={(text) =>
@@ -1799,7 +1862,7 @@ export function FieldVisitPage() {
               disabled={visitLocked}
               onClick={() => setInspection((prev) => ({
                 ...prev,
-                signage_condition: detail.previous_visit_context?.signage_condition ?? prev.signage_condition ?? '',
+                signage_condition: normalizeSignageCondition(detail.previous_visit_context?.signage_condition) || prev.signage_condition || '',
               }))}
               className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
             >
@@ -1812,7 +1875,7 @@ export function FieldVisitPage() {
               disabled={visitLocked}
               onClick={() => setInspection((prev) => ({
                 ...prev,
-                pipe_condition: detail.previous_visit_context?.pipe_condition ?? prev.pipe_condition ?? '',
+                pipe_condition: normalizePipeCondition(detail.previous_visit_context?.pipe_condition) || prev.pipe_condition || '',
               }))}
               className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
             >
@@ -1829,11 +1892,14 @@ export function FieldVisitPage() {
       prompts={deficiencyPrompts}
       disabled={visitLocked}
       onSetDeficiencyBucket={() => {
-        setSelectedPhotoCategory('obstruction_deficiency');
-        latestPhotoCategoryRef.current = 'obstruction_deficiency';
-        toast.success('Photo bucket set to obstruction / deficiency');
+        focusPhotoBucket(
+          'obstruction_deficiency',
+          'Focused obstruction / deficiency evidence bucket',
+        );
       }}
-      onAppendFollowUpNote={appendFollowUpNote}
+      onAppendFollowUpNote={appendInspectionFollowUpNote}
+      governanceInboxHref={governanceInboxHref}
+      governanceDisabledReason={governanceDisabledReason}
     />
   );
 
@@ -2032,11 +2098,15 @@ export function FieldVisitPage() {
           </div>
         );
       })}
-      <div className="text-sm text-text-secondary">
-        <Link to="/governance/issues" className="text-cyan-300 hover:text-cyan-200">
-          Open governance inbox
-        </Link>
-      </div>
+      {governanceInboxHref ? (
+        <div className="text-sm text-text-secondary">
+          <Link to={governanceInboxHref} className="text-cyan-300 hover:text-cyan-200">
+            Open governance inbox
+          </Link>
+        </div>
+      ) : (
+        <div className="text-sm text-text-muted">{governanceDisabledReason}</div>
+      )}
     </div>
   ) : null;
 
@@ -2119,7 +2189,7 @@ export function FieldVisitPage() {
             inspection={inspection}
             outletInspectionObstructed={outletInspectionObstructed}
             visitLocked={visitLocked}
-            onInspectionChange={(patch) => setInspection((prev) => ({ ...prev, ...patch }))}
+            onInspectionChange={handleInspectionChange}
             sameAsLastHelpers={sameAsLastHelpers}
             deficiencyPrompts={deficiencyPromptsNode}
           />
@@ -2187,7 +2257,13 @@ export function FieldVisitPage() {
             summaryCards={reviewSummaryCards}
             completionLocation={reviewCompletionLocation}
             checklist={!visitLocked ? <FieldVisitRequiredChecklist items={completionChecklistItems} /> : null}
-            reviewHooks={<FieldVisitReviewHooksPanel hooks={reviewHooks} />}
+            reviewHooks={
+              <FieldVisitReviewHooksPanel
+                hooks={reviewHooks}
+                governanceInboxHref={governanceInboxHref}
+                governanceDisabledReason={governanceDisabledReason}
+              />
+            }
             governanceIssues={governanceIssuesNode}
             lockedBanner={lockedBanner}
             forceMajeureBanner={forceMajeureBanner}

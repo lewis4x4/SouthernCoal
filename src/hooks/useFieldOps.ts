@@ -1208,11 +1208,36 @@ export function useFieldOps() {
       return queueLocally();
     }
 
+    const previousInspection = detail?.visit.id === visitId ? detail.inspection : null;
+    const now = new Date().toISOString();
+    setDetail((prev) => {
+      if (!prev || prev.visit.id !== visitId) return prev;
+      const nextInspection: OutletInspectionRecord = {
+        id: prev.inspection?.id ?? `optimistic-${visitId}`,
+        field_visit_id: visitId,
+        flow_status: flowStatus as OutletInspectionRecord['flow_status'],
+        signage_condition: payload.signage_condition,
+        pipe_condition: payload.pipe_condition,
+        erosion_observed: payload.erosion_observed,
+        obstruction_observed: payload.obstruction_observed,
+        obstruction_details: payload.obstruction_details,
+        inspector_notes: payload.inspector_notes,
+        created_by: prev.inspection?.created_by ?? userId ?? '',
+        created_at: prev.inspection?.created_at ?? now,
+        updated_at: now,
+      };
+      return { ...prev, inspection: nextInspection };
+    });
+
     const { error } = await supabase
       .from('outlet_inspections')
       .upsert(payload, { onConflict: 'field_visit_id' });
 
     if (error) {
+      setDetail((prev) => {
+        if (!prev || prev.visit.id !== visitId) return prev;
+        return { ...prev, inspection: previousInspection };
+      });
       if (shouldQueueFieldOutboundFailure(error)) {
         return queueLocally();
       }
@@ -1220,7 +1245,7 @@ export function useFieldOps() {
     }
     await loadVisitDetails(visitId);
     return { queued: false };
-  }, [loadVisitDetails, refreshOutboundPendingCount, userId]);
+  }, [detail?.inspection, detail?.visit.id, loadVisitDetails, refreshOutboundPendingCount, userId]);
 
   const addMeasurement = useCallback(async (visitId: string, measurement: {
     parameterName: string;

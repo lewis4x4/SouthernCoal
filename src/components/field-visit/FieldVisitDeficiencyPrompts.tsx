@@ -1,5 +1,4 @@
-import { AlertTriangle, ArrowUpRight } from 'lucide-react';
-import { governanceIssuesInboxHref, FIELD_HANDOFF_GOVERNANCE_INBOX } from '@/lib/governanceInboxNav';
+import { AlertTriangle, ArrowUpRight, Lock } from 'lucide-react';
 import type { FieldVisitDeficiencyPrompt } from '@/lib/fieldVisitDeficiencyPrompts';
 
 interface FieldVisitDeficiencyPromptsProps {
@@ -7,6 +6,8 @@ interface FieldVisitDeficiencyPromptsProps {
   disabled?: boolean;
   onSetDeficiencyBucket: () => void;
   onAppendFollowUpNote: (note: string) => void;
+  governanceInboxHref?: string | null;
+  governanceDisabledReason?: string | null;
 }
 
 export function FieldVisitDeficiencyPrompts({
@@ -14,6 +15,8 @@ export function FieldVisitDeficiencyPrompts({
   disabled = false,
   onSetDeficiencyBucket,
   onAppendFollowUpNote,
+  governanceInboxHref,
+  governanceDisabledReason,
 }: FieldVisitDeficiencyPromptsProps) {
   if (prompts.length === 0) return null;
 
@@ -53,14 +56,29 @@ export function FieldVisitDeficiencyPrompts({
               >
                 Append follow-up note
               </button>
-              <a
-                href={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-                className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20"
-              >
-                Open governance inbox
-                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-              </a>
+              {governanceInboxHref ? (
+                <a
+                  href={governanceInboxHref}
+                  className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20"
+                >
+                  Open governance inbox
+                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
+                >
+                  Open governance inbox
+                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              )}
             </div>
+            {!governanceInboxHref && governanceDisabledReason ? (
+              <div className="mt-3 text-xs text-amber-100/80">{governanceDisabledReason}</div>
+            ) : null}
           </div>
         ))}
       </div>

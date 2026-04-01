@@ -1,9 +1,10 @@
-import { AlertTriangle, ArrowUpRight, Eye } from 'lucide-react';
-import { governanceIssuesInboxHref, FIELD_HANDOFF_GOVERNANCE_INBOX } from '@/lib/governanceInboxNav';
+import { AlertTriangle, ArrowUpRight, Eye, Lock } from 'lucide-react';
 import type { FieldVisitReviewHook } from '@/lib/fieldVisitReviewHooks';
 
 interface FieldVisitReviewHooksPanelProps {
   hooks: FieldVisitReviewHook[];
+  governanceInboxHref?: string | null;
+  governanceDisabledReason?: string | null;
 }
 
 function toneClasses(tone: FieldVisitReviewHook['tone']) {
@@ -19,6 +20,8 @@ function toneClasses(tone: FieldVisitReviewHook['tone']) {
 
 export function FieldVisitReviewHooksPanel({
   hooks,
+  governanceInboxHref,
+  governanceDisabledReason,
 }: FieldVisitReviewHooksPanelProps) {
   if (hooks.length === 0) return null;
 
@@ -48,13 +51,30 @@ export function FieldVisitReviewHooksPanel({
         ))}
       </div>
 
-      <a
-        href={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20"
-      >
-        Open governance inbox
-        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-      </a>
+      {governanceInboxHref ? (
+        <a
+          href={governanceInboxHref}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20"
+        >
+          Open governance inbox
+          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      ) : (
+        <div className="mt-4 space-y-2">
+          <button
+            type="button"
+            disabled
+            title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
+          >
+            Open governance inbox
+            <Lock className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          {governanceDisabledReason ? (
+            <div className="text-xs text-text-muted">{governanceDisabledReason}</div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

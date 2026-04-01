@@ -1,5 +1,12 @@
 import type { OutletInspectionRecord } from '@/types';
 import type { ReactNode } from 'react';
+import {
+  OBSTRUCTION_TYPE_OPTIONS,
+  PIPE_CONDITION_OPTIONS,
+  SIGNAGE_CONDITION_OPTIONS,
+  formatInspectionObstructionDetails,
+  parseInspectionObstructionDetails,
+} from '@/lib/fieldVisitInspectionRouting';
 
 interface FieldVisitInspectionStepProps {
   inspection: Partial<OutletInspectionRecord>;
@@ -18,6 +25,8 @@ export function FieldVisitInspectionStep({
   sameAsLastHelpers,
   deficiencyPrompts,
 }: FieldVisitInspectionStepProps) {
+  const obstruction = parseInspectionObstructionDetails(inspection.obstruction_details);
+
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
@@ -39,31 +48,62 @@ export function FieldVisitInspectionStep({
         </label>
         <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Signage condition</span>
-          <input
+          <select
             value={inspection.signage_condition ?? ''}
-            onChange={(event) => onInspectionChange({ signage_condition: event.target.value })}
+            onChange={(event) => onInspectionChange({ signage_condition: event.target.value || null })}
             disabled={visitLocked}
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-          />
+          >
+            <option value="">Select signage status</option>
+            {SIGNAGE_CONDITION_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
         </label>
         <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Pipe condition</span>
-          <input
+          <select
             value={inspection.pipe_condition ?? ''}
-            onChange={(event) => onInspectionChange({ pipe_condition: event.target.value })}
+            onChange={(event) => onInspectionChange({ pipe_condition: event.target.value || null })}
             disabled={visitLocked}
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
-          />
+          >
+            <option value="">Select pipe status</option>
+            {PIPE_CONDITION_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Obstruction type</span>
+          <select
+            value={obstruction.type}
+            onChange={(event) =>
+              onInspectionChange({
+                obstruction_details: formatInspectionObstructionDetails(event.target.value as typeof obstruction.type, obstruction.details) || null,
+              })}
+            disabled={visitLocked}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          >
+            <option value="">Select obstruction type</option>
+            {OBSTRUCTION_TYPE_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
         </label>
         <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
             Obstruction details {outletInspectionObstructed ? '(required)' : '(required if obstructed)'}
           </span>
           <textarea
-            value={inspection.obstruction_details ?? ''}
-            onChange={(event) => onInspectionChange({ obstruction_details: event.target.value })}
+            value={obstruction.details}
+            onChange={(event) =>
+              onInspectionChange({
+                obstruction_details: formatInspectionObstructionDetails(obstruction.type, event.target.value) || null,
+              })}
             disabled={visitLocked}
             rows={3}
+            placeholder="Describe what is blocking or impairing the outlet and what follow-up is likely needed."
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
           />
         </label>

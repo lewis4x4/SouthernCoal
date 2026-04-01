@@ -1,5 +1,5 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import type { FieldVisitDetails } from '@/types';
 import { toast } from 'sonner';
 
 const useFieldOpsMock = vi.fn();
+const getEffectiveRoleMock = vi.fn(() => 'field_sampler');
 const groupSameOutfallSameDayMock = vi.fn((..._args: any[]) => [] as any[]);
 const siblingVisitsSameOutfallSameDayMock = vi.fn((..._args: any[]) => [] as any[]);
 const fetchOpenMeteoCurrentSnapshotMock = vi.fn();
@@ -24,6 +25,12 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/hooks/useFieldOps', () => ({
   useFieldOps: () => useFieldOpsMock(),
+}));
+
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    getEffectiveRole: getEffectiveRoleMock,
+  }),
 }));
 
 vi.mock('@/components/field/FieldDataSyncBar', () => ({
@@ -155,8 +162,8 @@ function buildInspection(): NonNullable<FieldVisitDetails['inspection']> {
     id: 'inspection-1',
     field_visit_id: 'visit-1',
     flow_status: 'flowing',
-    signage_condition: 'Readable',
-    pipe_condition: 'Clear',
+    signage_condition: 'Good',
+    pipe_condition: 'Good',
     erosion_observed: false,
     obstruction_observed: false,
     obstruction_details: null,
@@ -245,6 +252,7 @@ function getWizardButton(label: RegExp | string) {
 describe('FieldVisitPage wizard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getEffectiveRoleMock.mockReturnValue('field_sampler');
     sessionStorage.clear();
     Object.defineProperty(window.navigator, 'onLine', {
       configurable: true,
@@ -722,6 +730,172 @@ describe('FieldVisitPage wizard', () => {
 
     await user.click(screen.getAllByRole('button', { name: 'Append QA note' })[0]!);
     expect(screen.getByDisplayValue(/QA prompt: same-day duplicate visit exists/i)).toBeInTheDocument();
+  });
+
+  it('disables governance inbox links for field sampler handoff prompts instead of routing to home', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail({
+      inspection: {
+        ...buildInspection(),
+        flow_status: 'obstructed',
+        obstruction_observed: true,
+        obstruction_details: 'Vegetation: brush packed against the pipe opening',
+      },
+    }));
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+
+    const disabledButton = screen.getByRole('button', { name: 'Open governance inbox' });
+    expect(disabledButton).toBeDisabled();
+    expect(screen.getByText(/Governance inbox opens for environmental manager/i)).toBeInTheDocument();
+  });
+
+  it('routes deficiency photo-bucket action into the evidence step and focuses the obstruction bucket', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail({
+      inspection: {
+        ...buildInspection(),
+        flow_status: 'obstructed',
+        obstruction_observed: true,
+        obstruction_details: 'Vegetation: brush packed against the pipe opening',
+      },
+    }));
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+    await user.click(screen.getByRole('button', { name: 'Set photo bucket to obstruction / deficiency' }));
+
+    await waitForStepHeading('Evidence');
+    expect(
+      screen.getByRole('button', { name: /Obstruction \/ deficiency/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('appends deficiency follow-up notes into the visible inspection notes field', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail({
+      inspection: {
+        ...buildInspection(),
+        flow_status: 'obstructed',
+        obstruction_observed: true,
+        obstruction_details: 'Vegetation: brush packed against the pipe opening',
+        inspector_notes: '',
+      },
+    }));
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+    await user.click(screen.getByRole('button', { name: 'Append follow-up note' }));
+
+    expect(
+      (screen.getByRole('textbox', { name: /Inspection notes/i }) as HTMLTextAreaElement).value,
+    ).toContain('Deficiency follow-up: vegetation obstruction observed at the outlet.');
+  });
+
+  it('keeps structured inspection fields and notes after save-and-continue and rerender', async () => {
+    const user = userEvent.setup();
+    const expectedInspectionNote = 'Signage damaged and outlet partially blocked.';
+    const saveInspection = vi.fn().mockImplementation(async (_visitId: string, inspection: any) => {
+      hookState = {
+        ...hookState,
+        detail: buildStartedDetail({
+          inspection: {
+            id: 'inspection-saved',
+            field_visit_id: 'visit-1',
+            flow_status: inspection.flow_status,
+            signage_condition: inspection.signage_condition,
+            pipe_condition: inspection.pipe_condition,
+            erosion_observed: inspection.erosion_observed ?? false,
+            obstruction_observed: inspection.obstruction_observed ?? false,
+            obstruction_details: inspection.obstruction_details,
+            inspector_notes: expectedInspectionNote,
+            created_at: '2026-04-01T12:00:00Z',
+            updated_at: '2026-04-01T12:05:00Z',
+            created_by: 'user-1',
+          },
+        }),
+      };
+      return { queued: false };
+    });
+    let hookState = {
+      detail: buildStartedDetail() as FieldVisitDetails | null,
+      detailLoading: false,
+      detailLoadSource: 'live' as const,
+      loading: false,
+      lastSyncedAt: null,
+      outboundPendingCount: 0,
+      outboundQueueDiagnostic: null,
+      clearOutboundQueueDiagnostic: vi.fn(),
+      dispatchLoadAlerts: [],
+      visits: [],
+      loadVisitDetails: vi.fn().mockResolvedValue(null),
+      refreshOutboundPendingCount: vi.fn(),
+      refresh: vi.fn().mockResolvedValue({ success: false }),
+      startVisit: vi.fn().mockResolvedValue({ queued: false }),
+      saveInspection,
+      addMeasurement: vi.fn().mockResolvedValue({ queued: false }),
+      saveCocPrimaryContainer: vi.fn().mockResolvedValue({ queued: false }),
+      recordEvidenceAsset: vi.fn(),
+      completeVisit: vi.fn().mockResolvedValue({ queued: false, result: { governance_issue_id: null } }),
+    };
+    useFieldOpsMock.mockImplementation(() => hookState);
+
+    const view = render(
+      <MemoryRouter initialEntries={['/field/visits/visit-1']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /Flow status/i }), 'obstructed');
+    await user.selectOptions(screen.getByRole('combobox', { name: /Signage condition/i }), 'Damaged');
+    await user.selectOptions(screen.getByRole('combobox', { name: /Pipe condition/i }), 'Major Damage');
+    await user.click(screen.getByLabelText(/Obstruction observed/i));
+    await user.selectOptions(screen.getByRole('combobox', { name: /Obstruction type/i }), 'Vegetation');
+    fireEvent.change(screen.getByRole('textbox', { name: /Obstruction details/i }), {
+      target: { value: 'Brush and vines block about half the opening.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /Inspection notes/i }), {
+      target: { value: expectedInspectionNote },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(expectedInspectionNote);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Save inspection & continue' }));
+    await waitFor(() => {
+      expect(saveInspection).toHaveBeenCalled();
+    });
+
+    view.rerender(
+      <MemoryRouter initialEntries={['/field/visits/visit-1']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(getWizardButton(/Outlet Inspection/i));
+    await waitForStepHeading('Outlet Inspection');
+
+    expect(screen.getByRole('combobox', { name: /Signage condition/i })).toHaveValue('Damaged');
+    expect(screen.getByRole('combobox', { name: /Pipe condition/i })).toHaveValue('Major Damage');
+    expect(screen.getByRole('combobox', { name: /Obstruction type/i })).toHaveValue('Vegetation');
+    expect(screen.getByRole('textbox', { name: /Obstruction details/i })).toHaveValue(
+      'Brush and vines block about half the opening.',
+    );
+    expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(expectedInspectionNote);
   });
 
   it('shows a review-ready final step when required data is already in place', async () => {
