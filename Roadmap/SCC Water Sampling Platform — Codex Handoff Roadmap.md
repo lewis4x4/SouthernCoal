@@ -10,6 +10,7 @@
 | Read first | Role |
 |------------|------|
 | **[`UNIFIED_ROADMAP.md`](../UNIFIED_ROADMAP.md)** | **Canonical hub** — how this file, the Definitive roadmap, and `roadmap_tasks` fit together; **phase crosswalk** (Codex phase numbers ≠ Definitive phase numbers). |
+| **[`LANE_A_MILESTONE_1.md`](./LANE_A_MILESTONE_1.md)** | **Active Lane A product milestone** — one-sentence north star, acceptance criteria (A1–A6), code map, implementation slices. |
 | **[`SCC_Water_Sampling_Platform_Definitive_Build_Roadmap.md`](./SCC_Water_Sampling_Platform_Definitive_Build_Roadmap.md)** | Narrative depth, manual § mapping, acceptance criteria, week-style estimates. |
 | **This file** | **Execution rules** and **ordered Phases 0–10** for WV field-to-DMR software. |
 

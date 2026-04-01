@@ -34,6 +34,7 @@ import {
 } from '@/lib/fieldEvidenceDrafts';
 import { describeGovernanceDeadline, type GovernanceDeadlineTone } from '@/lib/governanceDeadlines';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
+import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
 import { groupSameOutfallSameDay, siblingVisitsSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
@@ -306,7 +307,7 @@ export function FieldVisitPage() {
     const longitude = Number(startCoords.longitude);
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error('Start latitude and longitude are required');
+      toast.error(FIELD_VISIT_COPY.startGpsRequired);
       return;
     }
 
@@ -344,13 +345,14 @@ export function FieldVisitPage() {
   }
 
   async function handleAddMeasurement() {
-    if (!detail || visitLocked || !measurementName.trim()) {
-      toast.error('Parameter name is required');
+    if (!detail || visitLocked) return;
+    if (!measurementName.trim()) {
+      toast.error(FIELD_VISIT_COPY.measurementNameRequired);
       return;
     }
 
     if (measurementName.trim() === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER) {
-      toast.error('Use the Chain of custody section to record the primary container ID');
+      toast.error(FIELD_VISIT_COPY.measurementUseCocSection);
       return;
     }
 
@@ -381,11 +383,11 @@ export function FieldVisitPage() {
   async function handleSaveCoc() {
     if (!detail || visitLocked) return;
     if (!cocContainerId.trim()) {
-      toast.error('Enter a primary container ID');
+      toast.error(FIELD_VISIT_COPY.saveCocContainerRequired);
       return;
     }
     if (!cocPreservativeConfirmed) {
-      toast.error('Confirm bottle / preservative match before saving');
+      toast.error(FIELD_VISIT_COPY.sampleCocPreservativeRequired);
       return;
     }
 
@@ -415,39 +417,39 @@ export function FieldVisitPage() {
     const longitude = Number(completeCoords.longitude);
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error('Completion latitude and longitude are required');
+      toast.error(FIELD_VISIT_COPY.completeGpsRequired);
       return;
     }
 
     if ((inspection.flow_status ?? 'unknown') === 'unknown') {
-      toast.error('Select outlet flow status (flowing, no flow, or obstructed) before completing');
+      toast.error(FIELD_VISIT_COPY.outletFlowRequired);
       return;
     }
 
     const inspectionObstructionDetails = (inspection.obstruction_details ?? '').trim();
     if (outletInspectionObstructed && !inspectionObstructionDetails) {
-      toast.error('Enter obstruction details in the outlet inspection before completing');
+      toast.error(FIELD_VISIT_COPY.outletObstructionDetailsRequired);
       return;
     }
 
     if (outcome === 'sample_collected') {
       if (!cocContainerId.trim()) {
-        toast.error('Record primary container ID before completing a sample-collected visit');
+        toast.error(FIELD_VISIT_COPY.sampleCocContainerRequired);
         return;
       }
       if (!cocPreservativeConfirmed) {
-        toast.error('Confirm bottle / preservative match before completing');
+        toast.error(FIELD_VISIT_COPY.sampleCocPreservativeRequired);
         return;
       }
     }
 
     if (outcome === 'no_discharge' && totalPhotoCount < 1) {
-      toast.error('At least one photo must be uploaded before completing a no-discharge visit');
+      toast.error(FIELD_VISIT_COPY.noDischargePhotoRequired);
       return;
     }
 
     if (outcome === 'no_discharge' && !noDischargeNarrative.trim()) {
-      toast.error('Enter a no-discharge narrative before completing');
+      toast.error(FIELD_VISIT_COPY.noDischargeNarrativeRequired);
       return;
     }
 
@@ -456,17 +458,17 @@ export function FieldVisitPage() {
       noDischargeObstructionObserved &&
       !noDischargeObstructionDetails.trim()
     ) {
-      toast.error('Describe the obstruction before completing a no-discharge visit');
+      toast.error(FIELD_VISIT_COPY.noDischargeObstructionDetailsRequired);
       return;
     }
 
     if (outcome === 'access_issue' && totalPhotoCount < 1) {
-      toast.error('At least one photo must be uploaded before completing an access issue visit');
+      toast.error(FIELD_VISIT_COPY.accessIssuePhotoRequired);
       return;
     }
 
     if (outcome === 'access_issue' && !accessIssueNarrative.trim()) {
-      toast.error('Enter an access-issue narrative before completing');
+      toast.error(FIELD_VISIT_COPY.accessIssueNarrativeRequired);
       return;
     }
 

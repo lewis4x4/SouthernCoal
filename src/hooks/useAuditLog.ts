@@ -80,7 +80,9 @@ type AuditAction =
   | 'report_recipient_changed'
   | 'data_quality_status_changed'
   // Field / WV route execution (client-only refresh; server mutations still logged by Edge/DB)
-  | 'field_sync_manual_refresh';
+  | 'field_sync_manual_refresh'
+  | 'field_visit_completed'
+  | 'field_visit_completion_queued';
 
 export type { AuditAction };
 

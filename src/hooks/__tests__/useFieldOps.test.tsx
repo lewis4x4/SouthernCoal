@@ -26,6 +26,10 @@ vi.mock('@/hooks/useUserProfile', () => ({
   useUserProfile: () => useUserProfileMock(),
 }));
 
+vi.mock('@/hooks/useAuditLog', () => ({
+  useAuditLog: () => ({ log: vi.fn() }),
+}));
+
 vi.mock('@/lib/fieldRouteLocalCache', () => ({
   findVisitInFieldRouteCacheAsync: (...args: unknown[]) => findVisitInFieldRouteCacheAsyncMock(...args),
 }));

@@ -1,8 +1,10 @@
 # SCC Compliance Monitoring System — Unified Roadmap
 
-**Last Updated:** March 31, 2026  
-**Total Tasks:** 201 | **Completed:** 4 | **Remaining:** 197  
-**Source of Truth (task IDs & program phases):** `roadmap_tasks` table in Supabase (`zymenlnwyzpnohljwifx`)
+**Last Updated:** April 1, 2026  
+**Live Supabase (`zymenlnwyzpnohljwifx`, org `2bffc35c-e2c4-4396-868f-207f80e1e2c4`):** **207** tasks | **`complete`:** 15 | **`not_started`:** 192  
+**Repo baseline:** `20260209170006_seed_roadmap_tasks.sql` (**180** rows) plus `20260401120000_seed_roadmap_tasks_extension_2h_3de_5c.sql` (**+27** = **2H + 3D + 3E + 5C**). Fresh `supabase db reset` / new environments should reach **207** rows for org `2bffc35c-e2c4-4396-868f-207f80e1e2c4`. The extension migration uses `ON CONFLICT DO NOTHING` so production is unchanged if those rows already exist.
+
+**Count authority:** Your `.env.local` URL matches this project; treat these **live** counts as the checklist truth. Cursor **`user-supabase` MCP** should use the same project if you want IDE queries to match.
 
 ---
 
@@ -49,6 +51,21 @@ Use this section so engineering does not bounce between three different “phase
 
 **Default for app engineers on WV program:** pull next work from **Lane A**. Use **Lane B** when Lane A is waiting on data/people or for non-WV platform commitments.
 
+### Lane A (WV field spine) — where things sit & what blocks “done”
+
+**Active milestone (agreed scope):** [`Roadmap/LANE_A_MILESTONE_1.md`](Roadmap/LANE_A_MILESTONE_1.md) — *WV sampler runs today’s route online, completes stops with evidence rules, syncs to Supabase, with client audit on completion.* Constants: `src/lib/laneAMilestone.ts`.
+
+**In motion / largely present in repo (verify before re-scoping):** Codex-style **Phase 1** data surfaces (field visits, dispatch, schedules, related migrations); **Phase 2** calendar / route batch / supervisor flows; **Phase 3** online field execution paths (e.g. visit completion, attachments, sync UX patterns); **permit → site → state** loading with tiered fallback (`sites.state_id` + `states.code` when `npdes_permits.state_code` is empty).
+
+**Still hard per Codex Handoff “done” definitions:** **Phase 4** — full **airplane-mode** day with durable local queue, deterministic conflict rules, and audit-visible sync health (partial implementations ≠ Phase 4 complete). **Phase 0.5** — formal verification artifact (shell vs real pages, table counts, calendar inputs) if you enforce the letter of the handoff gate.
+
+**Typical blockers (prioritized for Lane A velocity):**
+
+1. **Production-shaped WV data** — real permits, sites, outfalls, and sampling obligations in Supabase (often gated on Upload Dashboard / ingestion and management-delivered matrix). Without this, routes and limits stay demo-quality.
+2. **Offline + conflict policy** — remaining Codex Phase 4 work, not a single missing toggle.
+3. **RLS + env** — field users must reliably `SELECT` chains like `sites` / `states` / permits under JWT; misconfiguration looks like “empty state” bugs (recent code paths avoid relying on `npdes_permits.state_code` alone).
+4. **Process** — UNIFIED Phases 1–2 program tasks (org roles, inventory) remain credibility inputs for audits; they parallelize with code but do not replace data readiness.
+
 ### Repo alignment snapshot (March 2026)
 
 Partially implemented (do not re-plan from zero): sampling schedules/calendar generation, route batches and dispatch, field visits, governance issue hooks from completion, “Today’s route” execution page, ECHO-related pipeline per completed milestones 3.49–3.52. Definitive “gaps” list is **directional**; verify current code before treating a line as still missing.
@@ -57,17 +74,24 @@ Partially implemented (do not re-plan from zero): sampling schedules/calendar ge
 
 ## Progress Summary
 
-| Phase | Name | Sections | Tasks | Done | Status |
-|-------|------|----------|-------|------|--------|
-| **1** | Organization & Document Collection | 1A-1E | 45 | 0 | Blocked on SCC management |
-| **2** | Permit, Lab & Database Inventory | 2A-2H | 64 | 0 | Blocked on Phase 1 (except 2H) |
-| **3** | Software Build-Out | 3A-3E | 52 | 4 | **Active — critical path** |
-| **4** | EMS Completion & Submission | 4A-4E | 30 | 0 | Depends on Phases 1-3 |
-| **5** | Go-Live, Verification & Automation | 5A-5C | 16 | 0 | Final phase |
+Task counts below match a **live** `GROUP BY phase, section` on 2026-04-01 (same org as header).
+
+| Phase | Name | Sections | Tasks (live DB) | Status |
+|-------|------|----------|-----------------|--------|
+| **1** | Organization & Document Collection | 1A-1E | 45 | Blocked on SCC management |
+| **2** | Permit, Lab & Database Inventory | 2A-2H | 64 | Blocked on Phase 1 (except 2H) |
+| **3** | Software Build-Out | 3A-3E | 52 | **Active — critical path** |
+| **4** | EMS Completion & Submission | 4A-4E | 30 | Depends on Phases 1-3 |
+| **5** | Go-Live, Verification & Automation | 5A-5C | 16 | Final phase |
+
+**Statuses (org-wide):** 15 `complete`, 192 `not_started`. At least **3.49–3.52** are `complete` (ECHO). To see all completed `task_id`s:  
+`SELECT phase, section, task_id, task_description FROM roadmap_tasks WHERE organization_id = '2bffc35c-e2c4-4396-868f-207f80e1e2c4' AND status = 'complete' ORDER BY phase, task_id;`
 
 ---
 
-## Completed Milestones
+## Completed milestones (also `complete` in Supabase)
+
+These four are **`complete` in `roadmap_tasks`** on production. **Eleven** other tasks are also `complete` in the DB; use the `SELECT` in the Progress Summary to list them and keep this section in sync.
 
 - **3.49** ECHO sync pipeline built (sync-echo-data + detect-discrepancies Edge Functions)
 - **3.50** Full ECHO sync: 153/154 permits, 289,488 DMRs, 144,339 discrepancies
@@ -182,7 +206,7 @@ Phase 1 (org/docs) ──→ Phase 2 (inventory) ──→ Phase 3 (software) �
 
 ## Phase 2: Permit, Lab & Database Inventory
 
-*64 tasks. Mix of SCC management (2A-2G) and AI-buildable (2H).*
+*64 tasks in live DB (2A–2G per original seed + **2H**). The v3 seed file in repo still ends at 2.61 unless you add a migration for 2.62–2.64.*
 
 ### 2A — Permit Inventory (12 tasks: 2.01-2.12)
 
@@ -224,7 +248,7 @@ Proof-of-submission evidence, state-specific DMR rules, unit normalization.
 
 ## Phase 3: Software Build-Out
 
-*52 tasks. 4 complete. This is where the code lives.*
+*52 tasks in live DB (3A–3C + **3D** + **3E**). **3.49–3.52** are `complete` in Supabase; remaining rows in 3D/3E should follow `roadmap_tasks` as source of truth.*
 
 ### 3A — Core Application (22 tasks: 3.01-3.22)
 
@@ -315,7 +339,7 @@ Submission packet assembly, version history and distribution log.
 
 ## Phase 5: Go-Live, Verification & Automation
 
-*16 tasks.*
+*16 tasks in live DB (5A + 5B + **5C**). Original repo seed comment was 13 before 5C rows existed in production.*
 
 ### 5A — Operational Verification (11 tasks: 5.01-5.11)
 

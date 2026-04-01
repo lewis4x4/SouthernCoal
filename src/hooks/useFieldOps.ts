@@ -41,8 +41,10 @@ import {
   formatScheduledParameterLabel,
 } from '@/lib/fieldVisitScheduleHints';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
+import { LANE_A_MILESTONE_1_ID } from '@/lib/laneAMilestone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type {
   AccessIssueRecord,
@@ -162,6 +164,7 @@ function fieldVisitShellFromRouteListItem(
 export function useFieldOps() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
+  const { log: auditLog } = useAuditLog();
   const organizationId = profile?.organization_id ?? null;
   const userId = user?.id ?? null;
   const actorName = displayName({
@@ -1056,6 +1059,20 @@ export function useFieldOps() {
       )));
       void refreshOutboundPendingCount();
 
+      auditLog(
+        'field_visit_completion_queued',
+        {
+          milestone_id: LANE_A_MILESTONE_1_ID,
+          field_visit_id: visit.id,
+          outcome: input.outcome,
+        },
+        {
+          module: 'field_ops',
+          tableName: 'field_visits',
+          recordId: visit.id,
+        },
+      );
+
       return {
         queued: true,
         result: {
@@ -1099,15 +1116,33 @@ export function useFieldOps() {
       throw new Error(error.message);
     }
 
+    const result = (data ?? {
+      linked_sampling_event_id: visit.linked_sampling_event_id,
+      governance_issue_id: null,
+    }) as CompleteFieldVisitResult;
+
+    auditLog(
+      'field_visit_completed',
+      {
+        milestone_id: LANE_A_MILESTONE_1_ID,
+        field_visit_id: visit.id,
+        outcome: input.outcome,
+        governance_issue_id: result.governance_issue_id ?? null,
+      },
+      {
+        module: 'field_ops',
+        tableName: 'field_visits',
+        recordId: visit.id,
+        newValues: { outcome: input.outcome, visit_status: 'completed' },
+      },
+    );
+
     await Promise.all([loadDispatchContext(), loadVisitDetails(visit.id)]);
     return {
       queued: false,
-      result: (data ?? {
-        linked_sampling_event_id: visit.linked_sampling_event_id,
-        governance_issue_id: null,
-      }) as CompleteFieldVisitResult,
+      result,
     };
-  }, [actorName, loadDispatchContext, loadVisitDetails, organizationId, refreshOutboundPendingCount, userId]);
+  }, [actorName, auditLog, loadDispatchContext, loadVisitDetails, organizationId, refreshOutboundPendingCount, userId]);
 
   useEffect(() => {
     void refreshOutboundPendingCount();
