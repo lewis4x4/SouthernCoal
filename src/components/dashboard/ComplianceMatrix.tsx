@@ -50,6 +50,11 @@ export function ComplianceMatrix() {
 
   function handleCellClick(stateCode: string, categoryKey: string) {
     setFilters({ stateCode, category: categoryKey, status: 'all' });
+    log(
+      'filter_change',
+      { source: 'compliance_matrix', state_code: stateCode, category: categoryKey },
+      { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+    );
   }
 
   function handleExpectedChange(stateCode: string, value: string) {
