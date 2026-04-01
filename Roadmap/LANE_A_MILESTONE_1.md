@@ -1,8 +1,10 @@
 # Lane A — Active milestone (Milestone 1)
 
-**Status:** Active  
+**Status:** Implementation complete in repo — **staging QA / sign-off** remains the formal gate (A1–A6).  
+**Next engineering phase:** [`LANE_A_MILESTONE_2.md`](./LANE_A_MILESTONE_2.md) (Codex Phase 4 vertical slice).  
 **Last agreed:** 2026-04-01  
 **QA checklist:** [`LANE_A_MILESTONE_1_QA.md`](./LANE_A_MILESTONE_1_QA.md)  
+**Closure worksheet:** [`LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md`](./LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md)  
 **Supersedes:** Informal “build field stuff” until this milestone is met or explicitly replaced.
 
 **Canonical execution order** for the WV spine remains [`SCC Water Sampling Platform — Codex Handoff Roadmap.md`](./SCC%20Water%20Sampling%20Platform%20—%20Codex%20Handoff%20Roadmap.md). This file is the **product milestone** that current engineering work should optimize for.
@@ -62,7 +64,9 @@
 3. **Harden validation / copy** — `src/lib/fieldVisitValidationCopy.ts` wired in `FieldVisitPage`. **Done.**
 4. **QA script** — [`LANE_A_MILESTONE_1_QA.md`](./LANE_A_MILESTONE_1_QA.md). **Done.**
 
-Next focus: run the QA checklist in staging, then close Milestone 1 or open gaps as tickets.
+**Next focus (process):** Run the QA checklist in staging, then close Milestone 1 or open gaps as tickets.
+
+**Next focus (engineering):** Start **Milestone 2** per [`LANE_A_MILESTONE_2.md`](./LANE_A_MILESTONE_2.md) while or after staging exercises M1.
 
 **Staging closure worksheet + blocker intake:** [`LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md`](./LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md) — A1–A6 runbook, SQL checks, gap ticket templates, real-world data gathering.
 
@@ -83,4 +87,4 @@ Next focus: run the QA checklist in staging, then close Milestone 1 or open gaps
 ## When to close or revise
 
 Close Milestone 1 when **A1–A6** are satisfied in staging (or production pilot).  
-Open **Milestone 2** (proposal): *Codex Phase 4 vertical slice — durable offline route + sync conflict visibility + audit trail for sync resolution.*
+**Milestone 2** is now specified: [`LANE_A_MILESTONE_2.md`](./LANE_A_MILESTONE_2.md) — *Codex Phase 4 vertical slice — durable offline route + sync conflict visibility + audit trail for sync resolution.*

@@ -53,11 +53,13 @@ Use this section so engineering does not bounce between three different “phase
 
 ### Lane A (WV field spine) — where things sit & what blocks “done”
 
-**Active milestone (agreed scope):** [`Roadmap/LANE_A_MILESTONE_1.md`](Roadmap/LANE_A_MILESTONE_1.md) — *WV sampler runs today’s route online, completes stops with evidence rules, syncs to Supabase, with client audit on completion.* Constants: `src/lib/laneAMilestone.ts`.
+**Milestone 1 (code ready; staging sign-off pending):** [`Roadmap/LANE_A_MILESTONE_1.md`](Roadmap/LANE_A_MILESTONE_1.md) — *WV sampler runs today’s route online, completes stops with evidence rules, syncs to Supabase, with client audit on completion.* Run A1–A6 in staging per closure worksheet; constants: `src/lib/laneAMilestone.ts` (`LANE_A_MILESTONE_1_ID`).
+
+**Milestone 2 (next engineering phase):** [`Roadmap/LANE_A_MILESTONE_2.md`](Roadmap/LANE_A_MILESTONE_2.md) — Codex **Phase 4** vertical slice: durable offline route/visit context, sync health and blocked-queue visibility, narrow conflict holds, audit-visible sync actions. Constant: `LANE_A_MILESTONE_2_ID`.
 
 **In motion / largely present in repo (verify before re-scoping):** Codex-style **Phase 1** data surfaces (field visits, dispatch, schedules, related migrations); **Phase 2** calendar / route batch / supervisor flows; **Phase 3** online field execution paths (e.g. visit completion, attachments, sync UX patterns); **permit → site → state** loading with tiered fallback (`sites.state_id` + `states.code` when `npdes_permits.state_code` is empty).
 
-**Still hard per Codex Handoff “done” definitions:** **Phase 4** — full **airplane-mode** day with durable local queue, deterministic conflict rules, and audit-visible sync health (partial implementations ≠ Phase 4 complete). **Phase 0.5** — formal verification artifact (shell vs real pages, table counts, calendar inputs) if you enforce the letter of the handoff gate.
+**Still hard per Codex Handoff “done” definitions:** **Full Phase 4** — multi-hour **airplane-mode** day with every conflict path resolved in product (Milestone 2 narrows the first slice; partial implementations ≠ full Phase 4 complete). **Phase 0.5** — formal verification artifact (shell vs real pages, table counts, calendar inputs) if you enforce the letter of the handoff gate.
 
 **Typical blockers (prioritized for Lane A velocity):**
 

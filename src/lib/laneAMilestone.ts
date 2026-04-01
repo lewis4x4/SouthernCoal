@@ -1,6 +1,7 @@
 /**
- * Lane A (WV field spine) — active product milestone.
- * Source document: Roadmap/LANE_A_MILESTONE_1.md
+ * Lane A (WV field spine) — product milestones.
+ * M1: Roadmap/LANE_A_MILESTONE_1.md
+ * M2: Roadmap/LANE_A_MILESTONE_2.md
  */
 
 export const LANE_A_MILESTONE_1_ID = 'lane_a_milestone_1_field_execution_online';
@@ -21,3 +22,9 @@ export const LANE_A_MILESTONE_1_ACCEPTANCE_KEYS = [
 
 export type LaneAMilestone1AcceptanceKey =
   (typeof LANE_A_MILESTONE_1_ACCEPTANCE_KEYS)[number];
+
+/** Codex Phase 4 vertical slice — offline durability, sync visibility, conflict posture, sync audit. */
+export const LANE_A_MILESTONE_2_ID = 'lane_a_milestone_2_offline_sync_slice';
+
+export const LANE_A_MILESTONE_2_SUMMARY =
+  'Extended offline field use with durable route/visit context, clear sync health and blocked-queue reasons, narrow conflict holds, and audit-visible sync actions.';

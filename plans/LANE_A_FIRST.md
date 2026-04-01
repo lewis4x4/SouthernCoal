@@ -5,4 +5,6 @@
 
 **Lane A** = field execution, offline/outbound queue, evidence flows, governance hooks for field, in Codex phase order.
 
+**Milestone tracking:** M1 = [`Roadmap/LANE_A_MILESTONE_1.md`](../Roadmap/LANE_A_MILESTONE_1.md) (staging QA for formal closure). **Next build phase** = M2 = [`Roadmap/LANE_A_MILESTONE_2.md`](../Roadmap/LANE_A_MILESTONE_2.md) (Codex Phase 4 slice).
+
 **Source:** User directive; aligns with `UNIFIED_ROADMAP.md` default for WV program engineers.
