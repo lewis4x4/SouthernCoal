@@ -1107,6 +1107,121 @@ export function FieldVisitPage() {
     }
   }
 
+  const evidenceCategories = useMemo(() => {
+    const categories = new Set<FieldVisitPhotoCategory>(getRequiredPhotoCategories(outcome));
+
+    for (const prompt of qaPrompts) {
+      categories.add(prompt.focusBucket);
+    }
+
+    if (potentialForceMajeure) {
+      categories.add('site_weather');
+    }
+
+    if (deficiencyPrompts.length > 0 || outcome === 'access_issue') {
+      categories.add('obstruction_deficiency');
+    }
+
+    return Array.from(categories);
+  }, [deficiencyPrompts.length, outcome, potentialForceMajeure, qaPrompts]);
+
+  useEffect(() => {
+    if (evidenceCategories.length === 0) return;
+    if (evidenceCategories.includes(selectedPhotoCategory)) return;
+    const fallback = evidenceCategories[0]!;
+    setSelectedPhotoCategory(fallback);
+    latestPhotoCategoryRef.current = fallback;
+  }, [evidenceCategories, selectedPhotoCategory]);
+
+  const handleWizardStepSelect = useCallback((targetStep: FieldVisitWizardStepId) => {
+    if (visitLocked) {
+      goToStep(targetStep);
+      return;
+    }
+
+    const access = validateFieldVisitWizardStepAccess({
+      currentStep: activeStep,
+      targetStep,
+      state: wizardGuardState,
+    });
+
+    if (!access.ok) {
+      toast.error(access.message);
+      goToStep(access.blockedStep);
+      return;
+    }
+
+    goToStep(targetStep);
+  }, [activeStep, goToStep, visitLocked, wizardGuardState]);
+
+  const handleWizardAdvance = useCallback(async () => {
+    if (visitLocked && activeStep !== 'review_complete') {
+      const nextStep = getNextFieldVisitWizardStep(activeStep);
+      if (nextStep) {
+        goToStep(nextStep);
+      }
+      return;
+    }
+
+    switch (activeStep) {
+      case 'start_visit':
+        if (visitStarted) {
+          goToStep('inspection');
+          return;
+        }
+        await handleStartVisit();
+        return;
+      case 'inspection': {
+        const inspectionAdvance = validateFieldVisitWizardAdvanceStep('inspection', wizardGuardState);
+        if (!inspectionAdvance.ok) {
+          toast.error(inspectionAdvance.message);
+          return;
+        }
+        await handleSaveInspection();
+        return;
+      }
+      case 'choose_outcome': {
+        const outcomeAdvance = validateFieldVisitWizardAdvanceStep('choose_outcome', wizardGuardState);
+        if (!outcomeAdvance.ok) {
+          toast.error(outcomeAdvance.message);
+          return;
+        }
+        goToStep('outcome_details');
+        return;
+      }
+      case 'outcome_details': {
+        const outcomeDetailsAdvance = validateFieldVisitWizardAdvanceStep('outcome_details', wizardGuardState);
+        if (!outcomeDetailsAdvance.ok) {
+          toast.error(outcomeDetailsAdvance.message);
+          return;
+        }
+        goToStep('evidence');
+        return;
+      }
+      case 'evidence': {
+        const evidenceAdvance = validateFieldVisitWizardAdvanceStep('evidence', wizardGuardState);
+        if (!evidenceAdvance.ok) {
+          toast.error(evidenceAdvance.message);
+          return;
+        }
+        goToStep('review_complete');
+        return;
+      }
+      case 'review_complete':
+        await handleCompletion();
+        return;
+      default:
+        return;
+    }
+  }, [
+    activeStep,
+    goToStep,
+    handleStartVisit,
+    visitStarted,
+    visitLocked,
+    wizardGuardState,
+  ]);
+
   if (detailLoading || (!loadAttempted && !detail)) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -1651,121 +1766,6 @@ export function FieldVisitPage() {
       </div>
     </div>
   );
-
-  const evidenceCategories = useMemo(() => {
-    const categories = new Set<FieldVisitPhotoCategory>(getRequiredPhotoCategories(outcome));
-
-    for (const prompt of qaPrompts) {
-      categories.add(prompt.focusBucket);
-    }
-
-    if (potentialForceMajeure) {
-      categories.add('site_weather');
-    }
-
-    if (deficiencyPrompts.length > 0 || outcome === 'access_issue') {
-      categories.add('obstruction_deficiency');
-    }
-
-    return Array.from(categories);
-  }, [deficiencyPrompts.length, outcome, potentialForceMajeure, qaPrompts]);
-
-  useEffect(() => {
-    if (evidenceCategories.length === 0) return;
-    if (evidenceCategories.includes(selectedPhotoCategory)) return;
-    const fallback = evidenceCategories[0]!;
-    setSelectedPhotoCategory(fallback);
-    latestPhotoCategoryRef.current = fallback;
-  }, [evidenceCategories, selectedPhotoCategory]);
-
-  const handleWizardStepSelect = useCallback((targetStep: FieldVisitWizardStepId) => {
-    if (visitLocked) {
-      goToStep(targetStep);
-      return;
-    }
-
-    const access = validateFieldVisitWizardStepAccess({
-      currentStep: activeStep,
-      targetStep,
-      state: wizardGuardState,
-    });
-
-    if (!access.ok) {
-      toast.error(access.message);
-      goToStep(access.blockedStep);
-      return;
-    }
-
-    goToStep(targetStep);
-  }, [activeStep, goToStep, visitLocked, wizardGuardState]);
-
-  const handleWizardAdvance = useCallback(async () => {
-    if (visitLocked && activeStep !== 'review_complete') {
-      const nextStep = getNextFieldVisitWizardStep(activeStep);
-      if (nextStep) {
-        goToStep(nextStep);
-      }
-      return;
-    }
-
-    switch (activeStep) {
-      case 'start_visit':
-        if (visitStarted) {
-          goToStep('inspection');
-          return;
-        }
-        await handleStartVisit();
-        return;
-      case 'inspection': {
-        const inspectionAdvance = validateFieldVisitWizardAdvanceStep('inspection', wizardGuardState);
-        if (!inspectionAdvance.ok) {
-          toast.error(inspectionAdvance.message);
-          return;
-        }
-        await handleSaveInspection();
-        return;
-      }
-      case 'choose_outcome': {
-        const outcomeAdvance = validateFieldVisitWizardAdvanceStep('choose_outcome', wizardGuardState);
-        if (!outcomeAdvance.ok) {
-          toast.error(outcomeAdvance.message);
-          return;
-        }
-        goToStep('outcome_details');
-        return;
-      }
-      case 'outcome_details': {
-        const outcomeDetailsAdvance = validateFieldVisitWizardAdvanceStep('outcome_details', wizardGuardState);
-        if (!outcomeDetailsAdvance.ok) {
-          toast.error(outcomeDetailsAdvance.message);
-          return;
-        }
-        goToStep('evidence');
-        return;
-      }
-      case 'evidence': {
-        const evidenceAdvance = validateFieldVisitWizardAdvanceStep('evidence', wizardGuardState);
-        if (!evidenceAdvance.ok) {
-          toast.error(evidenceAdvance.message);
-          return;
-        }
-        goToStep('review_complete');
-        return;
-      }
-      case 'review_complete':
-        await handleCompletion();
-        return;
-      default:
-        return;
-    }
-  }, [
-    activeStep,
-    goToStep,
-    handleStartVisit,
-    visitStarted,
-    visitLocked,
-    wizardGuardState,
-  ]);
 
   const previousStep = getPreviousFieldVisitWizardStep(activeStep);
   const currentStepMeta = getFieldVisitWizardStep(activeStep);

@@ -325,6 +325,72 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.queryByText('Field visit unavailable')).not.toBeInTheDocument();
   });
 
+  it('does not crash when a field visit rerenders from loading into the wizard', async () => {
+    const loadedDetail = buildStartedDetail({
+      visit: {
+        id: 'f00000c1-0001-4001-8001-000000000001',
+        outcome: 'sample_collected',
+      },
+    });
+    const loadVisitDetails = vi.fn().mockResolvedValue(loadedDetail);
+    let hookState = {
+      detail: null as FieldVisitDetails | null,
+      detailLoading: true,
+      detailLoadSource: null as 'live' | 'cache' | 'route_shell' | null,
+      loading: false,
+      lastSyncedAt: null,
+      outboundPendingCount: 0,
+      outboundQueueDiagnostic: null,
+      clearOutboundQueueDiagnostic: vi.fn(),
+      dispatchLoadAlerts: [],
+      visits: [],
+      loadVisitDetails,
+      refreshOutboundPendingCount: vi.fn(),
+      refresh: vi.fn().mockResolvedValue({ success: false }),
+      startVisit: vi.fn().mockResolvedValue({ queued: false }),
+      saveInspection: vi.fn().mockResolvedValue({ queued: false }),
+      addMeasurement: vi.fn().mockResolvedValue({ queued: false }),
+      saveCocPrimaryContainer: vi.fn().mockResolvedValue({ queued: false }),
+      recordEvidenceAsset: vi.fn(),
+      completeVisit: vi.fn().mockResolvedValue({ queued: false, result: { governance_issue_id: null } }),
+    };
+    useFieldOpsMock.mockImplementation(() => hookState);
+
+    const view = render(
+      <MemoryRouter initialEntries={['/field/visits/f00000c1-0001-4001-8001-000000000001']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(loadVisitDetails).toHaveBeenCalledWith('f00000c1-0001-4001-8001-000000000001');
+    });
+    expect(view.container.querySelector('.animate-spin')).not.toBeNull();
+
+    hookState = {
+      ...hookState,
+      detail: loadedDetail,
+      detailLoading: false,
+      detailLoadSource: 'live',
+    };
+
+    view.rerender(
+      <MemoryRouter initialEntries={['/field/visits/f00000c1-0001-4001-8001-000000000001']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitForWizard();
+    expect(screen.getByRole('heading', { name: 'Outcome Details' })).toBeInTheDocument();
+    expect(screen.getByText('Guided custody lane')).toBeInTheDocument();
+  });
+
   it('shows a recoverable unavailable state after a hard visit-load miss', async () => {
     renderPage();
 
@@ -404,6 +470,49 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByRole('button', { name: /Scan container/i })).toBeInTheDocument();
     expect(screen.getByText('On-Site Field Measurements')).toBeInTheDocument();
     expect(screen.getByText(/on-site meter readings only/i)).toBeInTheDocument();
+  });
+
+  it('opens the seeded fake WV UAT visit ids without a hook-order crash', async () => {
+    const cases: Array<{
+      detail: FieldVisitDetails;
+      expectedText: RegExp | string;
+    }> = [
+      {
+        detail: buildStartedDetail({
+          visit: {
+            id: 'f00000c1-0001-4001-8001-000000000001',
+            outcome: 'sample_collected',
+          },
+        }),
+        expectedText: 'Guided custody lane',
+      },
+      {
+        detail: buildStartedDetail({
+          visit: {
+            id: 'f00000c2-0002-4002-8002-000000000002',
+            outcome: 'no_discharge',
+          },
+        }),
+        expectedText: 'No-discharge record',
+      },
+      {
+        detail: buildStartedDetail({
+          visit: {
+            id: 'f00000c3-0003-4003-8003-000000000003',
+            outcome: 'access_issue',
+          },
+        }),
+        expectedText: 'Access issue escalation',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const view = renderPage(testCase.detail);
+      await waitForWizard();
+      await waitForStepHeading('Outcome Details');
+      expect(screen.getAllByText(testCase.expectedText).length).toBeGreaterThan(0);
+      view.unmount();
+    }
   });
 
   it('renders no-discharge and access-issue outcome paths without losing the wizard flow', async () => {
