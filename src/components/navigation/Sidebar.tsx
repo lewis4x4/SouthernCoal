@@ -54,6 +54,15 @@ type NavGroup = {
   accentColor: string;
 };
 
+// ---------------------------------------------------------------------------
+// Role-group constants — mirrors App.tsx route guards
+// ---------------------------------------------------------------------------
+const COMPLIANCE_UPLOAD_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech'];
+const COMPLIANCE_FULL_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager'];
+const COMPLIANCE_ADVANCED_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
+const CORRECTIVE_ACTION_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler'];
+const REPORTING_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
+const ADMIN_ROLES: Role[] = ['admin', 'executive'];
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
 const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
@@ -84,14 +93,14 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Compliance',
     items: [
-      { label: 'Upload', href: '/compliance', icon: Upload },
-      { label: 'Obligations', href: '/obligations', icon: ClipboardList },
-      { label: 'Coverage', href: '/coverage', icon: Grid3X3 },
-      { label: 'Monitoring', href: '/monitoring', icon: Activity },
-      { label: 'Failure to Sample', href: '/compliance/failure-to-sample', icon: DollarSign },
-      { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert },
-      { label: 'ECHO Data', href: '/compliance/external-data', icon: Satellite },
-      { label: 'Actions', href: '/corrective-actions', icon: ClipboardCheck },
+      { label: 'Upload', href: '/compliance', icon: Upload, roles: COMPLIANCE_UPLOAD_ROLES },
+      { label: 'Obligations', href: '/obligations', icon: ClipboardList, roles: COMPLIANCE_FULL_ROLES },
+      { label: 'Coverage', href: '/coverage', icon: Grid3X3, roles: COMPLIANCE_FULL_ROLES },
+      { label: 'Monitoring', href: '/monitoring', icon: Activity, roles: COMPLIANCE_FULL_ROLES },
+      { label: 'Failure to Sample', href: '/compliance/failure-to-sample', icon: DollarSign, roles: COMPLIANCE_ADVANCED_ROLES },
+      { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert, roles: COMPLIANCE_ADVANCED_ROLES },
+      { label: 'ECHO Data', href: '/compliance/external-data', icon: Satellite, roles: COMPLIANCE_ADVANCED_ROLES },
+      { label: 'Actions', href: '/corrective-actions', icon: ClipboardCheck, roles: CORRECTIVE_ACTION_ROLES },
     ],
     activeColor: 'bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/5',
     hoverColor: 'hover:text-cyan-400',
@@ -100,8 +109,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Reporting',
     items: [
-      { label: 'Reports', href: '/reports', icon: FileText },
-      { label: 'Corrections', href: '/corrections', icon: FileEdit },
+      { label: 'Reports', href: '/reports', icon: FileText, roles: REPORTING_ROLES },
+      { label: 'Corrections', href: '/corrections', icon: FileEdit, roles: REPORTING_ROLES },
     ],
     activeColor: 'bg-amber-500/15 text-amber-300 shadow-lg shadow-amber-500/5',
     hoverColor: 'hover:text-amber-400',
@@ -110,8 +119,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Admin',
     items: [
-      { label: 'Roadmap', href: '/roadmap', icon: Map },
-      { label: 'Admin', href: '/admin', icon: Settings },
+      { label: 'Roadmap', href: '/roadmap', icon: Map, roles: ADMIN_ROLES },
+      { label: 'Admin', href: '/admin', icon: Settings, roles: ADMIN_ROLES },
     ],
     activeColor: 'bg-purple-500/15 text-purple-300 shadow-lg shadow-purple-500/5',
     hoverColor: 'hover:text-purple-400',
@@ -186,6 +195,7 @@ export function Sidebar() {
                 : 'text-text-muted hover:bg-white/[0.05] hover:text-text-secondary'
             )}
             title={isPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
+            aria-label={isPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
           >
             {isPinned ? <Pin size={16} /> : <PinOff size={16} />}
           </button>
@@ -282,6 +292,7 @@ export function Sidebar() {
               !isExpanded && 'w-full'
             )}
             title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut size={18} className={cn(!isExpanded && 'mx-auto')} />
           </button>

@@ -5,8 +5,14 @@ import { useFtsStore } from '@/stores/fts';
 import type { FtsUpload, FtsViolation, FtsMonthlyTotal, FtsKpis } from '@/types/fts';
 
 export function useFtsData() {
-  const { uploads, violations, monthlyTotals, filters, setUploads, upsertUpload, setViolations, setMonthlyTotals } =
-    useFtsStore();
+  const uploads = useFtsStore((s) => s.uploads);
+  const violations = useFtsStore((s) => s.violations);
+  const monthlyTotals = useFtsStore((s) => s.monthlyTotals);
+  const filters = useFtsStore((s) => s.filters);
+  const setUploads = useFtsStore((s) => s.setUploads);
+  const upsertUpload = useFtsStore((s) => s.upsertUpload);
+  const setViolations = useFtsStore((s) => s.setViolations);
+  const setMonthlyTotals = useFtsStore((s) => s.setMonthlyTotals);
 
   // ── Fetch uploads ──
   const fetchUploads = useCallback(async () => {

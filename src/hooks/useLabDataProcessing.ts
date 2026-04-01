@@ -63,7 +63,7 @@ async function clientSideParseExcel(
     const maxScan = Math.min(rows.length, 25);
     for (let i = 0; i < maxScan; i++) {
       if (rowHasEddHeaders(rows[i]!)) {
-        console.log(`[lab-data] EDD headers found on sheet "${sheet.sheet}" at row ${i + 1}`);
+        if (import.meta.env.DEV) console.log(`[lab-data] EDD headers found on sheet "${sheet.sheet}" at row ${i + 1}`);
         bestRows = rows;
         break;
       }
@@ -74,7 +74,7 @@ async function clientSideParseExcel(
 
   // Fall back to first sheet if no EDD sheet found
   if (!bestRows) {
-    console.warn(
+    if (import.meta.env.DEV) console.warn(
       `[lab-data] No EDD headers found in any sheet — using first sheet "${workbook[0]?.sheet ?? 'unknown'}"`,
     );
     bestRows = (workbook[0]?.data ?? []).map((row) =>
@@ -118,8 +118,7 @@ export function useLabDataProcessing() {
     const fileSize = entry.file_size_bytes ?? 0;
     const useBulk = fileSize > BULK_IMPORT_SIZE_THRESHOLD;
 
-    // DEBUG — remove after confirming routing works
-    console.log(`[lab-data] ROUTING: file="${entry.file_name}" size=${fileSize} threshold=${BULK_IMPORT_SIZE_THRESHOLD} useBulk=${useBulk}`);
+    if (import.meta.env.DEV) console.log(`[lab-data] ROUTING: file="${entry.file_name}" size=${fileSize} useBulk=${useBulk}`);
 
     // Immediate UI feedback — Realtime subscription handles the real status
     useQueueStore.getState().upsertEntry({

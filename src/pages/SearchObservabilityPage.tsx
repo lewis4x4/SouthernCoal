@@ -63,112 +63,110 @@ export function SearchObservabilityPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data } = await supabase
-      .from('audit_log')
-      .select('created_at, description')
-      .eq('action', 'compliance_search')
-      .gte('created_at', sevenDaysAgo)
-      .order('created_at', { ascending: false })
-      .limit(5000);
+      const [auditRes, docAuditRes, chunkCountRes, distinctDocsRes, parsedCountRes] = await Promise.all([
+        supabase
+          .from('audit_log')
+          .select('created_at, description')
+          .eq('action', 'compliance_search')
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(5000),
+        supabase
+          .from('audit_log')
+          .select('created_at, description')
+          .eq('action', 'document_search')
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(5000),
+        supabase
+          .from('document_chunks')
+          .select('id', { count: 'exact', head: true }),
+        supabase
+          .from('document_chunks')
+          .select('document_id')
+          .not('document_id', 'is', null)
+          .limit(10000),
+        supabase
+          .from('file_processing_queue')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'parsed'),
+      ]);
 
-    setEntries(data || []);
+      setEntries(auditRes.data || []);
+      setDocEntries(docAuditRes.data || []);
 
-    // Fetch document search audit entries
-    const { data: docData } = await supabase
-      .from('audit_log')
-      .select('created_at, description')
-      .eq('action', 'document_search')
-      .gte('created_at', sevenDaysAgo)
-      .order('created_at', { ascending: false })
-      .limit(5000);
+      const docsWithChunks = new Set((distinctDocsRes.data || []).map((d: { document_id: string }) => d.document_id)).size;
+      setChunkStats({
+        totalChunks: chunkCountRes.count || 0,
+        docsWithChunks,
+        totalParsed: parsedCountRes.count || 0,
+        avgChunksPerDoc: docsWithChunks > 0 ? Math.round((chunkCountRes.count || 0) / docsWithChunks) : 0,
+      });
 
-    setDocEntries(docData || []);
-
-    // Fetch chunk stats
-    const { count: totalChunks } = await supabase
-      .from('document_chunks')
-      .select('id', { count: 'exact', head: true });
-
-    const { data: distinctDocs } = await supabase
-      .from('document_chunks')
-      .select('document_id')
-      .not('document_id', 'is', null)
-      .limit(10000);
-
-    const docsWithChunks = new Set((distinctDocs || []).map((d: { document_id: string }) => d.document_id)).size;
-
-    const { count: totalParsed } = await supabase
-      .from('file_processing_queue')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'parsed');
-
-    setChunkStats({
-      totalChunks: totalChunks || 0,
-      docsWithChunks,
-      totalParsed: totalParsed || 0,
-      avgChunksPerDoc: docsWithChunks > 0 ? Math.round((totalChunks || 0) / docsWithChunks) : 0,
-    });
-
-    // Sync health data (explicit org filter aligns with Realtime + RLS)
-    let syncQuery = supabase
-      .from('external_sync_log')
-      .select('id, source, status, started_at, completed_at, records_synced, records_failed')
-      .order('started_at', { ascending: false })
-      .limit(20);
-    if (organizationId) {
-      syncQuery = syncQuery.eq('organization_id', organizationId);
-    }
-    const { data: syncData } = await syncQuery;
-    setSyncLogs((syncData || []) as SyncLogRow[]);
-
-    // Discrepancy trend (30d)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: discData } = await supabase
-      .from('discrepancy_reviews')
-      .select('detected_at')
-      .gte('detected_at', thirtyDaysAgo)
-      .order('detected_at', { ascending: true });
-
-    const trendDays: Record<string, number> = {};
-    for (const d of discData || []) {
-      const day = (d as { detected_at: string }).detected_at?.slice(0, 10);
-      if (day) trendDays[day] = (trendDays[day] || 0) + 1;
-    }
-    setDiscrepancyTrend(Object.entries(trendDays).map(([date, count]) => ({ date, count })));
-
-    // Triage velocity
-    const { data: triagedData } = await supabase
-      .from('discrepancy_reviews')
-      .select('detected_at, reviewed_at')
-      .not('reviewed_at', 'is', null)
-      .limit(100);
-
-    let totalHours = 0;
-    let countTriaged = 0;
-    for (const r of triagedData || []) {
-      const row = r as { detected_at: string; reviewed_at: string };
-      const diff = new Date(row.reviewed_at).getTime() - new Date(row.detected_at).getTime();
-      if (diff > 0) {
-        totalHours += diff / (1000 * 60 * 60);
-        countTriaged++;
+      let syncQuery = supabase
+        .from('external_sync_log')
+        .select('id, source, status, started_at, completed_at, records_synced, records_failed')
+        .order('started_at', { ascending: false })
+        .limit(20);
+      if (organizationId) {
+        syncQuery = syncQuery.eq('organization_id', organizationId);
       }
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [syncRes, discRes, triagedRes, pendingRes] = await Promise.all([
+        syncQuery,
+        supabase
+          .from('discrepancy_reviews')
+          .select('detected_at')
+          .gte('detected_at', thirtyDaysAgo)
+          .order('detected_at', { ascending: true }),
+        supabase
+          .from('discrepancy_reviews')
+          .select('detected_at, reviewed_at')
+          .not('reviewed_at', 'is', null)
+          .limit(100),
+        supabase
+          .from('discrepancy_reviews')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+      ]);
+
+      setSyncLogs((syncRes.data || []) as SyncLogRow[]);
+
+      const trendDays: Record<string, number> = {};
+      for (const d of discRes.data || []) {
+        const day = (d as { detected_at: string }).detected_at?.slice(0, 10);
+        if (day) trendDays[day] = (trendDays[day] || 0) + 1;
+      }
+      setDiscrepancyTrend(Object.entries(trendDays).map(([date, count]) => ({ date, count })));
+
+      let totalHours = 0;
+      let countTriaged = 0;
+      for (const r of triagedRes.data || []) {
+        const row = r as { detected_at: string; reviewed_at: string };
+        const diff = new Date(row.reviewed_at).getTime() - new Date(row.detected_at).getTime();
+        if (diff > 0) {
+          totalHours += diff / (1000 * 60 * 60);
+          countTriaged++;
+        }
+      }
+
+      setTriageStats({
+        avgHours: countTriaged > 0 ? Math.round(totalHours / countTriaged) : 0,
+        totalTriaged: countTriaged,
+        pending: pendingRes.count || 0,
+      });
+
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error('[observability] fetchData failed:', err);
+    } finally {
+      setLoading(false);
     }
-
-    const { count: pendingCount } = await supabase
-      .from('discrepancy_reviews')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending');
-
-    setTriageStats({
-      avgHours: countTriaged > 0 ? Math.round(totalHours / countTriaged) : 0,
-      totalTriaged: countTriaged,
-      pending: pendingCount || 0,
-    });
-
-    setLoading(false);
-    setLastRefresh(new Date());
   }, [organizationId]);
 
   const refreshSyncLogsOnly = useCallback(async () => {

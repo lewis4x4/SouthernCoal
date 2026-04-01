@@ -25,15 +25,17 @@ export function useUserProfile() {
       return;
     }
 
+    let cancelled = false;
+
     async function fetchProfile() {
       try {
-        // Fetch profile WITHOUT organizations join to avoid circular RLS dependency
-        // (organizations policy references user_profiles → 500 error when joined)
         const { data, error } = await supabase
           .from('user_profiles')
           .select('id, email, first_name, last_name, organization_id, created_at')
           .eq('id', user!.id)
           .maybeSingle();
+
+        if (cancelled) return;
 
         if (error) {
           console.error('[profile] Failed to fetch profile:', error.message);
@@ -50,7 +52,6 @@ export function useUserProfile() {
           return;
         }
 
-        // Fetch org name separately to avoid circular RLS
         let orgName: string | null = null;
         if (data.organization_id) {
           const { data: orgData, error: orgErr } = await supabase
@@ -58,10 +59,12 @@ export function useUserProfile() {
             .select('name')
             .eq('id', data.organization_id)
             .maybeSingle();
-          if (!orgErr) {
+          if (!cancelled && !orgErr) {
             orgName = orgData?.name ?? null;
           }
         }
+
+        if (cancelled) return;
 
         if (import.meta.env.DEV) console.log('[profile] Loaded:', { id: data.id, org: orgName });
 
@@ -79,6 +82,7 @@ export function useUserProfile() {
           error: null,
         });
       } catch (e) {
+        if (cancelled) return;
         const message = e instanceof Error ? e.message : 'Failed to load profile';
         console.error('[profile] Unexpected error:', e);
         setState((s) => ({ ...s, loading: false, error: message }));
@@ -86,6 +90,8 @@ export function useUserProfile() {
     }
 
     void fetchProfile();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
   }, [user?.id, isAuthenticated]);
 

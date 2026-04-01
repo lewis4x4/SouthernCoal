@@ -107,7 +107,9 @@ export function AuditLogPage() {
       }
       setUserMap(map);
     }
-    loadUsers();
+    void loadUsers().catch((err) => {
+      if (import.meta.env.DEV) console.warn('[audit-log] loadUsers failed:', err);
+    });
   }, [canViewAuditLog, permissionsLoading]);
 
   // Unique modules and actions for filter dropdowns

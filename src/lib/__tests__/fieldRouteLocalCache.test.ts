@@ -88,19 +88,21 @@ describe('fieldRouteLocalCache', () => {
 
   it('fieldRouteCacheMatchesView checks date, scope, and viewer', () => {
     const p = {
-      version: 2 as const,
+      version: 3 as const,
       routeDate: '2026-03-31',
       organizationId: 'org-1',
       scope: 'org' as const,
-      viewerUserId: null,
+      viewerUserId: 'u1',
       savedAt: '2026-03-31T12:00:00Z',
       visits: [minimalVisit()],
       outfallCoords: {},
     };
-    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', null, 'org-1')).toBe(true);
-    expect(fieldRouteCacheMatchesView(p, '2026-04-01', 'org', null, 'org-1')).toBe(false);
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', 'u1', 'org-1')).toBe(true);
+    expect(fieldRouteCacheMatchesView(p, '2026-04-01', 'org', 'u1', 'org-1')).toBe(false);
     expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'mine', 'u1', 'org-1')).toBe(false);
-    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', null, 'org-2')).toBe(false);
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', 'u2', 'org-1')).toBe(false);
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', 'u1', 'org-2')).toBe(false);
+    expect(fieldRouteCacheMatchesView(p, '2026-03-31', 'org', null, 'org-1')).toBe(false);
   });
 
   it('saveFieldRouteCacheDual returns ok and snapshot', async () => {
@@ -123,7 +125,7 @@ describe('fieldRouteLocalCache', () => {
         routeDate: '2026-03-31',
         organizationId: 'org-1',
         scope: 'org',
-        viewerUserId: null,
+        viewerUserId: 'u1',
         visits: [minimalVisit(), v2],
         outfallCoords: {},
       }),
@@ -139,7 +141,7 @@ describe('fieldRouteLocalCache', () => {
         routeDate: '2026-03-31',
         organizationId: 'org-1',
         scope: 'org',
-        viewerUserId: null,
+        viewerUserId: 'u1',
         visits: [minimalVisit({ id: 'vx' })],
         outfallCoords: {},
       }),
@@ -175,7 +177,7 @@ describe('fieldRouteLocalCache', () => {
         routeDate: '2026-03-31',
         organizationId: 'org-1',
         scope: 'org',
-        viewerUserId: null,
+        viewerUserId: 'u1',
         visits: [minimalVisit({ id: 'vx', organization_id: 'org-1' })],
         outfallCoords: {},
       }),
@@ -211,14 +213,46 @@ describe('fieldRouteLocalCache', () => {
         routeDate: '2026-03-31',
         organizationId: 'org-1',
         scope: 'org',
-        viewerUserId: null,
+        viewerUserId: 'u1',
         visits: [minimalVisit()],
         outfallCoords: {},
       }),
     ).toBe(true);
 
-    expect(loadFieldRouteCacheMatching('2026-03-31', 'org', null, 'org-2')).toBeNull();
+    expect(loadFieldRouteCacheMatching('2026-03-31', 'org', 'u1', 'org-2')).toBeNull();
     expect(loadFieldRouteCache()).toBeNull();
+  });
+
+  it('loadFieldRouteCacheMatching rejects same-org org-scope snapshot for another user and clears it', () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        organizationId: 'org-1',
+        scope: 'org',
+        viewerUserId: 'u1',
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+
+    expect(loadFieldRouteCacheMatching('2026-03-31', 'org', 'u2', 'org-1')).toBeNull();
+    expect(loadFieldRouteCache()).toBeNull();
+  });
+
+  it('loadFieldRouteCacheMatching keeps snapshot when auth context is not ready', () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        organizationId: 'org-1',
+        scope: 'org',
+        viewerUserId: 'u1',
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+
+    expect(loadFieldRouteCacheMatching('2026-03-31', 'org', null, 'org-1')).toBeNull();
+    expect(loadFieldRouteCache()?.viewerUserId).toBe('u1');
   });
 
   it('loadFieldRouteCacheFromIdbMatching rejects cross-org snapshot and clears it', async () => {
@@ -226,14 +260,46 @@ describe('fieldRouteLocalCache', () => {
       routeDate: '2026-03-31',
       organizationId: 'org-1',
       scope: 'org',
-      viewerUserId: null,
+      viewerUserId: 'u1',
       visits: [minimalVisit()],
       outfallCoords: {},
     });
 
     expect(ok).toBe(true);
-    expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', null, 'org-2')).toBeNull();
+    expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u1', 'org-2')).toBeNull();
+    expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u1', 'org-1')).toBeNull();
+  });
+
+  it('loadFieldRouteCacheFromIdbMatching rejects same-org org-scope snapshot for another user and clears it', async () => {
+    const { ok } = await saveFieldRouteCacheDual({
+      routeDate: '2026-03-31',
+      organizationId: 'org-1',
+      scope: 'org',
+      viewerUserId: 'u1',
+      visits: [minimalVisit()],
+      outfallCoords: {},
+    });
+
+    expect(ok).toBe(true);
+    expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u2', 'org-1')).toBeNull();
+    expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u1', 'org-1')).toBeNull();
+  });
+
+  it('loadFieldRouteCacheFromIdbMatching keeps snapshot when auth context is not ready', async () => {
+    const { ok } = await saveFieldRouteCacheDual({
+      routeDate: '2026-03-31',
+      organizationId: 'org-1',
+      scope: 'org',
+      viewerUserId: 'u1',
+      visits: [minimalVisit()],
+      outfallCoords: {},
+    });
+
+    expect(ok).toBe(true);
     expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', null, 'org-1')).toBeNull();
+    if (typeof indexedDB !== 'undefined') {
+      expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u1', 'org-1')).not.toBeNull();
+    }
   });
 
   it('clearFieldRouteCache removes entry', () => {
@@ -242,7 +308,7 @@ describe('fieldRouteLocalCache', () => {
         routeDate: '2026-03-31',
         organizationId: 'org-1',
         scope: 'org',
-        viewerUserId: null,
+        viewerUserId: 'u1',
         visits: [minimalVisit()],
         outfallCoords: {},
       }),

@@ -42,7 +42,8 @@ const HEARTBEAT_INTERVAL = 120_000; // 2 minutes (reduced from 30s to ease conne
 export function useRealtimeQueue() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
-  const { setEntries, upsertEntry } = useQueueStore();
+  const setEntries = useQueueStore((s) => s.setEntries);
+  const upsertEntry = useQueueStore((s) => s.upsertEntry);
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
   const lastEventRef = useRef<number>(Date.now());
   const initialLoadDone = useRef(false);
@@ -80,7 +81,7 @@ export function useRealtimeQueue() {
       }
     }
 
-    console.log('[queue] initial fetch:', { count: allEntries.length });
+    if (import.meta.env.DEV) console.log('[queue] initial fetch:', { count: allEntries.length });
     setEntries(allEntries);
     initialLoadDone.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, not user object
@@ -97,7 +98,8 @@ export function useRealtimeQueue() {
       .from('file_processing_queue')
       .select('*')
       .in('status', ['processing', 'queued'])
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) {
       console.error('[queue] Heartbeat fetch failed:', error.message);

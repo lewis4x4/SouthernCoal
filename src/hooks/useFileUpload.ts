@@ -233,7 +233,7 @@ export function useFileUpload() {
           throw new Error(`Queue insert failed: ${message}`);
         }
 
-        console.log('[upload] Queue row created:', insertedId);
+        if (import.meta.env.DEV) console.log('[upload] Queue row created:', insertedId);
 
         // 8. Add an optimistic row (Realtime will hydrate full row)
         const nowIso = new Date().toISOString();

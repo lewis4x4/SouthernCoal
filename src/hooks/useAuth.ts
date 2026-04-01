@@ -67,6 +67,7 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     clearFieldRouteCache();
     clearAllFieldVisitCaches();
+    try { localStorage.removeItem('scc_role_assignments'); } catch { /* non-critical */ }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);

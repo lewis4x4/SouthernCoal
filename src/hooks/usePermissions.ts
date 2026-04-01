@@ -69,8 +69,8 @@ const CACHE_KEY = 'scc_role_assignments';
 export function usePermissions() {
   const { user } = useAuth();
   const fetchingRef = useRef(false);
+  const prevUserIdRef = useRef<string | null>(null);
   const [assignments, setAssignments] = useState<RoleAssignment[]>(() => {
-    // Hydrate from localStorage so role survives transient DB failures
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
@@ -83,11 +83,16 @@ export function usePermissions() {
   useEffect(() => {
     if (!user) {
       setAssignments([]);
-      // Keep loading=true while auth is resolving — AuthGuard handles
-      // the genuinely-unauthenticated case. Setting false here causes
-      // RBAC gates to redirect before the real role loads.
+      setLoading(false);
       return;
     }
+
+    // When user id changes (login as different user), clear stale cache immediately
+    if (prevUserIdRef.current !== null && prevUserIdRef.current !== user.id) {
+      try { localStorage.removeItem(CACHE_KEY); } catch { /* non-critical */ }
+      setAssignments([]);
+    }
+    prevUserIdRef.current = user.id;
 
     async function fetchAssignments() {
       // Prevent concurrent fetches from multiple renders exhausting the pool
@@ -112,14 +117,14 @@ export function usePermissions() {
       }
 
       if (data.length === 0) {
-        // If cache has assignments but DB returned empty, RLS may be blocking
-        // (e.g. user_profiles row missing blocks org-scoped RLS). Keep cached data.
+        // Only keep cached data if it belongs to the SAME user (prevents cross-user leakage)
         try {
           const cached = localStorage.getItem(CACHE_KEY);
           const cachedAssignments: RoleAssignment[] = cached ? JSON.parse(cached) : [];
-          if (cachedAssignments.length > 0) {
+          const sameUser = cachedAssignments.length > 0 && cachedAssignments[0]?.user_id === user!.id;
+          if (sameUser) {
             console.warn(
-              '[permissions] DB returned 0 assignments but cache has data — keeping cache (likely RLS/connection issue)',
+              '[permissions] DB returned 0 assignments but cache has data for same user — keeping cache (likely RLS/connection issue)',
             );
             setAssignments(cachedAssignments);
             setLoading(false);
@@ -152,7 +157,10 @@ export function usePermissions() {
       setLoading(false);
     }
 
-    fetchAssignments();
+    void fetchAssignments().catch((err) => {
+      console.error('[permissions] Unexpected error:', err);
+      setLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, NOT user object (token refresh creates new reference)
   }, [user?.id]);
 

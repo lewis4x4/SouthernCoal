@@ -72,7 +72,7 @@ export function ReportAssistantTab() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe the report you need in plain English..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-11 pr-24 py-3.5 text-sm text-text-primary placeholder-text-muted focus:border-purple-500/40 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-11 pr-24 py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:border-purple-500/40 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
           />
           <button
             onClick={handleSearch}

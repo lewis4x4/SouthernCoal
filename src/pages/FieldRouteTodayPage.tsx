@@ -95,7 +95,7 @@ export function FieldRouteTodayPage() {
   const [idbRouteSnapshot, setIdbRouteSnapshot] = useState<FieldRouteCachePayload | null>(null);
   const lastAutoSavedKeyRef = useRef<string | null>(null);
 
-  const cacheViewerId = scope === 'mine' ? user?.id ?? null : null;
+  const cacheViewerId = user?.id ?? null;
   const cacheOrganizationId = profile?.organization_id ?? null;
 
   useEffect(() => {
@@ -262,9 +262,9 @@ export function FieldRouteTodayPage() {
           if (c) coords[id] = c;
         }
         const visitsForCache = await enrichFieldVisitsWithScheduleHints(dayVisitsLive);
-        if (!cacheOrganizationId) {
+        if (!cacheOrganizationId || !cacheViewerId) {
           if (showToast) {
-            toast.error('Could not save offline copy without an organization context');
+            toast.error('Could not save offline copy without a complete user context');
           }
           return;
         }

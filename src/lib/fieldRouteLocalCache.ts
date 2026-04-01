@@ -3,12 +3,12 @@ import type { FieldVisitListItem } from '@/types';
 const STORAGE_KEY = 'scc.fieldRouteCache.v1';
 
 export type FieldRouteCachePayload = {
-  version: 2;
+  version: 3;
   routeDate: string;
   organizationId: string;
   scope: 'mine' | 'org';
-  /** User id when scope is mine; null for org-wide cache */
-  viewerUserId: string | null;
+  /** Authenticated user who created this snapshot, even for org scope. */
+  viewerUserId: string;
   savedAt: string;
   visits: FieldVisitListItem[];
   outfallCoords: Record<string, { lat: number; lng: number }>;
@@ -20,10 +20,11 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function validateFieldRouteCacheRecord(data: unknown): FieldRouteCachePayload | null {
   if (!isRecord(data)) return null;
-  if (data.version !== 2) return null;
+  if (data.version !== 3) return null;
   if (typeof data.routeDate !== 'string' || typeof data.scope !== 'string') return null;
   if (typeof data.organizationId !== 'string' || data.organizationId.trim() === '') return null;
   if (data.scope !== 'mine' && data.scope !== 'org') return null;
+  if (typeof data.viewerUserId !== 'string' || data.viewerUserId.trim() === '') return null;
   if (!Array.isArray(data.visits)) return null;
   if (typeof data.savedAt !== 'string') return null;
   if (!isRecord(data.outfallCoords)) return null;
@@ -48,13 +49,16 @@ function toFullPayload(payload: {
   visits: FieldVisitListItem[];
   outfallCoords: Record<string, { lat: number; lng: number }>;
 }): FieldRouteCachePayload {
+  if (!payload.viewerUserId) {
+    throw new Error('viewerUserId is required for route snapshots');
+  }
   return {
-    version: 2,
+    version: 3,
     savedAt: new Date().toISOString(),
     routeDate: payload.routeDate,
     organizationId: payload.organizationId,
     scope: payload.scope,
-    viewerUserId: payload.scope === 'mine' ? payload.viewerUserId : null,
+    viewerUserId: payload.viewerUserId,
     visits: payload.visits,
     outfallCoords: payload.outfallCoords,
   };
@@ -127,6 +131,9 @@ export async function loadFieldRouteCacheFromIdbMatching(
 ): Promise<FieldRouteCachePayload | null> {
   const payload = await loadFieldRouteCacheFromIdb();
   if (!payload) return null;
+  if (!hasRouteCacheAuthContext(viewerUserId, organizationId)) {
+    return null;
+  }
   if (!fieldRouteCacheMatchesView(payload, routeDate, scope, viewerUserId, organizationId)) {
     await clearFieldRouteCacheFromIdb();
     return null;
@@ -183,7 +190,11 @@ export async function clearFieldRouteCacheFromIdb(): Promise<void> {
   }
 }
 
-/** True when snapshot matches the route date, scope, and (for mine) viewer. */
+function hasRouteCacheAuthContext(viewerUserId: string | null, organizationId: string | null): boolean {
+  return Boolean(viewerUserId && organizationId);
+}
+
+/** True when snapshot matches the route date, scope, organization, and viewer. */
 export function fieldRouteCacheMatchesView(
   p: FieldRouteCachePayload,
   routeDate: string,
@@ -191,10 +202,10 @@ export function fieldRouteCacheMatchesView(
   viewerUserId: string | null,
   organizationId: string | null,
 ): boolean {
-  if (!organizationId) return false;
+  if (!hasRouteCacheAuthContext(viewerUserId, organizationId)) return false;
   if (p.routeDate !== routeDate || p.scope !== scope) return false;
   if (p.organizationId !== organizationId) return false;
-  if (scope === 'mine' && p.viewerUserId !== viewerUserId) return false;
+  if (p.viewerUserId !== viewerUserId) return false;
   return true;
 }
 
@@ -246,6 +257,9 @@ export function loadFieldRouteCacheMatching(
 ): FieldRouteCachePayload | null {
   const p = loadFieldRouteCache();
   if (!p) return null;
+  if (!hasRouteCacheAuthContext(viewerUserId, organizationId)) {
+    return null;
+  }
   if (!fieldRouteCacheMatchesView(p, routeDate, scope, viewerUserId, organizationId)) {
     clearFieldRouteCache();
     return null;

@@ -20,18 +20,16 @@ export function useCorrectiveActions() {
   const { user } = useAuth();
   const { log } = useAuditLog();
 
-  const {
-    actions,
-    filters,
-    activities,
-    loading,
-    error,
-    setActions,
-    upsertAction,
-    setActivities,
-    setLoading,
-    setError,
-  } = useCorrectiveActionsStore();
+  const actions = useCorrectiveActionsStore((s) => s.actions);
+  const filters = useCorrectiveActionsStore((s) => s.filters);
+  const activities = useCorrectiveActionsStore((s) => s.activities);
+  const loading = useCorrectiveActionsStore((s) => s.loading);
+  const error = useCorrectiveActionsStore((s) => s.error);
+  const setActions = useCorrectiveActionsStore((s) => s.setActions);
+  const upsertAction = useCorrectiveActionsStore((s) => s.upsertAction);
+  const setActivities = useCorrectiveActionsStore((s) => s.setActivities);
+  const setLoading = useCorrectiveActionsStore((s) => s.setLoading);
+  const setError = useCorrectiveActionsStore((s) => s.setError);
 
   const loadingRef = useRef(false);
   // Use ref to always get latest fetchActions in Realtime callback
@@ -227,7 +225,7 @@ export function useCorrectiveActions() {
           table: 'corrective_actions',
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-          console.log('[useCorrectiveActions] Realtime event:', payload.eventType);
+          if (import.meta.env.DEV) console.log('[useCorrectiveActions] Realtime event:', payload.eventType);
 
           // Refetch to get JOINed data (Realtime only sends raw row)
           // Use ref to avoid stale closure

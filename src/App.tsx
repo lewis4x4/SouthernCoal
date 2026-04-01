@@ -45,6 +45,16 @@ const FieldDispatchPage = lazyRoute(() => import('@/pages/FieldDispatchPage'), '
 const FieldRouteTodayPage = lazyRoute(() => import('@/pages/FieldRouteTodayPage'), 'FieldRouteTodayPage');
 const FieldVisitPage = lazyRoute(() => import('@/pages/FieldVisitPage'), 'FieldVisitPage');
 const GovernanceIssuesPage = lazyRoute(() => import('@/pages/GovernanceIssuesPage'), 'GovernanceIssuesPage');
+// ---------------------------------------------------------------------------
+// Role-group constants — single source of truth for route + sidebar guards
+// ---------------------------------------------------------------------------
+const COMPLIANCE_UPLOAD_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech'];
+const COMPLIANCE_FULL_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager'];
+const COMPLIANCE_ADVANCED_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
+const CORRECTIVE_ACTION_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler'];
+const REPORTING_ROLES: Role[] = ['admin', 'executive', 'environmental_manager'];
+const ADMIN_ROLES: Role[] = ['admin', 'executive'];
+const ADMIN_ONLY_ROLES: Role[] = ['admin'];
 const FIELD_ROUTE_ROLES: Role[] = ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'];
 const FIELD_SCHEDULE_ROLES: Role[] = ['site_manager', 'environmental_manager', 'executive', 'admin'];
 const GOVERNANCE_ROUTE_ROLES: Role[] = ['environmental_manager', 'executive', 'admin'];
@@ -112,9 +122,11 @@ export function App() {
           path="/compliance"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><UploadDashboard /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_UPLOAD_ROLES}>
+                <AppShell>
+                  <LazyPage><UploadDashboard /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -124,9 +136,11 @@ export function App() {
           path="/obligations"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><Obligations /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_FULL_ROLES}>
+                <AppShell>
+                  <LazyPage><Obligations /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -136,9 +150,11 @@ export function App() {
           path="/coverage"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><CoverageGaps /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_FULL_ROLES}>
+                <AppShell>
+                  <LazyPage><CoverageGaps /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -148,9 +164,11 @@ export function App() {
           path="/monitoring"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><Monitoring /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_FULL_ROLES}>
+                <AppShell>
+                  <LazyPage><Monitoring /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -160,9 +178,11 @@ export function App() {
           path="/reports"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><Reports /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={REPORTING_ROLES}>
+                <AppShell>
+                  <LazyPage><Reports /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -172,9 +192,11 @@ export function App() {
           path="/admin"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><Admin /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={ADMIN_ROLES}>
+                <AppShell>
+                  <LazyPage><Admin /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -198,21 +220,25 @@ export function App() {
           path="/admin/reports"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><AdminReportsPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={ADMIN_ROLES}>
+                <AppShell>
+                  <LazyPage><AdminReportsPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
 
-        {/* Access Control */}
+        {/* Access Control — admin only (DB-level user/role management) */}
         <Route
           path="/admin/access-control"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><AccessControlPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}>
+                <AppShell>
+                  <LazyPage><AccessControlPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -222,9 +248,11 @@ export function App() {
           path="/corrections"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><CorrectionsPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={REPORTING_ROLES}>
+                <AppShell>
+                  <LazyPage><CorrectionsPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -234,9 +262,11 @@ export function App() {
           path="/roadmap"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><RoadmapPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={ADMIN_ROLES}>
+                <AppShell>
+                  <LazyPage><RoadmapPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -258,9 +288,11 @@ export function App() {
           path="/compliance/failure-to-sample"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><FailureToSamplePage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_ADVANCED_ROLES}>
+                <AppShell>
+                  <LazyPage><FailureToSamplePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -270,9 +302,11 @@ export function App() {
           path="/compliance/review-queue"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><ReviewQueuePage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_ADVANCED_ROLES}>
+                <AppShell>
+                  <LazyPage><ReviewQueuePage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -282,9 +316,11 @@ export function App() {
           path="/compliance/external-data"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><ExternalDataPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={COMPLIANCE_ADVANCED_ROLES}>
+                <AppShell>
+                  <LazyPage><ExternalDataPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -370,14 +406,16 @@ export function App() {
           }
         />
 
-        {/* Search Observability */}
+        {/* Search Observability — admin only (developer tooling) */}
         <Route
           path="/search/observability"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><SearchObservabilityPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}>
+                <AppShell>
+                  <LazyPage><SearchObservabilityPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -387,9 +425,11 @@ export function App() {
           path="/corrective-actions"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><CorrectiveActionsPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={CORRECTIVE_ACTION_ROLES}>
+                <AppShell>
+                  <LazyPage><CorrectiveActionsPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
@@ -399,9 +439,11 @@ export function App() {
           path="/corrective-actions/:id"
           element={
             <AuthGuard>
-              <AppShell>
-                <LazyPage><CorrectiveActionDetailPage /></LazyPage>
-              </AppShell>
+              <RoleGuard allowedRoles={CORRECTIVE_ACTION_ROLES}>
+                <AppShell>
+                  <LazyPage><CorrectiveActionDetailPage /></LazyPage>
+                </AppShell>
+              </RoleGuard>
             </AuthGuard>
           }
         />
