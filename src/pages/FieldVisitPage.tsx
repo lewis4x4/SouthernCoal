@@ -749,7 +749,7 @@ export function FieldVisitPage() {
   }, [detail, id, recommendedStep, wizardGuardState, wizardStateReady]);
 
   const fetchSystemWeather = useCallback(
-    async (opts?: { manual?: boolean; lat?: number; lng?: number }) => {
+    async (opts?: { manual?: boolean; notifyOnFailure?: boolean; lat?: number; lng?: number }) => {
       if (!detail || visitLocked) return;
       if (!isWeatherFetchEnabled()) {
         if (opts?.manual) toast.message('Weather automation is disabled for this build.');
@@ -757,7 +757,7 @@ export function FieldVisitPage() {
       }
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setSystemWeatherError('Connect to the network to load system weather.');
-        if (opts?.manual) toast.error('Offline — cannot refresh system weather.');
+        if (opts?.manual || opts?.notifyOnFailure) toast.error('Offline — could not load system weather.');
         return;
       }
       const lat =
@@ -772,7 +772,7 @@ export function FieldVisitPage() {
           : Number(startCoords.longitude));
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         setSystemWeatherError('Start GPS is required before system weather can load.');
-        if (opts?.manual) toast.error('Capture start coordinates before refreshing weather.');
+        if (opts?.manual || opts?.notifyOnFailure) toast.error('Capture start coordinates before refreshing weather.');
         return;
       }
       const dedupeKey = `${detail.visit.id}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
@@ -789,7 +789,9 @@ export function FieldVisitPage() {
         const msg = e instanceof Error ? e.message : 'Weather fetch failed';
         setSystemWeatherError(msg);
         setSystemWeather(null);
-        if (opts?.manual) toast.error(msg);
+        if (opts?.manual || opts?.notifyOnFailure) {
+          toast.error(`System weather did not load: ${msg}`);
+        }
       } finally {
         setSystemWeatherLoading(false);
       }
@@ -927,7 +929,7 @@ export function FieldVisitPage() {
           ? 'Visit started on this device; will sync when you are back online'
           : 'Visit started',
       );
-      void fetchSystemWeather({ lat: startLatitude, lng: startLongitude });
+      void fetchSystemWeather({ lat: startLatitude, lng: startLongitude, notifyOnFailure: true });
       goToStep('inspection');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to start visit');
@@ -2064,6 +2066,19 @@ export function FieldVisitPage() {
     </div>
   ) : null;
 
+  const weatherStatusBanner = visitStarted && !visitLocked && isWeatherFetchEnabled()
+    ? systemWeatherLoading ? (
+        <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+          System weather is still loading from your start GPS. You can keep moving, but confirm the snapshot before closeout.
+        </div>
+      ) : systemWeatherError ? (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          System weather did not load. {systemWeatherError} Return to <span className="font-medium">Start Visit</span> and use{' '}
+          <span className="font-medium">Refresh system weather</span>.
+        </div>
+      ) : null
+    : null;
+
   const currentStepContent = (() => {
     switch (activeStep) {
       case 'start_visit':
@@ -2318,6 +2333,8 @@ export function FieldVisitPage() {
       {requirementsModel ? (
         <FieldVisitShortHoldAlert flags={requirementsModel.urgencyFlags} />
       ) : null}
+
+      {weatherStatusBanner}
 
       <FieldSameOutfallDayWarning
         groups={visitSiblingOutfallConflicts}

@@ -7,6 +7,7 @@ import { FieldVisitPage } from '@/pages/FieldVisitPage';
 import { listFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
 import { serializePhotoEvidenceCategory } from '@/lib/photoEvidenceBuckets';
 import type { FieldVisitDetails } from '@/types';
+import { toast } from 'sonner';
 
 const useFieldOpsMock = vi.fn();
 const groupSameOutfallSameDayMock = vi.fn((..._args: any[]) => [] as any[]);
@@ -559,6 +560,69 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByRole('textbox', { name: /Narrative/i })).toHaveValue(
       'Observed no discharge at the actual sampling point.',
     );
+  });
+
+  it('shows an explicit error toast after start if system weather fails to load', async () => {
+    const user = userEvent.setup();
+    const startedDetail = buildStartedDetail();
+    const startVisit = vi.fn().mockResolvedValue({ queued: false });
+    fetchOpenMeteoCurrentSnapshotMock.mockRejectedValueOnce(new Error('Weather service returned 503'));
+    let hookState = {
+      detail: buildDetail() as FieldVisitDetails | null,
+      detailLoading: false,
+      detailLoadSource: 'live' as const,
+      loading: false,
+      lastSyncedAt: null,
+      outboundPendingCount: 0,
+      outboundQueueDiagnostic: null,
+      clearOutboundQueueDiagnostic: vi.fn(),
+      dispatchLoadAlerts: [],
+      visits: [],
+      loadVisitDetails: vi.fn().mockResolvedValue(startedDetail),
+      refreshOutboundPendingCount: vi.fn(),
+      refresh: vi.fn().mockResolvedValue({ success: false }),
+      startVisit,
+      saveInspection: vi.fn().mockResolvedValue({ queued: false }),
+      addMeasurement: vi.fn().mockResolvedValue({ queued: false }),
+      saveCocPrimaryContainer: vi.fn().mockResolvedValue({ queued: false }),
+      recordEvidenceAsset: vi.fn(),
+      completeVisit: vi.fn().mockResolvedValue({ queued: false, result: { governance_issue_id: null } }),
+    };
+    useFieldOpsMock.mockImplementation(() => hookState);
+
+    const view = render(
+      <MemoryRouter initialEntries={['/field/visits/visit-1']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitForWizard();
+    await user.click(screen.getByRole('button', { name: 'Start visit & continue' }));
+
+    await waitFor(() => {
+      expect(startVisit).toHaveBeenCalled();
+    });
+
+    hookState = {
+      ...hookState,
+      detail: startedDetail,
+    };
+
+    view.rerender(
+      <MemoryRouter initialEntries={['/field/visits/visit-1']}>
+        <Routes>
+          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
+          <Route path="/field/dispatch" element={<div>Field queue</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('System weather did not load: Weather service returned 503'));
+    });
   });
 
   it('limits the evidence step to outcome-relevant buckets and keeps offline drafts visible', async () => {
