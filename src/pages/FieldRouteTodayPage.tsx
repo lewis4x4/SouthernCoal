@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
+import { FieldDataSourceBanner } from '@/components/field/FieldDataSourceBanner';
 import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
@@ -453,20 +454,12 @@ export function FieldRouteTodayPage() {
         </div>
       )}
 
-      {!online && effectiveRouteCache && dayVisits.length > 0 && (
-        <div
-          className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-          role="status"
-          aria-live="polite"
-        >
-          Offline — showing route saved{' '}
-          {new Date(effectiveRouteCache.savedAt).toLocaleString(undefined, {
-            dateStyle: 'short',
-            timeStyle: 'short',
-          })}
-          {'. '}Visits you opened before can also load from the local cache.
-        </div>
-      )}
+      {!online && dayVisits.length > 0 ? (
+        <FieldDataSourceBanner
+          variant="route_offline_device"
+          routeSavedAt={effectiveRouteCache?.savedAt}
+        />
+      ) : null}
 
       {!online && !effectiveRouteCache && (
         <div

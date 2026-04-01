@@ -67,6 +67,8 @@ export interface FieldVisitListItem extends FieldVisitRecord {
   assigned_to_name: string;
   /** Stop order within a dispatched route batch (from sampling_route_stops). */
   route_stop_sequence: number | null;
+  route_priority_rank?: number | null;
+  route_priority_reason?: string | null;
   /** From `outfalls` when loaded; used for Maps links on visit detail. */
   outfall_latitude?: number | null;
   outfall_longitude?: number | null;
@@ -330,6 +332,75 @@ export interface SamplingRouteStopListItem extends SamplingRouteStopRecord {
   current_field_visit_status: FieldVisitStatus | null;
 }
 
+export interface FieldVisitStopRequirement {
+  calendar_id: string;
+  schedule_id: string | null;
+  parameter_id: string;
+  parameter_name: string;
+  parameter_short_name: string | null;
+  parameter_label: string;
+  category: string | null;
+  default_unit: string | null;
+  sample_type: string | null;
+  schedule_instructions: string | null;
+}
+
+export interface FieldVisitRequiredMeasurement {
+  key: string;
+  parameter_name: string;
+  display_label: string;
+  default_unit: string | null;
+  rationale: string;
+  source_parameter_names: string[];
+}
+
+export type FieldVisitPhotoCategory =
+  | 'outlet_signage'
+  | 'flow_no_flow'
+  | 'sample_containers'
+  | 'obstruction_deficiency'
+  | 'site_weather';
+
+export type FieldVisitContainerCaptureMethod = 'scan' | 'manual';
+export type FieldVisitContainerValidationStatus = 'match' | 'warning' | 'unknown';
+
+export interface FieldVisitScannedContainer {
+  raw_value: string;
+  container_id: string;
+  serial_id: string | null;
+  bottle_type: string | null;
+  preservative_hint: string | null;
+}
+
+export interface FieldVisitContainerValidation {
+  status: FieldVisitContainerValidationStatus;
+  blocking: boolean;
+  message: string | null;
+  guidance: string[];
+  expected_bottle_types: string[];
+  actual_bottle_type: string | null;
+}
+
+export interface FieldVisitPreviousContext {
+  visit_id: string;
+  scheduled_date: string;
+  completed_at: string | null;
+  outcome: FieldVisitOutcome | null;
+  inspection_flow_status: OutletInspectionRecord['flow_status'] | null;
+  signage_condition: string | null;
+  pipe_condition: string | null;
+  erosion_observed: boolean;
+  obstruction_observed: boolean;
+  obstruction_details: string | null;
+  inspector_notes: string | null;
+  access_issue_type: string | null;
+  access_issue_narrative: string | null;
+  no_discharge_narrative: string | null;
+  field_notes: string | null;
+  weather_conditions: string | null;
+  photo_evidence_paths: string[];
+}
+
 export interface FieldVisitDetails {
   visit: FieldVisitListItem;
   inspection: OutletInspectionRecord | null;
@@ -342,4 +413,7 @@ export interface FieldVisitDetails {
   scheduled_parameter_label: string | null;
   /** From sampling_schedules.instructions via sampling_calendar.schedule_id when set. */
   schedule_instructions: string | null;
+  stop_requirements: FieldVisitStopRequirement[];
+  required_field_measurements: FieldVisitRequiredMeasurement[];
+  previous_visit_context: FieldVisitPreviousContext | null;
 }

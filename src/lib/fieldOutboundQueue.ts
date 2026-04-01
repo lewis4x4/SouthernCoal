@@ -9,6 +9,20 @@ import type {
   OutletInspectionRecord,
 } from '@/types';
 
+/**
+ * Lane A M2 — Outbound flush **conflict holds** (narrow, deterministic):
+ *
+ * 1. **`field_visit_start`** — If the server row is terminal (`visit_status` is `completed` or `cancelled`, or
+ *    `completed_at` is set), we **do not** apply the queued start UPDATE. The op stays queued until resolved
+ *    out-of-band (admin / reopened visit), but later unrelated ops may still flush. Avoids silently moving a
+ *    finished visit back to in-progress.
+ *
+ * 2. **`field_visit_complete`** — If the server is already `completed` with a **non-null outcome** that **differs**
+ *    from the queued outcome, we **do not** call `complete_field_visit`. The held op stays queued while later
+ *    unrelated ops may still flush. Avoids overwriting a legally meaningful disposition. Same-outcome replays still
+ *    go to the RPC (DB/RPC may idempotently succeed or surface its own error).
+ */
+
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
 
 const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'unknown']);
@@ -63,6 +77,7 @@ export type FieldOutboundOp =
       visitId: string;
       containerText: string;
       preservativeConfirmed: boolean;
+      metadata: Record<string, unknown> | null;
       enqueuedAt: string;
     }
   | {
@@ -115,6 +130,7 @@ function isCocPrimaryUpsertOp(
     typeof o.visitId === 'string' &&
     typeof o.containerText === 'string' &&
     typeof o.preservativeConfirmed === 'boolean' &&
+    (o.metadata === null || typeof o.metadata === 'object') &&
     typeof o.enqueuedAt === 'string'
   );
 }
@@ -246,6 +262,14 @@ function updateQueue(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]):
   return writeQueue(next);
 }
 
+function moveQueueOpToBack(latest: FieldOutboundOp[], opId: string): FieldOutboundOp[] {
+  const index = latest.findIndex((queued) => queued.id === opId);
+  if (index < 0) return latest;
+  const [held] = latest.splice(index, 1);
+  if (!held) return latest;
+  return [...latest, held];
+}
+
 export function getFieldOutboundQueue(): FieldOutboundOp[] {
   return readQueue();
 }
@@ -363,6 +387,7 @@ export function enqueueCocPrimaryUpsert(params: {
   visitId: string;
   containerText: string;
   preservativeConfirmed: boolean;
+  metadata?: Record<string, unknown> | null;
 }): boolean {
   const op: FieldOutboundOp = {
     kind: 'coc_primary_upsert',
@@ -370,6 +395,7 @@ export function enqueueCocPrimaryUpsert(params: {
     visitId: params.visitId,
     containerText: params.containerText,
     preservativeConfirmed: params.preservativeConfirmed,
+    metadata: params.metadata ?? null,
     enqueuedAt: new Date().toISOString(),
   };
   return updateQueue((latest) => mergeQueueById(latest, [op]));
@@ -513,6 +539,7 @@ export function mergeMeasurementsWithQueuedCoc(
     metadata: {
       preservative_confirmed: pending.preservativeConfirmed,
       source: 'field_visit_coc_v1',
+      ...(pending.metadata ?? {}),
       outbound_queue_id: pending.id,
       pending_sync: true,
     },
@@ -625,6 +652,64 @@ export type FieldOutboundQueueFlushResult = {
   blockedOp: { kind: FieldOutboundOp['kind']; visitId: string } | null;
 };
 
+export type FieldOutboundConflictHoldReason =
+  | 'visit_already_terminal'
+  | 'completion_outcome_mismatch';
+
+/** Returned as `flushResult.failed` when the queue intentionally holds an op (M2 — no silent overwrite). */
+export class FieldOutboundConflictHoldError extends Error {
+  readonly code = 'field_outbound_conflict_hold' as const;
+  readonly reason: FieldOutboundConflictHoldReason;
+  readonly visitId: string;
+  readonly details: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    init: {
+      reason: FieldOutboundConflictHoldReason;
+      visitId: string;
+      details?: Record<string, unknown>;
+    },
+  ) {
+    super(message);
+    this.name = 'FieldOutboundConflictHoldError';
+    this.reason = init.reason;
+    this.visitId = init.visitId;
+    this.details = init.details ?? {};
+    Object.setPrototypeOf(this, FieldOutboundConflictHoldError.prototype);
+  }
+}
+
+export function isFieldOutboundConflictHoldError(e: unknown): e is FieldOutboundConflictHoldError {
+  return e instanceof FieldOutboundConflictHoldError;
+}
+
+type FieldVisitLifecycleRow = {
+  visit_status: string;
+  outcome: string | null;
+  completed_at: string | null;
+};
+
+async function fetchVisitLifecycleSnapshot(
+  client: SupabaseClient,
+  visitId: string,
+): Promise<FieldVisitLifecycleRow> {
+  const { data, error } = await client
+    .from('field_visits')
+    .select('visit_status, outcome, completed_at')
+    .eq('id', visitId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error('Visit not found or not visible (check organization access / RLS).');
+  }
+  return {
+    visit_status: String(data.visit_status),
+    outcome: data.outcome != null ? String(data.outcome) : null,
+    completed_at: data.completed_at != null ? String(data.completed_at) : null,
+  };
+}
+
 const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
 
 let outboundProcessChain: Promise<FieldOutboundQueueFlushResult> | null = null;
@@ -633,12 +718,18 @@ async function processFieldOutboundQueueUnlocked(
   client: SupabaseClient,
 ): Promise<FieldOutboundQueueFlushResult> {
   let processed = 0;
+  let heldFailure: Error | null = null;
+  let heldBlockedOp: { kind: FieldOutboundOp['kind']; visitId: string } | null = null;
+  const visitedHeldOps = new Set<string>();
   for (;;) {
     const queue = readQueue();
     if (queue.length === 0) {
-      return { processed, failed: null, blockedOp: null };
+      return { processed, failed: heldFailure, blockedOp: heldBlockedOp };
     }
     const op = queue[0]!;
+    if (visitedHeldOps.has(op.id)) {
+      return { processed, failed: heldFailure, blockedOp: heldBlockedOp };
+    }
     try {
       if (op.kind === 'field_measurement_insert') {
         const { error } = await client.from('field_measurements').insert({
@@ -665,6 +756,33 @@ async function processFieldOutboundQueueUnlocked(
         );
         if (error) throw new Error(error.message);
       } else if (op.kind === 'field_visit_start') {
+        const row = await fetchVisitLifecycleSnapshot(client, op.visitId);
+        const terminal =
+          row.visit_status === 'completed' ||
+          row.visit_status === 'cancelled' ||
+          row.completed_at != null;
+        if (terminal) {
+          const statusLabel =
+            row.visit_status === 'cancelled' ? 'cancelled' : 'finished';
+          heldFailure ??= new FieldOutboundConflictHoldError(
+            `Visit is already ${statusLabel} on the server; the queued “start visit” was not applied. Refresh the field queue and open the visit for the latest status, or contact an admin if the visit should be reopened.`,
+            {
+              reason: 'visit_already_terminal',
+              visitId: op.visitId,
+              details: {
+                server_visit_status: row.visit_status,
+                server_outcome: row.outcome,
+                server_completed_at: row.completed_at,
+              },
+            },
+          );
+          heldBlockedOp ??= { kind: op.kind, visitId: op.visitId };
+          visitedHeldOps.add(op.id);
+          if (!updateQueue((latest) => moveQueueOpToBack(latest, op.id))) {
+            throw new Error('Failed to reprioritize outbound queue after conflict hold');
+          }
+          continue;
+        }
         const { error } = await client
           .from('field_visits')
           .update({
@@ -679,6 +797,7 @@ async function processFieldOutboundQueueUnlocked(
         const metadata = {
           preservative_confirmed: op.preservativeConfirmed,
           source: 'field_visit_coc_v1',
+          ...(op.metadata ?? {}),
         };
         const { data: existing, error: selectError } = await client
           .from('field_measurements')
@@ -710,6 +829,30 @@ async function processFieldOutboundQueueUnlocked(
           if (error) throw new Error(error.message);
         }
       } else if (op.kind === 'field_visit_complete') {
+        const row = await fetchVisitLifecycleSnapshot(client, op.visitId);
+        if (
+          row.visit_status === 'completed' &&
+          row.outcome != null &&
+          row.outcome !== op.outcome
+        ) {
+          heldFailure ??= new FieldOutboundConflictHoldError(
+            `The server already recorded outcome “${row.outcome}”; this device queued “${op.outcome}”. The queue will not overwrite the server. Confirm which record is correct with your supervisor before changing data.`,
+            {
+              reason: 'completion_outcome_mismatch',
+              visitId: op.visitId,
+              details: {
+                server_outcome: row.outcome,
+                queued_outcome: op.outcome,
+              },
+            },
+          );
+          heldBlockedOp ??= { kind: op.kind, visitId: op.visitId };
+          visitedHeldOps.add(op.id);
+          if (!updateQueue((latest) => moveQueueOpToBack(latest, op.id))) {
+            throw new Error('Failed to reprioritize outbound queue after conflict hold');
+          }
+          continue;
+        }
         const { error } = await client.rpc('complete_field_visit', {
           p_field_visit_id: op.visitId,
           p_outcome: op.outcome,

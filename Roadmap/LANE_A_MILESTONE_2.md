@@ -47,9 +47,9 @@ This is a **vertical slice** toward Codex Phase 4 “done when”: *multi-hour o
 ## Implementation slices (ordered)
 
 1. **Milestone artifact** — this doc; `LANE_A_MILESTONE_2_ID` in `laneAMilestone.ts`. **Done** when merged.
-2. **Offline/cache UX honesty** — banners or badges on `FieldRouteTodayPage` / `FieldVisitPage` when data is from cache vs live (reuse load alerts patterns).
-3. **Queue + evidence diagnostics** — consolidate “why sync failed” into one discoverable surface (sync bar + visit header).
-4. **Conflict hold rules** — identify 1–2 real conflict paths in outbound flush; implement block + toast + audit, not auto-merge.
+2. **Offline/cache UX honesty** — banners or badges on `FieldRouteTodayPage` / `FieldVisitPage` when data is from cache vs live (reuse load alerts patterns). **Shipped:** `FieldDataSourceBanner`, `detailLoadSource` in `useFieldOps`.
+3. **Queue + evidence diagnostics** — consolidate “why sync failed” into one discoverable surface (sync bar + visit header). **Shipped:** `FieldDataSyncBar` hosts queue-blocked + evidence upload failures (`#field-sync-health`); visit header link when either is active.
+4. **Conflict hold rules** — identify 1–2 real conflict paths in outbound flush; implement block + toast + audit, not auto-merge. **Shipped:** pre-flight in `processFieldOutboundQueue` for `field_visit_start` (server terminal) and `field_visit_complete` (outcome mismatch); `FieldOutboundConflictHoldError`; audit `field_outbound_conflict_hold`; diagnostic `conflictHold` + sync bar title.
 5. **QA script** — add `LANE_A_MILESTONE_2_QA.md` (short B1–B5 checklist) when slice 2–4 land.
 
 ---

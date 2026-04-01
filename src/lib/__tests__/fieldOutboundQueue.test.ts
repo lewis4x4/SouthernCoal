@@ -20,6 +20,7 @@ import {
   mergeVisitWithQueuedLifecycle,
   mergeVisitWithQueuedStart,
   optimisticMeasurementsFromQueue,
+  isFieldOutboundConflictHoldError,
   processFieldOutboundQueue,
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
@@ -522,12 +523,27 @@ describe('fieldOutboundQueue', () => {
       latitude: 38.1,
       longitude: -81.2,
     });
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'assigned',
+        outcome: null,
+        completed_at: null,
+      },
+      error: null,
+    });
     const eq = vi.fn().mockResolvedValue({ error: null });
     const update = vi.fn(() => ({ eq }));
     const insert = vi.fn().mockResolvedValue({ error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });
     const from = vi.fn((table: string) => {
-      if (table === 'field_visits') return { update };
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+          update,
+        };
+      }
       return { insert, upsert };
     });
     const fake = { from } as unknown as SupabaseClient;
@@ -536,6 +552,94 @@ describe('fieldOutboundQueue', () => {
     expect(result.processed).toBe(1);
     expect(update).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith('id', 'v1');
+  });
+
+  it('processFieldOutboundQueue holds field_visit_start when server visit is terminal', async () => {
+    enqueueFieldVisitStart({
+      id: 'st2',
+      visitId: 'v1',
+      startedAt: '2026-03-31T12:00:00.000Z',
+      latitude: 38.1,
+      longitude: -81.2,
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'completed',
+        outcome: 'no_discharge',
+        completed_at: '2026-03-31T13:00:00.000Z',
+      },
+      error: null,
+    });
+    const update = vi.fn();
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+          update,
+        };
+      }
+      return { insert, upsert };
+    });
+    const fake = { from } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+    expect(result.processed).toBe(0);
+    expect(result.blockedOp).toEqual({ kind: 'field_visit_start', visitId: 'v1' });
+    expect(isFieldOutboundConflictHoldError(result.failed)).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+    expect(getFieldOutboundQueueLength()).toBe(1);
+  });
+
+  it('processFieldOutboundQueue continues past a held field_visit_start', async () => {
+    enqueueFieldVisitStart({
+      id: 'st3',
+      visitId: 'v1',
+      startedAt: '2026-03-31T12:00:00.000Z',
+      latitude: 38.1,
+      longitude: -81.2,
+    });
+    enqueueFieldMeasurementInsert({
+      id: 'm-after-start-hold',
+      visitId: 'v2',
+      parameterName: 'pH',
+      measuredValue: 7,
+      measuredText: null,
+      unit: 's.u.',
+    });
+
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'completed',
+        outcome: 'no_discharge',
+        completed_at: '2026-03-31T13:00:00.000Z',
+      },
+      error: null,
+    });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn();
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+          update,
+        };
+      }
+      return { insert, upsert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+    const fake = { from } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+
+    expect(result.processed).toBe(1);
+    expect(isFieldOutboundConflictHoldError(result.failed)).toBe(true);
+    expect(result.blockedOp).toEqual({ kind: 'field_visit_start', visitId: 'v1' });
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(getFieldOutboundQueue()).toHaveLength(1);
+    expect(getFieldOutboundQueue()[0]?.id).toBe('st3');
   });
 
   it('processFieldOutboundQueue processes inspection upsert', async () => {
@@ -584,8 +688,29 @@ describe('fieldOutboundQueue', () => {
       actorName: 'Sampler',
     });
 
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'in_progress',
+        outcome: null,
+        completed_at: null,
+      },
+      error: null,
+    });
     const rpc = vi.fn().mockResolvedValue({ data: { governance_issue_id: null }, error: null });
-    const fake = { rpc } as unknown as SupabaseClient;
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+        };
+      }
+      return {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      };
+    });
+    const fake = { from, rpc } as unknown as SupabaseClient;
     const result = await processFieldOutboundQueue(fake);
 
     expect(result.failed).toBeNull();
@@ -596,5 +721,127 @@ describe('fieldOutboundQueue', () => {
       p_no_discharge_narrative: 'No flow at sample point',
       p_actor_name: 'Sampler',
     }));
+  });
+
+  it('processFieldOutboundQueue holds field_visit_complete when server outcome disagrees', async () => {
+    enqueueFieldVisitComplete({
+      id: 'fc4',
+      visitId: 'v1',
+      outcome: 'access_issue',
+      completedAt: '2026-03-31T14:00:00.000Z',
+      completedLatitude: 38.3,
+      completedLongitude: -81.3,
+      weatherConditions: null,
+      fieldNotes: null,
+      potentialForceMajeure: false,
+      potentialForceMajeureNotes: null,
+      noDischargeNarrative: null,
+      noDischargeObservedCondition: null,
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetails: null,
+      accessIssueType: 'access_issue',
+      accessIssueObstructionNarrative: 'Gate locked',
+      accessIssueContactAttempted: true,
+      accessIssueContactName: 'Site',
+      accessIssueContactOutcome: 'No answer',
+      actorName: 'Sampler',
+    });
+
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'completed',
+        outcome: 'no_discharge',
+        completed_at: '2026-03-31T13:00:00.000Z',
+      },
+      error: null,
+    });
+    const rpc = vi.fn();
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+        };
+      }
+      return {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      };
+    });
+    const fake = { from, rpc } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+
+    expect(result.processed).toBe(0);
+    expect(isFieldOutboundConflictHoldError(result.failed)).toBe(true);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(getFieldOutboundQueueLength()).toBe(1);
+  });
+
+  it('processFieldOutboundQueue continues past a held field_visit_complete', async () => {
+    enqueueFieldVisitComplete({
+      id: 'fc5',
+      visitId: 'v1',
+      outcome: 'access_issue',
+      completedAt: '2026-03-31T14:00:00.000Z',
+      completedLatitude: 38.3,
+      completedLongitude: -81.3,
+      weatherConditions: null,
+      fieldNotes: null,
+      potentialForceMajeure: false,
+      potentialForceMajeureNotes: null,
+      noDischargeNarrative: null,
+      noDischargeObservedCondition: null,
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetails: null,
+      accessIssueType: 'access_issue',
+      accessIssueObstructionNarrative: 'Gate locked',
+      accessIssueContactAttempted: true,
+      accessIssueContactName: 'Site',
+      accessIssueContactOutcome: 'No answer',
+      actorName: 'Sampler',
+    });
+    enqueueFieldMeasurementInsert({
+      id: 'm-after-complete-hold',
+      visitId: 'v2',
+      parameterName: 'Temperature',
+      measuredValue: 12,
+      measuredText: null,
+      unit: 'C',
+    });
+
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        visit_status: 'completed',
+        outcome: 'no_discharge',
+        completed_at: '2026-03-31T13:00:00.000Z',
+      },
+      error: null,
+    });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const rpc = vi.fn();
+    const from = vi.fn((table: string) => {
+      if (table === 'field_visits') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle }),
+          }),
+        };
+      }
+      return {
+        insert,
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      };
+    });
+    const fake = { from, rpc } as unknown as SupabaseClient;
+    const result = await processFieldOutboundQueue(fake);
+
+    expect(result.processed).toBe(1);
+    expect(isFieldOutboundConflictHoldError(result.failed)).toBe(true);
+    expect(result.blockedOp).toEqual({ kind: 'field_visit_complete', visitId: 'v1' });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(getFieldOutboundQueue()).toHaveLength(1);
+    expect(getFieldOutboundQueue()[0]?.id).toBe('fc5');
   });
 });

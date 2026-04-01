@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { AlertTriangle, ImageOff, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import type { FieldEvidenceDraftSyncFailure } from '@/lib/fieldEvidenceDrafts';
+import type { OutboundQueueFlushDiagnostic } from '@/lib/fieldOutboundQueueDiagnostic';
 
 function humanizeOutboundOpKind(kind: string): string {
   const labels: Record<string, string> = {
@@ -23,10 +25,17 @@ type Props = {
   /** Phase 4: outbound action queue (localStorage) + offline evidence drafts (IndexedDB) not yet uploaded */
   pendingOutboundCount?: number;
   /** Phase 4: first op that failed during last flush (from `processFieldOutboundQueue`) */
-  queueFlushDiagnostic?: { message: string; opKind: string; visitId: string } | null;
+  queueFlushDiagnostic?: OutboundQueueFlushDiagnostic | null;
   onDismissQueueFlushDiagnostic?: () => void;
   /** Logged after a successful Refresh (fire-and-forget); identifies which field screen triggered sync. */
   auditRefreshPayload?: Record<string, unknown>;
+  /** Visit-scoped: offline evidence drafts that failed to upload (shown with queue diagnostics — M2 single surface). */
+  evidenceSyncFailures?: readonly Pick<
+    FieldEvidenceDraftSyncFailure,
+    'draftId' | 'fileName' | 'message'
+  >[];
+  onRetryEvidenceSync?: () => void;
+  onDismissEvidenceFailures?: () => void;
 };
 
 /**
@@ -40,6 +49,9 @@ export function FieldDataSyncBar({
   queueFlushDiagnostic = null,
   onDismissQueueFlushDiagnostic,
   auditRefreshPayload,
+  evidenceSyncFailures = [],
+  onRetryEvidenceSync,
+  onDismissEvidenceFailures,
 }: Props) {
   const { log } = useAuditLog();
   const [manualBusy, setManualBusy] = useState(false);
@@ -94,8 +106,10 @@ export function FieldDataSyncBar({
     ? `${pendingLabel}Online. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`
     : `${pendingLabel}Offline, data may be stale. Last updated ${timeLabel}${busy ? ', syncing' : ''}.`;
 
+  const hasEvidenceFailures = evidenceSyncFailures.length > 0;
+
   return (
-    <div className="space-y-3">
+    <div id="field-sync-health" className="scroll-mt-24 space-y-3">
       {queueFlushDiagnostic ? (
         <div
           role="alert"
@@ -103,7 +117,11 @@ export function FieldDataSyncBar({
         >
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="font-medium text-red-100">Field upload queue blocked</p>
+            <p className="font-medium text-red-100">
+              {queueFlushDiagnostic.conflictHold
+                ? 'Field sync conflict — queue on hold'
+                : 'Field upload queue blocked'}
+            </p>
             <p className="text-xs text-red-200/90">
               <span className="font-semibold">{humanizeOutboundOpKind(queueFlushDiagnostic.opKind)}</span>
               <span className="text-red-200/70"> · op </span>
@@ -135,6 +153,51 @@ export function FieldDataSyncBar({
               Dismiss
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {hasEvidenceFailures ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 py-3 text-sm"
+        >
+          <ImageOff className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" aria-hidden />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="font-medium text-rose-100">Photo or file upload needs a retry</p>
+            <p className="text-xs text-rose-200/85">
+              Evidence drafts are still on this device. Stay online, then retry or use Refresh below.
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-text-secondary">
+              {evidenceSyncFailures.map((f) => (
+                <li key={f.draftId}>
+                  <span className="font-medium text-text-primary">{f.fileName}</span>
+                  <span className="text-text-muted"> — {f.message}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+            {onRetryEvidenceSync ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onRetryEvidenceSync()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-400/35 bg-rose-500/20 px-3 py-1.5 text-xs font-medium text-rose-50 transition-colors hover:bg-rose-500/30 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${busy ? 'animate-spin' : ''}`} aria-hidden />
+                Retry uploads
+              </button>
+            ) : null}
+            {onDismissEvidenceFailures ? (
+              <button
+                type="button"
+                onClick={onDismissEvidenceFailures}
+                className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
+              >
+                Dismiss
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

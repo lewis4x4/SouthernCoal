@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { didDispatchContextLoadSucceed, useFieldOps } from '@/hooks/useFieldOps';
+import { clearAllFieldVisitCaches } from '@/lib/fieldVisitLocalCache';
 import type { FieldVisitDetails, FieldVisitListItem } from '@/types';
 
 const useAuthMock = vi.fn();
@@ -9,6 +10,35 @@ const findVisitInFieldRouteCacheAsyncMock = vi.fn();
 const getFieldSyncPendingCountMock = vi.fn();
 const toastErrorMock = vi.fn();
 const fromMock = vi.fn();
+
+function installMockStorage() {
+  const store = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) ?? null : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+  };
+
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: storage,
+  });
+}
 
 vi.mock('sonner', () => ({
   toast: {
@@ -131,6 +161,9 @@ const minimalDetail = (over: Partial<FieldVisitDetails> = {}): FieldVisitDetails
   governanceIssues: [],
   scheduled_parameter_label: null,
   schedule_instructions: null,
+  stop_requirements: [],
+  required_field_measurements: [],
+  previous_visit_context: null,
   ...over,
 });
 
@@ -213,7 +246,8 @@ describe('didDispatchContextLoadSucceed', () => {
 
 describe('useFieldOps loadVisitDetails cache ownership', () => {
   beforeEach(() => {
-    localStorage.clear();
+    installMockStorage();
+    clearAllFieldVisitCaches();
     vi.clearAllMocks();
     setNavigatorOnline(false);
 
@@ -266,6 +300,7 @@ describe('useFieldOps loadVisitDetails cache ownership', () => {
     await waitFor(() => {
       expect(result.current.detail?.visit.id).toBe('visit-1');
     });
+    expect(result.current.detailLoadSource).toBe('device_visit_cache');
     expect(findVisitInFieldRouteCacheAsyncMock).not.toHaveBeenCalledWith(
       'visit-1',
       expect.anything(),

@@ -13,6 +13,7 @@ import {
   mergeOutletInspectionWithQueue,
   mergeVisitWithQueuedLifecycle,
   optimisticMeasurementsFromQueue,
+  isFieldOutboundConflictHoldError,
   processFieldOutboundQueue,
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
@@ -37,9 +38,13 @@ import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
 import { getFieldSyncPendingCount } from '@/lib/fieldSyncPending';
 import { findVisitInFieldRouteCacheAsync } from '@/lib/fieldRouteLocalCache';
 import {
+  deriveRequiredFieldMeasurements,
+} from '@/lib/fieldMeasurementPrefill';
+import {
   enrichFieldVisitsWithScheduleHints,
   formatScheduledParameterLabel,
 } from '@/lib/fieldVisitScheduleHints';
+import type { FieldVisitDetailLoadSource } from '@/lib/fieldDataSource';
 import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
 import { LANE_A_MILESTONE_1_ID } from '@/lib/laneAMilestone';
 import { supabase } from '@/lib/supabase';
@@ -52,10 +57,13 @@ import type {
   FieldEvidenceAssetRecord,
   FieldMeasurementRecord,
   FieldOpsUser,
+  FieldVisitPreviousContext,
+  FieldVisitRequiredMeasurement,
   FieldVisitDetails,
   FieldVisitListItem,
   FieldVisitOutcome,
   FieldVisitRecord,
+  FieldVisitStopRequirement,
   GovernanceIssueRecord,
   NoDischargeRecord,
   OutfallOption,
@@ -158,6 +166,94 @@ function fieldVisitShellFromRouteListItem(
     governanceIssues: [],
     scheduled_parameter_label: listItem.scheduled_parameter_label ?? null,
     schedule_instructions: listItem.schedule_instructions ?? null,
+    stop_requirements: [],
+    required_field_measurements: [],
+    previous_visit_context: null,
+  };
+}
+
+function buildStopRequirements(
+  rows: Array<{
+    id: string;
+    parameter_id: string;
+    schedule_id: string | null;
+    sample_type: string | null;
+  }>,
+  parameterById: Map<string, {
+    id: string;
+    name: string | null;
+    short_name: string | null;
+    default_unit: string | null;
+    category: string | null;
+  }>,
+  scheduleById: Map<string, {
+    id: string;
+    instructions: string | null;
+    sample_type: string | null;
+  }>,
+): FieldVisitStopRequirement[] {
+  return rows.flatMap((row) => {
+    const parameter = parameterById.get(row.parameter_id);
+    if (!parameter) {
+      return [];
+    }
+
+    const schedule = row.schedule_id ? scheduleById.get(row.schedule_id) : undefined;
+    const parameterLabel = formatScheduledParameterLabel({
+      name: parameter.name,
+      short_name: parameter.short_name,
+    }) ?? parameter.name ?? parameter.short_name ?? 'Scheduled parameter';
+
+    return [{
+      calendar_id: row.id,
+      schedule_id: row.schedule_id,
+      parameter_id: row.parameter_id,
+      parameter_name: parameter.name ?? parameter.short_name ?? parameterLabel,
+      parameter_short_name: parameter.short_name,
+      parameter_label: parameterLabel,
+      category: parameter.category,
+      default_unit: parameter.default_unit,
+      sample_type: row.sample_type ?? schedule?.sample_type ?? null,
+      schedule_instructions:
+        typeof schedule?.instructions === 'string' && schedule.instructions.trim()
+          ? schedule.instructions.trim()
+          : null,
+    }];
+  });
+}
+
+function buildPreviousVisitContext(
+  visit: {
+    id: string;
+    scheduled_date: string;
+    completed_at: string | null;
+    outcome: FieldVisitOutcome | null;
+    field_notes: string | null;
+    weather_conditions: string | null;
+  },
+  inspection: OutletInspectionRecord | null,
+  accessIssue: AccessIssueRecord | null,
+  noDischarge: NoDischargeRecord | null,
+  photoPaths: string[],
+): FieldVisitPreviousContext {
+  return {
+    visit_id: visit.id,
+    scheduled_date: visit.scheduled_date,
+    completed_at: visit.completed_at,
+    outcome: visit.outcome,
+    inspection_flow_status: inspection?.flow_status ?? null,
+    signage_condition: inspection?.signage_condition ?? null,
+    pipe_condition: inspection?.pipe_condition ?? null,
+    erosion_observed: inspection?.erosion_observed ?? false,
+    obstruction_observed: inspection?.obstruction_observed ?? false,
+    obstruction_details: inspection?.obstruction_details ?? null,
+    inspector_notes: inspection?.inspector_notes ?? null,
+    access_issue_type: accessIssue?.issue_type ?? null,
+    access_issue_narrative: accessIssue?.obstruction_narrative ?? null,
+    no_discharge_narrative: noDischarge?.narrative ?? null,
+    field_notes: visit.field_notes ?? null,
+    weather_conditions: visit.weather_conditions ?? null,
+    photo_evidence_paths: photoPaths,
   };
 }
 
@@ -181,6 +277,8 @@ export function useFieldOps() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<FieldVisitDetails | null>(null);
+  /** Set only inside loadVisitDetails — tells UI if detail is live vs device cache / route shell. */
+  const [detailLoadSource, setDetailLoadSource] = useState<FieldVisitDetailLoadSource | null>(null);
   const [outboundPendingCount, setOutboundPendingCount] = useState(0);
   /** Phase 4: shared across field pages via localStorage */
   const [outboundQueueDiagnostic, setOutboundQueueDiagnostic] = useState(() =>
@@ -230,7 +328,11 @@ export function useFieldOps() {
   const loadVisitDetails = useCallback(async (visitId: string) => {
     const requestId = detailRequestIdRef.current + 1;
     detailRequestIdRef.current = requestId;
-    const commitDetail = (nextDetail: FieldVisitDetails | null, detailVisitId: string | null) => {
+    const commitDetail = (
+      nextDetail: FieldVisitDetails | null,
+      detailVisitId: string | null,
+      loadSource: FieldVisitDetailLoadSource | null,
+    ) => {
       if (detailRequestIdRef.current !== requestId) return false;
       detailOwnerScopeRef.current = nextDetail
         ? {
@@ -242,12 +344,14 @@ export function useFieldOps() {
             viewerUserId: null,
           };
       setDetail(nextDetail);
+      setDetailLoadSource(loadSource);
       lastDetailVisitIdRef.current = detailVisitId;
       setDetailLoading(false);
       return true;
     };
 
     setDetailLoading(true);
+    setDetailLoadSource(null);
 
     const cachedDetail = loadFieldVisitCache(visitId, {
       organizationId,
@@ -255,7 +359,7 @@ export function useFieldOps() {
     });
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
     if (offline && cachedDetail) {
-      commitDetail(cachedDetail, visitId);
+      commitDetail(cachedDetail, visitId, 'device_visit_cache');
       return cachedDetail;
     }
 
@@ -268,7 +372,7 @@ export function useFieldOps() {
         : null;
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
-        if (commitDetail(shell, visitId)) {
+        if (commitDetail(shell, visitId, 'device_route_shell')) {
           saveFieldVisitCache(shell, {
             organizationId,
             viewerUserId: userId,
@@ -299,7 +403,7 @@ export function useFieldOps() {
     if (visitRes.error || !visitRes.data) {
       if (cachedDetail) {
         toast.error('Showing cached field visit copy because the live load failed');
-        commitDetail(cachedDetail, visitId);
+        commitDetail(cachedDetail, visitId, 'device_visit_cache');
         return cachedDetail;
       }
       const routeListItem = organizationId
@@ -313,7 +417,7 @@ export function useFieldOps() {
         toast.error(
           'Live load failed; showing your saved route copy for this stop. Reconnect and tap Refresh when you can.',
         );
-        if (commitDetail(shell, visitId)) {
+        if (commitDetail(shell, visitId, 'device_route_shell')) {
           saveFieldVisitCache(shell, {
             organizationId,
             viewerUserId: userId,
@@ -322,52 +426,204 @@ export function useFieldOps() {
         return shell;
       }
       toast.error(`Failed to load field visit: ${visitRes.error?.message ?? 'Not found'}`);
-      commitDetail(null, null);
+      commitDetail(null, null, null);
       return null;
     }
 
     const visit = visitRes.data as FieldVisitRecord;
 
     let routeStopSequence: number | null = null;
+    let routePriorityRank: number | null = null;
+    let routePriorityReason: string | null = null;
     let scheduledParameterLabel: string | null = null;
     let scheduleInstructions: string | null = null;
-    if (visit.sampling_calendar_id) {
-      const [stopRes, calRes] = await Promise.all([
+    let stopRequirements: FieldVisitStopRequirement[] = [];
+    let requiredFieldMeasurements: FieldVisitRequiredMeasurement[] = [];
+    let previousVisitContext: FieldVisitPreviousContext | null = null;
+
+    const [routeStopRes, currentCalendarRes, stopCalendarsRes, previousVisitRes] = await Promise.all([
+      visit.sampling_calendar_id
+        ? supabase
+            .from('sampling_route_stops')
+            .select('stop_sequence, priority_rank, priority_reason')
+            .eq('calendar_id', visit.sampling_calendar_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      visit.sampling_calendar_id
+        ? supabase
+            .from('sampling_calendar')
+            .select('id, parameter_id, schedule_id, sample_type')
+            .eq('id', visit.sampling_calendar_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      supabase
+        .from('sampling_calendar')
+        .select('id, parameter_id, schedule_id, sample_type')
+        .eq('organization_id', visit.organization_id)
+        .eq('outfall_id', visit.outfall_id)
+        .eq('scheduled_date', visit.scheduled_date),
+      supabase
+        .from('field_visits')
+        .select('id, scheduled_date, completed_at, outcome, field_notes, weather_conditions')
+        .eq('organization_id', visit.organization_id)
+        .eq('outfall_id', visit.outfall_id)
+        .lt('scheduled_date', visit.scheduled_date)
+        .neq('visit_status', 'cancelled')
+        .order('scheduled_date', { ascending: false })
+        .order('completed_at', { ascending: false })
+        .limit(1),
+    ]);
+
+    if (!routeStopRes.error && routeStopRes.data) {
+      routeStopSequence = routeStopRes.data.stop_sequence as number;
+      routePriorityRank =
+        typeof routeStopRes.data.priority_rank === 'number'
+          ? routeStopRes.data.priority_rank
+          : null;
+      routePriorityReason =
+        typeof routeStopRes.data.priority_reason === 'string' && routeStopRes.data.priority_reason.trim()
+          ? routeStopRes.data.priority_reason.trim()
+          : null;
+    }
+
+    const stopCalendarRows = ((stopCalendarsRes.data ?? []) as Array<{
+      id: string;
+      parameter_id: string;
+      schedule_id: string | null;
+      sample_type: string | null;
+    }>).filter((row) => Boolean(row.parameter_id));
+
+    const currentCalendarRow = currentCalendarRes.data as {
+      id: string;
+      parameter_id: string;
+      schedule_id: string | null;
+      sample_type: string | null;
+    } | null;
+
+    if (currentCalendarRow && !stopCalendarRows.some((row) => row.id === currentCalendarRow.id)) {
+      stopCalendarRows.unshift(currentCalendarRow);
+    }
+
+    const parameterIds = [...new Set(
+      stopCalendarRows.map((row) => row.parameter_id).filter((id): id is string => Boolean(id)),
+    )];
+    const scheduleIds = [...new Set(
+      stopCalendarRows.map((row) => row.schedule_id).filter((id): id is string => Boolean(id)),
+    )];
+
+    const [parameterRes, scheduleRes] = await Promise.all([
+      parameterIds.length > 0
+        ? supabase
+            .from('parameters')
+            .select('id, name, short_name, default_unit, category')
+            .in('id', parameterIds)
+        : Promise.resolve({
+            data: [] as Array<{
+              id: string;
+              name: string | null;
+              short_name: string | null;
+              default_unit: string | null;
+              category: string | null;
+            }>,
+            error: null,
+          }),
+      scheduleIds.length > 0
+        ? supabase
+            .from('sampling_schedules')
+            .select('id, instructions, sample_type')
+            .in('id', scheduleIds)
+        : Promise.resolve({
+            data: [] as Array<{
+              id: string;
+              instructions: string | null;
+              sample_type: string | null;
+            }>,
+            error: null,
+          }),
+    ]);
+
+    const parameterById = new Map(
+      ((parameterRes.data ?? []) as Array<{
+        id: string;
+        name: string | null;
+        short_name: string | null;
+        default_unit: string | null;
+        category: string | null;
+      }>).map((row) => [row.id, row]),
+    );
+    const scheduleById = new Map(
+      ((scheduleRes.data ?? []) as Array<{
+        id: string;
+        instructions: string | null;
+        sample_type: string | null;
+      }>).map((row) => [row.id, row]),
+    );
+
+    stopRequirements = buildStopRequirements(stopCalendarRows, parameterById, scheduleById);
+    requiredFieldMeasurements = deriveRequiredFieldMeasurements(stopRequirements);
+
+    if (currentCalendarRow?.parameter_id) {
+      const currentParameter = parameterById.get(currentCalendarRow.parameter_id);
+      scheduledParameterLabel = formatScheduledParameterLabel(
+        currentParameter
+          ? { name: currentParameter.name, short_name: currentParameter.short_name }
+          : null,
+      );
+      const currentSchedule = currentCalendarRow.schedule_id
+        ? scheduleById.get(currentCalendarRow.schedule_id)
+        : undefined;
+      if (typeof currentSchedule?.instructions === 'string' && currentSchedule.instructions.trim()) {
+        scheduleInstructions = currentSchedule.instructions.trim();
+      }
+    }
+
+    const previousVisit = ((previousVisitRes.data ?? []) as Array<{
+      id: string;
+      scheduled_date: string;
+      completed_at: string | null;
+      outcome: FieldVisitOutcome | null;
+      field_notes: string | null;
+      weather_conditions: string | null;
+    }>)[0];
+
+    if (previousVisit) {
+      const [
+        previousInspectionRes,
+        previousAccessIssueRes,
+        previousNoDischargeRes,
+        previousEvidenceRes,
+      ] = await Promise.all([
         supabase
-          .from('sampling_route_stops')
-          .select('stop_sequence')
-          .eq('calendar_id', visit.sampling_calendar_id)
+          .from('outlet_inspections')
+          .select('*')
+          .eq('field_visit_id', previousVisit.id)
           .maybeSingle(),
         supabase
-          .from('sampling_calendar')
-          .select('parameter_id, schedule_id')
-          .eq('id', visit.sampling_calendar_id)
+          .from('access_issues')
+          .select('*')
+          .eq('field_visit_id', previousVisit.id)
           .maybeSingle(),
-      ]);
-      if (!stopRes.error && stopRes.data) {
-        routeStopSequence = stopRes.data.stop_sequence as number;
-      }
-      const parameterId = calRes.data?.parameter_id as string | undefined;
-      const scheduleId = calRes.data?.schedule_id as string | undefined;
-
-      const [paramRes, schedRes] = await Promise.all([
-        parameterId
-          ? supabase.from('parameters').select('name, short_name').eq('id', parameterId).maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-        scheduleId
-          ? supabase.from('sampling_schedules').select('instructions').eq('id', scheduleId).maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
+        supabase
+          .from('no_discharge_events')
+          .select('*')
+          .eq('field_visit_id', previousVisit.id)
+          .maybeSingle(),
+        supabase
+          .from('field_evidence_assets')
+          .select('storage_path')
+          .eq('field_visit_id', previousVisit.id)
+          .eq('evidence_type', 'photo')
+          .order('created_at', { ascending: false })
+          .limit(4),
       ]);
 
-      if (!paramRes.error) {
-        scheduledParameterLabel = formatScheduledParameterLabel(
-          paramRes.data as { name: string | null; short_name: string | null } | null,
-        );
-      }
-      const rawInstr = schedRes.data?.instructions;
-      if (typeof rawInstr === 'string' && rawInstr.trim()) {
-        scheduleInstructions = rawInstr.trim();
-      }
+      previousVisitContext = buildPreviousVisitContext(
+        previousVisit,
+        (previousInspectionRes.data as OutletInspectionRecord | null) ?? null,
+        (previousAccessIssueRes.data as AccessIssueRecord | null) ?? null,
+        (previousNoDischargeRes.data as NoDischargeRecord | null) ?? null,
+        ((previousEvidenceRes.data ?? []) as Array<{ storage_path: string }>).map((row) => row.storage_path),
+      );
     }
 
     const of = outfallMap.get(visit.outfall_id);
@@ -380,6 +636,8 @@ export function useFieldOps() {
       outfall_longitude: of?.longitude ?? null,
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
+      route_priority_rank: routePriorityRank,
+      route_priority_reason: routePriorityReason,
       scheduled_parameter_label: scheduledParameterLabel,
       schedule_instructions: scheduleInstructions,
     };
@@ -413,9 +671,12 @@ export function useFieldOps() {
       governanceIssues: (governanceRes.data ?? []) as GovernanceIssueRecord[],
       scheduled_parameter_label: scheduledParameterLabel,
       schedule_instructions: scheduleInstructions,
+      stop_requirements: stopRequirements,
+      required_field_measurements: requiredFieldMeasurements,
+      previous_visit_context: previousVisitContext,
     };
 
-    if (commitDetail(nextDetail, visitId)) {
+    if (commitDetail(nextDetail, visitId, 'live')) {
       saveFieldVisitCache(nextDetail, {
         organizationId,
         viewerUserId: userId,
@@ -457,6 +718,7 @@ export function useFieldOps() {
       };
       lastDetailVisitIdRef.current = null;
       setDetail(null);
+      setDetailLoadSource(null);
     }
   }, [detail, organizationId, userId]);
 
@@ -494,28 +756,41 @@ export function useFieldOps() {
     const totalProcessed = evidenceSyncResult.uploaded + flushResult.processed;
 
     if (flushResult.failed) {
-      toast.error(`Could not upload pending field data: ${flushResult.failed.message}`);
+      const conflictErr = isFieldOutboundConflictHoldError(flushResult.failed)
+        ? flushResult.failed
+        : null;
+      toast.error(
+        conflictErr
+          ? conflictErr.message
+          : `Could not upload pending field data: ${flushResult.failed.message}`,
+      );
       const diag = flushResult.blockedOp
         ? {
             message: flushResult.failed.message,
             opKind: flushResult.blockedOp.kind,
             visitId: flushResult.blockedOp.visitId,
+            conflictHold: Boolean(conflictErr),
           }
         : {
             message: flushResult.failed.message,
             opKind: 'unknown',
             visitId: '—',
+            conflictHold: Boolean(conflictErr),
           };
       persistOutboundQueueDiagnostic(diag);
       setOutboundQueueDiagnostic(diag);
 
       const blockedVisitId = flushResult.blockedOp?.visitId;
+      const auditAction = conflictErr ? 'field_outbound_conflict_hold' : 'field_outbound_queue_blocked';
       auditLog(
-        'field_outbound_queue_blocked',
+        auditAction,
         {
           message: flushResult.failed.message,
           op_kind: flushResult.blockedOp?.kind ?? 'unknown',
           visit_id: blockedVisitId && blockedVisitId !== '—' ? blockedVisitId : null,
+          ...(conflictErr
+            ? { conflict_reason: conflictErr.reason, ...conflictErr.details }
+            : {}),
         },
         {
           module: 'field_operations',
@@ -1018,11 +1293,18 @@ export function useFieldOps() {
     visitId: string,
     containerId: string,
     preservativeConfirmed: boolean,
+    metadataInput?: Record<string, unknown> | null,
   ): Promise<{ queued: boolean }> => {
     const text = containerId.trim();
     if (!text) {
       throw new Error('Primary container ID is required');
     }
+
+    const metadata = {
+      preservative_confirmed: preservativeConfirmed,
+      source: 'field_visit_coc_v1',
+      ...(metadataInput ?? {}),
+    };
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
     const queueLocally = () => {
@@ -1031,6 +1313,7 @@ export function useFieldOps() {
         visitId,
         containerText: text,
         preservativeConfirmed,
+        metadata,
       });
       if (!ok) throw new Error('Could not save offline — storage blocked or full');
 
@@ -1050,11 +1333,6 @@ export function useFieldOps() {
     }
 
     try {
-      const metadata = {
-        preservative_confirmed: preservativeConfirmed,
-        source: 'field_visit_coc_v1',
-      };
-
       const { data: existing, error: selectError } = await supabase
         .from('field_measurements')
         .select('id')
@@ -1265,7 +1543,8 @@ export function useFieldOps() {
 
   useEffect(() => {
     if (!organizationId) {
-      setDispatchLoadAlerts([]);
+      setLoading(false);
+      setDispatchLoadAlerts((current) => (current.length === 0 ? current : []));
       return;
     }
     loadDispatchContext({ markSuccessfulSync: true }).catch((err) => {
@@ -1312,6 +1591,7 @@ export function useFieldOps() {
     clearOutboundQueueDiagnostic,
     detail,
     detailLoading,
+    detailLoadSource,
     refresh: () => loadDispatchContext({ markSuccessfulSync: true }),
     refreshOutboundPendingCount,
     loadVisitDetails,
