@@ -1,30 +1,178 @@
+import { usePermissions } from '@/hooks/usePermissions';
 import { FinancialRiskCard } from '@/components/executive/FinancialRiskCard';
 import { OperationalStatusCard } from '@/components/executive/OperationalStatusCard';
 import { ActionQueueCard } from '@/components/executive/ActionQueueCard';
 import { QuickAccessTiles } from '@/components/executive/QuickAccessTiles';
+import { RoleDashboardHeader } from '@/components/dashboard/RoleDashboardHeader';
+import { TodaysRouteSummaryCard } from '@/components/dashboard/TodaysRouteSummaryCard';
+import { RecentVisitsCard } from '@/components/dashboard/RecentVisitsCard';
+import { OutboundQueueCard } from '@/components/dashboard/OutboundQueueCard';
+import { CorrectiveActionSummaryCard } from '@/components/dashboard/CorrectiveActionSummaryCard';
+import { UploadQueueSummaryCard } from '@/components/dashboard/UploadQueueSummaryCard';
 
-export function Dashboard() {
+function FieldSamplerDashboard() {
   return (
     <div className="mx-auto max-w-[1920px] space-y-6">
-      {/* Page Header */}
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-          Executive Dashboard
-        </h1>
-        <p className="text-sm text-text-secondary">
-          Real-time compliance posture across all Southern Coal facilities
-        </p>
+      <RoleDashboardHeader
+        title="Field Sampler Dashboard"
+        subtitle="Here's your day — today's route, recent visits, and sync status"
+      />
+      <TodaysRouteSummaryCard scope="mine" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <RecentVisitsCard />
+        <OutboundQueueCard />
       </div>
+      <QuickAccessTiles />
+    </div>
+  );
+}
 
-      {/* Three Column Grid */}
+function LabTechDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Lab Dashboard"
+        subtitle="Upload status, system health, and corrective actions"
+      />
+      <UploadQueueSummaryCard />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <OperationalStatusCard />
+        <CorrectiveActionSummaryCard />
+      </div>
+      <QuickAccessTiles />
+    </div>
+  );
+}
+
+function SafetyManagerDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Safety Dashboard"
+        subtitle="Corrective actions overview and system health"
+      />
+      <CorrectiveActionSummaryCard />
+      <OperationalStatusCard />
+      <QuickAccessTiles />
+    </div>
+  );
+}
+
+function SiteManagerDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Site Manager Dashboard"
+        subtitle="Field activity across your sites, corrective actions, and compliance status"
+      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <TodaysRouteSummaryCard scope="org" />
+        <CorrectiveActionSummaryCard />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <OperationalStatusCard />
+        <ActionQueueCard />
+      </div>
+      <QuickAccessTiles />
+    </div>
+  );
+}
+
+function EnvManagerDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Compliance Dashboard"
+        subtitle="Financial risk, corrective actions, field operations, and obligations"
+      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <FinancialRiskCard />
+        <CorrectiveActionSummaryCard />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <OperationalStatusCard />
+        <ActionQueueCard />
+      </div>
+      <TodaysRouteSummaryCard scope="org" />
+      <QuickAccessTiles />
+    </div>
+  );
+}
+
+function ExecutiveDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Executive Dashboard"
+        subtitle="Real-time compliance posture across all Southern Coal facilities"
+      />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <FinancialRiskCard />
         <OperationalStatusCard />
         <ActionQueueCard />
       </div>
-
-      {/* Quick Access Tiles */}
       <QuickAccessTiles />
     </div>
   );
+}
+
+function ReadOnlyDashboard() {
+  return (
+    <div className="mx-auto max-w-[1920px] space-y-6">
+      <RoleDashboardHeader
+        title="Dashboard"
+        subtitle="System health overview"
+      />
+      <OperationalStatusCard />
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+        <p className="text-sm text-text-secondary">
+          You have read-only access. Contact your administrator for additional permissions.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function Dashboard() {
+  const { getEffectiveRole, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[1920px] space-y-6">
+        <div className="animate-pulse space-y-6">
+          <div className="space-y-2">
+            <div className="h-8 w-64 rounded bg-white/[0.06]" />
+            <div className="h-4 w-96 rounded bg-white/[0.04]" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 rounded-xl bg-white/[0.04]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const role = getEffectiveRole();
+
+  switch (role) {
+    case 'field_sampler':
+      return <FieldSamplerDashboard />;
+    case 'lab_tech':
+      return <LabTechDashboard />;
+    case 'safety_manager':
+      return <SafetyManagerDashboard />;
+    case 'site_manager':
+      return <SiteManagerDashboard />;
+    case 'environmental_manager':
+      return <EnvManagerDashboard />;
+    case 'executive':
+    case 'admin':
+      return <ExecutiveDashboard />;
+    case 'read_only':
+      return <ReadOnlyDashboard />;
+    default:
+      return <ExecutiveDashboard />;
+  }
 }
