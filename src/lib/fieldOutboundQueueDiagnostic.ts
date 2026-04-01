@@ -14,6 +14,7 @@ type Stored = {
   opKind: string;
   visitId: string;
   savedAt: string;
+  conflictHold?: boolean;
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -24,6 +25,8 @@ export type OutboundQueueFlushDiagnostic = {
   message: string;
   opKind: string;
   visitId: string;
+  /** True when flush held the op due to server vs device disagreement (M2), not a transient error. */
+  conflictHold?: boolean;
 };
 
 export function readStoredOutboundQueueDiagnostic(): OutboundQueueFlushDiagnostic | null {
@@ -40,7 +43,12 @@ export function readStoredOutboundQueueDiagnostic(): OutboundQueueFlushDiagnosti
     ) {
       return null;
     }
-    return { message: data.message, opKind: data.opKind, visitId: data.visitId };
+    return {
+      message: data.message,
+      opKind: data.opKind,
+      visitId: data.visitId,
+      conflictHold: typeof data.conflictHold === 'boolean' ? data.conflictHold : undefined,
+    };
   } catch {
     return null;
   }
@@ -55,6 +63,7 @@ export function persistOutboundQueueDiagnostic(d: OutboundQueueFlushDiagnostic):
       opKind: d.opKind,
       visitId: d.visitId,
       savedAt: new Date().toISOString(),
+      ...(d.conflictHold === true ? { conflictHold: true } : {}),
     };
     localStorage.setItem(OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY, JSON.stringify(payload));
     notifyOutboundQueueDiagnosticChanged();

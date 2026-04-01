@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { DisclaimerFooter } from '@/components/legal/DisclaimerFooter';
 import { cn } from '@/lib/cn';
+import { readStoredBoolean } from '@/lib/safeStorage';
 
 interface AppShellProps {
   children: ReactNode;
@@ -10,10 +11,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   // Sync with sidebar pinned state for proper margin
-  const [isPinned, setIsPinned] = useState(() => {
-    const saved = localStorage.getItem('sidebar-pinned');
-    return saved === 'true';
-  });
+  const [isPinned, setIsPinned] = useState(() => readStoredBoolean('sidebar-pinned'));
 
   // Listen for sidebar pin changes
   useEffect(() => {

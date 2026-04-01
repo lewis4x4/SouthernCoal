@@ -25,7 +25,11 @@ function getExpectedCounts(): Record<string, number> {
 function setExpectedCount(stateCode: string, count: number) {
   const current = getExpectedCounts();
   current[stateCode] = count;
-  localStorage.setItem(EXPECTED_KEY, JSON.stringify(current));
+  try {
+    localStorage.setItem(EXPECTED_KEY, JSON.stringify(current));
+  } catch {
+    /* non-critical */
+  }
 }
 
 const CELL_COLORS: Record<MatrixCellStatus, string> = {

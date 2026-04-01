@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFtsNavBadge } from '@/hooks/useFtsNavBadge';
 import type { Role } from '@/types/auth';
+import { readStoredBoolean, writeStoredBoolean } from '@/lib/safeStorage';
 import {
   ALL_ROLES,
   COMPLIANCE_UPLOAD_ROLES,
@@ -136,10 +137,7 @@ export function Sidebar() {
   const { getEffectiveRole } = usePermissions();
 
   // Load pinned state from localStorage
-  const [isPinned, setIsPinned] = useState(() => {
-    const saved = localStorage.getItem('sidebar-pinned');
-    return saved === 'true';
-  });
+  const [isPinned, setIsPinned] = useState(() => readStoredBoolean('sidebar-pinned'));
   const [isHovered, setIsHovered] = useState(false);
 
   // Sidebar is expanded when pinned OR hovered
@@ -151,7 +149,7 @@ export function Sidebar() {
 
   // Persist pin state and dispatch event for AppShell to listen
   useEffect(() => {
-    localStorage.setItem('sidebar-pinned', String(isPinned));
+    writeStoredBoolean('sidebar-pinned', isPinned);
     window.dispatchEvent(new CustomEvent('sidebar-pin-change', { detail: isPinned }));
   }, [isPinned]);
 

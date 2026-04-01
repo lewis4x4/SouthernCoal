@@ -84,7 +84,8 @@ type AuditAction =
   | 'field_visit_completed'
   | 'field_visit_completion_queued'
   | 'field_outbound_queue_flushed'
-  | 'field_outbound_queue_blocked';
+  | 'field_outbound_queue_blocked'
+  | 'field_outbound_conflict_hold';
 
 export type { AuditAction };
 

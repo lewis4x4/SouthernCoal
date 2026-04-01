@@ -23,6 +23,14 @@ function loadSearchMode(): SearchMode {
   }
 }
 
+function loadReviewMode(): boolean {
+  try {
+    return localStorage.getItem(REVIEW_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 interface SearchStore {
   query: string;
   isLoading: boolean;
@@ -63,7 +71,7 @@ export const useSearchStore = create<SearchStore>((set) => ({
   error: null,
   suggestion: null,
   recentQueries: loadRecent(),
-  reviewMode: localStorage.getItem(REVIEW_KEY) === 'true',
+  reviewMode: loadReviewMode(),
 
   // Document search state
   searchMode: loadSearchMode(),
