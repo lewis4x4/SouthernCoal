@@ -29,16 +29,16 @@ export function FieldVisitInspectionStep({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4">
         <label className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-            Flow status <span className="text-cyan-200/90">(required before complete)</span>
+          <span className="text-sm font-medium text-text-muted">
+            Flow status <span className="text-cyan-200/90">(required)</span>
           </span>
           <select
             value={inspection.flow_status ?? 'unknown'}
             onChange={(event) => onInspectionChange({ flow_status: event.target.value as OutletInspectionRecord['flow_status'] })}
             disabled={visitLocked}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
           >
             <option value="unknown">Unknown</option>
             <option value="flowing">Flowing</option>
@@ -47,12 +47,12 @@ export function FieldVisitInspectionStep({
           </select>
         </label>
         <label className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Signage condition</span>
+          <span className="text-sm font-medium text-text-muted">Signage condition</span>
           <select
             value={inspection.signage_condition ?? ''}
             onChange={(event) => onInspectionChange({ signage_condition: event.target.value || null })}
             disabled={visitLocked}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
           >
             <option value="">Select signage status</option>
             {SIGNAGE_CONDITION_OPTIONS.map((option) => (
@@ -61,12 +61,12 @@ export function FieldVisitInspectionStep({
           </select>
         </label>
         <label className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Pipe condition</span>
+          <span className="text-sm font-medium text-text-muted">Pipe condition</span>
           <select
             value={inspection.pipe_condition ?? ''}
             onChange={(event) => onInspectionChange({ pipe_condition: event.target.value || null })}
             disabled={visitLocked}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
           >
             <option value="">Select pipe status</option>
             {PIPE_CONDITION_OPTIONS.map((option) => (
@@ -75,7 +75,7 @@ export function FieldVisitInspectionStep({
           </select>
         </label>
         <label className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Obstruction type</span>
+          <span className="text-sm font-medium text-text-muted">Obstruction type</span>
           <select
             value={obstruction.type}
             onChange={(event) =>
@@ -83,7 +83,7 @@ export function FieldVisitInspectionStep({
                 obstruction_details: formatInspectionObstructionDetails(event.target.value as typeof obstruction.type, obstruction.details) || null,
               })}
             disabled={visitLocked}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
           >
             <option value="">Select obstruction type</option>
             {OBSTRUCTION_TYPE_OPTIONS.map((option) => (
@@ -92,8 +92,8 @@ export function FieldVisitInspectionStep({
           </select>
         </label>
         <label className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-            Obstruction details {outletInspectionObstructed ? '(required)' : '(required if obstructed)'}
+          <span className="text-sm font-medium text-text-muted">
+            Obstruction details {outletInspectionObstructed ? '(required)' : '(if obstructed)'}
           </span>
           <textarea
             value={obstruction.details}
@@ -103,28 +103,30 @@ export function FieldVisitInspectionStep({
               })}
             disabled={visitLocked}
             rows={3}
-            placeholder="Describe what is blocking or impairing the outlet and what follow-up is likely needed."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            placeholder="Describe what is blocking or impairing the outlet."
+            className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
           />
         </label>
       </div>
 
-      <div className="flex flex-col gap-3 text-sm text-text-secondary sm:flex-row sm:flex-wrap sm:gap-4">
-        <label className="inline-flex items-center gap-2">
+      <div className="grid gap-2">
+        <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
           <input
             type="checkbox"
             checked={inspection.erosion_observed ?? false}
             onChange={(event) => onInspectionChange({ erosion_observed: event.target.checked })}
             disabled={visitLocked}
+            className="h-5 w-5"
           />
           Erosion observed
         </label>
-        <label className="inline-flex items-center gap-2">
+        <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
           <input
             type="checkbox"
             checked={inspection.obstruction_observed ?? false}
             onChange={(event) => onInspectionChange({ obstruction_observed: event.target.checked })}
             disabled={visitLocked}
+            className="h-5 w-5"
           />
           Obstruction observed
         </label>
@@ -134,13 +136,13 @@ export function FieldVisitInspectionStep({
       {deficiencyPrompts}
 
       <label className="block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Inspection notes</span>
+        <span className="text-sm font-medium text-text-muted">Inspection notes</span>
         <textarea
           value={inspection.inspector_notes ?? ''}
           onChange={(event) => onInspectionChange({ inspector_notes: event.target.value })}
           rows={3}
           disabled={visitLocked}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
         />
       </label>
     </div>

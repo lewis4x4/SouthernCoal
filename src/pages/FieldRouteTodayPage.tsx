@@ -4,11 +4,7 @@ import {
   AlertTriangle,
   CalendarDays,
   ChevronRight,
-  ClipboardList,
-  ExternalLink,
-  MapPin,
   Navigation,
-  ShieldAlert,
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,7 +12,6 @@ import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { FieldDataSourceBanner } from '@/components/field/FieldDataSourceBanner';
 import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAlerts';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
-import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -31,10 +26,6 @@ import {
   type FieldRouteCachePayload,
 } from '@/lib/fieldRouteLocalCache';
 import { getEasternTodayYmd } from '@/lib/operationalDate';
-import {
-  FIELD_HANDOFF_GOVERNANCE_INBOX,
-  governanceIssuesInboxHref,
-} from '@/lib/governanceInboxNav';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { enrichFieldVisitsWithScheduleHints } from '@/lib/fieldVisitScheduleHints';
 import { supabase } from '@/lib/supabase';
@@ -235,14 +226,7 @@ export function FieldRouteTodayPage() {
     () => dayVisits.filter((v) => v.outcome === 'access_issue').length,
     [dayVisits],
   );
-  const displayForceMajeureCount = useMemo(
-    () => displayDayVisits.filter((v) => v.potential_force_majeure).length,
-    [displayDayVisits],
-  );
-  const displayAccessIssueCount = useMemo(
-    () => displayDayVisits.filter((v) => v.outcome === 'access_issue').length,
-    [displayDayVisits],
-  );
+
   const fullRouteHref = routeLineCoords.length >= 2 ? mapsDirUrl(routeLineCoords) : '';
 
   const showRouteLoader = loading && online && dayVisits.length === 0;
@@ -318,378 +302,256 @@ export function FieldRouteTodayPage() {
     lastAutoSavedKeyRef.current = cacheKey;
   }, [cacheOrganizationId, cacheViewerId, dayVisitsLive, loading, online, outfallCoords, persistOfflineCopy, routeDate, scope]);
 
+  const nextOpenStop = displayDayVisits.find((v) => visitNeedsDisposition(v));
+  const hasRouteAlerts = outboundQueueDiagnostic || dispatchLoadAlerts.length > 0 ||
+    routeOutfallDayConflicts.length > 0 || forceMajeureFlaggedCount > 0 || accessIssueOutcomeCount > 0;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-            Today&apos;s route
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-            Open the next stop, keep your offline copy current, and finish the route with a clear disposition on every visit.
-          </p>
+    <div className="space-y-3">
+      {/* Compact toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="date"
+          value={routeDate}
+          onChange={(e) => setRouteDate(e.target.value)}
+          className="min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none focus:border-emerald-400/30"
+        />
+        {canSeeOrgWide ? (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setScope('mine')}
+              className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
+                scope === 'mine'
+                  ? 'bg-emerald-500/20 text-emerald-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+              }`}
+            >
+              Mine
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('org')}
+              className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
+                scope === 'org'
+                  ? 'bg-emerald-500/20 text-emerald-200'
+                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+              }`}
+            >
+              All
+            </button>
+          </div>
+        ) : null}
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setOpenStopsOnly(false)}
+            className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
+              !openStopsOnly
+                ? 'bg-emerald-500/20 text-emerald-200'
+                : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpenStopsOnly(true)}
+            className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
+              openStopsOnly
+                ? 'bg-emerald-500/20 text-emerald-200'
+                : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+            }`}
+          >
+            Open
+          </button>
         </div>
+        <span className="ml-auto text-sm font-medium text-text-muted">
+          {completedCount}/{displayDayVisits.length}
+        </span>
+        {online && (
+          <button
+            type="button"
+            onClick={handleSaveOffline}
+            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+            aria-label="Save route offline"
+            title="Save route offline"
+          >
+            <CalendarDays className="h-5 w-5" />
+          </button>
+        )}
+        {fullRouteHref ? (
+          <a
+            href={fullRouteHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-emerald-200"
+            aria-label="Open full route in Maps"
+          >
+            <Navigation className="h-5 w-5" />
+          </a>
+        ) : null}
       </div>
 
-      <FieldDataSyncBar
-        loading={loading}
-        lastSyncedAt={lastSyncedAt}
-        pendingOutboundCount={outboundPendingCount}
-        queueFlushDiagnostic={outboundQueueDiagnostic}
-        onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
-        onRefresh={refresh}
-        auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
-      />
-
-      <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
-
-      <FieldSameOutfallDayWarning
-        groups={routeOutfallDayConflicts}
-        contextLabel={"Today's route list"}
-      />
-
-      {dayVisits.length > 0 && openStopsCount > 0 && (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100"
-          role="status"
-          aria-live="polite"
-        >
-          <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-cyan-200" aria-hidden />
-          <div>
-            <p className="font-medium text-cyan-50">
-              {openStopsCount} open stop{openStopsCount === 1 ? '' : 's'} on this route date
-            </p>
-            <p className="mt-1 text-xs text-cyan-200/85">
-              Assigned or in-progress visits still need a final disposition (complete or cancel in the field app, or sync
-              queued work). Each outfall should end the day with a clear status.
-            </p>
-            {forceMajeureFlaggedCount > 0 && (
-              <p className="mt-2 flex items-start gap-2 text-xs font-medium text-amber-200/95">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                <span>
-                  {forceMajeureFlaggedCount} visit{forceMajeureFlaggedCount === 1 ? '' : 's'} flagged as potential force
-                  majeure — open each visit for notes and check the{' '}
-                  <Link
-                    to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-                    className="font-semibold text-cyan-50 underline decoration-cyan-400/45 underline-offset-2 hover:text-white"
-                  >
-                    governance inbox
-                  </Link>{' '}
-                  for review deadlines.
-                </span>
-              </p>
-            )}
-            {accessIssueOutcomeCount > 0 && (
-              <p className="mt-2 flex items-start gap-2 text-xs font-medium text-rose-200/95">
-                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" aria-hidden />
-                <span>
-                  {accessIssueOutcomeCount} visit{accessIssueOutcomeCount === 1 ? '' : 's'} recorded an access issue —
-                  confirm documentation, photos, and{' '}
-                  <Link
-                    to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-                    className="font-semibold text-rose-50 underline decoration-rose-400/45 underline-offset-2 hover:text-white"
-                  >
-                    governance follow-up
-                  </Link>
-                  .
-                </span>
-              </p>
-            )}
+      {/* Collapsible status strip */}
+      {hasRouteAlerts ? (
+        <details className="rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+          <summary className="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-sm text-text-secondary">
+            {forceMajeureFlaggedCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-400" /> : null}
+            {accessIssueOutcomeCount > 0 ? <span className="h-2 w-2 rounded-full bg-rose-400" /> : null}
+            {outboundQueueDiagnostic ? <span className="h-2 w-2 rounded-full bg-red-400" /> : null}
+            <span className="flex-1">
+              {openStopsCount > 0 ? `${openStopsCount} open` : 'Route alerts'}
+              {forceMajeureFlaggedCount > 0 ? ` · ${forceMajeureFlaggedCount} FM` : ''}
+              {accessIssueOutcomeCount > 0 ? ` · ${accessIssueOutcomeCount} access` : ''}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 transition-transform [[open]>&]:rotate-90" aria-hidden />
+          </summary>
+          <div className="space-y-3 border-t border-white/[0.06] p-3">
+            <FieldDataSyncBar
+              loading={loading}
+              lastSyncedAt={lastSyncedAt}
+              pendingOutboundCount={outboundPendingCount}
+              queueFlushDiagnostic={outboundQueueDiagnostic}
+              onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+              onRefresh={refresh}
+              auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
+            />
+            <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
+            <FieldSameOutfallDayWarning groups={routeOutfallDayConflicts} contextLabel={"Today's route list"} />
           </div>
-        </div>
-      )}
-
-      {dayVisits.length > 0 && openStopsCount === 0 && forceMajeureFlaggedCount > 0 && (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-          role="status"
-          aria-live="polite"
-        >
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
-          <div>
-            <p className="font-medium text-amber-50">
-              {forceMajeureFlaggedCount} force majeure candidate
-              {forceMajeureFlaggedCount === 1 ? '' : 's'} on this route date
-            </p>
-            <p className="mt-1 text-xs text-amber-200/90">
-              Stops are disposition-complete but still flagged for compliance review — confirm the{' '}
-              <Link
-                to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-                className="font-semibold text-amber-50 underline decoration-amber-400/45 underline-offset-2 hover:text-white"
-              >
-                governance inbox
-              </Link>{' '}
-              and visit notes.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {dayVisits.length > 0 && openStopsCount === 0 && accessIssueOutcomeCount > 0 && (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
-          role="status"
-          aria-live="polite"
-        >
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-200" aria-hidden />
-          <div>
-            <p className="font-medium text-rose-50">
-              {accessIssueOutcomeCount} access issue outcome
-              {accessIssueOutcomeCount === 1 ? '' : 's'} on this route date
-            </p>
-            <p className="mt-1 text-xs text-rose-200/90">
-              Review visit records and the{' '}
-              <Link
-                to={governanceIssuesInboxHref(FIELD_HANDOFF_GOVERNANCE_INBOX)}
-                className="font-semibold text-rose-50 underline decoration-rose-400/45 underline-offset-2 hover:text-white"
-              >
-                governance queue
-              </Link>{' '}
-              for escalation and resolution.
-            </p>
-          </div>
-        </div>
-      )}
+        </details>
+      ) : null}
 
       {!online && dayVisits.length > 0 ? (
-        <FieldDataSourceBanner
-          variant="route_offline_device"
-          routeSavedAt={effectiveRouteCache?.savedAt}
-        />
+        <FieldDataSourceBanner variant="route_offline_device" routeSavedAt={effectiveRouteCache?.savedAt} />
       ) : null}
 
       {!online && !effectiveRouteCache && (
-        <div
-          className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary"
-          role="status"
-          aria-live="polite"
-        >
-          You&apos;re offline and no saved route matches this date and scope. Go online once, open this page, then use &quot;Save route offline&quot;.
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+          Offline with no saved route. Go online, open this page, then save offline.
         </div>
       )}
 
-      <SpotlightCard className="p-4 sm:p-5" spotlightColor="rgba(16, 185, 129, 0.08)">
-        <div className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-end">
-          <label className="space-y-2">
-            <span className="text-xs font-medium text-text-muted">Route date</span>
-            <input
-              type="date"
-              value={routeDate}
-              onChange={(e) => setRouteDate(e.target.value)}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-emerald-400/30"
-            />
-          </label>
-          <div className="flex flex-wrap gap-3 lg:items-end">
-            {canSeeOrgWide && (
-              <div className="space-y-2">
-                <span className="text-xs font-medium text-text-muted">Scope</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setScope('mine')}
-                    className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                      scope === 'mine'
-                        ? 'bg-emerald-500/20 text-emerald-200'
-                        : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    My assignments
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScope('org')}
-                    className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                      scope === 'org'
-                        ? 'bg-emerald-500/20 text-emerald-200'
-                        : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    All samplers
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-text-muted">List</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOpenStopsOnly(false)}
-                  className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    !openStopsOnly
-                      ? 'bg-emerald-500/20 text-emerald-200'
-                      : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                  }`}
-                >
-                  All stops
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenStopsOnly(true)}
-                  className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    openStopsOnly
-                      ? 'bg-emerald-500/20 text-emerald-200'
-                      : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                  }`}
-                >
-                  Open only
-                </button>
-              </div>
-            </div>
-          </div>
-          {online && (
-            <button
-              type="button"
-              onClick={handleSaveOffline}
-              className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
-            >
-              Update offline copy
-            </button>
-          )}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-muted">
-          <span className="inline-flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-emerald-300" />
-            {completedCount} / {displayDayVisits.length} completed
-            {openStopsOnly && dayVisits.length > 0 ? (
-              <span className="text-text-muted/80">({dayVisits.length} on route)</span>
-            ) : null}
-          </span>
-          {displayForceMajeureCount > 0 && (
-            <span className="inline-flex items-center gap-2 text-amber-200/90">
-              <AlertTriangle className="h-4 w-4 text-amber-300" aria-hidden />
-              {displayForceMajeureCount} FM candidate{displayForceMajeureCount === 1 ? '' : 's'}
-            </span>
-          )}
-          {displayAccessIssueCount > 0 && (
-            <span className="inline-flex items-center gap-2 text-rose-200/90">
-              <ShieldAlert className="h-4 w-4 text-rose-300" aria-hidden />
-              {displayAccessIssueCount} access issue{displayAccessIssueCount === 1 ? '' : 's'}
-            </span>
-          )}
-          {fullRouteHref && (
-            <a
-              href={fullRouteHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-emerald-300 hover:text-emerald-200"
-            >
-              <Navigation className="h-4 w-4" />
-              Open full route in Maps
-              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-            </a>
-          )}
-        </div>
-      </SpotlightCard>
-
+      {/* Stop list */}
       {showRouteLoader ? (
         <div className="flex justify-center py-16">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400/60" />
         </div>
       ) : dayVisits.length === 0 ? (
         online || effectiveRouteCache ? (
-          <SpotlightCard className="p-8">
-            <p className="text-sm text-text-muted">
-              No field visits for this date{scope === 'mine' ? ' assigned to you' : ''}. Check the{' '}
-              <Link to="/field/dispatch" className="text-emerald-300 hover:text-emerald-200">
-                Field Queue
-              </Link>
-              .
-            </p>
-          </SpotlightCard>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-8 text-center text-sm text-text-muted">
+            No field visits for this date{scope === 'mine' ? ' assigned to you' : ''}.
+          </div>
         ) : null
       ) : openStopsOnly && displayDayVisits.length === 0 ? (
-        <SpotlightCard className="p-8">
-          <p className="text-sm text-text-muted">
-            No open stops for this date{scope === 'mine' ? ' assigned to you' : ''} — every visit on the list has a
-            disposition. Switch to &quot;All stops&quot; to review completed work.
-          </p>
-        </SpotlightCard>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-8 text-center text-sm text-text-muted">
+          All stops complete. Switch to &quot;All&quot; to review.
+        </div>
       ) : (
-        <ol className="space-y-3">
+        <ol className="space-y-2">
           {displayDayVisits.map((visit) => {
             const coord = outfallCoords[visit.outfall_id];
             const needsDisposition = visitNeedsDisposition(visit);
-            return (
-              <li key={visit.id}>
-                <SpotlightCard
-                  className={`p-5 transition-colors hover:border-white/[0.1] ${
-                    needsDisposition ? 'border-l-2 border-l-cyan-400/35 pl-[calc(1.25rem-2px)]' : ''
-                  }`}
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-sm font-bold text-emerald-200">
+            const isHero = nextOpenStop?.id === visit.id;
+
+            if (isHero) {
+              return (
+                <li key={visit.id}>
+                  <div className="rounded-2xl border-2 border-cyan-400/30 bg-cyan-500/[0.06] p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-2xl font-bold text-emerald-200">
                         {visit.route_stop_sequence ?? '—'}
                       </div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <MapPin className="h-4 w-4 text-emerald-300" />
-                          <span className="font-semibold text-text-primary">
-                            {visit.permit_number ?? 'Permit'} / {visit.outfall_number ?? 'Outfall'}
-                          </span>
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                              visit.visit_status === 'completed'
-                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                                : visit.visit_status === 'in_progress'
-                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                                  : 'border-white/[0.1] bg-white/[0.04] text-text-muted'
-                            }`}
-                          >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-lg font-semibold text-text-primary">
+                          {visit.permit_number ?? 'Permit'} / {visit.outfall_number ?? 'Outfall'}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold uppercase ${
+                            visit.visit_status === 'in_progress'
+                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                              : 'border-white/[0.1] bg-white/[0.04] text-text-muted'
+                          }`}>
                             {visit.visit_status.replace('_', ' ')}
                           </span>
-                          {visit.potential_force_majeure && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                              <AlertTriangle className="h-3 w-3" aria-hidden />
-                              FM candidate
+                          {visit.potential_force_majeure ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-200">
+                              <AlertTriangle className="h-3 w-3" aria-hidden /> FM
                             </span>
-                          )}
-                          {visit.outcome === 'access_issue' && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-200">
-                              <ShieldAlert className="h-3 w-3" aria-hidden />
-                              Access issue
+                          ) : null}
+                          {scope === 'org' && visit.assigned_to_name ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                              <UserRound className="h-3 w-3" /> {visit.assigned_to_name}
                             </span>
-                          )}
+                          ) : null}
                         </div>
-                        {scope === 'org' && (
-                          <div className="mt-2 inline-flex items-center gap-1 text-xs text-text-muted">
-                            <UserRound className="h-3.5 w-3.5" />
-                            {visit.assigned_to_name}
-                          </div>
-                        )}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
-                      {coord && (
+                    <div className="mt-4 grid gap-2">
+                      <Link
+                        to={`/field/visits/${visit.id}`}
+                        className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-500/20 text-base font-semibold text-emerald-100 transition-colors hover:bg-emerald-500/30 active:bg-emerald-500/35"
+                      >
+                        Start this stop
+                        <ChevronRight className="h-5 w-5" />
+                      </Link>
+                      {coord ? (
                         <a
                           href={mapsSearchUrl(coord.lat, coord.lng)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-emerald-500/30 hover:text-emerald-200"
+                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-emerald-200"
                         >
-                          <Navigation className="h-3.5 w-3.5" />
-                          Directions
-                          <ExternalLink className="h-3 w-3 opacity-60" />
+                          <Navigation className="h-4 w-4" />
+                          Navigate
                         </a>
-                      )}
-                      <Link
-                        to={`/field/visits/${visit.id}`}
-                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
-                      >
-                        Open visit
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
+                      ) : null}
                     </div>
                   </div>
-                </SpotlightCard>
+                </li>
+              );
+            }
+
+            return (
+              <li key={visit.id}>
+                <Link
+                  to={`/field/visits/${visit.id}`}
+                  className={`flex min-h-[56px] items-center gap-3 rounded-2xl border px-4 py-2 transition-colors hover:bg-white/[0.04] active:bg-white/[0.06] ${
+                    needsDisposition
+                      ? 'border-l-2 border-l-cyan-400/30 border-y-white/[0.06] border-r-white/[0.06]'
+                      : 'border-white/[0.06]'
+                  }`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-sm font-bold text-emerald-200">
+                    {visit.route_stop_sequence ?? '—'}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-text-primary">
+                      {visit.permit_number ?? 'Permit'} / {visit.outfall_number ?? 'Outfall'}
+                    </span>
+                    {scope === 'org' && visit.assigned_to_name ? (
+                      <span className="block text-xs text-text-muted">{visit.assigned_to_name}</span>
+                    ) : null}
+                  </span>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                    visit.visit_status === 'completed'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                      : visit.visit_status === 'in_progress'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        : 'border-white/[0.1] bg-white/[0.04] text-text-muted'
+                  }`}>
+                    {visit.visit_status.replace('_', ' ')}
+                  </span>
+                  {visit.potential_force_majeure ? <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" /> : null}
+                  {visit.outcome === 'access_issue' ? <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" /> : null}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
+                </Link>
               </li>
             );
           })}
         </ol>
       )}
-
     </div>
   );
 }

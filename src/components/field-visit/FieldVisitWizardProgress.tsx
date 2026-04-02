@@ -1,4 +1,3 @@
-import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { FieldVisitWizardStepId } from '@/lib/fieldVisitWizard';
 
@@ -20,75 +19,30 @@ export function FieldVisitWizardProgress({
   steps,
   onStepSelect,
 }: FieldVisitWizardProgressProps) {
-  const activeIndex = steps.findIndex((step) => step.id === activeStep);
-  const activeStepMeta = activeIndex >= 0 ? steps[activeIndex] : steps[0];
-
   return (
-    <nav aria-label="Field visit wizard progress" className="space-y-3">
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-              Step {activeIndex + 1} of {steps.length}
-            </div>
-            <div className="mt-1 text-sm font-medium text-text-primary">{activeStepMeta?.label}</div>
-          </div>
-          <div className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100">
-            {steps.filter((step) => step.status === 'complete').length} complete
-          </div>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2">
-        <ol className="flex min-w-max gap-2">
-        {steps.map((step, index) => {
-          const isActive = activeStep === step.id;
-          return (
-            <li key={step.id} className="min-w-[132px]">
-              <button
-                type="button"
-                aria-current={isActive ? 'step' : undefined}
-                onClick={() => onStepSelect(step.id)}
-                className={cn(
-                  'flex h-full w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
-                  isActive
-                    ? 'border-cyan-400/35 bg-cyan-500/12'
-                    : step.status === 'complete'
-                      ? 'border-emerald-500/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.08]'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]',
-                )}
-              >
-                <span
-                  className={cn(
-                    'mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
-                    step.status === 'complete'
-                      ? 'border-emerald-500/35 bg-emerald-500/15 text-emerald-300'
-                      : isActive
-                        ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
-                        : 'border-white/[0.08] bg-white/[0.03] text-text-muted',
-                  )}
-                >
-                  {step.status === 'complete' ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-text-primary">{step.label}</span>
-                  {isActive ? (
-                    <span className="mt-1 block text-[11px] leading-5 text-text-secondary">
-                      {step.description}
-                    </span>
-                  ) : null}
-                </span>
-                {isActive ? <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-cyan-200" aria-hidden /> : null}
-              </button>
-            </li>
-          );
-        })}
-        </ol>
-      </div>
+    <nav aria-label="Field visit wizard progress" className="flex items-center justify-center gap-2">
+      {steps.map((step) => {
+        const isCurrent = step.id === activeStep;
+        const canNavigate = step.status === 'complete' || isCurrent;
+        return (
+          <button
+            key={step.id}
+            type="button"
+            aria-current={isCurrent ? 'step' : undefined}
+            aria-label={step.label}
+            onClick={() => canNavigate && onStepSelect(step.id)}
+            className={cn(
+              'rounded-full transition-all',
+              isCurrent
+                ? 'h-3 w-3 bg-cyan-400'
+                : step.status === 'complete'
+                  ? 'h-2.5 w-2.5 bg-emerald-400 hover:bg-emerald-300'
+                  : 'h-2.5 w-2.5 bg-white/20',
+              canNavigate ? 'cursor-pointer' : 'cursor-default',
+            )}
+          />
+        );
+      })}
     </nav>
   );
 }

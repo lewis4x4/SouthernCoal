@@ -61,7 +61,7 @@ export function FieldVisitWeatherCard({
             disabled={visitLocked || systemLoading || !isOnline}
             onClick={() => onRefreshSystem()}
             className={cn(
-              'inline-flex items-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-100 transition-colors hover:bg-sky-500/20 disabled:opacity-50',
+              'inline-flex min-h-12 items-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 text-sm font-medium text-sky-100 transition-colors hover:bg-sky-500/20 active:bg-sky-500/25 disabled:opacity-50',
             )}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', systemLoading && 'animate-spin')} aria-hidden />
@@ -110,7 +110,7 @@ export function FieldVisitWeatherCard({
                     type="button"
                     disabled={visitLocked}
                     onClick={onApplySystemToObserved}
-                    className="mt-3 rounded-lg border border-sky-400/35 bg-sky-500/15 px-3 py-1.5 text-xs font-medium text-sky-50 transition-colors hover:bg-sky-500/25 disabled:opacity-50"
+                    className="mt-3 min-h-12 rounded-2xl border border-sky-400/35 bg-sky-500/15 px-4 text-sm font-medium text-sky-50 transition-colors hover:bg-sky-500/25 active:bg-sky-500/30 disabled:opacity-50"
                   >
                     Insert system line into observed notes
                   </button>
@@ -140,8 +140,8 @@ export function FieldVisitWeatherCard({
       ) : null}
 
       <label className="mt-5 block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-          Observed at site <span className="font-normal text-text-muted">(capture what you see; strengthens the field record)</span>
+        <span className="text-sm font-medium text-text-muted">
+          Observed at site
         </span>
         <textarea
           value={observedSiteConditions}
@@ -149,7 +149,7 @@ export function FieldVisitWeatherCard({
           disabled={visitLocked}
           rows={3}
           placeholder="e.g. Light rain at parking area; dry channel at discharge point; wind from NW."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
         />
       </label>
     </div>

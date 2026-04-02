@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Camera, CheckCircle2, ScanLine, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ScanLine, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { barcodeScannerSupported } from '@/lib/containerScan';
 import type {
@@ -176,20 +176,19 @@ export function CustodyScanPanel({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4">
         <button
           type="button"
           onClick={() => setScannerOpen((current) => !current)}
           disabled={disabled}
-          className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+          className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/15 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25 active:bg-cyan-500/30 disabled:opacity-60"
         >
-          <ScanLine className="h-4 w-4" aria-hidden />
+          <ScanLine className="h-5 w-5" aria-hidden />
           {scannerOpen ? 'Stop scanner' : 'Scan container'}
         </button>
-        <div className="flex items-center gap-2 text-xs text-text-muted">
-          <Camera className="h-3.5 w-3.5" aria-hidden />
-          {scannerSupported ? 'Camera barcode detection available' : 'Camera scanner unavailable on this device'}
-        </div>
+        {!scannerSupported ? (
+          <p className="mt-2 text-center text-xs text-text-muted">Camera scanner unavailable — use manual entry</p>
+        ) : null}
       </div>
 
       {scannerOpen ? (
@@ -211,7 +210,7 @@ export function CustodyScanPanel({
       ) : null}
 
       <label className="mt-4 block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-sm font-medium text-text-muted">
           Primary container ID
         </span>
         <input
@@ -221,8 +220,8 @@ export function CustodyScanPanel({
             onContainerIdChange(event.target.value);
           }}
           disabled={disabled}
-          placeholder="Fallback when scan is unavailable"
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+          placeholder="Manual entry when scan is unavailable"
+          className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
         />
       </label>
 
@@ -250,21 +249,22 @@ export function CustodyScanPanel({
         </div>
       ) : null}
 
-      <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
+      <label className="mt-4 flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
         <input
           type="checkbox"
           checked={preservativeConfirmed}
           onChange={(event) => onPreservativeConfirmedChange(event.target.checked)}
           disabled={disabled}
+          className="h-5 w-5"
         />
-        Bottle and preservative match the scheduled sample plan
+        Bottle and preservative match the sample plan
       </label>
 
       <button
         type="button"
         onClick={onSave}
         disabled={saving || disabled}
-        className="mt-4 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
+        className="mt-4 min-h-12 w-full rounded-2xl bg-white/[0.08] text-base font-medium text-text-primary transition-colors hover:bg-white/[0.12] active:bg-white/[0.16] disabled:opacity-60"
       >
         Save chain of custody
       </button>

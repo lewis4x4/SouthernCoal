@@ -68,12 +68,13 @@ export function FieldVisitForceMajeureAssistPanel({
         Use this when weather, access, or other extraordinary site conditions may affect notice handling or later governance review.
       </p>
 
-      <label className="mt-4 flex items-center gap-2 text-sm font-medium text-text-primary">
+      <label className="mt-4 flex min-h-12 items-center gap-3 text-sm font-medium text-text-primary">
         <input
           type="checkbox"
           checked={checked}
           onChange={(event) => onCheckedChange(event.target.checked)}
           disabled={disabled}
+          className="h-5 w-5"
         />
         Potential force majeure candidate
       </label>
@@ -126,7 +127,7 @@ export function FieldVisitForceMajeureAssistPanel({
             type="button"
             disabled={disabled}
             onClick={onFocusEvidence}
-            className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+            className="min-h-12 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 active:bg-cyan-500/25 disabled:opacity-60"
           >
             Focus site/weather evidence
           </button>
@@ -138,17 +139,17 @@ export function FieldVisitForceMajeureAssistPanel({
           {governanceInboxHref ? (
             <a
               href={governanceInboxHref}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08]"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.08] active:bg-white/[0.12]"
             >
               Open governance inbox
-              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+              <ArrowUpRight className="h-4 w-4" aria-hidden />
             </a>
           ) : (
             <button
               type="button"
               disabled
               title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm font-medium text-text-muted opacity-70"
             >
               Open governance inbox
               <Lock className="h-3.5 w-3.5" aria-hidden />
@@ -161,7 +162,7 @@ export function FieldVisitForceMajeureAssistPanel({
       </div>
 
       <label className="mt-4 block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-sm font-medium text-text-muted">
           Force majeure notes
         </span>
         <textarea
@@ -170,7 +171,7 @@ export function FieldVisitForceMajeureAssistPanel({
           rows={4}
           disabled={disabled}
           placeholder="Capture timing, source, and why the condition could affect sampling or decree notice handling."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
         />
       </label>
 

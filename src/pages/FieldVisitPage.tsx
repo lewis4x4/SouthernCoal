@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  ArrowLeft,
   Beaker,
-  ClipboardList,
+  ChevronDown,
   Copy,
-  ExternalLink,
   Navigation,
   RefreshCw,
 } from 'lucide-react';
@@ -65,7 +65,6 @@ import {
   validateFieldVisitStartCoordinates,
 } from '@/lib/fieldVisitCompletionValidation';
 import { getFieldVisitDeficiencyPrompts } from '@/lib/fieldVisitDeficiencyPrompts';
-import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { getFieldVisitQaPrompts } from '@/lib/fieldVisitQaPrompts';
 import { getFieldVisitReviewHooks } from '@/lib/fieldVisitReviewHooks';
 import { buildFieldVisitRequirementsModel } from '@/lib/fieldVisitRequirements';
@@ -294,6 +293,7 @@ export function FieldVisitPage() {
   const [activeStep, setActiveStep] = useState<FieldVisitWizardStepId>('start_visit');
   const [wizardStateReady, setWizardStateReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [alertsPanelOpen, setAlertsPanelOpen] = useState(false);
   const [pendingEvidenceDrafts, setPendingEvidenceDrafts] = useState<FieldEvidenceDraft[]>([]);
   const [evidenceUploadFailures, setEvidenceUploadFailures] = useState<FieldEvidenceDraftSyncFailure[]>([]);
   const [loadAttempted, setLoadAttempted] = useState(false);
@@ -705,7 +705,7 @@ export function FieldVisitPage() {
       : outcome === 'no_discharge'
         ? noDischargeDetailsReady
         : accessIssueDetailsReady;
-  const reviewReady = visitLocked || (canAttemptComplete && completionChecklistItems.every((item) => item.done));
+
   const readinessSummary = useMemo(
     () => summarizeCompletionChecklist(completionChecklistItems),
     [completionChecklistItems],
@@ -1922,7 +1922,6 @@ export function FieldVisitPage() {
 
   const previousStep = getPreviousFieldVisitWizardStep(activeStep);
   const currentStepMeta = getFieldVisitWizardStep(activeStep);
-  const recommendedStepMeta = getFieldVisitWizardStep(recommendedStep);
 
   const sameAsLastHelpers = detail.previous_visit_context ? (
     <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4">
@@ -2325,6 +2324,21 @@ export function FieldVisitPage() {
                 onApplySystemToObserved={handleApplySystemToObserved}
               />
             }
+            scheduledParameter={detail.scheduled_parameter_label ? (
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm">
+                <p className="text-sm font-medium text-text-muted">Scheduled parameter</p>
+                <p className="mt-1 font-medium text-text-primary">{detail.scheduled_parameter_label}</p>
+              </div>
+            ) : null}
+            scheduleInstructions={detail.schedule_instructions ? (
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                <p className="text-sm font-medium text-amber-200/80">Schedule instructions</p>
+                <p className="mt-1 whitespace-pre-wrap text-text-primary">{detail.schedule_instructions}</p>
+              </div>
+            ) : null}
+            sameOutfallWarning={
+              <FieldSameOutfallDayWarning groups={visitSiblingOutfallConflicts} contextLabel="this visit" />
+            }
           />
         );
       case 'inspection':
@@ -2367,7 +2381,6 @@ export function FieldVisitPage() {
       case 'evidence':
         return (
           <FieldVisitEvidenceStep
-            outcome={outcome}
             totalPhotoCount={totalPhotoCount}
             pendingPhotoCount={pendingPhotoCount}
             syncedPhotoCount={photoCount}
@@ -2399,237 +2412,158 @@ export function FieldVisitPage() {
     }
   })();
 
+  const hasSyncIssues = !!(outboundQueueDiagnostic || evidenceUploadFailures.length > 0);
+  const hasQueuedActions = visitOutboundQueuedCount > 0;
+  const hasAlerts = hasSyncIssues || hasQueuedActions || !!weatherStatusBanner ||
+    (requirementsModel && requirementsModel.urgencyFlags.length > 0) ||
+    (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live');
+  const alertDotColor = hasSyncIssues ? 'bg-red-400' : hasQueuedActions ? 'bg-amber-400' : 'bg-cyan-400';
+
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-            Field Visit
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            {detail.visit.permit_number ?? 'Permit'} / {detail.visit.outfall_number ?? 'Outfall'} scheduled for{' '}
-            {new Date(`${detail.visit.scheduled_date}T00:00:00`).toLocaleDateString()}
-          </p>
-          {outboundQueueDiagnostic || evidenceUploadFailures.length > 0 ? (
-            <p className="mt-2">
-              <a
-                href="#field-sync-health"
-                className="inline-flex items-center gap-1.5 rounded-full border border-red-400/35 bg-red-500/12 px-2.5 py-1 text-xs font-medium text-red-100 transition-colors hover:bg-red-500/20"
-              >
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Sync needs attention — view details
-              </a>
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <FieldVisitWizardShell
+      stepTitle={currentStepMeta.label}
+      progress={
+        <FieldVisitWizardProgress
+          activeStep={activeStep}
+          steps={progressSteps}
+          onStepSelect={handleWizardStepSelect}
+        />
+      }
+      fieldBar={
+        <>
           <Link
-            to="/field/dispatch"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            to="/field/route"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary active:bg-white/[0.1]"
+            aria-label="Back to route"
           >
-            Back to field queue
+            <ArrowLeft className="h-5 w-5" />
           </Link>
+          <span className="min-w-0 truncate text-sm font-medium text-text-primary">
+            {detail.visit.permit_number ?? 'Permit'} / {detail.visit.outfall_number ?? 'Outfall'}
+          </span>
+        </>
+      }
+      backAction={previousStep ? {
+        label: 'Back',
+        onClick: () => goToStep(previousStep),
+        disabled: saving,
+      } : null}
+      saveAction={
+        !visitLocked && ['start_visit', 'inspection', 'outcome_details', 'evidence'].includes(activeStep)
+          ? {
+              label: 'Save Draft',
+              onClick: handleSaveCurrentDraft,
+              disabled: saving,
+              variant: 'default' as const,
+            }
+          : null
+      }
+      primaryAction={visitLocked && activeStep === 'review_complete'
+        ? null
+        : {
+            label: activeStep === 'start_visit' && visitStarted
+              ? 'Continue to inspection'
+              : activeStep === 'evidence' && recommendedStep !== 'review_complete'
+                ? `Continue to ${getFieldVisitWizardStep(recommendedStep).label.toLowerCase()}`
+              : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
+            onClick: () => {
+              void handleWizardAdvance();
+            },
+            disabled:
+              saving ||
+              (activeStep === 'review_complete' && !canAttemptComplete) ||
+              (activeStep === 'choose_outcome' && !outcomeExplicitlySelected),
+            variant: activeStep === 'review_complete' ? 'success' : 'primary',
+          }}
+      stepMeta={
+        <div className="flex items-center gap-2">
+          {hasAlerts ? (
+            <button
+              type="button"
+              onClick={() => setAlertsPanelOpen((prev) => !prev)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 text-[11px] font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+              aria-label="Toggle alerts"
+            >
+              <span className={`h-2 w-2 rounded-full ${alertDotColor}`} />
+              <ChevronDown className={`h-3 w-3 transition-transform ${alertsPanelOpen ? 'rotate-180' : ''}`} aria-hidden />
+            </button>
+          ) : null}
           {outfallMapsHref ? (
             <a
               href={outfallMapsHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-cyan-200"
+              aria-label="Open in Maps"
             >
-              <Navigation className="h-4 w-4 shrink-0" aria-hidden />
-              Open in Maps
-              <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+              <Navigation className="h-3.5 w-3.5" />
             </a>
           ) : null}
+          {visitLocked ? (
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
+              Locked
+            </span>
+          ) : null}
         </div>
-      </div>
-
-      {detail.scheduled_parameter_label ? (
-        <div
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm"
-          role="region"
-          aria-label="Scheduled sample parameter"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Scheduled parameter</p>
-          <p className="mt-1 font-medium text-text-primary">{detail.scheduled_parameter_label}</p>
-          <p className="mt-1 text-xs text-text-secondary">
-            From the sampling calendar for this stop — use when verifying bottles, preservatives, and chain of custody.
-          </p>
-        </div>
-      ) : null}
-
-      {detail.schedule_instructions ? (
-        <div
-          className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-          role="region"
-          aria-label="Schedule instructions"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-200/80">Schedule instructions</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-text-primary">{detail.schedule_instructions}</p>
-        </div>
-      ) : null}
-
-      {id ? (
-        <FieldDataSyncBar
-          loading={fieldQueueLoading || detailLoading}
-          lastSyncedAt={lastSyncedAt}
-          pendingOutboundCount={outboundPendingCount}
-          queueFlushDiagnostic={outboundQueueDiagnostic}
-          onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
-          onRefresh={handleFieldSyncRefresh}
-          auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
-          evidenceSyncFailures={evidenceUploadFailures}
-          onRetryEvidenceSync={() => {
-            void handleFieldSyncRefresh().catch((err) => {
-              toast.error(err instanceof Error ? err.message : 'Retry failed');
-            });
-          }}
-          onDismissEvidenceFailures={() => {
-            clearPersistedFieldEvidenceSyncFailuresForVisit(id);
-            setEvidenceUploadFailures([]);
-          }}
-        />
-      ) : null}
-
-      {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
-
-      {detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live' ? (
-        <FieldDataSourceBanner variant="visit" source={detailLoadSource} />
-      ) : null}
-
-      {visitOutboundQueuedCount > 0 ? (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-          role="status"
-          aria-live="polite"
-        >
-          <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
-          <div>
-            <p className="font-medium text-amber-50">
-              {visitOutboundQueuedCount} queued action{visitOutboundQueuedCount === 1 ? '' : 's'} for this visit
-            </p>
-            <p className="mt-1 text-xs text-amber-200/85">
-              Saved on this device; uploads when you are online. Use Refresh above to retry the outbound queue.
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      {visitNeedsDisposition(detail.visit) ? (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100"
-          role="status"
-          aria-live="polite"
-        >
-          <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-cyan-200" aria-hidden />
-          <div>
-            <p className="font-medium text-cyan-50">Open visit — disposition required</p>
-            <p className="mt-1 text-xs text-cyan-200/85">
-              This stop is still assigned or in progress. Work top-to-bottom through the guided steps so the route ends with a clear outcome and a complete record.
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      {requirementsModel ? (
-        <FieldVisitShortHoldAlert flags={requirementsModel.urgencyFlags} />
-      ) : null}
-
-      {weatherStatusBanner}
-
-      <FieldSameOutfallDayWarning
-        groups={visitSiblingOutfallConflicts}
-        contextLabel="this visit"
-      />
-
-      {detail.visit.linked_sampling_event_id ? (
-        <div
-          className="flex flex-col gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between"
-          role="region"
-          aria-label="Linked sampling event"
-        >
-          <div className="flex min-w-0 items-start gap-3">
-            <Beaker className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden />
-            <div className="min-w-0">
-              <p className="font-medium text-emerald-50">Sampling event (lab linkage)</p>
-              <p className="mt-1 text-xs text-emerald-200/85">
-                This visit is tied to a sampling_events row. Lab EDD imports and results attach to this ID.
-              </p>
-              <p className="mt-2 break-all font-mono text-xs text-text-primary">
-                {detail.visit.linked_sampling_event_id}
+      }
+    >
+      {/* Collapsible alerts panel */}
+      {alertsPanelOpen ? (
+        <div className="mb-4 space-y-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
+          {id ? (
+            <FieldDataSyncBar
+              loading={fieldQueueLoading || detailLoading}
+              lastSyncedAt={lastSyncedAt}
+              pendingOutboundCount={outboundPendingCount}
+              queueFlushDiagnostic={outboundQueueDiagnostic}
+              onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+              onRefresh={handleFieldSyncRefresh}
+              auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
+              evidenceSyncFailures={evidenceUploadFailures}
+              onRetryEvidenceSync={() => {
+                void handleFieldSyncRefresh().catch((err) => {
+                  toast.error(err instanceof Error ? err.message : 'Retry failed');
+                });
+              }}
+              onDismissEvidenceFailures={() => {
+                clearPersistedFieldEvidenceSyncFailuresForVisit(id);
+                setEvidenceUploadFailures([]);
+              }}
+            />
+          ) : null}
+          {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
+          {detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live' ? (
+            <FieldDataSourceBanner variant="visit" source={detailLoadSource} />
+          ) : null}
+          {hasQueuedActions ? (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" aria-hidden />
+              <p className="text-sm text-amber-50">
+                {visitOutboundQueuedCount} queued action{visitOutboundQueuedCount === 1 ? '' : 's'} — uploads when online
               </p>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void handleCopySamplingEventId()}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-xs font-medium text-emerald-50 transition-colors hover:bg-emerald-500/25"
-          >
-            <Copy className="h-3.5 w-3.5" aria-hidden />
-            Copy ID
-          </button>
+          ) : null}
+          {requirementsModel ? (
+            <FieldVisitShortHoldAlert flags={requirementsModel.urgencyFlags} />
+          ) : null}
+          {weatherStatusBanner}
+          {detail.visit.linked_sampling_event_id ? (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <Beaker className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+              <span className="min-w-0 truncate font-mono text-xs">{detail.visit.linked_sampling_event_id}</span>
+              <button
+                type="button"
+                onClick={() => void handleCopySamplingEventId()}
+                className="ml-auto shrink-0 rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-50 hover:bg-emerald-500/25"
+              >
+                <Copy className="h-3 w-3" aria-hidden />
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <FieldVisitWizardShell
-        stepNumber={FIELD_VISIT_WIZARD_STEPS.findIndex((step) => step.id === activeStep) + 1}
-        stepTitle={currentStepMeta.label}
-        stepDescription={currentStepMeta.description}
-        progress={
-          <FieldVisitWizardProgress
-            activeStep={activeStep}
-            steps={progressSteps}
-            onStepSelect={handleWizardStepSelect}
-          />
-        }
-        backAction={previousStep ? {
-          label: 'Back',
-          onClick: () => goToStep(previousStep),
-          disabled: saving,
-        } : null}
-        saveAction={
-          !visitLocked && ['start_visit', 'inspection', 'outcome_details', 'evidence'].includes(activeStep)
-            ? {
-                label: 'Save Draft',
-                onClick: handleSaveCurrentDraft,
-                disabled: saving,
-                variant: 'default' as const,
-              }
-            : null
-        }
-        primaryAction={visitLocked && activeStep === 'review_complete'
-          ? null
-          : {
-              label: activeStep === 'start_visit' && visitStarted
-                ? 'Continue to inspection'
-                : activeStep === 'evidence' && recommendedStep !== 'review_complete'
-                  ? `Continue to ${getFieldVisitWizardStep(recommendedStep).label.toLowerCase()}`
-                : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
-              onClick: () => {
-                void handleWizardAdvance();
-              },
-              disabled:
-                saving ||
-                (activeStep === 'review_complete' && !canAttemptComplete) ||
-                (activeStep === 'choose_outcome' && !outcomeExplicitlySelected),
-              variant: activeStep === 'review_complete' ? 'success' : 'primary',
-            }}
-        stepMeta={!visitLocked ? (
-          <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            {activeStep === recommendedStep
-              ? reviewReady
-                ? 'Ready for review'
-                : 'Recommended now'
-              : `Recommended: ${recommendedStepMeta.label}`}
-          </div>
-        ) : (
-          <div className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-            Visit locked
-          </div>
-        )}
-      >
-        {currentStepContent}
-      </FieldVisitWizardShell>
-    </div>
+      {currentStepContent}
+    </FieldVisitWizardShell>
   );
 }

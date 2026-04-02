@@ -1,4 +1,3 @@
-import { Camera } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
   PHOTO_BUCKETS,
@@ -33,23 +32,13 @@ export function FieldVisitPhotoBuckets({
     : PHOTO_BUCKETS;
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-      <div className="flex items-center gap-2">
-        <Camera className="h-4 w-4 text-cyan-300" aria-hidden />
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Photo evidence buckets
-          </h3>
-          <p className="mt-2 text-sm text-text-secondary">
-            Choose the bucket before uploading. Photos stay on the same upload path, but the record now carries typed evidence context.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+    <div className="space-y-2">
+      <div className="text-sm font-medium text-text-muted">Category</div>
+      <div className="flex flex-wrap gap-2">
         {visibleBuckets.map((bucket) => {
           const required = isRequired(bucket, outcome);
           const selected = selectedCategory === bucket.id;
+          const count = (uploadedCounts[bucket.id] ?? 0) + (pendingCounts[bucket.id] ?? 0);
           return (
             <button
               key={bucket.id}
@@ -57,24 +46,15 @@ export function FieldVisitPhotoBuckets({
               aria-pressed={selected}
               onClick={() => onSelectCategory(bucket.id)}
               className={cn(
-                'rounded-xl border px-4 py-4 text-left transition-colors',
+                'min-h-12 rounded-2xl border px-4 text-sm font-medium transition-colors',
                 selected
-                  ? 'border-cyan-400/35 bg-cyan-500/12'
-                  : 'border-white/[0.06] bg-black/10 hover:bg-white/[0.05]',
+                  ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
+                  : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05] active:bg-white/[0.08]',
               )}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-medium text-text-primary">{bucket.label}</div>
-                {required ? (
-                  <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                    Outcome-critical
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 text-sm leading-6 text-text-secondary">{bucket.description}</div>
-              <div className="mt-3 text-xs text-text-muted">
-                {uploadedCounts[bucket.id] ?? 0} uploaded / {pendingCounts[bucket.id] ?? 0} pending
-              </div>
+              {bucket.label}
+              {count > 0 ? <span className="ml-1.5 text-text-muted">({count})</span> : null}
+              {required ? <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-400" /> : null}
             </button>
           );
         })}
