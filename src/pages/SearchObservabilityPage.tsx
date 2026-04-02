@@ -1,9 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, RefreshCw, DollarSign, AlertTriangle, BarChart3, Clock, Search, ShieldAlert, FileText, Database, Layers, Wifi, WifiOff } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useExternalSyncLogRealtime } from '@/hooks/useExternalSyncLogRealtime';
@@ -12,13 +19,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/lib/supabase';
 
 const REFRESH_INTERVAL_MS = 60_000;
-const DOMAIN_COLORS: Record<string, string> = {
-  permits: '#60a5fa',
-  exceedances: '#f87171',
-  penalties: '#fbbf24',
-  sampling: '#34d399',
-  organizations: '#a78bfa',
-};
+const SearchObservabilityCharts = lazy(() => import('@/components/search/SearchObservabilityCharts'));
 
 interface AuditEntry {
   created_at: string;
@@ -419,111 +420,24 @@ export function SearchObservabilityPage() {
         </SpotlightCard>
       </div>
 
-      {/* Charts row 1 */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Cost per query */}
-        <SpotlightCard className="p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
-            <DollarSign className="h-4 w-4" />
-            Cost per Query (avg)
-          </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={costByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-                <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} tickFormatter={(v) => `$${v.toFixed(4)}`} />
-                <Tooltip
-                  contentStyle={{ background: 'rgba(13,17,23,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
-                  formatter={(value: unknown) => [`$${Number(value).toFixed(5)}`, 'Avg Cost']}
-                />
-                <Line type="monotone" dataKey="avg" stroke="#60a5fa" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </SpotlightCard>
-
-        {/* Fail rate by day */}
-        <SpotlightCard className="p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
-            <AlertTriangle className="h-4 w-4" />
-            Success / Failure by Day
-          </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={failByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-                <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-                <Tooltip
-                  contentStyle={{ background: 'rgba(13,17,23,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
-                />
-                <Bar dataKey="success" stackId="a" fill="#34d399" name="Success" />
-                <Bar dataKey="fail" stackId="a" fill="#f87171" name="Failed" />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </SpotlightCard>
-      </div>
-
-      {/* Charts row 2 */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Volume by domain */}
-        <SpotlightCard className="p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
-            <BarChart3 className="h-4 w-4" />
-            Query Volume by Domain
-          </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={domainVolume}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  dataKey="value"
-                  label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                  labelLine={false}
-                >
-                  {domainVolume.map((entry) => (
-                    <Cell key={entry.name} fill={DOMAIN_COLORS[entry.name] || '#94a3b8'} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: 'rgba(13,17,23,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </SpotlightCard>
-
-        {/* Response time */}
-        <SpotlightCard className="p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-text-secondary">
-            <Clock className="h-4 w-4" />
-            Response Time Distribution
-          </h3>
-          <div className="grid grid-cols-4 gap-3 py-6">
-            {[
-              { label: 'Avg', value: responseTimeStats.avg },
-              { label: 'p50', value: responseTimeStats.p50 },
-              { label: 'p95', value: responseTimeStats.p95 },
-              { label: 'p99', value: responseTimeStats.p99 },
-            ].map(({ label, value }) => (
-              <div key={label} className="text-center">
-                <p className="font-mono text-xl font-bold text-text-primary">
-                  {(value / 1000).toFixed(1)}s
-                </p>
-                <p className="text-xs text-text-muted">{label}</p>
-              </div>
+      <Suspense
+        fallback={
+          <div className="grid gap-4 lg:grid-cols-2">
+            {[0, 1].map((card) => (
+              <SpotlightCard key={card} className="p-4">
+                <div className="h-56 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.03]" />
+              </SpotlightCard>
             ))}
           </div>
-        </SpotlightCard>
-      </div>
+        }
+      >
+        <SearchObservabilityCharts
+          costByDay={costByDay}
+          failByDay={failByDay}
+          domainVolume={domainVolume}
+          responseTimeStats={responseTimeStats}
+        />
+      </Suspense>
 
       {/* Lists row */}
       <div className="grid gap-4 lg:grid-cols-2">

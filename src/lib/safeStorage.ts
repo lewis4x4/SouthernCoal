@@ -13,3 +13,19 @@ export function writeStoredBoolean(key: string, value: boolean): void {
     /* non-critical */
   }
 }
+
+export function readStoredString(key: string, fallback: string | null = null): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeStoredString(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* non-critical */
+  }
+}

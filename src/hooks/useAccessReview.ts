@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { readStoredString, writeStoredString } from '@/lib/safeStorage';
 import { toast } from 'sonner';
 
 const REVIEW_DATE_KEY = 'scc_last_access_review';
@@ -16,13 +17,7 @@ export function useAccessReview() {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [isReviewing, setIsReviewing] = useState(false);
 
-  const lastReviewDate = (() => {
-    try {
-      return localStorage.getItem(REVIEW_DATE_KEY);
-    } catch {
-      return null;
-    }
-  })();
+  const lastReviewDate = readStoredString(REVIEW_DATE_KEY);
 
   const daysSinceLastReview = lastReviewDate
     ? Math.floor((Date.now() - new Date(lastReviewDate).getTime()) / 86_400_000)
@@ -59,9 +54,7 @@ export function useAccessReview() {
       tableName: 'user_profiles',
     });
 
-    try {
-      localStorage.setItem(REVIEW_DATE_KEY, new Date().toISOString());
-    } catch { /* quota — non-critical */ }
+    writeStoredString(REVIEW_DATE_KEY, new Date().toISOString());
 
     toast.success(`Access review completed — ${reviewed.length} reviewed, ${revoked.length} flagged for revocation`);
     setIsReviewing(false);
