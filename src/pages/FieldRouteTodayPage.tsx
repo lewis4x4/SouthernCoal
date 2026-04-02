@@ -493,7 +493,7 @@ export function FieldRouteTodayPage() {
                         to={`/field/visits/${visit.id}`}
                         className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-500/20 text-base font-semibold text-emerald-100 transition-colors hover:bg-emerald-500/30 active:bg-emerald-500/35"
                       >
-                        Start this stop
+                        {visit.visit_status === 'in_progress' ? 'Continue this stop' : 'Start this stop'}
                         <ChevronRight className="h-5 w-5" />
                       </Link>
                       {coord ? (

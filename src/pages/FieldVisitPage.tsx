@@ -1855,30 +1855,47 @@ export function FieldVisitPage() {
         />
       </label>
 
-      <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
-        <input
-          type="checkbox"
-          checked={contactAttempted}
-          onChange={(e) => setContactAttempted(e.target.checked)}
-          disabled={visitLocked}
-        />
-        Contact attempted
-      </label>
+      <div className="mt-4 space-y-2">
+        <label className="inline-flex cursor-pointer items-start gap-3 text-sm text-text-secondary">
+          <input
+            type="checkbox"
+            checked={contactAttempted}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setContactAttempted(next);
+              if (!next) {
+                setContactName('');
+                setContactOutcome('');
+              }
+            }}
+            disabled={visitLocked}
+            className="mt-0.5 h-5 w-5 shrink-0"
+          />
+          <span>
+            <span className="font-medium text-text-primary">Tried to reach someone for access</span>
+            <span className="mt-1 block text-xs leading-relaxed text-text-muted">
+              Check this if you called, texted, radioed, or spoke in person with a landowner, site contact,
+              dispatcher, or office to get help reaching the outlet. Unchecked is allowed, but reviewers may
+              ask whether outreach was skipped.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <input
           value={contactName}
           onChange={(e) => setContactName(e.target.value)}
-          placeholder="Contact name"
-          disabled={visitLocked}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+          placeholder="Who you contacted (optional)"
+          disabled={visitLocked || !contactAttempted}
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
         />
         <input
           value={contactOutcome}
           onChange={(e) => setContactOutcome(e.target.value)}
-          placeholder="Contact outcome"
-          disabled={visitLocked}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+          placeholder="What they said / next steps (optional)"
+          disabled={visitLocked || !contactAttempted}
+          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
         />
       </div>
 

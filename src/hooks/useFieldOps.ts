@@ -1113,8 +1113,8 @@ export function useFieldOps() {
     coords: CoordinateInput,
   ): Promise<{ queued: boolean }> => {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-    const queueLocally = (startedAt: string) => {
-      const ok = enqueueFieldVisitStart({
+    const queueLocally = async (startedAt: string) => {
+      const ok = await enqueueFieldVisitStart({
         id: createOutboundOpId(),
         visitId,
         startedAt,
@@ -1133,7 +1133,7 @@ export function useFieldOps() {
 
     if (offline) {
       const startedAt = new Date().toISOString();
-      return queueLocally(startedAt);
+      return await queueLocally(startedAt);
     }
 
     const startedAt = new Date().toISOString();
@@ -1149,7 +1149,7 @@ export function useFieldOps() {
 
     if (error) {
       if (shouldQueueFieldOutboundFailure(error)) {
-        return queueLocally(startedAt);
+        return await queueLocally(startedAt);
       }
       throw new Error(error.message);
     }
@@ -1175,10 +1175,10 @@ export function useFieldOps() {
     };
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-    const queueLocally = () => {
+    const queueLocally = async () => {
       const opId = createOutboundOpId();
 
-      const ok = enqueueOutletInspectionUpsert({
+      const ok = await enqueueOutletInspectionUpsert({
         id: opId,
         visitId,
         flowStatus: flowStatus as 'flowing' | 'no_flow' | 'obstructed' | 'unknown',
@@ -1217,7 +1217,7 @@ export function useFieldOps() {
     };
 
     if (offline) {
-      return queueLocally();
+      return await queueLocally();
     }
 
     const previousInspection = detail?.visit.id === visitId ? detail.inspection : null;
@@ -1251,7 +1251,7 @@ export function useFieldOps() {
         return { ...prev, inspection: previousInspection };
       });
       if (shouldQueueFieldOutboundFailure(error)) {
-        return queueLocally();
+        return await queueLocally();
       }
       throw new Error(error.message);
     }
@@ -1266,10 +1266,10 @@ export function useFieldOps() {
     unit?: string;
   }): Promise<{ queued: boolean }> => {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-    const queueLocally = () => {
+    const queueLocally = async () => {
       const opId = createOutboundOpId();
 
-      const ok = enqueueFieldMeasurementInsert({
+      const ok = await enqueueFieldMeasurementInsert({
         id: opId,
         visitId,
         parameterName: measurement.parameterName,
@@ -1303,7 +1303,7 @@ export function useFieldOps() {
     };
 
     if (offline) {
-      return queueLocally();
+      return await queueLocally();
     }
 
     const { error } = await supabase
@@ -1318,7 +1318,7 @@ export function useFieldOps() {
 
     if (error) {
       if (shouldQueueFieldOutboundFailure(error)) {
-        return queueLocally();
+        return await queueLocally();
       }
       throw new Error(error.message);
     }
@@ -1344,8 +1344,8 @@ export function useFieldOps() {
     };
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-    const queueLocally = () => {
-      const ok = enqueueCocPrimaryUpsert({
+    const queueLocally = async () => {
+      const ok = await enqueueCocPrimaryUpsert({
         id: createOutboundOpId(),
         visitId,
         containerText: text,
@@ -1366,7 +1366,7 @@ export function useFieldOps() {
     };
 
     if (offline) {
-      return queueLocally();
+      return await queueLocally();
     }
 
     try {
@@ -1405,7 +1405,7 @@ export function useFieldOps() {
       }
     } catch (error) {
       if (shouldQueueFieldOutboundFailure(error)) {
-        return queueLocally();
+        return await queueLocally();
       }
       throw error;
     }
@@ -1450,8 +1450,8 @@ export function useFieldOps() {
   ): Promise<{ queued: boolean; result: CompleteFieldVisitResult }> => {
     if (!organizationId || !userId) throw new Error('Missing organization context');
     if (!visit.started_at) throw new Error('Visit must be started before completion');
-    const queueLocally = () => {
-      const ok = enqueueFieldVisitComplete({
+    const queueLocally = async () => {
+      const ok = await enqueueFieldVisitComplete({
         id: createOutboundOpId(),
         visitId: visit.id,
         outcome: input.outcome,
@@ -1515,7 +1515,7 @@ export function useFieldOps() {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
     if (offline) {
-      return queueLocally();
+      return await queueLocally();
     }
 
     const { data, error } = await supabase.rpc('complete_field_visit', {
@@ -1541,7 +1541,7 @@ export function useFieldOps() {
 
     if (error) {
       if (shouldQueueFieldOutboundFailure(error)) {
-        return queueLocally();
+        return await queueLocally();
       }
       throw new Error(error.message);
     }

@@ -51,10 +51,10 @@ describe('fieldOutboundQueue', () => {
     vi.restoreAllMocks();
   });
 
-  it('enqueue and read queue', () => {
+  it('enqueue and read queue', async () => {
     expect(getFieldOutboundQueueLength()).toBe(0);
     expect(
-      enqueueFieldMeasurementInsert({
+      await enqueueFieldMeasurementInsert({
         id: 'a1',
         visitId: 'v1',
         parameterName: 'pH',
@@ -70,7 +70,7 @@ describe('fieldOutboundQueue', () => {
     expect(getPendingMeasurementInsertsForVisit('other')).toHaveLength(0);
   });
 
-  it('migrates legacy array JSON to revision envelope on write', () => {
+  it('migrates legacy array JSON to revision envelope on write', async () => {
     const legacyOp = {
       kind: 'field_measurement_insert' as const,
       id: 'legacy-1',
@@ -83,7 +83,7 @@ describe('fieldOutboundQueue', () => {
     };
     localStorage.setItem(OUTBOUND_QUEUE_STORAGE_KEY, JSON.stringify([legacyOp]));
     expect(
-      enqueueFieldMeasurementInsert({
+      await enqueueFieldMeasurementInsert({
         id: 'a2',
         visitId: 'v1',
         parameterName: 'Temp',
@@ -100,7 +100,7 @@ describe('fieldOutboundQueue', () => {
     expect(parsed.ops).toHaveLength(2);
   });
 
-  it('returns false when CAS cannot commit after repeated storage races', () => {
+  it('returns false when CAS cannot commit after repeated storage races', async () => {
     let getCalls = 0;
     const origGet = Storage.prototype.getItem;
     const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
@@ -112,7 +112,7 @@ describe('fieldOutboundQueue', () => {
       return getCalls % 2 === 1 ? '[]' : '{"revision":1,"ops":[]}';
     });
     expect(
-      enqueueFieldMeasurementInsert({
+      await enqueueFieldMeasurementInsert({
         id: 'race',
         visitId: 'v1',
         parameterName: 'pH',
@@ -124,8 +124,8 @@ describe('fieldOutboundQueue', () => {
     spy.mockRestore();
   });
 
-  it('countOutboundQueueOpsForVisit counts ops for visit', () => {
-    enqueueFieldMeasurementInsert({
+  it('countOutboundQueueOpsForVisit counts ops for visit', async () => {
+    await enqueueFieldMeasurementInsert({
       id: 'a1',
       visitId: 'v1',
       parameterName: 'pH',
@@ -133,7 +133,7 @@ describe('fieldOutboundQueue', () => {
       measuredText: null,
       unit: null,
     });
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 's1',
       visitId: 'v2',
       startedAt: new Date().toISOString(),
@@ -145,8 +145,8 @@ describe('fieldOutboundQueue', () => {
     expect(countOutboundQueueOpsForVisit('v3')).toBe(0);
   });
 
-  it('optimisticMeasurementsFromQueue builds records', () => {
-    enqueueFieldMeasurementInsert({
+  it('optimisticMeasurementsFromQueue builds records', async () => {
+    await enqueueFieldMeasurementInsert({
       id: 'op-1',
       visitId: 'v1',
       parameterName: 'Temp',
@@ -162,7 +162,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue runs inserts FIFO and clears queue', async () => {
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: '1',
       visitId: 'v1',
       parameterName: 'A',
@@ -170,7 +170,7 @@ describe('fieldOutboundQueue', () => {
       measuredText: 'x',
       unit: null,
     });
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: '2',
       visitId: 'v1',
       parameterName: 'B',
@@ -194,7 +194,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue preserves ops enqueued during an in-flight flush', async () => {
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: 'existing-op',
       visitId: 'v1',
       parameterName: 'A',
@@ -204,7 +204,7 @@ describe('fieldOutboundQueue', () => {
     });
 
     const insert = vi.fn().mockImplementation(async () => {
-      enqueueFieldMeasurementInsert({
+      await enqueueFieldMeasurementInsert({
         id: 'new-op',
         visitId: 'v2',
         parameterName: 'B',
@@ -227,7 +227,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue prevents duplicate writes across overlapping runtimes', async () => {
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: 'shared-op',
       visitId: 'v1',
       parameterName: 'A',
@@ -273,7 +273,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue stops on insert error and leaves queue intact', async () => {
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: '1',
       visitId: 'v1',
       parameterName: 'A',
@@ -291,11 +291,11 @@ describe('fieldOutboundQueue', () => {
     expect(getFieldOutboundQueueLength()).toBe(1);
   });
 
-  it('returns false when setItem throws', () => {
+  it('returns false when setItem throws', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota');
     });
-    const ok = enqueueFieldMeasurementInsert({
+    const ok = await enqueueFieldMeasurementInsert({
       id: 'x',
       visitId: 'v',
       parameterName: 'p',
@@ -317,9 +317,9 @@ describe('fieldOutboundQueue', () => {
     expect(shouldQueueFieldOutboundFailure({ message: 'invalid input syntax for type uuid', status: 400 })).toBe(false);
   });
 
-  it('mergeOutletInspectionWithQueue overlays latest pending upsert', () => {
+  it('mergeOutletInspectionWithQueue overlays latest pending upsert', async () => {
     expect(mergeOutletInspectionWithQueue('v1', null, 'u1')).toBeNull();
-    enqueueOutletInspectionUpsert({
+    await enqueueOutletInspectionUpsert({
       id: 'i1',
       visitId: 'v1',
       flowStatus: 'no_flow',
@@ -330,7 +330,7 @@ describe('fieldOutboundQueue', () => {
       obstructionDetails: 'gate',
       inspectorNotes: 'n1',
     });
-    enqueueOutletInspectionUpsert({
+    await enqueueOutletInspectionUpsert({
       id: 'i2',
       visitId: 'v1',
       flowStatus: 'flowing',
@@ -347,7 +347,7 @@ describe('fieldOutboundQueue', () => {
     expect(merged?.id).toBe('local-i2');
   });
 
-  it('mergeVisitWithQueuedStart overlays pending start', () => {
+  it('mergeVisitWithQueuedStart overlays pending start', async () => {
     const visit = {
       id: 'v1',
       visit_status: 'assigned' as const,
@@ -360,7 +360,7 @@ describe('fieldOutboundQueue', () => {
       route_stop_sequence: null,
     } as FieldVisitListItem;
     expect(mergeVisitWithQueuedStart(visit).visit_status).toBe('assigned');
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 's1',
       visitId: 'v1',
       startedAt: '2026-03-31T12:00:00.000Z',
@@ -373,7 +373,7 @@ describe('fieldOutboundQueue', () => {
     expect(merged.started_longitude).toBe(2);
   });
 
-  it('mergeVisitWithQueuedCompletion overlays pending completion', () => {
+  it('mergeVisitWithQueuedCompletion overlays pending completion', async () => {
     const visit = {
       id: 'v1',
       visit_status: 'in_progress' as const,
@@ -392,7 +392,7 @@ describe('fieldOutboundQueue', () => {
       route_stop_sequence: null,
     } as FieldVisitListItem;
 
-    enqueueFieldVisitComplete({
+    await enqueueFieldVisitComplete({
       id: 'fc1',
       visitId: 'v1',
       outcome: 'access_issue',
@@ -423,7 +423,7 @@ describe('fieldOutboundQueue', () => {
     expect(merged.potential_force_majeure).toBe(true);
   });
 
-  it('mergeVisitWithQueuedLifecycle prefers queued completion over start', () => {
+  it('mergeVisitWithQueuedLifecycle prefers queued completion over start', async () => {
     const visit = {
       id: 'v1',
       visit_status: 'assigned' as const,
@@ -444,14 +444,14 @@ describe('fieldOutboundQueue', () => {
       route_stop_sequence: null,
     } as FieldVisitListItem;
 
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 's1',
       visitId: 'v1',
       startedAt: '2026-03-31T12:00:00.000Z',
       latitude: 1,
       longitude: 2,
     });
-    enqueueFieldVisitComplete({
+    await enqueueFieldVisitComplete({
       id: 'fc2',
       visitId: 'v1',
       outcome: 'sample_collected',
@@ -480,7 +480,7 @@ describe('fieldOutboundQueue', () => {
     expect(merged.completed_latitude).toBe(3);
   });
 
-  it('mergeMeasurementsWithQueuedCoc replaces server CoC row', () => {
+  it('mergeMeasurementsWithQueuedCoc replaces server CoC row', async () => {
     const serverCoc: FieldMeasurementRecord = {
       id: 'db-coc',
       field_visit_id: 'v1',
@@ -506,7 +506,7 @@ describe('fieldOutboundQueue', () => {
       created_at: '2026-01-02T00:00:00.000Z',
     };
     expect(mergeMeasurementsWithQueuedCoc('v1', 'u', [serverCoc, ph])).toEqual([serverCoc, ph]);
-    enqueueCocPrimaryUpsert({
+    await enqueueCocPrimaryUpsert({
       id: 'c1',
       visitId: 'v1',
       containerText: 'NEW-JAR',
@@ -520,7 +520,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue processes coc_primary_upsert insert', async () => {
-    enqueueCocPrimaryUpsert({
+    await enqueueCocPrimaryUpsert({
       id: 'c1',
       visitId: 'v1',
       containerText: 'JAR-9',
@@ -546,7 +546,7 @@ describe('fieldOutboundQueue', () => {
 
   it('processFieldOutboundQueue processes coc_primary_upsert update', async () => {
     localStorage.clear();
-    enqueueCocPrimaryUpsert({
+    await enqueueCocPrimaryUpsert({
       id: 'c2',
       visitId: 'v1',
       containerText: 'JAR-UPD',
@@ -572,7 +572,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue processes field_visit_start', async () => {
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 'st1',
       visitId: 'v1',
       startedAt: '2026-03-31T12:00:00.000Z',
@@ -611,7 +611,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue holds field_visit_start when server visit is terminal', async () => {
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 'st2',
       visitId: 'v1',
       startedAt: '2026-03-31T12:00:00.000Z',
@@ -650,14 +650,14 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue continues past a held field_visit_start', async () => {
-    enqueueFieldVisitStart({
+    await enqueueFieldVisitStart({
       id: 'st3',
       visitId: 'v1',
       startedAt: '2026-03-31T12:00:00.000Z',
       latitude: 38.1,
       longitude: -81.2,
     });
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: 'm-after-start-hold',
       visitId: 'v2',
       parameterName: 'pH',
@@ -699,7 +699,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue processes inspection upsert', async () => {
-    enqueueOutletInspectionUpsert({
+    await enqueueOutletInspectionUpsert({
       id: 'in1',
       visitId: 'v1',
       flowStatus: 'unknown',
@@ -721,7 +721,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue processes field_visit_complete via rpc', async () => {
-    enqueueFieldVisitComplete({
+    await enqueueFieldVisitComplete({
       id: 'fc3',
       visitId: 'v1',
       outcome: 'no_discharge',
@@ -780,7 +780,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue holds field_visit_complete when server outcome disagrees', async () => {
-    enqueueFieldVisitComplete({
+    await enqueueFieldVisitComplete({
       id: 'fc4',
       visitId: 'v1',
       outcome: 'access_issue',
@@ -835,7 +835,7 @@ describe('fieldOutboundQueue', () => {
   });
 
   it('processFieldOutboundQueue continues past a held field_visit_complete', async () => {
-    enqueueFieldVisitComplete({
+    await enqueueFieldVisitComplete({
       id: 'fc5',
       visitId: 'v1',
       outcome: 'access_issue',
@@ -857,7 +857,7 @@ describe('fieldOutboundQueue', () => {
       accessIssueContactOutcome: 'No answer',
       actorName: 'Sampler',
     });
-    enqueueFieldMeasurementInsert({
+    await enqueueFieldMeasurementInsert({
       id: 'm-after-complete-hold',
       visitId: 'v2',
       parameterName: 'Temperature',

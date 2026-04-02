@@ -1005,12 +1005,12 @@ describe('FieldVisitPage wizard', () => {
     await user.click(getWizardButton(/Outlet Inspection/i));
     await waitForStepHeading('Outlet Inspection');
 
+    await user.click(screen.getByRole('button', { name: 'Yes' }));
     await user.selectOptions(screen.getByRole('combobox', { name: /Flow status/i }), 'obstructed');
     await user.selectOptions(screen.getByRole('combobox', { name: /Signage condition/i }), 'Damaged');
     await user.selectOptions(screen.getByRole('combobox', { name: /Pipe condition/i }), 'Major Damage');
-    await user.click(screen.getByLabelText(/Obstruction observed/i));
     await user.selectOptions(screen.getByRole('combobox', { name: /Obstruction type/i }), 'Vegetation');
-    fireEvent.change(screen.getByRole('textbox', { name: /Obstruction details/i }), {
+    fireEvent.change(screen.getByRole('textbox', { name: /Describe the obstruction/i }), {
       target: { value: 'Brush and vines block about half the opening.' },
     });
     fireEvent.change(screen.getByRole('textbox', { name: /Inspection notes/i }), {
@@ -1042,7 +1042,7 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByRole('combobox', { name: /Signage condition/i })).toHaveValue('Damaged');
     expect(screen.getByRole('combobox', { name: /Pipe condition/i })).toHaveValue('Major Damage');
     expect(screen.getByRole('combobox', { name: /Obstruction type/i })).toHaveValue('Vegetation');
-    expect(screen.getByRole('textbox', { name: /Obstruction details/i })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /Describe the obstruction/i })).toHaveValue(
       'Brush and vines block about half the opening.',
     );
     expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(expectedInspectionNote);

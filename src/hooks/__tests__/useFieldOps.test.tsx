@@ -71,11 +71,11 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/lib/fieldOutboundQueue', () => ({
-  enqueueCocPrimaryUpsert: vi.fn(),
-  enqueueFieldVisitComplete: vi.fn(),
-  enqueueFieldMeasurementInsert: vi.fn(),
-  enqueueFieldVisitStart: vi.fn(),
-  enqueueOutletInspectionUpsert: vi.fn(),
+  enqueueCocPrimaryUpsert: vi.fn(async () => true),
+  enqueueFieldVisitComplete: vi.fn(async () => true),
+  enqueueFieldMeasurementInsert: vi.fn(async () => true),
+  enqueueFieldVisitStart: vi.fn(async () => true),
+  enqueueOutletInspectionUpsert: vi.fn(async () => true),
   getFieldOutboundQueueLength: () => 0,
   mergeAccessIssueWithQueuedCompletion: (_visitId: string, record: unknown) => record,
   mergeMeasurementsWithQueuedCoc: (_visitId: string, _userId: string | null, measurements: unknown[]) => measurements,

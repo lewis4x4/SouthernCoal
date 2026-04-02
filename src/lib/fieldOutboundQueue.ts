@@ -24,6 +24,7 @@ import type {
  */
 
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
+const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
 /** Max optimistic-lock retries when another tab or writer updates localStorage between read and write. */
 const MAX_QUEUE_CAS_ATTEMPTS = 16;
 
@@ -272,7 +273,8 @@ function mergeQueueById(existing: FieldOutboundOp[], incoming: FieldOutboundOp[]
   return merged;
 }
 
-function updateQueue(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]): boolean {
+/** Synchronous CAS write; caller must hold `OUTBOUND_QUEUE_LOCK` (or be in no-lock fallback). */
+function applyQueueMutation(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]): boolean {
   if (typeof localStorage === 'undefined') return false;
   try {
     for (let attempt = 0; attempt < MAX_QUEUE_CAS_ATTEMPTS; attempt += 1) {
@@ -293,6 +295,31 @@ function updateQueue(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]):
   } catch {
     return false;
   }
+}
+
+/**
+ * Nested depth while our tab holds `OUTBOUND_QUEUE_LOCK` (flush path). Enqueue-from-within-flush must not call
+ * `locks.request` again (non-reentrant); apply CAS directly.
+ */
+let outboundQueueLockNestedDepth = 0;
+
+/**
+ * All enqueue paths must use this so `localStorage` CAS cannot interleave with another tab's flush CAS.
+ * Re-entrant when `outboundQueueLockNestedDepth > 0` (enqueue during flush in this tab).
+ * Degraded mode: without `navigator.locks`, uses CAS only — cross-tab remote-write races can still occur.
+ */
+async function mutateOutboundQueueStorage(
+  mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[],
+): Promise<boolean> {
+  if (typeof localStorage === 'undefined') return false;
+  if (outboundQueueLockNestedDepth > 0) {
+    return applyQueueMutation(mutator);
+  }
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks?.request) {
+    return applyQueueMutation(mutator);
+  }
+  return locks.request(OUTBOUND_QUEUE_LOCK, () => applyQueueMutation(mutator));
 }
 
 function moveQueueOpToBack(latest: FieldOutboundOp[], opId: string): FieldOutboundOp[] {
@@ -348,14 +375,14 @@ export function getPendingMeasurementInsertsForVisit(
   );
 }
 
-export function enqueueFieldMeasurementInsert(params: {
+export async function enqueueFieldMeasurementInsert(params: {
   id: string;
   visitId: string;
   parameterName: string;
   measuredValue?: number | null;
   measuredText?: string | null;
   unit?: string | null;
-}): boolean {
+}): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'field_measurement_insert',
     id: params.id,
@@ -366,10 +393,10 @@ export function enqueueFieldMeasurementInsert(params: {
     unit: params.unit ?? null,
     enqueuedAt: new Date().toISOString(),
   };
-  return updateQueue((latest) => mergeQueueById(latest, [op]));
+  return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
 }
 
-export function enqueueOutletInspectionUpsert(params: {
+export async function enqueueOutletInspectionUpsert(params: {
   id: string;
   visitId: string;
   flowStatus: 'flowing' | 'no_flow' | 'obstructed' | 'unknown';
@@ -379,7 +406,7 @@ export function enqueueOutletInspectionUpsert(params: {
   obstructionObserved: boolean;
   obstructionDetails: string | null;
   inspectorNotes: string | null;
-}): boolean {
+}): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'outlet_inspection_upsert',
     id: params.id,
@@ -393,16 +420,16 @@ export function enqueueOutletInspectionUpsert(params: {
     inspectorNotes: params.inspectorNotes,
     enqueuedAt: new Date().toISOString(),
   };
-  return updateQueue((latest) => mergeQueueById(latest, [op]));
+  return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
 }
 
-export function enqueueFieldVisitStart(params: {
+export async function enqueueFieldVisitStart(params: {
   id: string;
   visitId: string;
   startedAt: string;
   latitude: number;
   longitude: number;
-}): boolean {
+}): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'field_visit_start',
     id: params.id,
@@ -412,16 +439,16 @@ export function enqueueFieldVisitStart(params: {
     longitude: params.longitude,
     enqueuedAt: new Date().toISOString(),
   };
-  return updateQueue((latest) => mergeQueueById(latest, [op]));
+  return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
 }
 
-export function enqueueCocPrimaryUpsert(params: {
+export async function enqueueCocPrimaryUpsert(params: {
   id: string;
   visitId: string;
   containerText: string;
   preservativeConfirmed: boolean;
   metadata?: Record<string, unknown> | null;
-}): boolean {
+}): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'coc_primary_upsert',
     id: params.id,
@@ -431,10 +458,10 @@ export function enqueueCocPrimaryUpsert(params: {
     metadata: params.metadata ?? null,
     enqueuedAt: new Date().toISOString(),
   };
-  return updateQueue((latest) => mergeQueueById(latest, [op]));
+  return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
 }
 
-export function enqueueFieldVisitComplete(params: {
+export async function enqueueFieldVisitComplete(params: {
   id: string;
   visitId: string;
   outcome: FieldVisitOutcome;
@@ -455,7 +482,7 @@ export function enqueueFieldVisitComplete(params: {
   accessIssueContactName: string | null;
   accessIssueContactOutcome: string | null;
   actorName: string;
-}): boolean {
+}): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'field_visit_complete',
     id: params.id,
@@ -480,7 +507,7 @@ export function enqueueFieldVisitComplete(params: {
     actorName: params.actorName,
     enqueuedAt: new Date().toISOString(),
   };
-  return updateQueue((latest) => mergeQueueById(latest, [op]));
+  return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
 }
 
 function getLatestPendingStartForVisit(
@@ -743,8 +770,6 @@ async function fetchVisitLifecycleSnapshot(
   };
 }
 
-const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
-
 let outboundProcessChain: Promise<FieldOutboundQueueFlushResult> | null = null;
 
 async function processFieldOutboundQueueUnlocked(
@@ -811,7 +836,7 @@ async function processFieldOutboundQueueUnlocked(
           );
           heldBlockedOp ??= { kind: op.kind, visitId: op.visitId };
           visitedHeldOps.add(op.id);
-          if (!updateQueue((latest) => moveQueueOpToBack(latest, op.id))) {
+          if (!applyQueueMutation((latest) => moveQueueOpToBack(latest, op.id))) {
             throw new Error('Failed to reprioritize outbound queue after conflict hold');
           }
           continue;
@@ -881,7 +906,7 @@ async function processFieldOutboundQueueUnlocked(
           );
           heldBlockedOp ??= { kind: op.kind, visitId: op.visitId };
           visitedHeldOps.add(op.id);
-          if (!updateQueue((latest) => moveQueueOpToBack(latest, op.id))) {
+          if (!applyQueueMutation((latest) => moveQueueOpToBack(latest, op.id))) {
             throw new Error('Failed to reprioritize outbound queue after conflict hold');
           }
           continue;
@@ -908,7 +933,7 @@ async function processFieldOutboundQueueUnlocked(
         });
         if (error) throw new Error(error.message);
       }
-      if (!updateQueue((latest) => latest.filter((queued) => queued.id !== op.id))) {
+      if (!applyQueueMutation((latest) => latest.filter((queued) => queued.id !== op.id))) {
         throw new Error('Failed to update outbound queue after upload');
       }
       processed += 1;
@@ -926,10 +951,22 @@ async function processFieldOutboundQueueUnlocked(
 async function withOutboundQueueLock<T>(work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
   if (!locks?.request) {
-    return work();
+    outboundQueueLockNestedDepth += 1;
+    try {
+      return await work();
+    } finally {
+      outboundQueueLockNestedDepth -= 1;
+    }
   }
 
-  return locks.request(OUTBOUND_QUEUE_LOCK, () => work());
+  return locks.request(OUTBOUND_QUEUE_LOCK, async () => {
+    outboundQueueLockNestedDepth += 1;
+    try {
+      return await work();
+    } finally {
+      outboundQueueLockNestedDepth -= 1;
+    }
+  });
 }
 
 export async function processFieldOutboundQueue(client: SupabaseClient): Promise<FieldOutboundQueueFlushResult> {
