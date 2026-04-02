@@ -68,34 +68,35 @@ interface RouteConfig {
   path: string;
   element: React.ReactNode;
   roles: Role[];
+  guardScope?: 'global' | 'assignment';
 }
 
 const APP_ROUTES: RouteConfig[] = [
-  { path: '/dashboard',                    element: <Dashboard />,                  roles: ALL_ROLES },
-  { path: '/compliance',                   element: <UploadDashboard />,            roles: COMPLIANCE_UPLOAD_ROLES },
-  { path: '/obligations',                  element: <Obligations />,                roles: COMPLIANCE_FULL_ROLES },
-  { path: '/coverage',                     element: <CoverageGaps />,               roles: COMPLIANCE_FULL_ROLES },
-  { path: '/monitoring',                   element: <Monitoring />,                 roles: COMPLIANCE_FULL_ROLES },
-  { path: '/reports',                      element: <Reports />,                    roles: REPORTING_ROLES },
-  { path: '/admin',                        element: <Admin />,                      roles: ADMIN_ROLES },
-  { path: '/admin/audit-log',              element: <AuditLogPage />,               roles: AUDIT_LOG_ROUTE_ROLES },
-  { path: '/admin/reports',                element: <AdminReportsPage />,           roles: ADMIN_ROLES },
-  { path: '/admin/access-control',         element: <AccessControlPage />,          roles: ADMIN_ONLY_ROLES },
-  { path: '/corrections',                  element: <CorrectionsPage />,            roles: REPORTING_ROLES },
-  { path: '/roadmap',                      element: <RoadmapPage />,                roles: ADMIN_ROLES },
-  { path: '/search',                       element: <SearchPage />,                 roles: ALL_ROLES },
-  { path: '/compliance/failure-to-sample', element: <FailureToSamplePage />,        roles: COMPLIANCE_ADVANCED_ROLES },
-  { path: '/compliance/review-queue',      element: <ReviewQueuePage />,            roles: COMPLIANCE_ADVANCED_ROLES },
-  { path: '/compliance/external-data',     element: <ExternalDataPage />,           roles: COMPLIANCE_ADVANCED_ROLES },
-  { path: '/field/schedule',               element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES },
-  { path: '/sampling',                     element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES },
-  { path: '/field/dispatch',               element: <FieldDispatchPage />,          roles: FIELD_ROUTE_ROLES },
-  { path: '/field/route',                  element: <FieldRouteTodayPage />,        roles: FIELD_ROUTE_ROLES },
-  { path: '/field/visits/:id',             element: <FieldVisitPage />,             roles: FIELD_ROUTE_ROLES },
-  { path: '/governance/issues',            element: <GovernanceIssuesPage />,       roles: GOVERNANCE_ROUTE_ROLES },
-  { path: '/search/observability',         element: <SearchObservabilityPage />,    roles: ADMIN_ONLY_ROLES },
-  { path: '/corrective-actions',           element: <CorrectiveActionsPage />,      roles: CORRECTIVE_ACTION_ROLES },
-  { path: '/corrective-actions/:id',       element: <CorrectiveActionDetailPage />, roles: CORRECTIVE_ACTION_ROLES },
+  { path: '/dashboard',                    element: <Dashboard />,                  roles: ALL_ROLES,                  guardScope: 'assignment' },
+  { path: '/compliance',                   element: <UploadDashboard />,            roles: COMPLIANCE_UPLOAD_ROLES,    guardScope: 'assignment' },
+  { path: '/obligations',                  element: <Obligations />,                roles: COMPLIANCE_FULL_ROLES,      guardScope: 'assignment' },
+  { path: '/coverage',                     element: <CoverageGaps />,               roles: COMPLIANCE_FULL_ROLES,      guardScope: 'assignment' },
+  { path: '/monitoring',                   element: <Monitoring />,                 roles: COMPLIANCE_FULL_ROLES,      guardScope: 'assignment' },
+  { path: '/reports',                      element: <Reports />,                    roles: REPORTING_ROLES,            guardScope: 'global' },
+  { path: '/admin',                        element: <Admin />,                      roles: ADMIN_ROLES,                guardScope: 'global' },
+  { path: '/admin/audit-log',              element: <AuditLogPage />,               roles: AUDIT_LOG_ROUTE_ROLES,      guardScope: 'global' },
+  { path: '/admin/reports',                element: <AdminReportsPage />,           roles: ADMIN_ROLES,                guardScope: 'global' },
+  { path: '/admin/access-control',         element: <AccessControlPage />,          roles: ADMIN_ONLY_ROLES,           guardScope: 'global' },
+  { path: '/corrections',                  element: <CorrectionsPage />,            roles: REPORTING_ROLES,            guardScope: 'global' },
+  { path: '/roadmap',                      element: <RoadmapPage />,                roles: ADMIN_ROLES,                guardScope: 'global' },
+  { path: '/search',                       element: <SearchPage />,                 roles: ALL_ROLES,                  guardScope: 'assignment' },
+  { path: '/compliance/failure-to-sample', element: <FailureToSamplePage />,        roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global' },
+  { path: '/compliance/review-queue',      element: <ReviewQueuePage />,            roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global' },
+  { path: '/compliance/external-data',     element: <ExternalDataPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global' },
+  { path: '/field/schedule',               element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment' },
+  { path: '/sampling',                     element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment' },
+  { path: '/field/dispatch',               element: <FieldDispatchPage />,          roles: FIELD_ROUTE_ROLES,          guardScope: 'assignment' },
+  { path: '/field/route',                  element: <FieldRouteTodayPage />,        roles: FIELD_ROUTE_ROLES,          guardScope: 'assignment' },
+  { path: '/field/visits/:id',             element: <FieldVisitPage />,             roles: FIELD_ROUTE_ROLES,          guardScope: 'assignment' },
+  { path: '/governance/issues',            element: <GovernanceIssuesPage />,       roles: GOVERNANCE_ROUTE_ROLES,     guardScope: 'global' },
+  { path: '/search/observability',         element: <SearchObservabilityPage />,    roles: ADMIN_ONLY_ROLES,           guardScope: 'global' },
+  { path: '/corrective-actions',           element: <CorrectiveActionsPage />,      roles: CORRECTIVE_ACTION_ROLES,    guardScope: 'assignment' },
+  { path: '/corrective-actions/:id',       element: <CorrectiveActionDetailPage />, roles: CORRECTIVE_ACTION_ROLES,    guardScope: 'assignment' },
 ];
 
 function PageLoader() {
@@ -137,13 +138,13 @@ export function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
-        {APP_ROUTES.map(({ path, element, roles }) => (
+        {APP_ROUTES.map(({ path, element, roles, guardScope = 'assignment' }) => (
           <Route
             key={path}
             path={path}
             element={
               <AuthGuard>
-                <RoleGuard allowedRoles={roles}>
+                <RoleGuard allowedRoles={roles} scope={guardScope}>
                   <AppShell>
                     <LazyPage>{element}</LazyPage>
                   </AppShell>

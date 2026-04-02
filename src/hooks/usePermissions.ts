@@ -1,58 +1,43 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
-import type { Role, Permission, RoleAssignment } from '@/types/auth';
+import type { Permission, Role, RoleAssignment } from '@/types/auth';
 
-/**
- * Role → permission mapping from v6 Section 8.
- * Queries user_role_assignments (not user_profiles.role) per schema doc.
- * Supports global and site-scoped roles.
- */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   executive: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
-    // CA: Full access including approver signature
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
   ],
   site_manager: [
     'view', 'upload', 'export', 'command_palette', 'search',
-    // CA: Can view, edit assigned, advance workflow, sign as responsible, reopen
-    // Issue #5 Fix: Added ca_advance_workflow and ca_reopen so site managers can complete assigned CAs
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
   ],
   environmental_manager: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
-    // CA: Full access except approver signature
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
   ],
   safety_manager: [
     'view', 'upload', 'command_palette', 'search',
-    // CA: View only
     'ca_view',
   ],
   field_sampler: [
     'view', 'upload', 'command_palette', 'search',
-    // CA: View only
     'ca_view',
   ],
   lab_tech: [
     'view', 'upload', 'command_palette', 'search',
-    // CA: View only
     'ca_view',
   ],
   admin: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
-    // CA: Full access including signatures
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
   ],
   read_only: [
     'view', 'export', 'command_palette', 'search',
-    // CA: View only
     'ca_view',
   ],
 };
 
-/** Priority order: higher index = more permissive. Used to resolve highest-privilege assignment. */
 const ROLE_PRIORITY: Role[] = [
   'read_only',
   'field_sampler',
@@ -65,77 +50,181 @@ const ROLE_PRIORITY: Role[] = [
 ];
 
 const CACHE_KEY = 'scc_role_assignments';
+const CACHE_VERSION = 1;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-export function usePermissions() {
-  const { user } = useAuth();
-  const fetchingRef = useRef(false);
-  const [assignments, setAssignments] = useState<RoleAssignment[]>([]);
-  const [loading, setLoading] = useState(true);
+export type PermissionAvailability = 'ready' | 'degraded' | 'unavailable';
+export type PermissionScope = 'global' | 'assignment';
 
-  useEffect(() => {
-    if (!user) {
-      setAssignments([]);
-      setLoading(false);
-      return;
+interface PermissionsState {
+  assignments: RoleAssignment[];
+  loading: boolean;
+  availability: PermissionAvailability;
+  error: string | null;
+}
+
+type CachedAssignmentsEnvelope = {
+  version: number;
+  userId: string;
+  cachedAt: string;
+  assignments: RoleAssignment[];
+};
+
+type PermissionsListener = (state: PermissionsState) => void;
+
+const initialPermissionsState: PermissionsState = {
+  assignments: [],
+  loading: true,
+  availability: 'ready',
+  error: null,
+};
+
+let permissionsState: PermissionsState = initialPermissionsState;
+let permissionsListeners = new Set<PermissionsListener>();
+let activeUserId: string | null = null;
+let fetchPromise: Promise<void> | null = null;
+
+function emitPermissionsState(next: PermissionsState) {
+  permissionsState = next;
+  permissionsListeners.forEach((listener) => listener(next));
+}
+
+function subscribePermissions(listener: PermissionsListener) {
+  permissionsListeners.add(listener);
+  return () => {
+    permissionsListeners.delete(listener);
+  };
+}
+
+function readCachedAssignments(userId: string): RoleAssignment[] {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CachedAssignmentsEnvelope | RoleAssignment[];
+
+    if (Array.isArray(parsed)) {
+      return parsed.length > 0 && parsed[0]?.user_id === userId ? parsed : [];
     }
 
-    // Validate cache: only hydrate if cached assignments belong to THIS user.
-    // Prevents stale admin-level access when switching users.
+    if (
+      parsed.version !== CACHE_VERSION ||
+      parsed.userId !== userId ||
+      Date.now() - new Date(parsed.cachedAt).getTime() > CACHE_TTL_MS
+    ) {
+      localStorage.removeItem(CACHE_KEY);
+      return [];
+    }
+
+    return parsed.assignments;
+  } catch {
+    return [];
+  }
+}
+
+function persistCachedAssignments(userId: string, assignments: RoleAssignment[]) {
+  try {
+    const payload: CachedAssignmentsEnvelope = {
+      version: CACHE_VERSION,
+      userId,
+      cachedAt: new Date().toISOString(),
+      assignments,
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    /* non-critical */
+  }
+}
+
+function clearCachedAssignments() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* non-critical */
+  }
+}
+
+function getAssignmentsForScope(assignments: RoleAssignment[], scope: PermissionScope, siteId?: string) {
+  if (scope === 'global') {
+    return assignments.filter((assignment) => assignment.site_id === null);
+  }
+
+  if (siteId) {
+    const applicable = assignments.filter((assignment) => assignment.site_id === siteId || assignment.site_id === null);
+    return applicable.length > 0 ? applicable : assignments;
+  }
+
+  return assignments;
+}
+
+function resolveEffectiveRole(assignments: RoleAssignment[], scope: PermissionScope = 'assignment', siteId?: string): Role {
+  const pool = getAssignmentsForScope(assignments, scope, siteId);
+  if (pool.length === 0) return 'read_only';
+
+  let highestPriority = -1;
+  let effectiveRole: Role = 'read_only';
+
+  for (const assignment of pool) {
+    const priority = ROLE_PRIORITY.indexOf(assignment.role_name);
+    if (priority > highestPriority) {
+      highestPriority = priority;
+      effectiveRole = assignment.role_name;
+    }
+  }
+
+  return effectiveRole;
+}
+
+async function fetchAssignmentsForUser(userId: string) {
+  if (fetchPromise) {
+    await fetchPromise;
+    return;
+  }
+
+  fetchPromise = (async () => {
+    const cachedAssignments = readCachedAssignments(userId);
+    if (cachedAssignments.length > 0) {
+      emitPermissionsState({
+        assignments: cachedAssignments,
+        loading: true,
+        availability: 'ready',
+        error: null,
+      });
+    } else {
+      emitPermissionsState({
+        assignments: [],
+        loading: true,
+        availability: 'ready',
+        error: null,
+      });
+    }
+
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed: RoleAssignment[] = JSON.parse(cached);
-        if (parsed.length > 0 && parsed[0]?.user_id === user.id) {
-          setAssignments(parsed);
-        } else {
-          localStorage.removeItem(CACHE_KEY);
-          setAssignments([]);
-        }
-      }
-    } catch {
-      setAssignments([]);
-    }
-
-    async function fetchAssignments() {
-      // Prevent concurrent fetches from multiple renders exhausting the pool
-      if (fetchingRef.current) return;
-      fetchingRef.current = true;
-
       const { data, error } = await supabase
         .from('user_role_assignments')
         .select('id, user_id, role_id, site_id, granted_at, roles(name)')
-        .eq('user_id', user!.id);
-
-      fetchingRef.current = false;
-
-      if (import.meta.env.DEV) console.log('[permissions] raw response:', { data, error, userId: user!.id });
+        .eq('user_id', userId);
 
       if (error || !data) {
-        console.error('[permissions] Failed to fetch role assignments:', error?.message);
-        // No retry — use cached assignments to avoid pool exhaustion
-        console.warn('[permissions] Using cached role assignments');
-        setLoading(false);
-        return;
-      }
+        const message = error?.message ?? 'Failed to fetch permissions';
+        console.error('[permissions] Failed to fetch role assignments:', message);
 
-      if (data.length === 0) {
-        // Only keep cached data if it belongs to the SAME user (prevents cross-user leakage)
-        try {
-          const cached = localStorage.getItem(CACHE_KEY);
-          const cachedAssignments: RoleAssignment[] = cached ? JSON.parse(cached) : [];
-          const sameUser = cachedAssignments.length > 0 && cachedAssignments[0]?.user_id === user!.id;
-          if (sameUser) {
-            console.warn(
-              '[permissions] DB returned 0 assignments but cache has data for same user — keeping cache (likely RLS/connection issue)',
-            );
-            setAssignments(cachedAssignments);
-            setLoading(false);
-            return;
-          }
-        } catch { /* parse error — fall through */ }
-        console.warn(
-          '[permissions] No role assignments found — defaulting to read_only. Check RLS policies on user_role_assignments.',
-        );
+        if (cachedAssignments.length > 0) {
+          emitPermissionsState({
+            assignments: cachedAssignments,
+            loading: false,
+            availability: 'degraded',
+            error: message,
+          });
+          return;
+        }
+
+        emitPermissionsState({
+          assignments: [],
+          loading: false,
+          availability: 'unavailable',
+          error: message,
+        });
+        return;
       }
 
       const mapped: RoleAssignment[] = data.map((row) => ({
@@ -149,74 +238,107 @@ export function usePermissions() {
         created_at: row.granted_at,
       }));
 
-      setAssignments(mapped);
-      // Only cache non-empty results — never let empty overwrites strip admin
       if (mapped.length > 0) {
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
-        } catch { /* quota exceeded — non-critical */ }
+        persistCachedAssignments(userId, mapped);
+      } else {
+        clearCachedAssignments();
       }
-      setLoading(false);
-    }
 
-    void fetchAssignments().catch((err) => {
+      emitPermissionsState({
+        assignments: mapped,
+        loading: false,
+        availability: 'ready',
+        error: null,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch permissions';
       console.error('[permissions] Unexpected error:', err);
-      setLoading(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on user.id, NOT user object (token refresh creates new reference)
-  }, [user?.id]);
 
-  /**
-   * Check if user can perform an action.
-   * If siteId is provided, checks site-scoped assignments first, then global.
-   * Falls back to read_only if no assignments found.
-   */
-  function can(action: Permission, siteId?: string): boolean {
-    if (assignments.length === 0) {
-      // Default to read_only permissions if no assignments
-      return ROLE_PERMISSIONS.read_only.includes(action);
-    }
-
-    // Find applicable assignments: site-specific first, then global (site_id = null)
-    const applicable = siteId
-      ? assignments.filter((a) => a.site_id === siteId || a.site_id === null)
-      : assignments.filter((a) => a.site_id === null);
-
-    // If no matching assignments, check all (global fallback)
-    const pool = applicable.length > 0 ? applicable : assignments;
-
-    // Resolve highest-privilege role
-    let highestPriority = -1;
-    let effectiveRole: Role = 'read_only';
-
-    for (const assignment of pool) {
-      const priority = ROLE_PRIORITY.indexOf(assignment.role_name);
-      if (priority > highestPriority) {
-        highestPriority = priority;
-        effectiveRole = assignment.role_name;
+      if (cachedAssignments.length > 0) {
+        emitPermissionsState({
+          assignments: cachedAssignments,
+          loading: false,
+          availability: 'degraded',
+          error: message,
+        });
+        return;
       }
+
+      emitPermissionsState({
+        assignments: [],
+        loading: false,
+        availability: 'unavailable',
+        error: message,
+      });
+    }
+  })().finally(() => {
+    fetchPromise = null;
+  });
+
+  await fetchPromise;
+}
+
+export function usePermissions() {
+  const { user, status: authStatus } = useAuth();
+  const [state, setState] = useState<PermissionsState>(permissionsState);
+
+  useEffect(() => subscribePermissions(setState), []);
+
+  useEffect(() => {
+    if (authStatus === 'bootstrapping') {
+      emitPermissionsState((permissionsState.loading && permissionsState.assignments.length === 0) ? permissionsState : {
+        assignments: permissionsState.assignments,
+        loading: true,
+        availability: 'ready',
+        error: null,
+      });
+      return;
     }
 
-    return ROLE_PERMISSIONS[effectiveRole]?.includes(action) ?? false;
-  }
+    if (!user || authStatus === 'unauthenticated' || authStatus === 'expired') {
+      activeUserId = null;
+      clearCachedAssignments();
+      emitPermissionsState({
+        assignments: [],
+        loading: false,
+        availability: 'ready',
+        error: null,
+      });
+      return;
+    }
 
-  /** Get the user's highest-privilege role name for display */
-  function getEffectiveRole(): Role {
-    if (assignments.length === 0) return 'read_only';
+    if (activeUserId !== user.id) {
+      activeUserId = user.id;
+      void fetchAssignmentsForUser(user.id);
+    }
+  }, [authStatus, user]);
 
-    let highestPriority = -1;
-    let effectiveRole: Role = 'read_only';
+  const helpers = useMemo(() => {
+    const can = (action: Permission, siteId?: string): boolean => {
+      const effectiveRole = resolveEffectiveRole(state.assignments, 'assignment', siteId);
+      return ROLE_PERMISSIONS[effectiveRole]?.includes(action) ?? false;
+    };
 
-    for (const assignment of assignments) {
-      const priority = ROLE_PRIORITY.indexOf(assignment.role_name);
-      if (priority > highestPriority) {
-        highestPriority = priority;
-        effectiveRole = assignment.role_name;
+    const getEffectiveRole = (scope: PermissionScope = 'assignment'): Role => (
+      resolveEffectiveRole(state.assignments, scope)
+    );
+
+    const hasAllowedRole = (allowedRoles: Role[], scope: PermissionScope = 'assignment'): boolean => {
+      const pool = getAssignmentsForScope(state.assignments, scope);
+      if (pool.length === 0) {
+        return allowedRoles.includes('read_only');
       }
-    }
+      return pool.some((assignment) => allowedRoles.includes(assignment.role_name));
+    };
 
-    return effectiveRole;
-  }
+    return { can, getEffectiveRole, hasAllowedRole };
+  }, [state.assignments]);
 
-  return { can, getEffectiveRole, assignments, loading };
+  return {
+    ...helpers,
+    assignments: state.assignments,
+    loading: state.loading,
+    availability: state.availability,
+    error: state.error,
+  };
 }

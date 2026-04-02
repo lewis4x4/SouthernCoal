@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { supabase, edgeFunctionFetchHeaders } from '@/lib/supabase';
+import { edgeFunctionFetchHeaders, getFreshToken } from '@/lib/supabase';
 import { useSearchStore } from '@/stores/search';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { DocumentSearchResponse, DocumentSearchFilters } from '@/types/search';
@@ -29,31 +29,7 @@ export function useDocumentSearch() {
       clearDocumentResults();
 
       try {
-        // Get fresh token
-        let token: string;
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError || !session) {
-          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError || !refreshed.session) {
-            window.location.href = '/login?reason=session_expired';
-            throw new Error('Session expired');
-          }
-          token = refreshed.session.access_token;
-        } else {
-          const expiresAt = session.expires_at || 0;
-          const expiresInMs = expiresAt * 1000 - Date.now();
-          if (expiresInMs < 60_000) {
-            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshError || !refreshed.session) {
-              window.location.href = '/login?reason=session_expired';
-              throw new Error('Session expired');
-            }
-            token = refreshed.session.access_token;
-          } else {
-            token = session.access_token;
-          }
-        }
+        const token = await getFreshToken();
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/document-search`,

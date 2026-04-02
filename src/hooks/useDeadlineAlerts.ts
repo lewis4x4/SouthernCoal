@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { getValidSession, supabase } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
 import type { PenaltyTier } from '@/types/obligations';
 
@@ -139,8 +139,12 @@ function setSentCache(cache: Record<string, string>) {
 }
 
 async function sendEmailAlert(alert: DeadlineAlert) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return;
+  let session;
+  try {
+    session = await getValidSession();
+  } catch {
+    return;
+  }
 
   await supabase.functions.invoke('send-deadline-alert', {
     body: {

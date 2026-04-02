@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { supabase, edgeFunctionFetchHeaders } from '@/lib/supabase';
+import { edgeFunctionFetchHeaders, getFreshToken, supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { QueueEntry } from '@/types/queue';
@@ -43,19 +43,7 @@ export function useLabDataImport() {
       });
 
       try {
-        // Refresh JWT before Edge Function call
-        const sessionResult = await supabase.auth.getSession();
-        let session = sessionResult.data?.session;
-
-        if (!session) {
-          const { data: refreshed, error: refreshError } =
-            await supabase.auth.refreshSession();
-          if (refreshError || !refreshed?.session) {
-            window.location.href = '/login?reason=session_expired';
-            return;
-          }
-          session = refreshed.session;
-        }
+        const token = await getFreshToken();
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -73,7 +61,7 @@ export function useLabDataImport() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...edgeFunctionFetchHeaders(session.access_token),
+                ...edgeFunctionFetchHeaders(token),
               },
               body: JSON.stringify({ queue_id: queueId }),
               signal: controller.signal,
