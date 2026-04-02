@@ -19,6 +19,7 @@ import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAle
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useSamplingCalendar } from '@/hooks/useSamplingCalendar';
+import { getEasternCurrentYm, getEasternTodayYmd } from '@/lib/operationalDate';
 import { supabase } from '@/lib/supabase';
 import { buildRouteLegEstimates, findNonConsecutiveOutfallRepeats } from '@/lib/routePreview';
 import type {
@@ -124,8 +125,8 @@ function stopStatusFromVisit(visitStatus: FieldVisitStatus | null) {
 
 export function FieldSchedulePage() {
   const navigate = useNavigate();
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const today = new Date().toISOString().slice(0, 10);
+  const currentMonth = getEasternCurrentYm();
+  const today = getEasternTodayYmd();
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [statusFilter, setStatusFilter] = useState<'all' | SamplingDispatchStatus>('all');

@@ -5,6 +5,7 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/cn';
+import { getEasternTodayYmd } from '@/lib/operationalDate';
 
 interface TodaysRouteSummaryCardProps {
   scope: 'mine' | 'org';
@@ -15,7 +16,7 @@ export function TodaysRouteSummaryCard({ scope }: TodaysRouteSummaryCardProps) {
   const { user } = useAuth();
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getEasternTodayYmd();
     let filtered = visits.filter((v) => v.scheduled_date === today);
     if (scope === 'mine' && user) {
       filtered = filtered.filter((v) => v.assigned_to === user.id);

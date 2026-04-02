@@ -8,7 +8,6 @@ import {
   ExternalLink,
   MapPin,
   Navigation,
-  Route,
   ShieldAlert,
   UserRound,
 } from 'lucide-react';
@@ -31,6 +30,7 @@ import {
   saveFieldRouteCacheDual,
   type FieldRouteCachePayload,
 } from '@/lib/fieldRouteLocalCache';
+import { getEasternTodayYmd } from '@/lib/operationalDate';
 import {
   FIELD_HANDOFF_GOVERNANCE_INBOX,
   governanceIssuesInboxHref,
@@ -88,7 +88,7 @@ export function FieldRouteTodayPage() {
 
   const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerSnapshot);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getEasternTodayYmd();
   const [routeDate, setRouteDate] = useState(today);
   const [scope, setScope] = useState<'mine' | 'org'>(canSeeOrgWide ? 'org' : 'mine');
   const [openStopsOnly, setOpenStopsOnly] = useState(false);
@@ -319,18 +319,15 @@ export function FieldRouteTodayPage() {
   }, [cacheOrganizationId, cacheViewerId, dayVisitsLive, loading, online, outfallCoords, persistOfflineCopy, routeDate, scope]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mx-auto max-w-5xl space-y-4">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
             Today&apos;s route
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-            Phase 3 route execution with Phase 4 preview: today&apos;s list is saved to this device (localStorage and IndexedDB when available) while online, then shown when the browser is offline. Field actions still need connectivity or the outbound queue.
+            Open the next stop, keep your offline copy current, and finish the route with a clear disposition on every visit.
           </p>
-        </div>
-        <div className="rounded-xl bg-emerald-500/10 p-3">
-          <Route className="h-6 w-6 text-emerald-300" />
         </div>
       </div>
 
@@ -471,8 +468,8 @@ export function FieldRouteTodayPage() {
         </div>
       )}
 
-      <SpotlightCard className="p-6" spotlightColor="rgba(16, 185, 129, 0.08)">
-        <div className="flex flex-wrap items-end gap-4">
+      <SpotlightCard className="p-4 sm:p-5" spotlightColor="rgba(16, 185, 129, 0.08)">
+        <div className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-end">
           <label className="space-y-2">
             <span className="text-xs font-medium text-text-muted">Route date</span>
             <input
@@ -482,67 +479,69 @@ export function FieldRouteTodayPage() {
               className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-emerald-400/30"
             />
           </label>
-          {canSeeOrgWide && (
+          <div className="flex flex-wrap gap-3 lg:items-end">
+            {canSeeOrgWide && (
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-text-muted">Scope</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScope('mine')}
+                    className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                      scope === 'mine'
+                        ? 'bg-emerald-500/20 text-emerald-200'
+                        : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    My assignments
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScope('org')}
+                    className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                      scope === 'org'
+                        ? 'bg-emerald-500/20 text-emerald-200'
+                        : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    All samplers
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
-              <span className="text-xs font-medium text-text-muted">Scope</span>
+              <span className="text-xs font-medium text-text-muted">List</span>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setScope('mine')}
+                  onClick={() => setOpenStopsOnly(false)}
                   className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    scope === 'mine'
+                    !openStopsOnly
                       ? 'bg-emerald-500/20 text-emerald-200'
                       : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
                   }`}
                 >
-                  My assignments
+                  All stops
                 </button>
                 <button
                   type="button"
-                  onClick={() => setScope('org')}
+                  onClick={() => setOpenStopsOnly(true)}
                   className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    scope === 'org'
+                    openStopsOnly
                       ? 'bg-emerald-500/20 text-emerald-200'
                       : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
                   }`}
                 >
-                  All samplers (day)
+                  Open only
                 </button>
               </div>
-            </div>
-          )}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-text-muted">List</span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setOpenStopsOnly(false)}
-                className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                  !openStopsOnly
-                    ? 'bg-emerald-500/20 text-emerald-200'
-                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                }`}
-              >
-                All stops
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenStopsOnly(true)}
-                className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                  openStopsOnly
-                    ? 'bg-emerald-500/20 text-emerald-200'
-                    : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'
-                }`}
-              >
-                Open only
-              </button>
             </div>
           </div>
           {online && (
             <button
               type="button"
               onClick={handleSaveOffline}
-              className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
             >
               Update offline copy
             </button>
@@ -691,15 +690,6 @@ export function FieldRouteTodayPage() {
         </ol>
       )}
 
-      <p className="text-center text-xs text-text-muted">
-        <Link to="/field/dispatch" className="text-emerald-400/80 hover:text-emerald-300">
-          Field Queue
-        </Link>
-        {' · '}
-        <Link to="/field/schedule" className="text-emerald-400/80 hover:text-emerald-300">
-          Sampling Calendar
-        </Link>
-      </p>
     </div>
   );
 }

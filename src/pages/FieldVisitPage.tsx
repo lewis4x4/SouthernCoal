@@ -2400,10 +2400,10 @@ export function FieldVisitPage() {
   })();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
             Field Visit
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
@@ -2425,7 +2425,7 @@ export function FieldVisitPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             to="/field/dispatch"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
           >
             Back to field queue
           </Link>
@@ -2434,7 +2434,7 @@ export function FieldVisitPage() {
               href={outfallMapsHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
             >
               <Navigation className="h-4 w-4 shrink-0" aria-hidden />
               Open in Maps

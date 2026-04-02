@@ -7,7 +7,6 @@ import {
   ListOrdered,
   MapPinned,
   Plus,
-  Route,
   ShieldAlert,
   UserRound,
 } from 'lucide-react';
@@ -24,6 +23,7 @@ import {
   FIELD_HANDOFF_GOVERNANCE_INBOX,
   governanceIssuesInboxHref,
 } from '@/lib/governanceInboxNav';
+import { getEasternTodayYmd } from '@/lib/operationalDate';
 import { visitNeedsDisposition } from '@/lib/fieldVisitDisposition';
 import { visitIsOpenOverdue } from '@/lib/fieldVisitStatus';
 import type { FieldVisitListItem } from '@/types';
@@ -67,7 +67,7 @@ export function FieldDispatchPage() {
   const [permitId, setPermitId] = useState('');
   const [outfallId, setOutfallId] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
-  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0] ?? '');
+  const [scheduledDate, setScheduledDate] = useState(getEasternTodayYmd());
   const [fieldNotes, setFieldNotes] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -76,7 +76,7 @@ export function FieldDispatchPage() {
     [outfalls, permitId],
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getEasternTodayYmd();
 
   const filteredVisits = useMemo(() => {
     let list = visits;
@@ -152,27 +152,22 @@ export function FieldDispatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
             Field Queue
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Manual dispatch for WV field work and the live queue of executable field visits. Route-dispatched visits show stop order for daily worklists.
+            Open the next assigned stop fast. Dispatch controls stay secondary to the live work queue.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <Link
-            to="/field/route"
-            className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
-          >
-            Today&apos;s route
-          </Link>
-          <div className="rounded-xl bg-cyan-500/10 p-3">
-            <Route className="h-6 w-6 text-cyan-300" />
-          </div>
-        </div>
+        <Link
+          to="/field/route"
+          className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
+        >
+          Today&apos;s route
+        </Link>
       </div>
 
       <FieldDataSyncBar
@@ -194,7 +189,7 @@ export function FieldDispatchPage() {
       />
 
       {canDispatch && (
-        <SpotlightCard className="p-6" spotlightColor="rgba(6, 182, 212, 0.08)">
+        <SpotlightCard className="p-4 sm:p-5" spotlightColor="rgba(6, 182, 212, 0.08)">
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4 text-cyan-300" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
@@ -388,7 +383,7 @@ export function FieldDispatchPage() {
         </div>
       </SpotlightCard>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="h-40 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]" />

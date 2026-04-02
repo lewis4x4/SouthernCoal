@@ -418,7 +418,7 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
 
     const progress = screen.getByRole('navigation', { name: 'Field visit wizard progress' });
-    expect(within(progress).getByText('Start Visit')).toBeInTheDocument();
+    expect(within(progress).getAllByText('Start Visit').length).toBeGreaterThan(0);
     expect(within(progress).getByText('Outlet Inspection')).toBeInTheDocument();
     expect(within(progress).getByText('Choose Outcome')).toBeInTheDocument();
     expect(within(progress).getByText('Outcome Details')).toBeInTheDocument();

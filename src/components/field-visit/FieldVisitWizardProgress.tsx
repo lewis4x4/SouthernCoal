@@ -20,22 +20,37 @@ export function FieldVisitWizardProgress({
   steps,
   onStepSelect,
 }: FieldVisitWizardProgressProps) {
+  const activeIndex = steps.findIndex((step) => step.id === activeStep);
+  const activeStepMeta = activeIndex >= 0 ? steps[activeIndex] : steps[0];
+
   return (
-    <nav
-      aria-label="Field visit wizard progress"
-      className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2 sm:p-3"
-    >
-      <ol className="flex min-w-max gap-2 xl:grid xl:min-w-0 xl:grid-cols-6">
+    <nav aria-label="Field visit wizard progress" className="space-y-3">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Step {activeIndex + 1} of {steps.length}
+            </div>
+            <div className="mt-1 text-sm font-medium text-text-primary">{activeStepMeta?.label}</div>
+          </div>
+          <div className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+            {steps.filter((step) => step.status === 'complete').length} complete
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2">
+        <ol className="flex min-w-max gap-2">
         {steps.map((step, index) => {
           const isActive = activeStep === step.id;
           return (
-            <li key={step.id} className="min-w-[168px] xl:min-w-0">
+            <li key={step.id} className="min-w-[132px]">
               <button
                 type="button"
                 aria-current={isActive ? 'step' : undefined}
                 onClick={() => onStepSelect(step.id)}
                 className={cn(
-                  'flex h-full w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
+                  'flex h-full w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
                   isActive
                     ? 'border-cyan-400/35 bg-cyan-500/12'
                     : step.status === 'complete'
@@ -60,21 +75,20 @@ export function FieldVisitWizardProgress({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                    Step {index + 1}
-                  </span>
-                  <span className="mt-1 block text-sm font-medium text-text-primary">{step.label}</span>
-                  <span className="mt-1 hidden text-xs leading-5 text-text-secondary sm:block xl:hidden">
-                    {step.description}
-                  </span>
-                  <span className="mt-1 hidden text-xs leading-5 text-text-secondary xl:block">{step.description}</span>
+                  <span className="block text-sm font-medium text-text-primary">{step.label}</span>
+                  {isActive ? (
+                    <span className="mt-1 block text-[11px] leading-5 text-text-secondary">
+                      {step.description}
+                    </span>
+                  ) : null}
                 </span>
                 {isActive ? <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-cyan-200" aria-hidden /> : null}
               </button>
             </li>
           );
         })}
-      </ol>
+        </ol>
+      </div>
     </nav>
   );
 }

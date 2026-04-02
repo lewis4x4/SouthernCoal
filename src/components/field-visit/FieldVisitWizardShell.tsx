@@ -46,19 +46,19 @@ export function FieldVisitWizardShell({
     <div className="space-y-4 pb-28 sm:pb-32">
       {progress}
 
-      <SpotlightCard className="p-4 sm:p-6">
+      <SpotlightCard className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">
               Step {stepNumber}
             </p>
-            <h2 className="mt-2 text-xl font-semibold text-text-primary sm:text-2xl">{stepTitle}</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{stepDescription}</p>
+            <h2 className="mt-1.5 text-xl font-semibold text-text-primary sm:text-2xl">{stepTitle}</h2>
+            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-text-secondary">{stepDescription}</p>
           </div>
           {stepMeta ? <div className="shrink-0 self-start">{stepMeta}</div> : null}
         </div>
 
-        <div className="mt-5">{children}</div>
+        <div className="mt-4">{children}</div>
       </SpotlightCard>
 
       {(backAction || saveAction || primaryAction) ? (
