@@ -7,7 +7,7 @@ export const FIELD_VISIT_WIZARD_COPY: Record<
   }
 > = {
   start_visit: {
-    primaryActionLabel: 'Start visit & continue',
+    primaryActionLabel: 'Start visit',
   },
   inspection: {
     primaryActionLabel: 'Save inspection & continue',

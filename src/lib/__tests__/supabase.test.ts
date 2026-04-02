@@ -1,3 +1,4 @@
+import type { Session } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getSessionMock = vi.fn();
@@ -9,7 +10,7 @@ const session = {
   access_token: 'token-1',
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   user: { id: 'user-1', email: 'user@example.com' },
-} as any;
+} as Session;
 
 async function loadSupabaseModule() {
   vi.resetModules();

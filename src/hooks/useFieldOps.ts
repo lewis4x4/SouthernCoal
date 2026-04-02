@@ -118,13 +118,22 @@ export function didDispatchContextLoadSucceed(input: {
   sitesStateError: { message: string } | null;
   userError: { message: string } | null;
   visitError: { message: string } | null;
+  /** WV dispatch outfall list — required whenever we have in-state permits to map visits. */
+  outfallError?: { message: string } | null;
+  /** Role labels on the team directory — required for assigned_to_name in visit rows. */
+  assignmentError?: { message: string } | null;
+  /** Route stop ordering for calendar-linked visits. */
+  routeStopError?: { message: string } | null;
 }) {
   return (
     !input.flushFailed &&
     !input.permitError &&
     !input.sitesStateError &&
     !input.userError &&
-    !input.visitError
+    !input.visitError &&
+    !input.outfallError &&
+    !input.assignmentError &&
+    !input.routeStopError
   );
 }
 
@@ -1064,6 +1073,9 @@ export function useFieldOps() {
           sitesStateError: permitLoad.sitesStateError,
           userError: userRes.error,
           visitError: visitRes.error,
+          outfallError: outfallQueryError,
+          assignmentError: assignmentRes.error,
+          routeStopError: routeStopQueryError,
         }),
       },
       syncAlerts,

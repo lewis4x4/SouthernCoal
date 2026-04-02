@@ -78,7 +78,7 @@ export function FieldVisitWeatherCard({
 
       {canLoadWeatherAfterStart ? (
         <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">
-          System weather will load automatically after you press <span className="font-medium">Start visit &amp; continue</span>.
+          System weather will load automatically after you press <span className="font-medium">Start visit</span>.
           Capture start GPS first so the request uses the correct coordinates.
         </div>
       ) : null}

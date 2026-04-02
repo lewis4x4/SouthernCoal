@@ -51,7 +51,7 @@ describe('AuditLogPage', () => {
 
   it('disables audit-log data loading for unauthorized roles', async () => {
     usePermissionsMock.mockReturnValue({
-      getEffectiveRole: () => 'field_sampler',
+      hasAllowedRole: () => false,
       loading: false,
     });
     fromMock.mockReturnValue({
@@ -69,7 +69,7 @@ describe('AuditLogPage', () => {
 
   it('shows an alert when the audit log query reports an error', async () => {
     usePermissionsMock.mockReturnValue({
-      getEffectiveRole: () => 'admin',
+      hasAllowedRole: () => true,
       loading: false,
     });
     fromMock.mockImplementation(() => ({

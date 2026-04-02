@@ -25,7 +25,7 @@ import { FieldVisitRequirementsCard } from '@/components/field-visit/FieldVisitR
 import { SafetyActionsPanel } from '@/components/field-visit/SafetyActionsPanel';
 import { FieldVisitShortHoldAlert } from '@/components/field-visit/FieldVisitShortHoldAlert';
 import { FieldVisitRequiredChecklist } from '@/components/field-visit/FieldVisitRequiredChecklist';
-import { FieldVisitWeatherCard } from '@/components/field-visit/FieldVisitWeatherCard';
+
 import { FieldVisitWizardProgress } from '@/components/field-visit/FieldVisitWizardProgress';
 import { FieldVisitWizardShell } from '@/components/field-visit/FieldVisitWizardShell';
 import type { FieldVisitWizardProgressStep } from '@/components/field-visit/FieldVisitWizardProgress';
@@ -300,6 +300,7 @@ export function FieldVisitPage() {
   const latestPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
   const uploadPhotoCategoryRef = useRef<FieldVisitPhotoCategory>('outlet_signage');
   const wizardHydratedForVisitRef = useRef<string | null>(null);
+  const stateHydratedForVisitRef = useRef<string | null>(null);
   const effectiveRole = getEffectiveRole();
   const canOpenGovernanceInbox = GOVERNANCE_ROUTE_ROLES.includes(effectiveRole);
   const governanceInboxHref = canOpenGovernanceInbox
@@ -363,6 +364,7 @@ export function FieldVisitPage() {
     setSystemWeatherLoading(false);
     systemWeatherDedupeRef.current = null;
     wizardHydratedForVisitRef.current = null;
+    stateHydratedForVisitRef.current = null;
     setWizardStateReady(false);
   }, [id]);
 
@@ -379,6 +381,8 @@ export function FieldVisitPage() {
 
   useEffect(() => {
     if (!detail) return;
+    if (stateHydratedForVisitRef.current === detail.visit.id) return;
+    stateHydratedForVisitRef.current = detail.visit.id;
 
     setObservedSiteConditions(observedWeatherFromPersisted(detail.visit.weather_conditions ?? ''));
     setFieldNotes(detail.visit.field_notes ?? '');
@@ -666,20 +670,6 @@ export function FieldVisitPage() {
     [visitSiblingOutfallConflicts],
   );
 
-  const weatherCoordinateSummary = useMemo(() => {
-    if (!detail) return null;
-    const lat =
-      detail.visit.started_latitude != null
-        ? Number(detail.visit.started_latitude)
-        : Number(startCoords.latitude);
-    const lng =
-      detail.visit.started_longitude != null
-        ? Number(detail.visit.started_longitude)
-        : Number(startCoords.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  }, [detail, startCoords.latitude, startCoords.longitude]);
-
   const startLatitude = Number(startCoords.latitude);
   const startLongitude = Number(startCoords.longitude);
   const completeLatitude = Number(completeCoords.latitude);
@@ -907,7 +897,7 @@ export function FieldVisitPage() {
         return;
       }
       const dedupeKey = `${detail.visit.id}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
-      if (!opts?.manual && systemWeatherDedupeRef.current === dedupeKey) return;
+      if (!opts?.manual && !opts?.notifyOnFailure && systemWeatherDedupeRef.current === dedupeKey) return;
 
       setSystemWeatherLoading(true);
       setSystemWeatherError(null);
@@ -931,26 +921,18 @@ export function FieldVisitPage() {
   );
 
   useEffect(() => {
-    if (!detail || !visitStarted || visitLocked) return;
+    if (!detail || visitLocked) return;
+    const lat = Number(startCoords.latitude);
+    const lng = Number(startCoords.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     void fetchSystemWeather();
   }, [
     detail,
-    visitStarted,
     visitLocked,
     fetchSystemWeather,
     startCoords.latitude,
     startCoords.longitude,
   ]);
-
-  const handleApplySystemToObserved = useCallback(() => {
-    if (!systemWeather) return;
-    setObservedSiteConditions((prev) => {
-      const line = `System snapshot: ${systemWeather.summary}`;
-      const t = prev.trim();
-      return t ? `${t}\n${line}` : line;
-    });
-    toast.success('Inserted system weather line into observed conditions');
-  }, [systemWeather]);
 
   const applyPreviousInspectionSummary = useCallback(() => {
     const previous = detail?.previous_visit_context;
@@ -1151,13 +1133,12 @@ export function FieldVisitPage() {
           : 'Visit started',
       );
       void fetchSystemWeather({ lat: startLatitude, lng: startLongitude, notifyOnFailure: true });
-      goToStep('inspection');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to start visit');
     } finally {
       setSaving(false);
     }
-  }, [detail, fetchSystemWeather, goToStep, startLatitude, startLongitude, startVisit]);
+  }, [detail, fetchSystemWeather, startLatitude, startLongitude, startVisit]);
 
   async function handleSaveInspection() {
     if (!detail || visitLocked) return;
@@ -1429,7 +1410,7 @@ export function FieldVisitPage() {
           state: wizardGuardState,
         });
         if (!reviewAccess.ok) {
-          goToStep(reviewAccess.blockedStep);
+          toast.error(reviewAccess.message);
           return;
         }
         const evidenceAdvance = validateFieldVisitWizardAdvanceStep('evidence', wizardGuardState);
@@ -2259,20 +2240,6 @@ export function FieldVisitPage() {
     </div>
   ) : null;
 
-  const syncGuidance = (!isClientOnline || visitOutboundQueuedCount > 0 || evidenceUploadFailures.length > 0 || outboundQueueDiagnostic) ? (
-    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200/85">
-        Sync guidance
-      </div>
-      <div className="mt-2 space-y-1 text-sm text-text-primary">
-        {!isClientOnline ? <div>Reconnect before trusting the final server record. Device changes remain local while offline.</div> : null}
-        {visitOutboundQueuedCount > 0 ? <div>Use Refresh in the sync bar after connectivity is stable to flush queued visit actions.</div> : null}
-        {evidenceUploadFailures.length > 0 ? <div>Retry failed photo uploads before treating the evidence package as complete.</div> : null}
-        {outboundQueueDiagnostic ? <div>The queue is blocked. Review the sync-health details before making more changes to this stop.</div> : null}
-      </div>
-    </div>
-  ) : null;
-
   const lockedBanner = visitLocked ? (
     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
       This visit record is complete and locked from further field edits.
@@ -2307,23 +2274,12 @@ export function FieldVisitPage() {
             visitStarted={visitStarted}
             visitLocked={visitLocked}
             outfallMapsHref={outfallMapsHref}
-            syncGuidance={syncGuidance}
-            weatherCard={
-              <FieldVisitWeatherCard
-                visitLocked={visitLocked}
-                visitStarted={visitStarted}
-                fetchEnabled={isWeatherFetchEnabled()}
-                isOnline={isClientOnline}
-                coordinateSummary={weatherCoordinateSummary}
-                systemWeather={systemWeather}
-                systemLoading={systemWeatherLoading}
-                systemError={systemWeatherError}
-                observedSiteConditions={observedSiteConditions}
-                onObservedChange={setObservedSiteConditions}
-                onRefreshSystem={() => void fetchSystemWeather({ manual: true })}
-                onApplySystemToObserved={handleApplySystemToObserved}
-              />
-            }
+            hasCoordinates={Number.isFinite(startLatitude) && Number.isFinite(startLongitude)}
+            weatherSummary={systemWeather?.summary ?? null}
+            weatherLoading={systemWeatherLoading}
+            weatherError={systemWeatherError}
+            observedSiteConditions={observedSiteConditions}
+            onObservedChange={setObservedSiteConditions}
             scheduledParameter={detail.scheduled_parameter_label ? (
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm">
                 <p className="text-sm font-medium text-text-muted">Scheduled parameter</p>
@@ -2336,9 +2292,6 @@ export function FieldVisitPage() {
                 <p className="mt-1 whitespace-pre-wrap text-text-primary">{detail.schedule_instructions}</p>
               </div>
             ) : null}
-            sameOutfallWarning={
-              <FieldSameOutfallDayWarning groups={visitSiblingOutfallConflicts} contextLabel="this visit" />
-            }
           />
         );
       case 'inspection':
@@ -2384,7 +2337,15 @@ export function FieldVisitPage() {
             totalPhotoCount={totalPhotoCount}
             pendingPhotoCount={pendingPhotoCount}
             syncedPhotoCount={photoCount}
-            requiredPrompt={evidenceValidation.ok ? 'Required evidence for this outcome is in place. Add more context if the stop conditions are ambiguous.' : evidenceValidation.message}
+            requiredPrompt={
+              !evidenceValidation.ok
+                ? evidenceValidation.message
+                : outcome === 'sample_collected'
+                  ? totalPhotoCount < 1
+                    ? 'Photograph the sample containers and labels before leaving the stop. This strengthens the chain of custody record.'
+                    : 'Sample container evidence is attached. Add outlet or site context photos if conditions are ambiguous.'
+                  : 'Required evidence for this outcome is in place. Add more context if the stop conditions are ambiguous.'
+            }
             focusPrompts={evidenceFocusPrompts}
             evidenceContent={renderEvidenceContent(evidenceCategories)}
           />
@@ -2414,9 +2375,11 @@ export function FieldVisitPage() {
 
   const hasSyncIssues = !!(outboundQueueDiagnostic || evidenceUploadFailures.length > 0);
   const hasQueuedActions = visitOutboundQueuedCount > 0;
+  const hasSameOutfallConflict = visitSiblingOutfallConflicts.length > 0;
   const hasAlerts = hasSyncIssues || hasQueuedActions || !!weatherStatusBanner ||
     (requirementsModel && requirementsModel.urgencyFlags.length > 0) ||
-    (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live');
+    (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live') ||
+    hasSameOutfallConflict;
   const alertDotColor = hasSyncIssues ? 'bg-red-400' : hasQueuedActions ? 'bg-amber-400' : 'bg-cyan-400';
 
   return (
@@ -2463,8 +2426,6 @@ export function FieldVisitPage() {
         : {
             label: activeStep === 'start_visit' && visitStarted
               ? 'Continue to inspection'
-              : activeStep === 'evidence' && recommendedStep !== 'review_complete'
-                ? `Continue to ${getFieldVisitWizardStep(recommendedStep).label.toLowerCase()}`
               : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
             onClick: () => {
               void handleWizardAdvance();
@@ -2547,6 +2508,9 @@ export function FieldVisitPage() {
             <FieldVisitShortHoldAlert flags={requirementsModel.urgencyFlags} />
           ) : null}
           {weatherStatusBanner}
+          {hasSameOutfallConflict ? (
+            <FieldSameOutfallDayWarning groups={visitSiblingOutfallConflicts} contextLabel="this visit" />
+          ) : null}
           {detail.visit.linked_sampling_event_id ? (
             <div className="flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
               <Beaker className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden />

@@ -6,13 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FieldVisitPage } from '@/pages/FieldVisitPage';
 import { listFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
 import { serializePhotoEvidenceCategory } from '@/lib/photoEvidenceBuckets';
-import type { FieldVisitDetails } from '@/types';
+import type { FieldEvidenceDraft } from '@/lib/fieldEvidenceDrafts';
+import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
+import type { FieldEvidenceAssetRecord, FieldVisitDetails, OutletInspectionRecord } from '@/types';
 import { toast } from 'sonner';
 
 const useFieldOpsMock = vi.fn();
 const getEffectiveRoleMock = vi.fn(() => 'field_sampler');
-const groupSameOutfallSameDayMock = vi.fn((..._args: any[]) => [] as any[]);
-const siblingVisitsSameOutfallSameDayMock = vi.fn((..._args: any[]) => [] as any[]);
+const groupSameOutfallSameDayMock = vi.fn((...args: unknown[]) => {
+  void args;
+  return [] as unknown[];
+});
+const siblingVisitsSameOutfallSameDayMock = vi.fn((...args: unknown[]) => {
+  void args;
+  return [] as FieldVisitDetails['visit'][];
+});
 const fetchOpenMeteoCurrentSnapshotMock = vi.fn();
 
 vi.mock('sonner', () => ({
@@ -84,8 +92,8 @@ vi.mock('@/lib/fieldOutboundQueue', () => ({
 }));
 
 vi.mock('@/lib/fieldSameOutfallDay', () => ({
-  groupSameOutfallSameDay: (...args: any[]) => groupSameOutfallSameDayMock(...args),
-  siblingVisitsSameOutfallSameDay: (...args: any[]) => siblingVisitsSameOutfallSameDayMock(...args),
+  groupSameOutfallSameDay: (...args: unknown[]) => groupSameOutfallSameDayMock(...args),
+  siblingVisitsSameOutfallSameDay: (...args: unknown[]) => siblingVisitsSameOutfallSameDayMock(...args),
 }));
 
 vi.mock('@/lib/fieldVisitDisposition', () => ({
@@ -418,16 +426,16 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
 
     const progress = screen.getByRole('navigation', { name: 'Field visit wizard progress' });
-    expect(within(progress).getAllByText('Start Visit').length).toBeGreaterThan(0);
-    expect(within(progress).getByText('Outlet Inspection')).toBeInTheDocument();
-    expect(within(progress).getByText('Choose Outcome')).toBeInTheDocument();
-    expect(within(progress).getByText('Outcome Details')).toBeInTheDocument();
-    expect(within(progress).getByText('Evidence')).toBeInTheDocument();
-    expect(within(progress).getByText('Review & Complete')).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Start Visit' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Outlet Inspection' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Choose Outcome' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Outcome Details' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Evidence' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Review & Complete' })).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start visit & continue' })).toBeInTheDocument();
-    expect(screen.getByText(/System weather will load automatically after you press/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start visit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^(Capture GPS|Recapture)$/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Wizard step actions' })).toBeInTheDocument();
   });
 
@@ -441,7 +449,7 @@ describe('FieldVisitPage wizard', () => {
 
     expect(getWizardButton(/Start Visit/i)).toHaveAttribute('aria-current', 'step');
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start visit & continue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start visit' })).toBeInTheDocument();
   });
 
   it('renders the sample-collected outcome details path with custody and field-only measurements', async () => {
@@ -579,7 +587,48 @@ describe('FieldVisitPage wizard', () => {
     const user = userEvent.setup();
     const startedDetail = buildStartedDetail();
     const startVisit = vi.fn().mockResolvedValue({ queued: false });
-    fetchOpenMeteoCurrentSnapshotMock.mockRejectedValueOnce(new Error('Weather service returned 503'));
+    let meteoCall = 0;
+    fetchOpenMeteoCurrentSnapshotMock.mockReset();
+    fetchOpenMeteoCurrentSnapshotMock.mockImplementation(async () => {
+      meteoCall += 1;
+      if (meteoCall === 1) {
+        return {
+          summary: 'Overcast · 54°F',
+          fetchedAtIso: '2026-04-01T12:00:00.000Z',
+        };
+      }
+      throw new Error('Weather service returned 503');
+    });
+    sessionStorage.setItem(
+      'field-visit-wizard-draft:visit-1',
+      JSON.stringify({
+        version: 1,
+        startCoords: { latitude: '38.12345', longitude: '-81.23456' },
+        completeCoords: { latitude: '', longitude: '' },
+        observedSiteConditions: '',
+        fieldNotes: '',
+        outcome: 'sample_collected',
+        outcomeExplicitlySelected: false,
+        potentialForceMajeure: false,
+        potentialForceMajeureNotes: '',
+        noDischargeNarrative: '',
+        noDischargeCondition: '',
+        noDischargeObstructionObserved: false,
+        noDischargeObstructionDetails: '',
+        accessIssueNarrative: '',
+        accessIssueType: 'access_issue',
+        contactAttempted: false,
+        contactName: '',
+        contactOutcome: '',
+        cocContainerId: '',
+        cocPreservativeConfirmed: false,
+        cocCaptureMethod: 'manual',
+        cocRawScanValue: '',
+        requiredMeasurementDrafts: {},
+        selectedPhotoCategory: 'outlet_signage',
+        inspection: {},
+      }),
+    );
     let hookState = {
       detail: buildDetail() as FieldVisitDetails | null,
       detailLoading: false,
@@ -613,7 +662,7 @@ describe('FieldVisitPage wizard', () => {
     );
 
     await waitForWizard();
-    await user.click(screen.getByRole('button', { name: 'Start visit & continue' }));
+    await user.click(screen.getByRole('button', { name: 'Start visit' }));
 
     await waitFor(() => {
       expect(startVisit).toHaveBeenCalled();
@@ -634,7 +683,9 @@ describe('FieldVisitPage wizard', () => {
     );
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('System weather did not load: Weather service returned 503'));
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('System weather did not load: Weather service returned 503'),
+      );
     });
   });
 
@@ -644,19 +695,21 @@ describe('FieldVisitPage wizard', () => {
       configurable: true,
       value: false,
     });
-    vi.mocked(listFieldEvidenceDrafts).mockResolvedValue([
-      {
-        id: 'draft-1',
-        fieldVisitId: 'visit-1',
-        bucket: 'field-inspections',
-        pathPrefix: 'org-1/field-visits/',
-        fileName: 'dry-channel.jpg',
-        fileType: 'image/jpeg',
-        evidenceType: 'photo',
-        notes: serializePhotoEvidenceCategory('flow_no_flow'),
-        createdAt: '2026-04-01T12:00:00Z',
-      } as any,
-    ]);
+    const offlineDraft: FieldEvidenceDraft = {
+      id: 'draft-1',
+      fieldVisitId: 'visit-1',
+      bucket: 'field-inspections',
+      pathPrefix: 'org-1/field-visits/',
+      fileName: 'dry-channel.jpg',
+      mimeType: 'image/jpeg',
+      fileSize: 1024,
+      evidenceType: 'photo',
+      notes: serializePhotoEvidenceCategory('flow_no_flow'),
+      latitude: null,
+      longitude: null,
+      createdAt: '2026-04-01T12:00:00Z',
+    };
+    vi.mocked(listFieldEvidenceDrafts).mockResolvedValue([offlineDraft]);
 
     renderPage(buildStartedDetail({
       visit: {
@@ -680,12 +733,12 @@ describe('FieldVisitPage wizard', () => {
     await user.click(getWizardButton(/Evidence/i));
     await waitForStepHeading('Evidence');
 
-    expect(screen.getByText('Photo evidence buckets')).toBeInTheDocument();
+    expect(screen.getByText('Category')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Flow \/ no-flow/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Outlet \/ signage/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sample containers/i })).not.toBeInTheDocument();
     expect(screen.getByText(/dry-channel\.jpg/i)).toBeInTheDocument();
-    expect(screen.getByText(/photo pending sync/i)).toBeInTheDocument();
+    expect(screen.getByText(/pending sync/i)).toBeInTheDocument();
   });
 
   it('surfaces QA prompts in the outcome-details step for duplicate and special handling context', async () => {
@@ -857,9 +910,12 @@ describe('FieldVisitPage wizard', () => {
     await user.click(screen.getByRole('button', { name: 'Take required photo' }));
 
     await waitForStepHeading('Evidence');
-    await user.click(screen.getByRole('button', { name: 'Continue to choose outcome' }));
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }));
 
-    await waitForStepHeading('Choose Outcome');
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(FIELD_VISIT_COPY.outcomeRequired);
+    });
+    expect(screen.getByRole('heading', { name: 'Evidence' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Review & Complete' })).not.toBeInTheDocument();
   });
 
@@ -891,19 +947,19 @@ describe('FieldVisitPage wizard', () => {
   it('keeps structured inspection fields and notes after save-and-continue and rerender', async () => {
     const user = userEvent.setup();
     const expectedInspectionNote = 'Signage damaged and outlet partially blocked.';
-    const saveInspection = vi.fn().mockImplementation(async (_visitId: string, inspection: any) => {
+    const saveInspection = vi.fn().mockImplementation(async (_visitId: string, inspection: Partial<OutletInspectionRecord>) => {
       hookState = {
         ...hookState,
         detail: buildStartedDetail({
           inspection: {
             id: 'inspection-saved',
             field_visit_id: 'visit-1',
-            flow_status: inspection.flow_status,
-            signage_condition: inspection.signage_condition,
-            pipe_condition: inspection.pipe_condition,
+            flow_status: inspection.flow_status ?? 'flowing',
+            signage_condition: inspection.signage_condition ?? 'Good',
+            pipe_condition: inspection.pipe_condition ?? 'Good',
             erosion_observed: inspection.erosion_observed ?? false,
             obstruction_observed: inspection.obstruction_observed ?? false,
-            obstruction_details: inspection.obstruction_details,
+            obstruction_details: inspection.obstruction_details ?? null,
             inspector_notes: expectedInspectionNote,
             created_at: '2026-04-01T12:00:00Z',
             updated_at: '2026-04-01T12:05:00Z',
@@ -1013,31 +1069,35 @@ describe('FieldVisitPage wizard', () => {
       evidence: [
         {
           id: 'evidence-1',
+          organization_id: 'org-1',
           field_visit_id: 'visit-1',
+          governance_issue_id: null,
           evidence_type: 'photo',
-          bucket_name: 'field-inspections',
+          bucket: 'field-inspections',
           storage_path: 'field-visits/flow.jpg',
+          uploaded_by: 'user-1',
+          captured_at: '2026-04-01T12:00:00Z',
           latitude: null,
           longitude: null,
-          recorded_at: '2026-04-01T12:00:00Z',
-          recorded_by: 'user-1',
           notes: serializePhotoEvidenceCategory('flow_no_flow'),
           created_at: '2026-04-01T12:00:00Z',
         },
         {
           id: 'evidence-2',
+          organization_id: 'org-1',
           field_visit_id: 'visit-1',
+          governance_issue_id: null,
           evidence_type: 'photo',
-          bucket_name: 'field-inspections',
+          bucket: 'field-inspections',
           storage_path: 'field-visits/outlet.jpg',
+          uploaded_by: 'user-1',
+          captured_at: '2026-04-01T12:00:00Z',
           latitude: null,
           longitude: null,
-          recorded_at: '2026-04-01T12:00:00Z',
-          recorded_by: 'user-1',
           notes: serializePhotoEvidenceCategory('outlet_signage'),
           created_at: '2026-04-01T12:00:00Z',
         },
-      ] as any,
+      ] satisfies FieldEvidenceAssetRecord[],
     }));
 
     await waitForWizard();

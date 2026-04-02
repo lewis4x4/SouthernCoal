@@ -1,4 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
+import type { Session } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const clearFieldRouteCacheMock = vi.fn();
@@ -46,7 +47,7 @@ const validSession = {
     id: 'user-1',
     email: 'user@example.com',
   },
-} as any;
+} as Session;
 
 describe('useAuth', () => {
   beforeEach(() => {
@@ -69,11 +70,30 @@ describe('useAuth', () => {
       expect(result.current.status).toBe('authenticated');
     });
     expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.sessionReliesOnLocalJwt).toBe(false);
     expect(refreshSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it('reports expired when bootstrap refresh fails for an existing session', async () => {
+  it('uses stored session when refresh fails but access token is still valid', async () => {
     getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: null }, error: new Error('network') });
+
+    const { useAuth } = await loadUseAuthModule();
+    const { result } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('authenticated');
+    });
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.sessionReliesOnLocalJwt).toBe(true);
+  });
+
+  it('reports expired when refresh fails and access token is past expiry', async () => {
+    const expiredSession = {
+      ...validSession,
+      expires_at: Math.floor(Date.now() / 1000) - 120,
+    };
+    getSessionMock.mockResolvedValue({ data: { session: expiredSession }, error: null });
     refreshSessionMock.mockResolvedValue({ data: { session: null }, error: new Error('expired') });
 
     const { useAuth } = await loadUseAuthModule();
@@ -83,6 +103,31 @@ describe('useAuth', () => {
       expect(result.current.status).toBe('expired');
     });
     expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.sessionReliesOnLocalJwt).toBe(false);
+  });
+
+  it('calls refresh again when the browser fires online', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+
+    const { useAuth } = await loadUseAuthModule();
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+    });
+
+    refreshSessionMock.mockClear();
+    getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('reports unauthenticated when no session exists', async () => {

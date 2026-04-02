@@ -51,7 +51,15 @@ const ROLE_PRIORITY: Role[] = [
 
 const CACHE_KEY = 'scc_role_assignments';
 const CACHE_VERSION = 1;
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** Beyond this age while online, drop cached assignments so RBAC cannot run on very stale roles. */
+const CACHE_MAX_STALE_MS = 72 * 60 * 60 * 1000;
+
+function maxStaleMsForRoleCacheRead(): number {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return CACHE_MAX_STALE_MS;
+}
 
 export type PermissionAvailability = 'ready' | 'degraded' | 'unavailable';
 export type PermissionScope = 'global' | 'assignment';
@@ -80,7 +88,7 @@ const initialPermissionsState: PermissionsState = {
 };
 
 let permissionsState: PermissionsState = initialPermissionsState;
-let permissionsListeners = new Set<PermissionsListener>();
+const permissionsListeners = new Set<PermissionsListener>();
 let activeUserId: string | null = null;
 let fetchPromise: Promise<void> | null = null;
 
@@ -106,11 +114,13 @@ function readCachedAssignments(userId: string): RoleAssignment[] {
       return parsed.length > 0 && parsed[0]?.user_id === userId ? parsed : [];
     }
 
-    if (
-      parsed.version !== CACHE_VERSION ||
-      parsed.userId !== userId ||
-      Date.now() - new Date(parsed.cachedAt).getTime() > CACHE_TTL_MS
-    ) {
+    const ageMs = Date.now() - new Date(parsed.cachedAt).getTime();
+    if (Number.isNaN(ageMs) || ageMs > maxStaleMsForRoleCacheRead()) {
+      localStorage.removeItem(CACHE_KEY);
+      return [];
+    }
+
+    if (parsed.version !== CACHE_VERSION || parsed.userId !== userId) {
       localStorage.removeItem(CACHE_KEY);
       return [];
     }
@@ -312,6 +322,17 @@ export function usePermissions() {
       void fetchAssignmentsForUser(user.id);
     }
   }, [authStatus, user]);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !user?.id) return;
+    if (typeof window === 'undefined') return;
+    const uid = user.id;
+    const onOnline = () => {
+      void fetchAssignmentsForUser(uid);
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [authStatus, user?.id]);
 
   const helpers = useMemo(() => {
     const can = (action: Permission, siteId?: string): boolean => {

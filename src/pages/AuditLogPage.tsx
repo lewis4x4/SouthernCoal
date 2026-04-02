@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
 import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
 import { usePermissions } from '@/hooks/usePermissions';
+import { AUDIT_LOG_ROUTE_ROLES } from '@/lib/rbac';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuditLogQuery, type AuditLogFilters, type AuditLogEntry } from '@/hooks/useAuditLogQuery';
 
@@ -72,10 +73,10 @@ const PRESET_FIELD_AUDIT_ACTIONS = [
 ] as const;
 
 export function AuditLogPage() {
-  const { getEffectiveRole, loading: permissionsLoading } = usePermissions();
+  const { hasAllowedRole, loading: permissionsLoading } = usePermissions();
   const { log } = useAuditLog();
-  const role = getEffectiveRole();
-  const canViewAuditLog = ['executive', 'environmental_manager', 'admin'].includes(role);
+  /** Same role set and `global` scope as `RoleGuard` on `/admin/audit-log` in App.tsx — gate before any fetch. */
+  const canViewAuditLog = hasAllowedRole(AUDIT_LOG_ROUTE_ROLES, 'global');
 
   const [filters, setFilters] = useState<AuditLogFilters>({
     dateFrom: null,

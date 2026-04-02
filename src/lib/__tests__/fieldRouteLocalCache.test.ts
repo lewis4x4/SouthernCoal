@@ -142,13 +142,59 @@ describe('fieldRouteLocalCache', () => {
         organizationId: 'org-1',
         scope: 'org',
         viewerUserId: 'u1',
+        visits: [minimalVisit({ id: 'vx', organization_id: 'org-1' })],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+    const row = await findVisitInFieldRouteCacheAsync('vx', {
+      viewerUserId: 'u1',
+      organizationId: 'org-1',
+    });
+    expect(row?.id).toBe('vx');
+    expect(await findVisitInFieldRouteCacheAsync('missing', {
+      viewerUserId: 'u1',
+      organizationId: 'org-1',
+    })).toBeNull();
+  });
+
+  it('findVisitInFieldRouteCacheAsync rejects org-scope cache saved by another user (same org)', async () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        organizationId: 'org-1',
+        scope: 'org',
+        viewerUserId: 'u1',
+        visits: [minimalVisit({ id: 'vx', organization_id: 'org-1' })],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+
+    expect(
+      await findVisitInFieldRouteCacheAsync('vx', {
+        viewerUserId: 'u2',
+        organizationId: 'org-1',
+      }),
+    ).toBeNull();
+  });
+
+  it('findVisitInFieldRouteCacheAsync returns null without viewer context (cold auth)', async () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-03-31',
+        organizationId: 'org-1',
+        scope: 'org',
+        viewerUserId: 'u1',
         visits: [minimalVisit({ id: 'vx' })],
         outfallCoords: {},
       }),
     ).toBe(true);
-    const row = await findVisitInFieldRouteCacheAsync('vx');
-    expect(row?.id).toBe('vx');
-    expect(await findVisitInFieldRouteCacheAsync('missing')).toBeNull();
+
+    expect(
+      await findVisitInFieldRouteCacheAsync('vx', {
+        viewerUserId: null,
+        organizationId: 'org-1',
+      }),
+    ).toBeNull();
   });
 
   it('findVisitInFieldRouteCacheAsync rejects mine-scope cache for another user', async () => {

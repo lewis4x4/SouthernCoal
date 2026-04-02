@@ -242,6 +242,45 @@ describe('didDispatchContextLoadSucceed', () => {
       }),
     ).toBe(false);
   });
+
+  it('returns false when outfall query fails', () => {
+    expect(
+      didDispatchContextLoadSucceed({
+        flushFailed: null,
+        permitError: null,
+        sitesStateError: null,
+        userError: null,
+        visitError: null,
+        outfallError: { message: 'outfalls timeout' },
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when role assignment query fails', () => {
+    expect(
+      didDispatchContextLoadSucceed({
+        flushFailed: null,
+        permitError: null,
+        sitesStateError: null,
+        userError: null,
+        visitError: null,
+        assignmentError: { message: 'assignments rls' },
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when route stop query fails', () => {
+    expect(
+      didDispatchContextLoadSucceed({
+        flushFailed: null,
+        permitError: null,
+        sitesStateError: null,
+        userError: null,
+        visitError: null,
+        routeStopError: { message: 'stops failed' },
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('useFieldOps loadVisitDetails cache ownership', () => {

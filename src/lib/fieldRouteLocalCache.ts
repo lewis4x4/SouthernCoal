@@ -315,11 +315,13 @@ function matchesOfflineVisitContext(
   row: FieldVisitListItem,
   context?: { viewerUserId?: string | null; organizationId?: string | null },
 ): boolean {
-  if (!context) return true;
-  if (!context.organizationId) return false;
-  if (context.organizationId && payload.organizationId !== context.organizationId) return false;
-  if (context.organizationId && row.organization_id !== context.organizationId) return false;
-  if (payload.scope === 'mine' && payload.viewerUserId !== (context.viewerUserId ?? null)) return false;
+  const org = context?.organizationId?.trim() ?? '';
+  const viewer = context?.viewerUserId?.trim() ?? '';
+  if (!org || !viewer) return false;
+  if (payload.organizationId !== org) return false;
+  if (row.organization_id !== org) return false;
+  /** Org-wide snapshots are still tied to the user who saved them; same-org different-user reuse must not hydrate. */
+  if (payload.viewerUserId !== viewer) return false;
   return true;
 }
 

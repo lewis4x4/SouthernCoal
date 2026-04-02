@@ -24,6 +24,8 @@ import type {
  */
 
 const STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
+/** Max optimistic-lock retries when another tab or writer updates localStorage between read and write. */
+const MAX_QUEUE_CAS_ATTEMPTS = 16;
 
 const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'unknown']);
 const TRANSIENT_OUTBOUND_ERROR_PATTERNS = [
@@ -215,14 +217,38 @@ function isOutboundOp(v: unknown): v is FieldOutboundOp {
 }
 
 function parseQueue(raw: string | null): FieldOutboundOp[] {
-  if (raw == null || raw === '') return [];
+  return parseQueueSnapshot(raw).ops;
+}
+
+/** Parse persisted queue: legacy JSON array or `{ revision, ops }` envelope (multi-tab safe writes). */
+function parseQueueSnapshot(raw: string | null): { snapshot: string | null; revision: number; ops: FieldOutboundOp[] } {
+  if (raw == null || raw === '') {
+    return { snapshot: raw, revision: 0, ops: [] };
+  }
   try {
     const data = JSON.parse(raw) as unknown;
-    if (!Array.isArray(data)) return [];
-    return data.filter(isOutboundOp);
+    if (Array.isArray(data)) {
+      return { snapshot: raw, revision: 0, ops: data.filter(isOutboundOp) };
+    }
+    if (typeof data === 'object' && data !== null && 'ops' in data) {
+      const o = data as Record<string, unknown>;
+      const revRaw = o.revision;
+      const revision =
+        typeof revRaw === 'number' && Number.isFinite(revRaw) && revRaw >= 0 ? Math.floor(revRaw) : 0;
+      const opsRaw = o.ops;
+      if (!Array.isArray(opsRaw)) {
+        return { snapshot: raw, revision, ops: [] };
+      }
+      return { snapshot: raw, revision, ops: opsRaw.filter(isOutboundOp) };
+    }
+    return { snapshot: raw, revision: 0, ops: [] };
   } catch {
-    return [];
+    return { snapshot: raw, revision: 0, ops: [] };
   }
+}
+
+function serializeQueueEnvelope(revision: number, ops: FieldOutboundOp[]): string {
+  return JSON.stringify({ revision, ops });
 }
 
 function readQueue(): FieldOutboundOp[] {
@@ -231,16 +257,6 @@ function readQueue(): FieldOutboundOp[] {
     return parseQueue(localStorage.getItem(STORAGE_KEY));
   } catch {
     return [];
-  }
-}
-
-function writeQueue(ops: FieldOutboundOp[]): boolean {
-  if (typeof localStorage === 'undefined') return false;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ops));
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -257,9 +273,26 @@ function mergeQueueById(existing: FieldOutboundOp[], incoming: FieldOutboundOp[]
 }
 
 function updateQueue(mutator: (latest: FieldOutboundOp[]) => FieldOutboundOp[]): boolean {
-  const latest = readQueue();
-  const next = mutator(latest);
-  return writeQueue(next);
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    for (let attempt = 0; attempt < MAX_QUEUE_CAS_ATTEMPTS; attempt += 1) {
+      const snapshot = localStorage.getItem(STORAGE_KEY);
+      const { snapshot: expectedRaw, revision, ops } = parseQueueSnapshot(snapshot);
+      const next = mutator(ops);
+      if (JSON.stringify(next) === JSON.stringify(ops)) {
+        return true;
+      }
+      if (localStorage.getItem(STORAGE_KEY) !== expectedRaw) {
+        continue;
+      }
+      const nextRaw = serializeQueueEnvelope(revision + 1, next);
+      localStorage.setItem(STORAGE_KEY, nextRaw);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 function moveQueueOpToBack(latest: FieldOutboundOp[], opId: string): FieldOutboundOp[] {

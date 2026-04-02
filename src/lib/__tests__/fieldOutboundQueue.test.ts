@@ -37,6 +37,8 @@ function setNavigatorLocks(locks: NavigatorLocks | undefined) {
   });
 }
 
+const OUTBOUND_QUEUE_STORAGE_KEY = 'scc.fieldOutboundQueue.v1';
+
 describe('fieldOutboundQueue', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -66,6 +68,60 @@ describe('fieldOutboundQueue', () => {
     expect(q[0]?.kind === 'field_measurement_insert' && q[0].parameterName).toBe('pH');
     expect(getPendingMeasurementInsertsForVisit('v1')).toHaveLength(1);
     expect(getPendingMeasurementInsertsForVisit('other')).toHaveLength(0);
+  });
+
+  it('migrates legacy array JSON to revision envelope on write', () => {
+    const legacyOp = {
+      kind: 'field_measurement_insert' as const,
+      id: 'legacy-1',
+      visitId: 'v1',
+      parameterName: 'pH',
+      measuredValue: 6,
+      measuredText: null,
+      unit: null,
+      enqueuedAt: '2026-01-01T00:00:00.000Z',
+    };
+    localStorage.setItem(OUTBOUND_QUEUE_STORAGE_KEY, JSON.stringify([legacyOp]));
+    expect(
+      enqueueFieldMeasurementInsert({
+        id: 'a2',
+        visitId: 'v1',
+        parameterName: 'Temp',
+        measuredValue: 1,
+        measuredText: null,
+        unit: 'C',
+      }),
+    ).toBe(true);
+    const raw = localStorage.getItem(OUTBOUND_QUEUE_STORAGE_KEY);
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!) as { revision: number; ops: unknown[] };
+    expect(parsed.revision).toBe(1);
+    expect(Array.isArray(parsed.ops)).toBe(true);
+    expect(parsed.ops).toHaveLength(2);
+  });
+
+  it('returns false when CAS cannot commit after repeated storage races', () => {
+    let getCalls = 0;
+    const origGet = Storage.prototype.getItem;
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+      if (key !== OUTBOUND_QUEUE_STORAGE_KEY) {
+        return origGet.call(this, key);
+      }
+      getCalls += 1;
+      /** Odd calls: empty legacy shape; even calls: different envelope so verify always fails. */
+      return getCalls % 2 === 1 ? '[]' : '{"revision":1,"ops":[]}';
+    });
+    expect(
+      enqueueFieldMeasurementInsert({
+        id: 'race',
+        visitId: 'v1',
+        parameterName: 'pH',
+        measuredValue: 7,
+        measuredText: null,
+        unit: null,
+      }),
+    ).toBe(false);
+    spy.mockRestore();
   });
 
   it('countOutboundQueueOpsForVisit counts ops for visit', () => {
