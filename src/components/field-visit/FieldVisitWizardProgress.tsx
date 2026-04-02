@@ -23,13 +23,13 @@ export function FieldVisitWizardProgress({
   return (
     <nav
       aria-label="Field visit wizard progress"
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3"
+      className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2 sm:p-3"
     >
-      <ol className="grid gap-2 lg:grid-cols-6">
+      <ol className="flex min-w-max gap-2 xl:grid xl:min-w-0 xl:grid-cols-6">
         {steps.map((step, index) => {
           const isActive = activeStep === step.id;
           return (
-            <li key={step.id}>
+            <li key={step.id} className="min-w-[168px] xl:min-w-0">
               <button
                 type="button"
                 aria-current={isActive ? 'step' : undefined}
@@ -64,7 +64,10 @@ export function FieldVisitWizardProgress({
                     Step {index + 1}
                   </span>
                   <span className="mt-1 block text-sm font-medium text-text-primary">{step.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-text-secondary">{step.description}</span>
+                  <span className="mt-1 hidden text-xs leading-5 text-text-secondary sm:block xl:hidden">
+                    {step.description}
+                  </span>
+                  <span className="mt-1 hidden text-xs leading-5 text-text-secondary xl:block">{step.description}</span>
                 </span>
                 {isActive ? <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-cyan-200" aria-hidden /> : null}
               </button>

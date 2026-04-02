@@ -397,7 +397,8 @@ describe('FieldVisitPage wizard', () => {
 
     await waitForWizard();
     expect(screen.getByRole('heading', { name: 'Outcome Details' })).toBeInTheDocument();
-    expect(screen.getByText('Guided custody lane')).toBeInTheDocument();
+    expect(screen.getByText('Sample collected')).toBeInTheDocument();
+    expect(screen.getByText('Finish custody and field-only readings for this stop.')).toBeInTheDocument();
   });
 
   it('shows a recoverable unavailable state after a hard visit-load miss', async () => {
@@ -427,6 +428,7 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start visit & continue' })).toBeInTheDocument();
     expect(screen.getByText(/System weather will load automatically after you press/i)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Wizard step actions' })).toBeInTheDocument();
   });
 
   it('blocks jumping ahead when prerequisite wizard steps are incomplete', async () => {
@@ -476,10 +478,13 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
     await waitForStepHeading('Outcome Details');
 
-    expect(screen.getByText('Guided custody lane')).toBeInTheDocument();
+    expect(screen.getByText('Sample collected')).toBeInTheDocument();
+    expect(screen.getByText('Finish custody first, then save only the field readings required for this stop.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Scan container/i })).toBeInTheDocument();
     expect(screen.getByText('On-Site Field Measurements')).toBeInTheDocument();
     expect(screen.getByText(/on-site meter readings only/i)).toBeInTheDocument();
+    expect(screen.getByText('Collection notes')).toBeInTheDocument();
+    expect(screen.getByText('Need help with this stop?')).toBeInTheDocument();
   });
 
   it('opens the seeded fake WV UAT visit ids without a hook-order crash', async () => {
@@ -494,7 +499,7 @@ describe('FieldVisitPage wizard', () => {
             outcome: 'sample_collected',
           },
         }),
-        expectedText: 'Guided custody lane',
+        expectedText: 'Sample collected',
       },
       {
         detail: buildStartedDetail({
@@ -724,12 +729,72 @@ describe('FieldVisitPage wizard', () => {
     await waitForWizard();
     await waitForStepHeading('Outcome Details');
 
-    expect(screen.getByText('QA prompts')).toBeInTheDocument();
+    const qaToggle = screen.getByRole('button', { name: 'QA prompts' });
+    expect(screen.getByText('Need help with this stop?')).toBeInTheDocument();
+    expect(qaToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Possible duplicate stop')).not.toBeInTheDocument();
+
+    await user.click(qaToggle);
+    expect(qaToggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Possible duplicate stop')).toBeInTheDocument();
     expect(screen.getByText('Special collection handling')).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: 'Append QA note' })[0]!);
     expect(screen.getByDisplayValue(/QA prompt: same-day duplicate visit exists/i)).toBeInTheDocument();
+  });
+
+  it('keeps only one outcome helper section expanded at a time', async () => {
+    const user = userEvent.setup();
+    const detail = buildStartedDetail({
+      visit: {
+        outcome: 'sample_collected',
+        route_priority_reason: 'Duplicate route verification for QA handling.',
+      },
+      stop_requirements: [
+        {
+          calendar_id: 'cal-1',
+          schedule_id: 'sched-1',
+          parameter_id: 'param-1',
+          parameter_name: 'TSS',
+          parameter_short_name: 'TSS',
+          parameter_label: 'TSS',
+          category: 'chemical',
+          default_unit: 'mg/L',
+          sample_type: 'grab',
+          schedule_instructions: 'Collect duplicate split sample for QA and verify bottle labels.',
+        },
+      ],
+    });
+    const siblingVisit = {
+      ...detail.visit,
+      id: 'visit-2',
+      visit_status: 'in_progress' as const,
+    };
+    siblingVisitsSameOutfallSameDayMock.mockReturnValue([siblingVisit]);
+    groupSameOutfallSameDayMock.mockReturnValue([
+      {
+        outfall_id: detail.visit.outfall_id,
+        scheduled_date: detail.visit.scheduled_date,
+        visits: [detail.visit, siblingVisit],
+      },
+    ]);
+
+    renderPage(detail);
+
+    await waitForWizard();
+    await waitForStepHeading('Outcome Details');
+
+    const qaToggle = screen.getByRole('button', { name: 'QA prompts' });
+    const safetyToggle = screen.getByRole('button', { name: 'Safety actions' });
+
+    await user.click(qaToggle);
+    expect(qaToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Possible duplicate stop')).toBeInTheDocument();
+
+    await user.click(safetyToggle);
+    expect(safetyToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(qaToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Possible duplicate stop')).not.toBeInTheDocument();
   });
 
   it('shows a single required-photo action for inspection follow-up prompts', async () => {

@@ -27,10 +27,10 @@ export function FieldVisitStartStep({
   weatherCard,
 }: FieldVisitStartStepProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {syncGuidance}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <label className="space-y-2" htmlFor="field-visit-start-lat">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Start latitude</span>
           <input
@@ -57,7 +57,7 @@ export function FieldVisitStartStep({
         </label>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <button
           type="button"
           onClick={onCaptureStartCoords}
@@ -80,7 +80,7 @@ export function FieldVisitStartStep({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4 text-sm text-text-secondary">
+      <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm text-text-secondary">
         {visitStarted
           ? 'This visit is already started on this device. You can review or adjust weather and observed conditions before moving on.'
           : 'Start GPS is the anchor for the field record. Capture it first, then start the visit. System weather is pulled after the visit start succeeds.'}

@@ -28,8 +28,8 @@ export function FieldVisitInspectionStep({
   const obstruction = parseInspectionObstructionDetails(inspection.obstruction_details);
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-2">
         <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
             Flow status <span className="text-cyan-200/90">(required before complete)</span>
@@ -109,7 +109,7 @@ export function FieldVisitInspectionStep({
         </label>
       </div>
 
-      <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
+      <div className="flex flex-col gap-3 text-sm text-text-secondary sm:flex-row sm:flex-wrap sm:gap-4">
         <label className="inline-flex items-center gap-2">
           <input
             type="checkbox"

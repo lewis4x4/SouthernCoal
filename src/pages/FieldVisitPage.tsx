@@ -176,6 +176,65 @@ function formatOutcomeLabel(outcome: FieldVisitOutcome) {
   }
 }
 
+type FieldVisitWizardDraft = {
+  version: 1;
+  startCoords: { latitude: string; longitude: string };
+  completeCoords: { latitude: string; longitude: string };
+  observedSiteConditions: string;
+  fieldNotes: string;
+  outcome: FieldVisitOutcome;
+  outcomeExplicitlySelected: boolean;
+  potentialForceMajeure: boolean;
+  potentialForceMajeureNotes: string;
+  noDischargeNarrative: string;
+  noDischargeCondition: string;
+  noDischargeObstructionObserved: boolean;
+  noDischargeObstructionDetails: string;
+  accessIssueNarrative: string;
+  accessIssueType: string;
+  contactAttempted: boolean;
+  contactName: string;
+  contactOutcome: string;
+  cocContainerId: string;
+  cocPreservativeConfirmed: boolean;
+  cocCaptureMethod: FieldVisitContainerCaptureMethod;
+  cocRawScanValue: string;
+  requiredMeasurementDrafts: Record<string, string>;
+  selectedPhotoCategory: FieldVisitPhotoCategory;
+  inspection: Partial<OutletInspectionRecord>;
+};
+
+function fieldVisitDraftStorageKey(visitId: string) {
+  return `field-visit-wizard-draft:${visitId}`;
+}
+
+function readStoredFieldVisitDraft(visitId: string): FieldVisitWizardDraft | null {
+  try {
+    const raw = sessionStorage.getItem(fieldVisitDraftStorageKey(visitId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as FieldVisitWizardDraft;
+    return parsed?.version === 1 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistStoredFieldVisitDraft(visitId: string, draft: FieldVisitWizardDraft) {
+  try {
+    sessionStorage.setItem(fieldVisitDraftStorageKey(visitId), JSON.stringify(draft));
+  } catch {
+    /* non-critical */
+  }
+}
+
+function clearStoredFieldVisitDraft(visitId: string) {
+  try {
+    sessionStorage.removeItem(fieldVisitDraftStorageKey(visitId));
+  } catch {
+    /* non-critical */
+  }
+}
+
 export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
   const { getEffectiveRole } = usePermissions();
@@ -368,6 +427,38 @@ export function FieldVisitPage() {
         }),
       ),
     );
+
+    const storedDraft = readStoredFieldVisitDraft(detail.visit.id);
+    if (storedDraft) {
+      setInspection((current) => ({
+        ...current,
+        ...storedDraft.inspection,
+      }));
+      setCocContainerId(storedDraft.cocContainerId);
+      setCocPreservativeConfirmed(storedDraft.cocPreservativeConfirmed);
+      setCocCaptureMethod(storedDraft.cocCaptureMethod);
+      setCocRawScanValue(storedDraft.cocRawScanValue);
+      setObservedSiteConditions(storedDraft.observedSiteConditions);
+      setFieldNotes(storedDraft.fieldNotes);
+      setOutcome(storedDraft.outcome);
+      setOutcomeExplicitlySelected(storedDraft.outcomeExplicitlySelected);
+      setPotentialForceMajeure(storedDraft.potentialForceMajeure);
+      setPotentialForceMajeureNotes(storedDraft.potentialForceMajeureNotes);
+      setNoDischargeNarrative(storedDraft.noDischargeNarrative);
+      setNoDischargeCondition(storedDraft.noDischargeCondition);
+      setNoDischargeObstructionObserved(storedDraft.noDischargeObstructionObserved);
+      setNoDischargeObstructionDetails(storedDraft.noDischargeObstructionDetails);
+      setAccessIssueNarrative(storedDraft.accessIssueNarrative);
+      setAccessIssueType(storedDraft.accessIssueType);
+      setContactAttempted(storedDraft.contactAttempted);
+      setContactName(storedDraft.contactName);
+      setContactOutcome(storedDraft.contactOutcome);
+      setStartCoords(storedDraft.startCoords);
+      setCompleteCoords(storedDraft.completeCoords);
+      setRequiredMeasurementDrafts(storedDraft.requiredMeasurementDrafts);
+      setSelectedPhotoCategory(storedDraft.selectedPhotoCategory);
+      latestPhotoCategoryRef.current = storedDraft.selectedPhotoCategory;
+    }
     setWizardStateReady(true);
   }, [detail]);
 
@@ -955,6 +1046,64 @@ export function FieldVisitPage() {
     });
   }, [detail?.visit.id]);
 
+  const handleSaveCurrentDraft = useCallback(() => {
+    if (!detail) return;
+    persistStoredFieldVisitDraft(detail.visit.id, {
+      version: 1,
+      startCoords,
+      completeCoords,
+      observedSiteConditions,
+      fieldNotes,
+      outcome,
+      outcomeExplicitlySelected,
+      potentialForceMajeure,
+      potentialForceMajeureNotes,
+      noDischargeNarrative,
+      noDischargeCondition,
+      noDischargeObstructionObserved,
+      noDischargeObstructionDetails,
+      accessIssueNarrative,
+      accessIssueType,
+      contactAttempted,
+      contactName,
+      contactOutcome,
+      cocContainerId,
+      cocPreservativeConfirmed,
+      cocCaptureMethod,
+      cocRawScanValue,
+      requiredMeasurementDrafts,
+      selectedPhotoCategory,
+      inspection,
+    });
+    toast.success('Draft saved on this device');
+  }, [
+    accessIssueNarrative,
+    accessIssueType,
+    cocCaptureMethod,
+    cocContainerId,
+    cocPreservativeConfirmed,
+    cocRawScanValue,
+    completeCoords,
+    contactAttempted,
+    contactName,
+    contactOutcome,
+    detail,
+    fieldNotes,
+    inspection,
+    noDischargeCondition,
+    noDischargeNarrative,
+    noDischargeObstructionDetails,
+    noDischargeObstructionObserved,
+    observedSiteConditions,
+    outcome,
+    outcomeExplicitlySelected,
+    potentialForceMajeure,
+    potentialForceMajeureNotes,
+    requiredMeasurementDrafts,
+    selectedPhotoCategory,
+    startCoords,
+  ]);
+
   async function handleCaptureStartCoords() {
     try {
       const coords = await captureBrowserCoordinates();
@@ -1174,6 +1323,7 @@ export function FieldVisitPage() {
             ? 'Visit completed and governance issue created'
             : 'Visit completed',
       );
+      clearStoredFieldVisitDraft(detail.visit.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to complete visit');
     } finally {
@@ -1490,85 +1640,10 @@ export function FieldVisitPage() {
     </>
   );
 
-  const renderOperationalNotes = () => (
-    <>
-      <FieldVisitWeatherCard
-        visitLocked={visitLocked}
-        visitStarted={visitStarted}
-        fetchEnabled={isWeatherFetchEnabled()}
-        isOnline={isClientOnline}
-        coordinateSummary={weatherCoordinateSummary}
-        systemWeather={systemWeather}
-        systemLoading={systemWeatherLoading}
-        systemError={systemWeatherError}
-        observedSiteConditions={observedSiteConditions}
-        onObservedChange={setObservedSiteConditions}
-        onRefreshSystem={() => void fetchSystemWeather({ manual: true })}
-        onApplySystemToObserved={handleApplySystemToObserved}
-      />
-
-      <label className="block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-          Field notes
-        </span>
-        <input
-          value={fieldNotes}
-          onChange={(e) => setFieldNotes(e.target.value)}
-          disabled={visitLocked}
-          placeholder="Context that will help review, lab intake, or follow-up."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
-        />
-      </label>
-
-      <FieldVisitForceMajeureAssistPanel
-        checked={potentialForceMajeure}
-        notes={potentialForceMajeureNotes}
-        outcome={outcome}
-        disabled={visitLocked}
-        selectedEvidenceBucketFocused={selectedPhotoCategory === 'site_weather'}
-        existingIssue={detail.governanceIssues.find((issue) => issue.issue_type === 'potential_force_majeure') ?? null}
-        governanceInboxHref={governanceInboxHref}
-        governanceDisabledReason={governanceDisabledReason}
-        onCheckedChange={setPotentialForceMajeure}
-        onNotesChange={setPotentialForceMajeureNotes}
-        onAppendNote={(text) =>
-          setPotentialForceMajeureNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))
-        }
-        onReplaceNote={setPotentialForceMajeureNotes}
-        onFocusEvidence={focusForceMajeureEvidence}
-      />
-
-      {outcome === 'sample_collected' ? (
-        <QuickPhrasePicker
-          title="Collection note templates"
-          description="Use a template to seed field notes, then edit to match the actual stop."
-          templates={getOutcomeQuickPhrases('sample_collected')}
-          disabled={visitLocked}
-          onAppend={(text) => setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
-          onReplace={setFieldNotes}
-        />
-      ) : null}
-    </>
-  );
-
   const renderSampleCollectedContent = () => (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.06] p-5">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
-          Guided custody lane
-        </h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          {[
-            '1. Scan or enter the primary container.',
-            '2. Confirm bottle and preservative match the plan.',
-            '3. Save chain of custody before leaving the collection lane.',
-            '4. Record only the on-site field measurements required for this stop.',
-          ].map((step) => (
-            <div key={step} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm text-text-secondary">
-              {step}
-            </div>
-          ))}
-        </div>
+    <div className="space-y-4">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">
+        Finish custody first, then save only the field readings required for this stop.
       </div>
 
       <CustodyScanPanel
@@ -1588,7 +1663,7 @@ export function FieldVisitPage() {
         onSave={handleSaveCoc}
       />
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
           On-Site Field Measurements
         </h3>
@@ -1626,7 +1701,7 @@ export function FieldVisitPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
                     <input
                       value={requiredMeasurementDrafts[measurement.key] ?? ''}
                       onChange={(event) => setRequiredMeasurementDrafts((current) => ({
@@ -1671,6 +1746,19 @@ export function FieldVisitPage() {
           </div>
         ) : null}
       </div>
+
+      <label className="block space-y-2">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+          Collection notes
+        </span>
+        <input
+          value={fieldNotes}
+          onChange={(e) => setFieldNotes(e.target.value)}
+          disabled={visitLocked}
+          placeholder="Short context for this collection stop."
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+        />
+      </label>
     </div>
   );
 
@@ -1742,16 +1830,6 @@ export function FieldVisitPage() {
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <QuickPhrasePicker
-          title="No-discharge quick phrases"
-          description="Seed the narrative with a common field pattern, then edit it to the actual conditions."
-          templates={getOutcomeQuickPhrases('no_discharge')}
-          disabled={visitLocked}
-          onAppend={(text) => setNoDischargeNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
-          onReplace={setNoDischargeNarrative}
-        />
-      </div>
     </div>
   );
 
@@ -1839,16 +1917,6 @@ export function FieldVisitPage() {
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <QuickPhrasePicker
-          title="Access issue quick phrases"
-          description="Use a controlled phrase to reduce typing, then tailor it to the real blockage or hazard."
-          templates={getOutcomeQuickPhrases('access_issue')}
-          disabled={visitLocked}
-          onAppend={(text) => setAccessIssueNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
-          onReplace={setAccessIssueNarrative}
-        />
-      </div>
     </div>
   );
 
@@ -1939,6 +2007,62 @@ export function FieldVisitPage() {
     />
   );
 
+  const forceMajeureAssistNode = (
+    <FieldVisitForceMajeureAssistPanel
+      checked={potentialForceMajeure}
+      notes={potentialForceMajeureNotes}
+      outcome={outcome}
+      disabled={visitLocked}
+      selectedEvidenceBucketFocused={selectedPhotoCategory === 'site_weather'}
+      existingIssue={detail.governanceIssues.find((issue) => issue.issue_type === 'potential_force_majeure') ?? null}
+      governanceInboxHref={governanceInboxHref}
+      governanceDisabledReason={governanceDisabledReason}
+      onCheckedChange={setPotentialForceMajeure}
+      onNotesChange={setPotentialForceMajeureNotes}
+      onAppendNote={(text) =>
+        setPotentialForceMajeureNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))
+      }
+      onReplaceNote={setPotentialForceMajeureNotes}
+      onFocusEvidence={focusForceMajeureEvidence}
+    />
+  );
+
+  const quickPhraseNode = outcome === 'sample_collected' ? (
+    <QuickPhrasePicker
+      title="Collection note templates"
+      description="Use a template when this stop matches a repeat collection pattern, then edit it to the real conditions."
+      templates={getOutcomeQuickPhrases('sample_collected')}
+      disabled={visitLocked}
+      onAppend={(text) => setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+      onReplace={setFieldNotes}
+    />
+  ) : outcome === 'no_discharge' ? (
+    <QuickPhrasePicker
+      title="No-discharge quick phrases"
+      description="Seed the narrative with a common pattern, then edit it to the actual no-flow conditions."
+      templates={getOutcomeQuickPhrases('no_discharge')}
+      disabled={visitLocked}
+      onAppend={(text) => setNoDischargeNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+      onReplace={setNoDischargeNarrative}
+    />
+  ) : (
+    <QuickPhrasePicker
+      title="Access issue quick phrases"
+      description="Use a controlled phrase to reduce typing, then tailor it to the real access problem."
+      templates={getOutcomeQuickPhrases('access_issue')}
+      disabled={visitLocked}
+      onAppend={(text) => setAccessIssueNarrative((current) => (current.trim() ? `${current.trim()}\n${text}` : text))}
+      onReplace={setAccessIssueNarrative}
+    />
+  );
+
+  const outcomeHelperSections = [
+    { id: 'templates', label: 'Quick phrases', content: quickPhraseNode },
+    ...(qaPrompts.length > 0 ? [{ id: 'qa', label: 'QA prompts', content: qaPromptsNode }] : []),
+    { id: 'safety', label: 'Safety actions', content: safetyActionsNode },
+    { id: 'force_majeure', label: 'Force majeure assist', content: forceMajeureAssistNode },
+  ].filter((section) => Boolean(section.content));
+
   const evidenceFocusPrompts = (
     <div className="space-y-3">
       {qaPrompts.length > 0 ? (
@@ -2019,6 +2143,8 @@ export function FieldVisitPage() {
           requiredMeasurements: detail.required_field_measurements,
         })}
       />
+
+      <FieldVisitLastContextCard context={detail.previous_visit_context} />
     </div>
   );
 
@@ -2228,25 +2354,7 @@ export function FieldVisitPage() {
         return (
           <FieldVisitOutcomeDetailsStep
             outcome={outcome}
-            totalPhotoCount={totalPhotoCount}
-            pendingPhotoCount={pendingPhotoCount}
-            syncedPhotoCount={photoCount}
-            isOnline={isClientOnline}
-            requirementsCard={
-              <FieldVisitRequirementsCard
-                stopRequirements={detail.stop_requirements}
-                requiredMeasurements={detail.required_field_measurements}
-                model={requirementsModel ?? buildFieldVisitRequirementsModel({
-                  visit: detail.visit,
-                  outcome,
-                  stopRequirements: detail.stop_requirements,
-                  requiredMeasurements: detail.required_field_measurements,
-                })}
-              />
-            }
-            lastContextCard={<FieldVisitLastContextCard context={detail.previous_visit_context} />}
-            qaPrompts={qaPromptsNode}
-            safetyActions={safetyActionsNode}
+            helperSections={outcomeHelperSections}
             outcomeContent={
               outcome === 'sample_collected'
                 ? renderSampleCollectedContent()
@@ -2254,7 +2362,6 @@ export function FieldVisitPage() {
                   ? renderNoDischargeContent()
                   : renderAccessIssueContent()
             }
-            notesContent={renderOperationalNotes()}
           />
         );
       case 'evidence':
@@ -2480,6 +2587,16 @@ export function FieldVisitPage() {
           onClick: () => goToStep(previousStep),
           disabled: saving,
         } : null}
+        saveAction={
+          !visitLocked && ['start_visit', 'inspection', 'outcome_details', 'evidence'].includes(activeStep)
+            ? {
+                label: 'Save Draft',
+                onClick: handleSaveCurrentDraft,
+                disabled: saving,
+                variant: 'default' as const,
+              }
+            : null
+        }
         primaryAction={visitLocked && activeStep === 'review_complete'
           ? null
           : {

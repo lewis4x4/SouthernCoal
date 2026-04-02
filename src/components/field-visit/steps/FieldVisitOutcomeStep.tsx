@@ -42,7 +42,7 @@ export function FieldVisitOutcomeStep({
   onOutcomeSelect,
 }: FieldVisitOutcomeStepProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {potentialForceMajeure ? (
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           <CloudRain className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" aria-hidden />
@@ -50,7 +50,7 @@ export function FieldVisitOutcomeStep({
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 xl:grid-cols-3">
         {OUTCOME_CHOICES.map((choice) => {
           const selected = choice.value === outcome;
           const Icon = choice.icon;
@@ -82,7 +82,7 @@ export function FieldVisitOutcomeStep({
         })}
       </div>
 
-      <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4 text-sm text-text-secondary">
+      <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm text-text-secondary">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" aria-hidden />
           Pick the outcome that matches what actually happened at the sample point. The wizard will hide the unrelated fields after this choice.

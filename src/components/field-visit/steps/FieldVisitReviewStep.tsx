@@ -20,7 +20,7 @@ export function FieldVisitReviewStep({
   forceMajeureBanner,
 }: FieldVisitReviewStepProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {summaryCards}
       {completionLocation}
       {forceMajeureBanner}

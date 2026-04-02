@@ -1,11 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
+import { createResilientBrowserStorage } from '@/lib/browserStorage';
 import { parseSupabaseBrowserEnv } from '@/lib/supabaseEnv';
 
 const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = parseSupabaseBrowserEnv();
+const authStorage = createResilientBrowserStorage();
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: localStorage,
+    storage: authStorage,
     persistSession: true,
     autoRefreshToken: true,
   },
