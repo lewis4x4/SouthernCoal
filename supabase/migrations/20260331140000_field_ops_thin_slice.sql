@@ -377,6 +377,7 @@ DECLARE
   v_actor_name text := COALESCE(NULLIF(trim(p_actor_name), ''), 'System');
   v_notice_deadline timestamptz;
   v_written_deadline timestamptz;
+  v_outfall_site_id uuid;
 BEGIN
   SELECT *
   INTO v_visit
@@ -423,30 +424,41 @@ BEGIN
   v_sampling_event_id := v_visit.linked_sampling_event_id;
 
   IF p_outcome = 'sample_collected' AND v_sampling_event_id IS NULL THEN
+    SELECT site_id INTO v_outfall_site_id
+    FROM outfalls WHERE id = v_visit.outfall_id;
+
     INSERT INTO sampling_events (
-      organization_id,
       outfall_id,
+      site_id,
+      sampled_by,
       sample_date,
       sample_time,
-      sampler_name,
-      latitude,
-      longitude
+      status,
+      weather_conditions,
+      metadata
     )
     VALUES (
-      v_visit.organization_id,
       v_visit.outfall_id,
+      v_outfall_site_id,
+      auth.uid(),
       v_visit.scheduled_date,
       COALESCE(v_visit.started_at::time(0), current_time(0)),
-      v_actor_name,
-      p_completed_latitude,
-      p_completed_longitude
+      'completed',
+      p_weather_conditions,
+      jsonb_build_object(
+        'source', 'field_visit',
+        'field_visit_id', p_field_visit_id,
+        'sampler_name', v_actor_name,
+        'latitude', p_completed_latitude,
+        'longitude', p_completed_longitude
+      )
     )
     ON CONFLICT (outfall_id, sample_date, sample_time)
     DO UPDATE SET
-      organization_id = EXCLUDED.organization_id,
-      latitude = EXCLUDED.latitude,
-      longitude = EXCLUDED.longitude,
-      sampler_name = COALESCE(sampling_events.sampler_name, EXCLUDED.sampler_name)
+      sampled_by = COALESCE(EXCLUDED.sampled_by, sampling_events.sampled_by),
+      status = EXCLUDED.status,
+      weather_conditions = COALESCE(EXCLUDED.weather_conditions, sampling_events.weather_conditions),
+      metadata = sampling_events.metadata || EXCLUDED.metadata
     RETURNING id INTO v_sampling_event_id;
   END IF;
 
