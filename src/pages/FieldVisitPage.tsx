@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
   Beaker,
+  CheckCircle2,
   ChevronDown,
   Copy,
   Navigation,
@@ -236,7 +237,9 @@ function clearStoredFieldVisitDraft(visitId: string) {
 
 export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { getEffectiveRole } = usePermissions();
+  const [completionConfirmed, setCompletionConfirmed] = useState(false);
 
   const {
     detail,
@@ -1276,7 +1279,7 @@ export function FieldVisitPage() {
         );
       }
       await saveInspection(detail.visit.id, inspection);
-      const { queued, result } = await completeVisit(detail.visit, {
+      await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude: completeLatitude, longitude: completeLongitude },
         weatherConditions: formatWeatherForPersistence(observedSiteConditions, systemWeather),
@@ -1297,14 +1300,8 @@ export function FieldVisitPage() {
           contactOutcome,
         },
       });
-      toast.success(
-        queued
-          ? 'Visit completed on this device; it will sync when you are back online'
-          : result.governance_issue_id
-            ? 'Visit completed and governance issue created'
-            : 'Visit completed',
-      );
       clearStoredFieldVisitDraft(detail.visit.id);
+      setCompletionConfirmed(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to complete visit');
     } finally {
@@ -2381,6 +2378,27 @@ export function FieldVisitPage() {
     (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live') ||
     hasSameOutfallConflict;
   const alertDotColor = hasSyncIssues ? 'bg-red-400' : hasQueuedActions ? 'bg-amber-400' : 'bg-cyan-400';
+
+  if (completionConfirmed) {
+    return (
+      <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-full bg-emerald-500/15 p-5">
+          <CheckCircle2 className="h-12 w-12 text-emerald-400" aria-hidden />
+        </div>
+        <h1 className="mt-6 text-2xl font-semibold text-text-primary">Visit completed</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          {detail?.visit.permit_number ?? 'Permit'} / {detail?.visit.outfall_number ?? 'Outfall'}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/field/route')}
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+        >
+          Back to today's route
+        </button>
+      </div>
+    );
+  }
 
   return (
     <FieldVisitWizardShell

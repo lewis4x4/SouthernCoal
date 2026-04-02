@@ -443,7 +443,7 @@ BEGIN
       auth.uid(),
       v_visit.scheduled_date,
       COALESCE(v_visit.started_at::time(0), current_time(0)),
-      'completed',
+      'pending',
       p_weather_conditions,
       jsonb_build_object(
         'source', 'field_visit',
@@ -456,7 +456,6 @@ BEGIN
     ON CONFLICT (outfall_id, sample_date, sample_time)
     DO UPDATE SET
       sampled_by = COALESCE(EXCLUDED.sampled_by, sampling_events.sampled_by),
-      status = EXCLUDED.status,
       weather_conditions = COALESCE(EXCLUDED.weather_conditions, sampling_events.weather_conditions),
       metadata = sampling_events.metadata || EXCLUDED.metadata
     RETURNING id INTO v_sampling_event_id;

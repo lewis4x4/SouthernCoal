@@ -165,15 +165,17 @@ export function CustodyScanPanel({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Chain of custody
+            Sample container
           </h3>
           <p className="mt-2 text-sm text-text-secondary">
-            Scan the primary container first. Typing stays available as a fallback when scanning is not possible.
+            Scan or type the container ID, then confirm it matches what you have on site.
           </p>
         </div>
-        <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-text-secondary">
-          {captureMethod === 'scan' ? 'Captured by scan' : 'Manual fallback'}
-        </div>
+        {containerId.trim() ? (
+          <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-text-secondary">
+            {captureMethod === 'scan' ? 'Scanned' : 'Manual'}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4">
@@ -249,24 +251,28 @@ export function CustodyScanPanel({
         </div>
       ) : null}
 
-      <label className="mt-4 flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
-        <input
-          type="checkbox"
-          checked={preservativeConfirmed}
-          onChange={(event) => onPreservativeConfirmedChange(event.target.checked)}
-          disabled={disabled}
-          className="h-5 w-5"
-        />
-        Bottle and preservative match the sample plan
-      </label>
+      <button
+        type="button"
+        onClick={() => onPreservativeConfirmedChange(!preservativeConfirmed)}
+        disabled={disabled}
+        className={cn(
+          'mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border text-base font-medium transition-colors disabled:opacity-60',
+          preservativeConfirmed
+            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
+            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]',
+        )}
+      >
+        <CheckCircle2 className={cn('h-5 w-5', preservativeConfirmed ? 'text-emerald-400' : 'text-text-muted/40')} aria-hidden />
+        {preservativeConfirmed ? 'Container verified — matches sample plan' : 'Tap to confirm container matches sample plan'}
+      </button>
 
       <button
         type="button"
         onClick={onSave}
         disabled={saving || disabled}
-        className="mt-4 min-h-12 w-full rounded-2xl bg-white/[0.08] text-base font-medium text-text-primary transition-colors hover:bg-white/[0.12] active:bg-white/[0.16] disabled:opacity-60"
+        className="mt-3 min-h-12 w-full rounded-2xl bg-white/[0.08] text-base font-medium text-text-primary transition-colors hover:bg-white/[0.12] active:bg-white/[0.16] disabled:opacity-60"
       >
-        Save chain of custody
+        Save container
       </button>
     </div>
   );
