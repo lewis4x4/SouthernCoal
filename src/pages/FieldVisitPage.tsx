@@ -680,8 +680,9 @@ export function FieldVisitPage() {
   const completionCoordsReady =
     Number.isFinite(completeLatitude) && Number.isFinite(completeLongitude);
   const inspectionReady =
-    (inspection.flow_status ?? 'unknown') !== 'unknown' &&
-    (!outletInspectionObstructed || Boolean(inspectionObstructionNarrative));
+    (inspection.obstruction_observed && Boolean(inspectionObstructionNarrative)) ||
+    ((inspection.flow_status ?? 'unknown') !== 'unknown' &&
+      (!outletInspectionObstructed || Boolean(inspectionObstructionNarrative)));
   const noDischargeDetailsReady =
     Boolean(noDischargeNarrative.trim()) &&
     totalPhotoCount >= 1 &&
@@ -778,12 +779,16 @@ export function FieldVisitPage() {
     return startCheck.ok ? 'Start the visit before moving on.' : startCheck.message;
   }, [startLatitude, startLongitude]);
   const inspectionBlockerMessage = useMemo(() => {
+    if (inspection.obstruction_observed) {
+      if (!inspectionObstructionNarrative) return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
+      return 'Save the outlet inspection before moving on.';
+    }
     if ((inspection.flow_status ?? 'unknown') === 'unknown') return FIELD_VISIT_COPY.outletFlowRequired;
     if (outletInspectionObstructed && !inspectionObstructionNarrative) {
       return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
     }
     return 'Save the outlet inspection before moving on.';
-  }, [inspection.flow_status, inspectionObstructionNarrative, outletInspectionObstructed]);
+  }, [inspection.flow_status, inspection.obstruction_observed, inspectionObstructionNarrative, outletInspectionObstructed]);
   const outcomeDetailsBlockerMessage = useMemo(() => {
     if (outcome === 'sample_collected') {
       if (cocValidation.blocking) return FIELD_VISIT_COPY.sampleContainerMismatch;
