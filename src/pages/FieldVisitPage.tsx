@@ -1974,7 +1974,7 @@ export function FieldVisitPage() {
     </div>
   ) : null;
 
-  const deficiencyPromptsNode = (
+  const deficiencyPromptsNode = inspectionReady ? (
     <FieldVisitDeficiencyPrompts
       prompts={deficiencyPrompts}
       disabled={visitLocked}
@@ -1986,7 +1986,7 @@ export function FieldVisitPage() {
         );
       }}
     />
-  );
+  ) : null;
 
   const qaPromptsNode = (
     <FieldVisitQaPromptsPanel

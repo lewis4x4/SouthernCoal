@@ -119,66 +119,69 @@ export function FieldVisitInspectionStep({
         </div>
       )}
 
-      {/* Outlet inspection fields */}
-      <div className="space-y-3">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-text-muted">
-            Flow status <span className="text-cyan-200/90">(required)</span>
-          </span>
-          <select
-            value={inspection.flow_status ?? 'unknown'}
-            onChange={(event) =>
-              onInspectionChange({ flow_status: event.target.value as OutletInspectionRecord['flow_status'] })}
-            disabled={visitLocked}
-            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
-          >
-            <option value="unknown">Select flow status</option>
-            <option value="flowing">Flowing</option>
-            <option value="no_flow">No flow</option>
-            <option value="obstructed">Obstructed</option>
-          </select>
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-text-muted">Signage condition</span>
-          <select
-            value={inspection.signage_condition ?? ''}
-            onChange={(event) => onInspectionChange({ signage_condition: event.target.value || null })}
-            disabled={visitLocked}
-            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
-          >
-            <option value="">Select signage status</option>
-            {SIGNAGE_CONDITION_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-text-muted">Pipe condition</span>
-          <select
-            value={inspection.pipe_condition ?? ''}
-            onChange={(event) => onInspectionChange({ pipe_condition: event.target.value || null })}
-            disabled={visitLocked}
-            className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
-          >
-            <option value="">Select pipe status</option>
-            {PIPE_CONDITION_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {/* Outlet inspection fields — hidden when obstruction blocks access */}
+      {!obstructionActive && (
+        <>
+          <div className="space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-text-muted">
+                Flow status <span className="text-cyan-200/90">(required)</span>
+              </span>
+              <select
+                value={inspection.flow_status ?? 'unknown'}
+                onChange={(event) =>
+                  onInspectionChange({ flow_status: event.target.value as OutletInspectionRecord['flow_status'] })}
+                disabled={visitLocked}
+                className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
+              >
+                <option value="unknown">Select flow status</option>
+                <option value="flowing">Flowing</option>
+                <option value="no_flow">No flow</option>
+                <option value="obstructed">Obstructed</option>
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-text-muted">Signage condition</span>
+              <select
+                value={inspection.signage_condition ?? ''}
+                onChange={(event) => onInspectionChange({ signage_condition: event.target.value || null })}
+                disabled={visitLocked}
+                className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
+              >
+                <option value="">Select signage status</option>
+                {SIGNAGE_CONDITION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-text-muted">Pipe condition</span>
+              <select
+                value={inspection.pipe_condition ?? ''}
+                onChange={(event) => onInspectionChange({ pipe_condition: event.target.value || null })}
+                disabled={visitLocked}
+                className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
+              >
+                <option value="">Select pipe status</option>
+                {PIPE_CONDITION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      {/* Erosion toggle */}
-      <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
-        <input
-          type="checkbox"
-          checked={inspection.erosion_observed ?? false}
-          onChange={(event) => onInspectionChange({ erosion_observed: event.target.checked })}
-          disabled={visitLocked}
-          className="h-5 w-5"
-        />
-        Erosion observed
-      </label>
+          <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 text-sm text-text-secondary">
+            <input
+              type="checkbox"
+              checked={inspection.erosion_observed ?? false}
+              onChange={(event) => onInspectionChange({ erosion_observed: event.target.checked })}
+              disabled={visitLocked}
+              className="h-5 w-5"
+            />
+            Erosion observed
+          </label>
+        </>
+      )}
 
       {sameAsLastHelpers}
       {deficiencyPrompts}
