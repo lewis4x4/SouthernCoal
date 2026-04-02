@@ -16,7 +16,6 @@ import { FieldDispatchLoadAlerts } from '@/components/field/FieldDispatchLoadAle
 import { FieldDataSyncBar } from '@/components/field/FieldDataSyncBar';
 import { FieldSameOutfallDayWarning } from '@/components/field/FieldSameOutfallDayWarning';
 import { CustodyScanPanel } from '@/components/field-visit/CustodyScanPanel';
-import { FieldVisitDeficiencyPrompts } from '@/components/field-visit/FieldVisitDeficiencyPrompts';
 import { FieldVisitForceMajeureAssistPanel } from '@/components/field-visit/FieldVisitForceMajeureAssistPanel';
 import { FieldVisitLastContextCard } from '@/components/field-visit/FieldVisitLastContextCard';
 import { FieldVisitPhotoBuckets } from '@/components/field-visit/FieldVisitPhotoBuckets';
@@ -965,19 +964,6 @@ export function FieldVisitPage() {
     setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${note}` : note));
     toast.success('Added follow-up note');
   }, []);
-
-  const appendInspectionFollowUpNote = useCallback((note: string) => {
-    const stampedAt = new Date().toISOString();
-    setInspection((current) => ({
-      ...current,
-      field_visit_id: detail?.visit.id ?? current.field_visit_id,
-      inspector_notes: current.inspector_notes?.trim()
-        ? `${current.inspector_notes.trim()}\n${note}`
-        : note,
-      updated_at: stampedAt,
-    }));
-    toast.success('Added follow-up note to inspection notes');
-  }, [detail?.visit.id]);
 
   const routeSafetyHazard = useCallback(() => {
     setOutcome('access_issue');
@@ -1974,20 +1960,6 @@ export function FieldVisitPage() {
     </div>
   ) : null;
 
-  const deficiencyPromptsNode = inspectionReady ? (
-    <FieldVisitDeficiencyPrompts
-      prompts={deficiencyPrompts}
-      disabled={visitLocked}
-      onCaptureRequiredPhoto={(note) => {
-        appendInspectionFollowUpNote(note);
-        focusPhotoBucket(
-          'obstruction_deficiency',
-          'Ready to capture the required follow-up photo',
-        );
-      }}
-    />
-  ) : null;
-
   const qaPromptsNode = (
     <FieldVisitQaPromptsPanel
       prompts={qaPrompts}
@@ -2321,7 +2293,6 @@ export function FieldVisitPage() {
             visitLocked={visitLocked}
             onInspectionChange={handleInspectionChange}
             sameAsLastHelpers={sameAsLastHelpers}
-            deficiencyPrompts={deficiencyPromptsNode}
           />
         );
       case 'choose_outcome':

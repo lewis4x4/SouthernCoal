@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react';
 import type { OutletInspectionRecord } from '@/types';
 import type { ReactNode } from 'react';
 import {
@@ -14,7 +15,6 @@ interface FieldVisitInspectionStepProps {
   visitLocked: boolean;
   onInspectionChange: (patch: Partial<OutletInspectionRecord>) => void;
   sameAsLastHelpers?: ReactNode;
-  deficiencyPrompts?: ReactNode;
 }
 
 export function FieldVisitInspectionStep({
@@ -23,7 +23,6 @@ export function FieldVisitInspectionStep({
   visitLocked,
   onInspectionChange,
   sameAsLastHelpers,
-  deficiencyPrompts,
 }: FieldVisitInspectionStepProps) {
   const obstruction = parseInspectionObstructionDetails(inspection.obstruction_details);
   const obstructionActive = inspection.obstruction_observed ?? false;
@@ -184,7 +183,15 @@ export function FieldVisitInspectionStep({
       )}
 
       {sameAsLastHelpers}
-      {deficiencyPrompts}
+
+      {obstructionActive && obstruction.details.trim() && (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3">
+          <Camera className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+          <span className="text-sm text-amber-100/80">
+            You'll photograph the obstruction on the Evidence step
+          </span>
+        </div>
+      )}
 
       {/* Notes */}
       <label className="block space-y-1.5">
