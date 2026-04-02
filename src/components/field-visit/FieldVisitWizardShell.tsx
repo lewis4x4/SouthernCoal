@@ -5,7 +5,7 @@ interface WizardAction {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  variant?: 'default' | 'primary' | 'success';
+  variant?: 'default' | 'primary' | 'success' | 'warning';
 }
 
 export interface FieldVisitWizardShellProps {
@@ -23,6 +23,8 @@ function actionClasses(variant: WizardAction['variant']) {
   switch (variant) {
     case 'success':
       return 'bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30 active:bg-emerald-500/35';
+    case 'warning':
+      return 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/30 active:bg-amber-500/35';
     case 'default':
       return 'bg-white/[0.06] text-text-primary hover:bg-white/[0.1] active:bg-white/[0.14]';
     default:

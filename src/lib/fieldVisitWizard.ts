@@ -1,7 +1,6 @@
 export type FieldVisitWizardStepId =
   | 'start_visit'
   | 'inspection'
-  | 'choose_outcome'
   | 'outcome_details'
   | 'evidence'
   | 'review_complete';
@@ -20,18 +19,13 @@ export const FIELD_VISIT_WIZARD_STEPS: FieldVisitWizardStepDefinition[] = [
   },
   {
     id: 'inspection',
-    label: 'Outlet Inspection',
-    description: 'Record outlet conditions before you decide the operational path.',
-  },
-  {
-    id: 'choose_outcome',
-    label: 'Choose Outcome',
-    description: 'Pick the path that matches what actually happened at the stop.',
+    label: 'Site Assessment',
+    description: 'Assess site conditions and determine if sampling is possible.',
   },
   {
     id: 'outcome_details',
-    label: 'Outcome Details',
-    description: 'Capture only the fields and prompts required for the selected outcome.',
+    label: 'Sample Collection',
+    description: 'Capture custody, field readings, and QA for the collected sample.',
   },
   {
     id: 'evidence',

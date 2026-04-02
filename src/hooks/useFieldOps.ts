@@ -1181,7 +1181,7 @@ export function useFieldOps() {
       const ok = await enqueueOutletInspectionUpsert({
         id: opId,
         visitId,
-        flowStatus: flowStatus as 'flowing' | 'no_flow' | 'obstructed' | 'unknown',
+        flowStatus,
         signageCondition: payload.signage_condition,
         pipeCondition: payload.pipe_condition,
         erosionObserved: payload.erosion_observed,

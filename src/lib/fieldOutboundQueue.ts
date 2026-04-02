@@ -28,7 +28,7 @@ const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
 /** Max optimistic-lock retries when another tab or writer updates localStorage between read and write. */
 const MAX_QUEUE_CAS_ATTEMPTS = 16;
 
-const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'unknown']);
+const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'standing_water', 'unknown']);
 const TRANSIENT_OUTBOUND_ERROR_PATTERNS = [
   'failed to fetch',
   'fetch failed',
@@ -56,7 +56,7 @@ export type FieldOutboundOp =
       kind: 'outlet_inspection_upsert';
       id: string;
       visitId: string;
-      flowStatus: 'flowing' | 'no_flow' | 'obstructed' | 'unknown';
+      flowStatus: 'flowing' | 'no_flow' | 'obstructed' | 'standing_water' | 'unknown';
       signageCondition: string | null;
       pipeCondition: string | null;
       erosionObserved: boolean;
@@ -399,7 +399,7 @@ export async function enqueueFieldMeasurementInsert(params: {
 export async function enqueueOutletInspectionUpsert(params: {
   id: string;
   visitId: string;
-  flowStatus: 'flowing' | 'no_flow' | 'obstructed' | 'unknown';
+  flowStatus: 'flowing' | 'no_flow' | 'obstructed' | 'standing_water' | 'unknown';
   signageCondition: string | null;
   pipeCondition: string | null;
   erosionObserved: boolean;

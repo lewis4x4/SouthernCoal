@@ -7,12 +7,10 @@ import {
 export interface FieldVisitWizardGuardState {
   visitStarted: boolean;
   inspectionReady: boolean;
-  outcomeSelected: boolean;
   outcomeDetailsReady: boolean;
   evidenceReady: boolean;
   startBlockerMessage: string;
   inspectionBlockerMessage: string;
-  outcomeBlockerMessage: string;
   outcomeDetailsBlockerMessage: string;
   evidenceBlockerMessage: string;
 }
@@ -20,7 +18,6 @@ export interface FieldVisitWizardGuardState {
 const STEP_DONE_ORDER: Record<FieldVisitWizardStepId, keyof FieldVisitWizardGuardState | null> = {
   start_visit: 'visitStarted',
   inspection: 'inspectionReady',
-  choose_outcome: 'outcomeSelected',
   outcome_details: 'outcomeDetailsReady',
   evidence: 'evidenceReady',
   review_complete: null,
@@ -32,8 +29,6 @@ function blockerMessage(stepId: FieldVisitWizardStepId, state: FieldVisitWizardG
       return state.startBlockerMessage;
     case 'inspection':
       return state.inspectionBlockerMessage;
-    case 'choose_outcome':
-      return state.outcomeBlockerMessage;
     case 'outcome_details':
       return state.outcomeDetailsBlockerMessage;
     case 'evidence':
@@ -48,7 +43,6 @@ export function getFieldVisitWizardRecommendedStep(
 ): FieldVisitWizardStepId {
   if (!state.visitStarted) return 'start_visit';
   if (!state.inspectionReady) return 'inspection';
-  if (!state.outcomeSelected) return 'choose_outcome';
   if (!state.outcomeDetailsReady) return 'outcome_details';
   if (!state.evidenceReady) return 'evidence';
   return 'review_complete';

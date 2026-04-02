@@ -1,5 +1,18 @@
 export type FieldVisitStatus = 'assigned' | 'in_progress' | 'completed' | 'cancelled';
 export type FieldVisitOutcome = 'sample_collected' | 'no_discharge' | 'access_issue';
+
+export type SiteConditionPresent =
+  | 'flowing_discharge'
+  | 'standing_water'
+  | 'no_water'
+  | 'inaccessible'
+  | 'other';
+
+export interface StandingWaterChecks {
+  sufficientWater: boolean | null;
+  noDisturbance: boolean | null;
+  pointVerified: boolean | null;
+}
 export type GovernanceIssueType = 'access_issue' | 'potential_force_majeure';
 export type GovernanceIssueStatus = 'open' | 'under_review' | 'decision_recorded' | 'closed';
 export type SamplingFrequencyCode = 'weekly' | 'monthly' | 'semi_monthly' | 'manual' | 'rain_event';
@@ -80,7 +93,7 @@ export interface FieldVisitListItem extends FieldVisitRecord {
 export interface OutletInspectionRecord {
   id: string;
   field_visit_id: string;
-  flow_status: 'flowing' | 'no_flow' | 'obstructed' | 'unknown';
+  flow_status: 'flowing' | 'no_flow' | 'obstructed' | 'standing_water' | 'unknown';
   signage_condition: string | null;
   pipe_condition: string | null;
   erosion_observed: boolean;

@@ -33,13 +33,13 @@ import { QuickPhrasePicker } from '@/components/field-visit/QuickPhrasePicker';
 import { FieldVisitEvidenceStep } from '@/components/field-visit/steps/FieldVisitEvidenceStep';
 import { FieldVisitInspectionStep } from '@/components/field-visit/steps/FieldVisitInspectionStep';
 import { FieldVisitOutcomeDetailsStep } from '@/components/field-visit/steps/FieldVisitOutcomeDetailsStep';
-import { FieldVisitOutcomeStep } from '@/components/field-visit/steps/FieldVisitOutcomeStep';
 import { FieldVisitReviewStep } from '@/components/field-visit/steps/FieldVisitReviewStep';
 import { FieldVisitStartStep } from '@/components/field-visit/steps/FieldVisitStartStep';
 import { SubmissionEvidenceViewer } from '@/components/submissions/SubmissionEvidenceViewer';
 import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureUpload';
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { parseContainerScan, validateContainerAgainstStop } from '@/lib/containerScan';
 import {
   clearPersistedFieldEvidenceSyncFailuresForVisit,
@@ -87,6 +87,7 @@ import {
   parsePhotoEvidenceCategory,
   serializePhotoEvidenceCategory,
 } from '@/lib/photoEvidenceBuckets';
+import { enqueueWeatherFetch, processWeatherQueue } from '@/lib/fieldWeatherQueue';
 import {
   fetchOpenMeteoCurrentSnapshot,
   formatWeatherForPersistence,
@@ -120,6 +121,8 @@ import type {
   FieldVisitPhotoCategory,
   GovernanceIssueRecord,
   OutletInspectionRecord,
+  SiteConditionPresent,
+  StandingWaterChecks,
 } from '@/types';
 
 function deadlineToneClass(tone: GovernanceDeadlineTone) {
@@ -145,23 +148,6 @@ const EMPTY_INSPECTION_STATE: Partial<OutletInspectionRecord> = {
   inspector_notes: '',
 };
 
-async function captureBrowserCoordinates() {
-  if (!navigator.geolocation) {
-    throw new Error('Browser geolocation is unavailable');
-  }
-
-  return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      }),
-      (error) => reject(new Error(error.message)),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  });
-}
-
 function formatOutcomeLabel(outcome: FieldVisitOutcome) {
   switch (outcome) {
     case 'sample_collected':
@@ -182,7 +168,9 @@ type FieldVisitWizardDraft = {
   observedSiteConditions: string;
   fieldNotes: string;
   outcome: FieldVisitOutcome;
-  outcomeExplicitlySelected: boolean;
+  siteCondition: SiteConditionPresent | null;
+  standingWaterChecks: StandingWaterChecks;
+  notCollectableNotes: string;
   potentialForceMajeure: boolean;
   potentialForceMajeureNotes: string;
   noDischargeNarrative: string;
@@ -238,7 +226,10 @@ export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getEffectiveRole } = usePermissions();
+  const { profile } = useUserProfile();
   const [completionConfirmed, setCompletionConfirmed] = useState(false);
+  const [obstructionReportConfirmed, setObstructionReportConfirmed] = useState(false);
+  const [notCollectableConfirmed, setNotCollectableConfirmed] = useState(false);
 
   const {
     detail,
@@ -276,7 +267,13 @@ export function FieldVisitPage() {
   const systemWeatherDedupeRef = useRef<string | null>(null);
   const [fieldNotes, setFieldNotes] = useState('');
   const [outcome, setOutcome] = useState<FieldVisitOutcome>('sample_collected');
-  const [outcomeExplicitlySelected, setOutcomeExplicitlySelected] = useState(false);
+  const [siteCondition, setSiteCondition] = useState<SiteConditionPresent | null>(null);
+  const [standingWaterChecks, setStandingWaterChecks] = useState<StandingWaterChecks>({
+    sufficientWater: null,
+    noDisturbance: null,
+    pointVerified: null,
+  });
+  const [notCollectableNotes, setNotCollectableNotes] = useState('');
   const [potentialForceMajeure, setPotentialForceMajeure] = useState(false);
   const [potentialForceMajeureNotes, setPotentialForceMajeureNotes] = useState('');
   const [noDischargeNarrative, setNoDischargeNarrative] = useState('');
@@ -389,12 +386,11 @@ export function FieldVisitPage() {
     setObservedSiteConditions(observedWeatherFromPersisted(detail.visit.weather_conditions ?? ''));
     setFieldNotes(detail.visit.field_notes ?? '');
     setOutcome(detail.visit.outcome ?? 'sample_collected');
-    setOutcomeExplicitlySelected(detail.visit.outcome != null);
     setPotentialForceMajeure(detail.visit.potential_force_majeure);
     setPotentialForceMajeureNotes(detail.visit.potential_force_majeure_notes ?? '');
     setStartCoords({
-      latitude: detail.visit.started_latitude?.toString() ?? '',
-      longitude: detail.visit.started_longitude?.toString() ?? '',
+      latitude: (detail.visit.started_latitude ?? detail.visit.outfall_latitude)?.toString() ?? '',
+      longitude: (detail.visit.started_longitude ?? detail.visit.outfall_longitude)?.toString() ?? '',
     });
     setCompleteCoords({
       latitude: detail.visit.completed_latitude?.toString() ?? '',
@@ -447,7 +443,9 @@ export function FieldVisitPage() {
       setObservedSiteConditions(storedDraft.observedSiteConditions);
       setFieldNotes(storedDraft.fieldNotes);
       setOutcome(storedDraft.outcome);
-      setOutcomeExplicitlySelected(storedDraft.outcomeExplicitlySelected);
+      if (storedDraft.siteCondition) setSiteCondition(storedDraft.siteCondition);
+      if (storedDraft.standingWaterChecks) setStandingWaterChecks(storedDraft.standingWaterChecks);
+      if (storedDraft.notCollectableNotes) setNotCollectableNotes(storedDraft.notCollectableNotes);
       setPotentialForceMajeure(storedDraft.potentialForceMajeure);
       setPotentialForceMajeureNotes(storedDraft.potentialForceMajeureNotes);
       setNoDischargeNarrative(storedDraft.noDischargeNarrative);
@@ -464,6 +462,14 @@ export function FieldVisitPage() {
       setRequiredMeasurementDrafts(storedDraft.requiredMeasurementDrafts);
       setSelectedPhotoCategory(storedDraft.selectedPhotoCategory);
       latestPhotoCategoryRef.current = storedDraft.selectedPhotoCategory;
+    } else if (detail.inspection && !detail.inspection.obstruction_observed) {
+      const fs = detail.inspection.flow_status;
+      const inferred: SiteConditionPresent | null =
+        fs === 'flowing' ? 'flowing_discharge'
+        : fs === 'standing_water' ? 'standing_water'
+        : fs === 'no_flow' ? 'no_water'
+        : null;
+      if (inferred) setSiteCondition(inferred);
     }
     setWizardStateReady(true);
   }, [detail]);
@@ -541,6 +547,21 @@ export function FieldVisitPage() {
   const visitLocked = detail?.visit.visit_status === 'completed';
   const outletInspectionObstructed =
     inspection.flow_status === 'obstructed' || (inspection.obstruction_observed ?? false);
+  const siteConditionSampleable =
+    siteCondition === 'flowing_discharge' ||
+    (siteCondition === 'standing_water' &&
+      standingWaterChecks.sufficientWater === true &&
+      standingWaterChecks.noDisturbance === true &&
+      standingWaterChecks.pointVerified === true);
+  const siteConditionNotCollectable =
+    siteCondition === 'no_water' ||
+    siteCondition === 'inaccessible' ||
+    siteCondition === 'other' ||
+    (siteCondition === 'standing_water' && (
+      standingWaterChecks.sufficientWater === false ||
+      standingWaterChecks.noDisturbance === false ||
+      standingWaterChecks.pointVerified === false
+    ));
   const isClientOnline = typeof navigator !== 'undefined' && navigator.onLine;
   const visitStarted = Boolean(detail?.visit.started_at);
   const canAttemptComplete = visitStarted && !visitLocked;
@@ -606,7 +627,6 @@ export function FieldVisitPage() {
     const lng = Number(completeCoords.longitude);
     return getFieldVisitCompletionChecklistItems({
       visitStarted,
-      outcomeSelected: outcomeExplicitlySelected,
       requiredFieldMeasurementsComplete,
       containerValidationBlocking: cocValidation.blocking,
       completeLatitude: lat,
@@ -628,7 +648,6 @@ export function FieldVisitPage() {
   }, [
     detail,
     visitStarted,
-    outcomeExplicitlySelected,
     requiredFieldMeasurementsComplete,
     cocValidation.blocking,
     completeCoords.latitude,
@@ -678,10 +697,14 @@ export function FieldVisitPage() {
   const completeLongitude = Number(completeCoords.longitude);
   const completionCoordsReady =
     Number.isFinite(completeLatitude) && Number.isFinite(completeLongitude);
+  const serverFlowKnown =
+    detail?.inspection?.flow_status != null &&
+    detail.inspection.flow_status !== 'unknown';
   const inspectionReady =
     (inspection.obstruction_observed && Boolean(inspectionObstructionNarrative)) ||
-    ((inspection.flow_status ?? 'unknown') !== 'unknown' &&
-      (!outletInspectionObstructed || Boolean(inspectionObstructionNarrative)));
+    siteConditionSampleable ||
+    (siteConditionNotCollectable && Boolean(notCollectableNotes.trim())) ||
+    serverFlowKnown;
   const noDischargeDetailsReady =
     Boolean(noDischargeNarrative.trim()) &&
     totalPhotoCount >= 1 &&
@@ -780,14 +803,14 @@ export function FieldVisitPage() {
   const inspectionBlockerMessage = useMemo(() => {
     if (inspection.obstruction_observed) {
       if (!inspectionObstructionNarrative) return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
-      return 'Save the outlet inspection before moving on.';
+      return 'Save the site assessment before moving on.';
     }
-    if ((inspection.flow_status ?? 'unknown') === 'unknown') return FIELD_VISIT_COPY.outletFlowRequired;
-    if (outletInspectionObstructed && !inspectionObstructionNarrative) {
-      return FIELD_VISIT_COPY.outletObstructionDetailsRequired;
+    if (!siteCondition) return 'Select the site condition before continuing.';
+    if (siteConditionNotCollectable && !notCollectableNotes.trim()) {
+      return 'Describe the observed condition before submitting.';
     }
-    return 'Save the outlet inspection before moving on.';
-  }, [inspection.flow_status, inspection.obstruction_observed, inspectionObstructionNarrative, outletInspectionObstructed]);
+    return 'Complete the site assessment before moving on.';
+  }, [inspection.obstruction_observed, inspectionObstructionNarrative, siteCondition, siteConditionNotCollectable, notCollectableNotes]);
   const outcomeDetailsBlockerMessage = useMemo(() => {
     if (outcome === 'sample_collected') {
       if (cocValidation.blocking) return FIELD_VISIT_COPY.sampleContainerMismatch;
@@ -820,12 +843,10 @@ export function FieldVisitPage() {
     () => ({
       visitStarted,
       inspectionReady,
-      outcomeSelected: outcomeExplicitlySelected,
       outcomeDetailsReady,
       evidenceReady,
       startBlockerMessage,
       inspectionBlockerMessage,
-      outcomeBlockerMessage: FIELD_VISIT_COPY.outcomeRequired,
       outcomeDetailsBlockerMessage,
       evidenceBlockerMessage: evidenceValidation.ok
         ? 'Evidence looks ready.'
@@ -838,7 +859,6 @@ export function FieldVisitPage() {
       inspectionReady,
       outcomeDetailsBlockerMessage,
       outcomeDetailsReady,
-      outcomeExplicitlySelected,
       startBlockerMessage,
       visitStarted,
     ],
@@ -884,23 +904,27 @@ export function FieldVisitPage() {
         return;
       }
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setSystemWeatherError('Connect to the network to load system weather.');
-        if (opts?.manual || opts?.notifyOnFailure) toast.error('Offline — could not load system weather.');
+        const qlat = opts?.lat ?? (detail.visit.outfall_latitude != null ? Number(detail.visit.outfall_latitude) : NaN);
+        const qlng = opts?.lng ?? (detail.visit.outfall_longitude != null ? Number(detail.visit.outfall_longitude) : NaN);
+        if (Number.isFinite(qlat) && Number.isFinite(qlng)) {
+          enqueueWeatherFetch(detail.visit.id, qlat, qlng);
+        }
+        setSystemWeatherError('Offline — weather will load when back online.');
         return;
       }
       const lat =
         opts?.lat ??
-        (detail.visit.started_latitude != null
-          ? Number(detail.visit.started_latitude)
+        (detail.visit.outfall_latitude != null
+          ? Number(detail.visit.outfall_latitude)
           : Number(startCoords.latitude));
       const lng =
         opts?.lng ??
-        (detail.visit.started_longitude != null
-          ? Number(detail.visit.started_longitude)
+        (detail.visit.outfall_longitude != null
+          ? Number(detail.visit.outfall_longitude)
           : Number(startCoords.longitude));
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        setSystemWeatherError('Start GPS is required before system weather can load.');
-        if (opts?.manual || opts?.notifyOnFailure) toast.error('Capture start coordinates before refreshing weather.');
+        setSystemWeatherError('Outfall coordinates are required for weather.');
+        if (opts?.manual || opts?.notifyOnFailure) toast.error('This outfall has no coordinates on file.');
         return;
       }
       const dedupeKey = `${detail.visit.id}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
@@ -929,17 +953,28 @@ export function FieldVisitPage() {
 
   useEffect(() => {
     if (!detail || visitLocked) return;
-    const lat = Number(startCoords.latitude);
-    const lng = Number(startCoords.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    void fetchSystemWeather();
-  }, [
-    detail,
-    visitLocked,
-    fetchSystemWeather,
-    startCoords.latitude,
-    startCoords.longitude,
-  ]);
+    if (!visitStarted) return;
+    const lat = detail.visit.outfall_latitude;
+    const lng = detail.visit.outfall_longitude;
+    if (lat == null || lng == null) return;
+    void fetchSystemWeather({ lat, lng });
+  }, [detail, visitLocked, visitStarted, fetchSystemWeather]);
+
+  useEffect(() => {
+    function handleOnline() {
+      if (!detail || visitLocked) return;
+      void processWeatherQueue().then((results) => {
+        const snap = results.get(detail.visit.id);
+        if (snap) {
+          setSystemWeather(snap);
+          setSystemWeatherError(null);
+        }
+      });
+    }
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [detail, visitLocked]);
 
   const applyPreviousInspectionSummary = useCallback(() => {
     const previous = detail?.previous_visit_context;
@@ -967,7 +1002,7 @@ export function FieldVisitPage() {
 
   const routeSafetyHazard = useCallback(() => {
     setOutcome('access_issue');
-    setOutcomeExplicitlySelected(true);
+    setSiteCondition('inaccessible');
     setAccessIssueType('safety_hazard');
     setAccessIssueNarrative((current) =>
       current.trim()
@@ -1031,7 +1066,9 @@ export function FieldVisitPage() {
       observedSiteConditions,
       fieldNotes,
       outcome,
-      outcomeExplicitlySelected,
+      siteCondition,
+      standingWaterChecks,
+      notCollectableNotes,
       potentialForceMajeure,
       potentialForceMajeureNotes,
       noDischargeNarrative,
@@ -1072,7 +1109,9 @@ export function FieldVisitPage() {
     noDischargeObstructionObserved,
     observedSiteConditions,
     outcome,
-    outcomeExplicitlySelected,
+    siteCondition,
+    standingWaterChecks,
+    notCollectableNotes,
     potentialForceMajeure,
     potentialForceMajeureNotes,
     requiredMeasurementDrafts,
@@ -1080,25 +1119,18 @@ export function FieldVisitPage() {
     startCoords,
   ]);
 
-  async function handleCaptureStartCoords() {
-    try {
-      const coords = await captureBrowserCoordinates();
-      setStartCoords({
-        latitude: coords.latitude.toString(),
-        longitude: coords.longitude.toString(),
-      });
-      toast.success('Start coordinates captured');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to capture coordinates');
-    }
-  }
-
   async function handleCaptureCompleteCoords() {
     try {
-      const coords = await captureBrowserCoordinates();
+      if (!navigator.geolocation) throw new Error('Browser geolocation is unavailable');
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
       setCompleteCoords({
-        latitude: coords.latitude.toString(),
-        longitude: coords.longitude.toString(),
+        latitude: position.coords.latitude.toString(),
+        longitude: position.coords.longitude.toString(),
       });
       toast.success('Completion coordinates captured');
     } catch (error) {
@@ -1109,43 +1141,120 @@ export function FieldVisitPage() {
   const handleStartVisit = useCallback(async () => {
     if (!detail) return;
 
-    const startCheck = validateFieldVisitStartCoordinates(startLatitude, startLongitude);
-    if (!startCheck.ok) {
-      toast.error(startCheck.message);
+    const lat = detail.visit.outfall_latitude;
+    const lng = detail.visit.outfall_longitude;
+    if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.error('This outfall has no coordinates on file — contact your manager.');
       return;
     }
 
     try {
       setSaving(true);
       const { queued } = await startVisit(detail.visit.id, {
-        latitude: startLatitude,
-        longitude: startLongitude,
+        latitude: lat,
+        longitude: lng,
       });
       toast.success(
         queued
           ? 'Visit started on this device; will sync when you are back online'
           : 'Visit started',
       );
-      void fetchSystemWeather({ lat: startLatitude, lng: startLongitude, notifyOnFailure: true });
+      void fetchSystemWeather({ lat, lng, notifyOnFailure: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to start visit');
     } finally {
       setSaving(false);
     }
-  }, [detail, fetchSystemWeather, startLatitude, startLongitude, startVisit]);
+  }, [detail, fetchSystemWeather, startVisit]);
+
+  function autoFlowStatusFromCondition(): OutletInspectionRecord['flow_status'] {
+    switch (siteCondition) {
+      case 'flowing_discharge': return 'flowing';
+      case 'standing_water': return 'standing_water';
+      case 'no_water': return 'no_flow';
+      default: return 'unknown';
+    }
+  }
+
+  function autoOutcomeFromCondition(): FieldVisitOutcome {
+    if (siteConditionSampleable) return 'sample_collected';
+    if (siteCondition === 'inaccessible') return 'access_issue';
+    return 'no_discharge';
+  }
 
   async function handleSaveInspection() {
     if (!detail || visitLocked) return;
 
+    const isObstruction = inspection.obstruction_observed ?? false;
+    const flowStatus = autoFlowStatusFromCondition();
+    const inspectionWithFlow = { ...inspection, flow_status: flowStatus };
+
+    if (siteCondition === 'standing_water' && siteConditionSampleable) {
+      const swMeta = `[Standing water assessment: sufficient=${standingWaterChecks.sufficientWater}, undisturbed=${standingWaterChecks.noDisturbance}, point_verified=${standingWaterChecks.pointVerified}]`;
+      const existing = (inspectionWithFlow.inspector_notes ?? '').trim();
+      inspectionWithFlow.inspector_notes = existing ? `${existing}\n${swMeta}` : swMeta;
+    }
+
     try {
       setSaving(true);
-      const { queued } = await saveInspection(detail.visit.id, inspection);
-      toast.success(
-        queued
-          ? 'Inspection saved on this device; will upload when you are back online'
-          : 'Inspection saved',
-      );
-      goToStep(outcomeExplicitlySelected ? 'outcome_details' : 'choose_outcome');
+      setInspection(inspectionWithFlow);
+      await saveInspection(detail.visit.id, inspectionWithFlow);
+
+      if (isObstruction) {
+        const lat = detail.visit.outfall_latitude ?? 0;
+        const lng = detail.visit.outfall_longitude ?? 0;
+
+        await completeVisit(detail.visit, {
+          outcome: 'access_issue',
+          completedCoords: { latitude: lat, longitude: lng },
+          weatherConditions: formatWeatherForPersistence(observedSiteConditions, systemWeather),
+          fieldNotes,
+          accessIssue: {
+            issueType: 'access_issue',
+            obstructionNarrative: inspectionObstructionNarrative,
+          },
+        });
+        setObstructionReportConfirmed(true);
+        return;
+      }
+
+      if (siteConditionSampleable) {
+        const determinedOutcome = autoOutcomeFromCondition();
+        setOutcome(determinedOutcome);
+        toast.success('Site assessment saved');
+        goToStep('outcome_details');
+        return;
+      }
+
+      if (siteConditionNotCollectable) {
+        const determinedOutcome = autoOutcomeFromCondition();
+        const lat = detail.visit.outfall_latitude ?? 0;
+        const lng = detail.visit.outfall_longitude ?? 0;
+
+        await completeVisit(detail.visit, {
+          outcome: determinedOutcome,
+          completedCoords: { latitude: lat, longitude: lng },
+          weatherConditions: formatWeatherForPersistence(observedSiteConditions, systemWeather),
+          fieldNotes,
+          ...(determinedOutcome === 'no_discharge'
+            ? {
+                noDischarge: {
+                  narrative: notCollectableNotes || `No sample collected: ${siteCondition?.replace(/_/g, ' ') ?? 'unknown condition'}`,
+                  observedCondition: siteCondition?.replace(/_/g, ' ') ?? null,
+                },
+              }
+            : {
+                accessIssue: {
+                  issueType: 'access_issue',
+                  obstructionNarrative: notCollectableNotes || `Point inaccessible at monitoring location`,
+                },
+              }),
+        });
+        setNotCollectableConfirmed(true);
+        return;
+      }
+
+      toast.error('Select a site condition before continuing');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save inspection');
     } finally {
@@ -1233,7 +1342,6 @@ export function FieldVisitPage() {
     if (!detail) return;
 
     const completionCheck = validateFieldVisitCompletion({
-      outcomeSelected: outcomeExplicitlySelected,
       requiredFieldMeasurementsComplete,
       containerValidationBlocking: cocValidation.blocking,
       completeLatitude,
@@ -1269,7 +1377,8 @@ export function FieldVisitPage() {
           cocSaveMetadata,
         );
       }
-      await saveInspection(detail.visit.id, inspection);
+      const inspectionForCompletion = { ...inspection, flow_status: autoFlowStatusFromCondition() };
+      await saveInspection(detail.visit.id, inspectionForCompletion);
       await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude: completeLatitude, longitude: completeLongitude },
@@ -1371,15 +1480,6 @@ export function FieldVisitPage() {
           return;
         }
         await handleSaveInspection();
-        return;
-      }
-      case 'choose_outcome': {
-        const outcomeAdvance = validateFieldVisitWizardAdvanceStep('choose_outcome', wizardGuardState);
-        if (!outcomeAdvance.ok) {
-          toast.error(outcomeAdvance.message);
-          return;
-        }
-        goToStep('outcome_details');
         return;
       }
       case 'outcome_details': {
@@ -2255,17 +2355,29 @@ export function FieldVisitPage() {
       case 'start_visit':
         return (
           <FieldVisitStartStep
-            startLatitude={startCoords.latitude}
-            startLongitude={startCoords.longitude}
-            onStartLatitudeChange={(value) => setStartCoords((prev) => ({ ...prev, latitude: value }))}
-            onStartLongitudeChange={(value) => setStartCoords((prev) => ({ ...prev, longitude: value }))}
-            onCaptureStartCoords={() => {
-              void handleCaptureStartCoords();
-            }}
+            samplerFirstName={profile?.first_name ?? 'Sampler'}
+            outfallNumber={detail.visit.outfall_number ?? 'Outfall'}
+            permitNumber={detail.visit.permit_number ?? 'Permit'}
+            outfallLatitude={detail.visit.outfall_latitude ?? null}
+            outfallLongitude={detail.visit.outfall_longitude ?? null}
+            visitDate={detail.visit.scheduled_date
+              ? new Date(detail.visit.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+            onConfirm={() => { void handleStartVisit(); }}
+            onDecline={() => navigate('/field/route')}
             visitStarted={visitStarted}
             visitLocked={visitLocked}
-            outfallMapsHref={outfallMapsHref}
-            hasCoordinates={Number.isFinite(startLatitude) && Number.isFinite(startLongitude)}
+            saving={saving}
             weatherSummary={systemWeather?.summary ?? null}
             weatherLoading={systemWeatherLoading}
             weatherError={systemWeatherError}
@@ -2289,22 +2401,137 @@ export function FieldVisitPage() {
         return (
           <FieldVisitInspectionStep
             inspection={inspection}
-            outletInspectionObstructed={outletInspectionObstructed}
             visitLocked={visitLocked}
             onInspectionChange={handleInspectionChange}
             sameAsLastHelpers={sameAsLastHelpers}
-          />
-        );
-      case 'choose_outcome':
-        return (
-          <FieldVisitOutcomeStep
-            outcome={outcome}
-            visitLocked={visitLocked}
-            potentialForceMajeure={potentialForceMajeure}
-            onOutcomeSelect={(nextOutcome) => {
-              setOutcome(nextOutcome);
-              setOutcomeExplicitlySelected(true);
+            siteCondition={siteCondition}
+            onSiteConditionChange={(next) => {
+              setSiteCondition(next);
+              if (next !== 'standing_water') {
+                setStandingWaterChecks({ sufficientWater: null, noDisturbance: null, pointVerified: null });
+              }
+              if (next !== siteCondition) {
+                setNotCollectableNotes('');
+              }
             }}
+            standingWaterChecks={standingWaterChecks}
+            onStandingWaterChecksChange={(patch) =>
+              setStandingWaterChecks((prev) => ({ ...prev, ...patch }))
+            }
+            notCollectableNotes={notCollectableNotes}
+            onNotCollectableNotesChange={setNotCollectableNotes}
+            obstructionPhotoCount={
+              (uploadedPhotoCounts.obstruction_deficiency ?? 0) +
+              (pendingPhotoCounts.obstruction_deficiency ?? 0)
+            }
+            conditionPhotoCount={
+              (uploadedPhotoCounts.flow_no_flow ?? 0) +
+              (pendingPhotoCounts.flow_no_flow ?? 0)
+            }
+            obstructionPhotoUpload={
+              (inspection.obstruction_observed ?? false) ? (
+                <EvidenceCaptureUpload
+                  submissionType="field_visit"
+                  referenceId={detail.visit.id}
+                  bucket="field-inspections"
+                  pathPrefix={orgScopedPrefix}
+                  acceptedTypes={['.png', '.jpg', '.jpeg', '.heic', '.webp']}
+                  disabled={visitLocked}
+                  onFileAccepted={async (file) => {
+                    const notes = serializePhotoEvidenceCategory('obstruction_deficiency');
+                    if (typeof navigator !== 'undefined' && navigator.onLine) {
+                      uploadPhotoCategoryRef.current = 'obstruction_deficiency';
+                      return { handled: false };
+                    }
+                    await saveFieldEvidenceDraft({
+                      fieldVisitId: detail.visit.id,
+                      bucket: 'field-inspections',
+                      pathPrefix: orgScopedPrefix,
+                      file,
+                      evidenceType: 'photo',
+                      notes,
+                      latitude: detail.visit.outfall_latitude ?? null,
+                      longitude: detail.visit.outfall_longitude ?? null,
+                    });
+                    await refreshPendingEvidenceDrafts(detail.visit.id);
+                    void refreshOutboundPendingCount();
+                    return {
+                      handled: true,
+                      message: 'Photo saved on this device; it will upload when you are back online',
+                    };
+                  }}
+                  onUploaded={(path) => {
+                    recordEvidenceAsset({
+                      fieldVisitId: detail.visit.id,
+                      storagePath: path,
+                      bucket: 'field-inspections',
+                      evidenceType: 'photo',
+                      notes: serializePhotoEvidenceCategory('obstruction_deficiency'),
+                      coords: detail.visit.outfall_latitude && detail.visit.outfall_longitude
+                        ? {
+                            latitude: detail.visit.outfall_latitude,
+                            longitude: detail.visit.outfall_longitude,
+                          }
+                        : undefined,
+                    }).catch((err) => {
+                      toast.error(err instanceof Error ? err.message : 'Failed to record photo');
+                    });
+                  }}
+                />
+              ) : undefined
+            }
+            conditionPhotoUpload={
+              siteConditionNotCollectable ? (
+                <EvidenceCaptureUpload
+                  submissionType="field_visit"
+                  referenceId={detail.visit.id}
+                  bucket="field-inspections"
+                  pathPrefix={orgScopedPrefix}
+                  acceptedTypes={['.png', '.jpg', '.jpeg', '.heic', '.webp']}
+                  disabled={visitLocked}
+                  onFileAccepted={async (file) => {
+                    const notes = serializePhotoEvidenceCategory('flow_no_flow');
+                    if (typeof navigator !== 'undefined' && navigator.onLine) {
+                      uploadPhotoCategoryRef.current = 'flow_no_flow';
+                      return { handled: false };
+                    }
+                    await saveFieldEvidenceDraft({
+                      fieldVisitId: detail.visit.id,
+                      bucket: 'field-inspections',
+                      pathPrefix: orgScopedPrefix,
+                      file,
+                      evidenceType: 'photo',
+                      notes,
+                      latitude: detail.visit.outfall_latitude ?? null,
+                      longitude: detail.visit.outfall_longitude ?? null,
+                    });
+                    await refreshPendingEvidenceDrafts(detail.visit.id);
+                    void refreshOutboundPendingCount();
+                    return {
+                      handled: true,
+                      message: 'Photo saved on this device; it will upload when you are back online',
+                    };
+                  }}
+                  onUploaded={(path) => {
+                    recordEvidenceAsset({
+                      fieldVisitId: detail.visit.id,
+                      storagePath: path,
+                      bucket: 'field-inspections',
+                      evidenceType: 'photo',
+                      notes: serializePhotoEvidenceCategory('flow_no_flow'),
+                      coords: detail.visit.outfall_latitude && detail.visit.outfall_longitude
+                        ? {
+                            latitude: detail.visit.outfall_latitude,
+                            longitude: detail.visit.outfall_longitude,
+                          }
+                        : undefined,
+                    }).catch((err) => {
+                      toast.error(err instanceof Error ? err.message : 'Failed to record photo');
+                    });
+                  }}
+                />
+              ) : undefined
+            }
           />
         );
       case 'outcome_details':
@@ -2372,6 +2599,54 @@ export function FieldVisitPage() {
     hasSameOutfallConflict;
   const alertDotColor = hasSyncIssues ? 'bg-red-400' : hasQueuedActions ? 'bg-amber-400' : 'bg-cyan-400';
 
+  if (obstructionReportConfirmed) {
+    return (
+      <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-full bg-amber-500/15 p-5">
+          <AlertTriangle className="h-12 w-12 text-amber-400" aria-hidden />
+        </div>
+        <h1 className="mt-6 text-2xl font-semibold text-text-primary">Obstruction reported</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          {detail?.visit.permit_number ?? 'Permit'} / {detail?.visit.outfall_number ?? 'Outfall'}
+        </p>
+        <p className="mt-4 text-sm text-text-muted">
+          The mine superintendent has been notified and will address the obstruction.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/field/route')}
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+        >
+          Move on to next outfall
+        </button>
+      </div>
+    );
+  }
+
+  if (notCollectableConfirmed) {
+    return (
+      <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-full bg-amber-500/15 p-5">
+          <AlertTriangle className="h-12 w-12 text-amber-400" aria-hidden />
+        </div>
+        <h1 className="mt-6 text-2xl font-semibold text-text-primary">Visit recorded</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          {detail?.visit.permit_number ?? 'Permit'} / {detail?.visit.outfall_number ?? 'Outfall'}
+        </p>
+        <p className="mt-4 text-sm text-text-muted">
+          No sample collected — condition documented.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/field/route')}
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+        >
+          Move on to next outfall
+        </button>
+      </div>
+    );
+  }
+
   if (completionConfirmed) {
     return (
       <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
@@ -2423,7 +2698,7 @@ export function FieldVisitPage() {
         disabled: saving,
       } : null}
       saveAction={
-        !visitLocked && ['start_visit', 'inspection', 'outcome_details', 'evidence'].includes(activeStep)
+        !visitLocked && visitStarted && ['start_visit', 'inspection', 'outcome_details', 'evidence'].includes(activeStep)
           ? {
               label: 'Save Draft',
               onClick: handleSaveCurrentDraft,
@@ -2432,20 +2707,31 @@ export function FieldVisitPage() {
             }
           : null
       }
-      primaryAction={visitLocked && activeStep === 'review_complete'
+      primaryAction={(visitLocked && activeStep === 'review_complete') || (activeStep === 'start_visit' && !visitStarted)
         ? null
         : {
-            label: activeStep === 'start_visit' && visitStarted
-              ? 'Continue to inspection'
-              : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
+            label: activeStep === 'inspection'
+              ? (inspection.obstruction_observed ?? false)
+                ? 'Report obstruction'
+                : siteConditionSampleable
+                  ? 'Continue to sample collection'
+                  : siteConditionNotCollectable
+                    ? 'Submit and move on'
+                    : 'Continue'
+              : activeStep === 'start_visit' && visitStarted
+                ? 'Continue to inspection'
+                : FIELD_VISIT_WIZARD_COPY[activeStep].primaryActionLabel,
             onClick: () => {
               void handleWizardAdvance();
             },
             disabled:
               saving ||
-              (activeStep === 'review_complete' && !canAttemptComplete) ||
-              (activeStep === 'choose_outcome' && !outcomeExplicitlySelected),
-            variant: activeStep === 'review_complete' ? 'success' : 'primary',
+              (activeStep === 'review_complete' && !canAttemptComplete),
+            variant: activeStep === 'review_complete'
+              ? 'success'
+              : activeStep === 'inspection' && ((inspection.obstruction_observed ?? false) || siteConditionNotCollectable)
+                ? 'warning'
+                : 'primary',
           }}
       stepMeta={
         <div className="flex items-center gap-2">

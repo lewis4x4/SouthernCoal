@@ -1,19 +1,20 @@
-import { useState } from 'react';
-import { MapPin, Navigation, ChevronDown, Cloud, CloudOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { Cloud, CloudOff, Loader2, MapPin } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface FieldVisitStartStepProps {
-  startLatitude: string;
-  startLongitude: string;
-  onStartLatitudeChange: (value: string) => void;
-  onStartLongitudeChange: (value: string) => void;
-  onCaptureStartCoords: () => void;
+  samplerFirstName: string;
+  outfallNumber: string;
+  permitNumber: string;
+  outfallLatitude: number | null;
+  outfallLongitude: number | null;
+  visitDate: string;
+  onConfirm: () => void;
+  onDecline: () => void;
   visitStarted: boolean;
   visitLocked: boolean;
-  outfallMapsHref: string;
+  saving: boolean;
   scheduledParameter?: ReactNode;
   scheduleInstructions?: ReactNode;
-  hasCoordinates: boolean;
   weatherSummary: string | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -22,151 +23,125 @@ interface FieldVisitStartStepProps {
 }
 
 export function FieldVisitStartStep({
-  startLatitude,
-  startLongitude,
-  onStartLatitudeChange,
-  onStartLongitudeChange,
-  onCaptureStartCoords,
+  samplerFirstName,
+  outfallNumber,
+  permitNumber,
+  outfallLatitude,
+  outfallLongitude,
+  visitDate,
+  onConfirm,
+  onDecline,
   visitStarted,
   visitLocked,
-  outfallMapsHref,
+  saving,
   scheduledParameter,
   scheduleInstructions,
-  hasCoordinates,
   weatherSummary,
   weatherLoading,
   weatherError,
   observedSiteConditions,
   onObservedChange,
 }: FieldVisitStartStepProps) {
-  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const hasCoords = outfallLatitude != null && outfallLongitude != null;
+
+  if (!visitStarted) {
+    return (
+      <div className="flex flex-col items-center px-2 py-6 text-center">
+        <h2 className="text-xl font-semibold text-text-primary">
+          Welcome, {samplerFirstName}
+        </h2>
+
+        <p className="mt-5 text-sm text-text-muted">Are you at the following outfall?</p>
+
+        <div className="mt-4 w-full max-w-sm space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-4 text-left">
+          <div className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+            <div>
+              <p className="text-base font-semibold text-text-primary">{outfallNumber}</p>
+              <p className="text-sm text-text-secondary">{permitNumber}</p>
+            </div>
+          </div>
+
+          {hasCoords && (
+            <p className="text-sm text-text-muted">
+              {outfallLatitude.toFixed(5)}, {outfallLongitude.toFixed(5)}
+            </p>
+          )}
+
+          {!hasCoords && (
+            <p className="text-sm text-amber-200/80">
+              No coordinates on file for this outfall — contact your manager.
+            </p>
+          )}
+
+          <p className="text-sm text-text-secondary">{visitDate}</p>
+        </div>
+
+        {scheduledParameter && <div className="mt-4 w-full max-w-sm text-left">{scheduledParameter}</div>}
+        {scheduleInstructions && <div className="mt-3 w-full max-w-sm text-left">{scheduleInstructions}</div>}
+
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={visitLocked || !hasCoords || saving}
+          className="mt-8 min-h-14 w-full max-w-sm rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40 disabled:opacity-60"
+        >
+          {saving ? 'Starting…' : 'Continue'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onDecline}
+          className="mt-3 min-h-12 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] text-base font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+        >
+          No, go back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* GPS section */}
-      {!hasCoordinates ? (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <button
-            type="button"
-            onClick={onCaptureStartCoords}
-            disabled={visitLocked}
-            className="inline-flex h-16 w-full max-w-xs items-center justify-center gap-3 rounded-2xl bg-cyan-500/20 text-lg font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40 disabled:opacity-60"
-          >
-            <MapPin className="h-6 w-6" aria-hidden />
-            Capture GPS
-          </button>
-          {outfallMapsHref ? (
-            <a
-              href={outfallMapsHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-cyan-300/70 transition-colors hover:text-cyan-200"
-            >
-              <Navigation className="h-4 w-4" aria-hidden />
-              Open in Maps
-            </a>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-3">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
-          <span className="min-w-0 text-sm text-emerald-100">
-            {Number(startLatitude).toFixed(5)}, {Number(startLongitude).toFixed(5)}
-          </span>
-          <button
-            type="button"
-            onClick={onCaptureStartCoords}
-            disabled={visitLocked}
-            className="ml-auto shrink-0 text-xs font-medium text-emerald-300/70 transition-colors hover:text-emerald-200 disabled:opacity-60"
-          >
-            Recapture
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+        <MapPin className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden />
+        <span className="text-sm text-text-primary">
+          {outfallNumber} — {hasCoords ? `${outfallLatitude!.toFixed(5)}, ${outfallLongitude!.toFixed(5)}` : 'No coordinates'}
+        </span>
+      </div>
 
-      {/* Manual entry disclosure */}
-      <button
-        type="button"
-        onClick={() => setManualEntryOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
-      >
-        <ChevronDown
-          className={`h-3 w-3 transition-transform ${manualEntryOpen ? 'rotate-180' : ''}`}
-          aria-hidden
-        />
-        Manual entry
-      </button>
-      {manualEntryOpen && (
-        <div className="grid grid-cols-2 gap-3">
-          <label className="space-y-1" htmlFor="field-visit-start-lat">
-            <span className="text-xs text-text-muted">Latitude</span>
-            <input
-              id="field-visit-start-lat"
-              name="field-visit-start-lat"
-              inputMode="decimal"
-              autoComplete="off"
-              value={startLatitude}
-              onChange={(event) => onStartLatitudeChange(event.target.value)}
-              disabled={visitLocked}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-60"
-            />
-          </label>
-          <label className="space-y-1" htmlFor="field-visit-start-lng">
-            <span className="text-xs text-text-muted">Longitude</span>
-            <input
-              id="field-visit-start-lng"
-              name="field-visit-start-lng"
-              inputMode="decimal"
-              autoComplete="off"
-              value={startLongitude}
-              onChange={(event) => onStartLongitudeChange(event.target.value)}
-              disabled={visitLocked}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-60"
-            />
-          </label>
-        </div>
-      )}
-
-      {/* Scheduled parameter / instructions */}
       {scheduledParameter}
       {scheduleInstructions}
 
-      {/* Weather status (compact inline) */}
-      {hasCoordinates && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-          {weatherLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-300" aria-hidden />
-              <span className="text-sm text-text-muted">Loading weather…</span>
-            </>
-          ) : weatherError ? (
-            <>
-              <CloudOff className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
-              <span className="text-sm text-amber-200/80">Weather unavailable — note conditions manually</span>
-            </>
-          ) : weatherSummary ? (
-            <>
-              <Cloud className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden />
-              <span className="text-sm text-text-primary">{weatherSummary}</span>
-            </>
-          ) : null}
-        </div>
-      )}
+      <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+        {weatherLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-300" aria-hidden />
+            <span className="text-sm text-text-muted">Loading weather…</span>
+          </>
+        ) : weatherError ? (
+          <>
+            <CloudOff className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+            <span className="text-sm text-amber-200/80">Weather queued — will load when back online</span>
+          </>
+        ) : weatherSummary ? (
+          <>
+            <Cloud className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden />
+            <span className="text-sm text-text-primary">{weatherSummary}</span>
+          </>
+        ) : null}
+      </div>
 
-      {/* Observed conditions — only after visit started */}
-      {visitStarted && (
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium text-text-muted">Observed conditions (optional)</span>
-          <textarea
-            value={observedSiteConditions}
-            onChange={(event) => onObservedChange(event.target.value)}
-            disabled={visitLocked}
-            rows={2}
-            placeholder="e.g. Light rain, muddy access road, moderate flow"
-            className="w-full resize-none rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none disabled:opacity-60"
-          />
-        </label>
-      )}
+      <label className="block space-y-1.5">
+        <span className="text-xs font-medium text-text-muted">Observed conditions (optional)</span>
+        <textarea
+          value={observedSiteConditions}
+          onChange={(event) => onObservedChange(event.target.value)}
+          disabled={visitLocked}
+          rows={2}
+          placeholder="e.g. Light rain, muddy access road, moderate flow"
+          className="w-full resize-none rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none disabled:opacity-60"
+        />
+      </label>
     </div>
   );
 }

@@ -10,10 +10,7 @@ export const FIELD_VISIT_WIZARD_COPY: Record<
     primaryActionLabel: 'Start visit',
   },
   inspection: {
-    primaryActionLabel: 'Save inspection & continue',
-  },
-  choose_outcome: {
-    primaryActionLabel: 'Continue to outcome details',
+    primaryActionLabel: 'Continue',
   },
   outcome_details: {
     primaryActionLabel: 'Continue to evidence',

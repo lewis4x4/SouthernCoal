@@ -10,7 +10,6 @@ import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
  * When offline, pending device drafts count toward the gate (evidence sync runs before queue flush).
  */
 export interface FieldVisitCompletionValidationInput {
-  outcomeSelected: boolean;
   requiredFieldMeasurementsComplete: boolean;
   containerValidationBlocking: boolean;
   completeLatitude: number;
@@ -88,7 +87,6 @@ export function validateFieldVisitCompletion(
   input: FieldVisitCompletionValidationInput,
 ): FieldVisitCompletionValidationResult {
   const {
-    outcomeSelected,
     requiredFieldMeasurementsComplete,
     containerValidationBlocking,
     completeLatitude: lat,
@@ -112,16 +110,12 @@ export function validateFieldVisitCompletion(
     return { ok: false, message: FIELD_VISIT_COPY.completeGpsRequired };
   }
 
-  if (!outcomeSelected) {
-    return { ok: false, message: FIELD_VISIT_COPY.outcomeRequired };
-  }
-
-  if ((inspectionFlowStatus ?? 'unknown') === 'unknown') {
+  if (outletInspectionObstructed) {
+    if (!inspectionObstructionDetailsTrimmed) {
+      return { ok: false, message: FIELD_VISIT_COPY.outletObstructionDetailsRequired };
+    }
+  } else if ((inspectionFlowStatus ?? 'unknown') === 'unknown') {
     return { ok: false, message: FIELD_VISIT_COPY.outletFlowRequired };
-  }
-
-  if (outletInspectionObstructed && !inspectionObstructionDetailsTrimmed) {
-    return { ok: false, message: FIELD_VISIT_COPY.outletObstructionDetailsRequired };
   }
 
   if (outcome === 'sample_collected') {
@@ -172,7 +166,6 @@ export function validateFieldVisitCompletion(
 
 export interface FieldVisitCompletionChecklistInput {
   visitStarted: boolean;
-  outcomeSelected: boolean;
   requiredFieldMeasurementsComplete: boolean;
   containerValidationBlocking: boolean;
   completeLatitude: number;
@@ -210,7 +203,6 @@ export function getFieldVisitCompletionChecklistItems(
 ): CompletionChecklistItem[] {
   const {
     visitStarted,
-    outcomeSelected,
     requiredFieldMeasurementsComplete,
     containerValidationBlocking,
     completeLatitude: lat,
@@ -230,7 +222,7 @@ export function getFieldVisitCompletionChecklistItems(
     accessIssueNarrativeTrimmed,
   } = input;
 
-  const flowKnown = (inspectionFlowStatus ?? 'unknown') !== 'unknown';
+  const flowKnown = outletInspectionObstructed || (inspectionFlowStatus ?? 'unknown') !== 'unknown';
   const completionGpsOk = Number.isFinite(lat) && Number.isFinite(lng);
   const obstructionOk =
     !outletInspectionObstructed || Boolean(inspectionObstructionDetailsTrimmed);
@@ -244,8 +236,7 @@ export function getFieldVisitCompletionChecklistItems(
 
   const items: CompletionChecklistItem[] = [
     { id: 'started', label: 'Visit started (start GPS recorded)', done: visitStarted },
-    { id: 'outcome_selected', label: 'Outcome selected', done: outcomeSelected },
-    { id: 'outlet_flow', label: 'Outlet flow status set (not Unknown)', done: flowKnown },
+    { id: 'outlet_flow', label: 'Site condition assessed', done: flowKnown },
     {
       id: 'obstruction_details',
       label: 'Obstruction described (if flow obstructed or obstruction observed)',

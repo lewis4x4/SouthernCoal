@@ -7,7 +7,6 @@ import { FieldVisitPage } from '@/pages/FieldVisitPage';
 import { listFieldEvidenceDrafts } from '@/lib/fieldEvidenceDrafts';
 import { serializePhotoEvidenceCategory } from '@/lib/photoEvidenceBuckets';
 import type { FieldEvidenceDraft } from '@/lib/fieldEvidenceDrafts';
-import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 import type { FieldEvidenceAssetRecord, FieldVisitDetails, OutletInspectionRecord } from '@/types';
 import { toast } from 'sonner';
 
@@ -404,7 +403,7 @@ describe('FieldVisitPage wizard', () => {
     );
 
     await waitForWizard();
-    expect(screen.getByRole('heading', { name: 'Outcome Details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sample Collection' })).toBeInTheDocument();
     expect(screen.getByText('Sample collected')).toBeInTheDocument();
     expect(screen.getByText('Finish custody and field-only readings for this stop.')).toBeInTheDocument();
   });
@@ -420,23 +419,22 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByRole('button', { name: 'Retry visit load' })).toBeInTheDocument();
   });
 
-  it('renders the six wizard steps and starts in the start-visit step', async () => {
+  it('renders the five wizard steps and starts in the start-visit step', async () => {
     renderPage(buildDetail());
 
     await waitForWizard();
 
     const progress = screen.getByRole('navigation', { name: 'Field visit wizard progress' });
     expect(within(progress).getByRole('button', { name: 'Start Visit' })).toBeInTheDocument();
-    expect(within(progress).getByRole('button', { name: 'Outlet Inspection' })).toBeInTheDocument();
-    expect(within(progress).getByRole('button', { name: 'Choose Outcome' })).toBeInTheDocument();
-    expect(within(progress).getByRole('button', { name: 'Outcome Details' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Site Assessment' })).toBeInTheDocument();
+    expect(within(progress).getByRole('button', { name: 'Sample Collection' })).toBeInTheDocument();
     expect(within(progress).getByRole('button', { name: 'Evidence' })).toBeInTheDocument();
     expect(within(progress).getByRole('button', { name: 'Review & Complete' })).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start visit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^(Capture GPS|Recapture)$/ })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Wizard step actions' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Welcome/i })).toBeInTheDocument();
+    expect(screen.getByText('Are you at the following outfall?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
   });
 
   it('blocks jumping ahead when prerequisite wizard steps are incomplete', async () => {
@@ -449,7 +447,7 @@ describe('FieldVisitPage wizard', () => {
 
     expect(getWizardButton(/Start Visit/i)).toHaveAttribute('aria-current', 'step');
     expect(screen.getByRole('heading', { name: 'Start Visit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start visit' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Welcome/i })).toBeInTheDocument();
   });
 
   it('renders the sample-collected outcome details path with custody and field-only measurements', async () => {
@@ -484,7 +482,7 @@ describe('FieldVisitPage wizard', () => {
     }));
 
     await waitForWizard();
-    await waitForStepHeading('Outcome Details');
+    await waitForStepHeading('Sample Collection');
 
     expect(screen.getByText('Sample collected')).toBeInTheDocument();
     expect(screen.getByText('Finish custody first, then save only the field readings required for this stop.')).toBeInTheDocument();
@@ -532,105 +530,160 @@ describe('FieldVisitPage wizard', () => {
     for (const testCase of cases) {
       const view = renderPage(testCase.detail);
       await waitForWizard();
-      await waitForStepHeading('Outcome Details');
+      await waitForStepHeading('Sample Collection');
       expect(screen.getAllByText(testCase.expectedText).length).toBeGreaterThan(0);
       view.unmount();
     }
   });
 
-  it('renders no-discharge and access-issue outcome paths without losing the wizard flow', async () => {
+  it('renders the site assessment decision tree with reachability and condition questions', async () => {
     const user = userEvent.setup();
     renderPage(buildStartedDetail());
 
     await waitForWizard();
-    await waitForStepHeading('Choose Outcome');
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
 
-    await user.click(screen.getByRole('button', { name: /^No discharge/i }));
-    await user.click(screen.getByRole('button', { name: 'Continue to outcome details' }));
-    await waitForStepHeading('Outcome Details');
-    expect(screen.getByText('No-discharge record')).toBeInTheDocument();
+    expect(screen.getByText('Are you able to reach the inspection site?')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Back' }));
-    await waitForStepHeading('Choose Outcome');
-    await user.click(screen.getByRole('button', { name: /^Access issue/i }));
-    await user.click(screen.getByRole('button', { name: 'Continue to outcome details' }));
-    await waitForStepHeading('Outcome Details');
-    expect(screen.getAllByText('Access issue escalation').length).toBeGreaterThan(0);
+    const yesButtons = screen.getAllByRole('button', { name: 'Yes' });
+    expect(yesButtons.length).toBeGreaterThan(0);
+    expect(yesButtons[0]).toHaveAttribute('aria-pressed', 'true');
+
+    expect(screen.getByText('What condition is present at the designated monitoring point?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Flowing discharge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Standing water' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'No water present' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Inaccessible' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Other' })).toBeInTheDocument();
   });
 
-  it('preserves draft state across back and next navigation', async () => {
+  it('shows obstruction details when site is not reachable', async () => {
     const user = userEvent.setup();
-    renderPage(buildStartedDetail({
-      visit: {
-        outcome: 'no_discharge',
-      },
-    }));
+    renderPage(buildStartedDetail());
 
     await waitForWizard();
-    await waitForStepHeading('Outcome Details');
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
 
-    const narrative = screen.getByRole('textbox', { name: /Narrative/i });
-    await user.type(narrative, 'Observed no discharge at the actual sampling point.');
+    const noButtons = screen.getAllByRole('button', { name: 'No' });
+    await user.click(noButtons[0]!);
+
+    expect(screen.getByText('Obstruction type')).toBeInTheDocument();
+    expect(screen.getByText(/Describe the obstruction/i)).toBeInTheDocument();
+    expect(screen.queryByText('What condition is present at the designated monitoring point?')).not.toBeInTheDocument();
+  });
+
+  it('shows flowing discharge confirmation when flowing is selected', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail());
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    await user.click(screen.getByRole('button', { name: 'Flowing discharge' }));
+
+    expect(screen.getByText(/Flowing discharge confirmed — proceed to sample collection/i)).toBeInTheDocument();
+  });
+
+  it('shows standing water sub-questions and sampleable confirmation when all pass', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail());
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    await user.click(screen.getByRole('button', { name: 'Standing water' }));
+
+    expect(screen.getByText('Standing water verification')).toBeInTheDocument();
+    expect(screen.getByText(/Was sufficient water present/i)).toBeInTheDocument();
+
+    const yesButtons = screen.getAllByRole('button', { name: 'Yes' });
+    await user.click(yesButtons[1]!);
+
+    expect(screen.getByText(/Could the sample be collected without disturbing sediment/i)).toBeInTheDocument();
+    const yesButtons2 = screen.getAllByRole('button', { name: 'Yes' });
+    await user.click(yesButtons2[2]!);
+
+    expect(screen.getByText(/Was the designated monitoring point verified/i)).toBeInTheDocument();
+    const yesButtons3 = screen.getAllByRole('button', { name: 'Yes' });
+    await user.click(yesButtons3[3]!);
+
+    expect(screen.getByText(/Standing water is sampleable — proceed to collection/i)).toBeInTheDocument();
+  });
+
+  it('shows not-collectable form when standing water sub-check fails', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail());
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    await user.click(screen.getByRole('button', { name: 'Standing water' }));
+
+    const noButtons = screen.getAllByRole('button', { name: 'No' });
+    await user.click(noButtons[1]!);
+
+    expect(screen.getByText(/Sample cannot be collected/i)).toBeInTheDocument();
+    expect(screen.getByText('Why was the sample not collectable?')).toBeInTheDocument();
+  });
+
+  it('shows not-collectable form for no-water-present condition', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail());
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    await user.click(screen.getByRole('button', { name: 'No water present' }));
+
+    expect(screen.getByText('Why was the sample not collectable?')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Describe what you observed at the monitoring point')).toBeInTheDocument();
+  });
+
+  it('preserves inspection notes across back and next navigation', async () => {
+    const user = userEvent.setup();
+    renderPage(buildStartedDetail());
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    const notes = screen.getByRole('textbox', { name: /Inspection notes/i });
+    await user.clear(notes);
+    await user.type(notes, 'Custom inspection note for persistence test.');
 
     await user.click(screen.getByRole('button', { name: 'Back' }));
-    await waitForStepHeading('Choose Outcome');
-    expect(screen.getByRole('heading', { name: 'Choose Outcome' })).toBeInTheDocument();
+    await waitForStepHeading('Start Visit');
 
-    await user.click(screen.getByRole('button', { name: 'Continue to outcome details' }));
-    await waitForStepHeading('Outcome Details');
-    expect(screen.getByRole('textbox', { name: /Narrative/i })).toHaveValue(
-      'Observed no discharge at the actual sampling point.',
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+    expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(
+      'Custom inspection note for persistence test.',
     );
   });
 
   it('shows an explicit error toast after start if system weather fails to load', async () => {
     const user = userEvent.setup();
-    const startedDetail = buildStartedDetail();
     const startVisit = vi.fn().mockResolvedValue({ queued: false });
-    let meteoCall = 0;
     fetchOpenMeteoCurrentSnapshotMock.mockReset();
-    fetchOpenMeteoCurrentSnapshotMock.mockImplementation(async () => {
-      meteoCall += 1;
-      if (meteoCall === 1) {
-        return {
-          summary: 'Overcast · 54°F',
-          fetchedAtIso: '2026-04-01T12:00:00.000Z',
-        };
-      }
-      throw new Error('Weather service returned 503');
-    });
-    sessionStorage.setItem(
-      'field-visit-wizard-draft:visit-1',
-      JSON.stringify({
-        version: 1,
-        startCoords: { latitude: '38.12345', longitude: '-81.23456' },
-        completeCoords: { latitude: '', longitude: '' },
-        observedSiteConditions: '',
-        fieldNotes: '',
-        outcome: 'sample_collected',
-        outcomeExplicitlySelected: false,
-        potentialForceMajeure: false,
-        potentialForceMajeureNotes: '',
-        noDischargeNarrative: '',
-        noDischargeCondition: '',
-        noDischargeObstructionObserved: false,
-        noDischargeObstructionDetails: '',
-        accessIssueNarrative: '',
-        accessIssueType: 'access_issue',
-        contactAttempted: false,
-        contactName: '',
-        contactOutcome: '',
-        cocContainerId: '',
-        cocPreservativeConfirmed: false,
-        cocCaptureMethod: 'manual',
-        cocRawScanValue: '',
-        requiredMeasurementDrafts: {},
-        selectedPhotoCategory: 'outlet_signage',
-        inspection: {},
-      }),
+    fetchOpenMeteoCurrentSnapshotMock.mockRejectedValue(
+      new Error('Weather service returned 503'),
     );
-    let hookState = {
-      detail: buildDetail() as FieldVisitDetails | null,
+    const base = buildDetail();
+    const unstartedWithCoords = buildDetail({
+      visit: {
+        ...base.visit,
+        outfall_latitude: 38.1,
+        outfall_longitude: -81.2,
+      },
+    });
+    const hookState = {
+      detail: unstartedWithCoords as FieldVisitDetails | null,
       detailLoading: false,
       detailLoadSource: 'live' as const,
       loading: false,
@@ -640,7 +693,7 @@ describe('FieldVisitPage wizard', () => {
       clearOutboundQueueDiagnostic: vi.fn(),
       dispatchLoadAlerts: [],
       visits: [],
-      loadVisitDetails: vi.fn().mockResolvedValue(startedDetail),
+      loadVisitDetails: vi.fn().mockResolvedValue(null),
       refreshOutboundPendingCount: vi.fn(),
       refresh: vi.fn().mockResolvedValue({ success: false }),
       startVisit,
@@ -652,7 +705,7 @@ describe('FieldVisitPage wizard', () => {
     };
     useFieldOpsMock.mockImplementation(() => hookState);
 
-    const view = render(
+    render(
       <MemoryRouter initialEntries={['/field/visits/visit-1']}>
         <Routes>
           <Route path="/field/visits/:id" element={<FieldVisitPage />} />
@@ -662,25 +715,11 @@ describe('FieldVisitPage wizard', () => {
     );
 
     await waitForWizard();
-    await user.click(screen.getByRole('button', { name: 'Start visit' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => {
       expect(startVisit).toHaveBeenCalled();
     });
-
-    hookState = {
-      ...hookState,
-      detail: startedDetail,
-    };
-
-    view.rerender(
-      <MemoryRouter initialEntries={['/field/visits/visit-1']}>
-        <Routes>
-          <Route path="/field/visits/:id" element={<FieldVisitPage />} />
-          <Route path="/field/dispatch" element={<div>Field queue</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
@@ -729,7 +768,7 @@ describe('FieldVisitPage wizard', () => {
     }));
 
     await waitForWizard();
-    await waitForStepHeading('Outcome Details');
+    await waitForStepHeading('Sample Collection');
     await user.click(getWizardButton(/Evidence/i));
     await waitForStepHeading('Evidence');
 
@@ -741,7 +780,7 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByText(/pending sync/i)).toBeInTheDocument();
   });
 
-  it('surfaces QA prompts in the outcome-details step for duplicate and special handling context', async () => {
+  it('surfaces QA prompts in the sample collection step for duplicate and special handling context', async () => {
     const user = userEvent.setup();
     const detail = buildStartedDetail({
       visit: {
@@ -780,7 +819,7 @@ describe('FieldVisitPage wizard', () => {
     renderPage(detail);
 
     await waitForWizard();
-    await waitForStepHeading('Outcome Details');
+    await waitForStepHeading('Sample Collection');
 
     const qaToggle = screen.getByRole('button', { name: 'QA prompts' });
     expect(screen.getByText('Need help with this stop?')).toBeInTheDocument();
@@ -835,7 +874,7 @@ describe('FieldVisitPage wizard', () => {
     renderPage(detail);
 
     await waitForWizard();
-    await waitForStepHeading('Outcome Details');
+    await waitForStepHeading('Sample Collection');
 
     const qaToggle = screen.getByRole('button', { name: 'QA prompts' });
     const safetyToggle = screen.getByRole('button', { name: 'Safety actions' });
@@ -850,101 +889,27 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.queryByText('Possible duplicate stop')).not.toBeInTheDocument();
   });
 
-  it('shows a single required-photo action for inspection follow-up prompts', async () => {
+  it('renders the site assessment reachability toggle with correct initial state', async () => {
     const user = userEvent.setup();
     renderPage(buildStartedDetail({
       inspection: {
         ...buildInspection(),
-        flow_status: 'obstructed',
         obstruction_observed: true,
         obstruction_details: 'Vegetation: brush packed against the pipe opening',
       },
     }));
 
     await waitForWizard();
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
 
-    expect(screen.getByText('Capture before you continue')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Take required photo' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open governance inbox' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Append follow-up note' })).not.toBeInTheDocument();
+    expect(screen.getByText('Are you able to reach the inspection site?')).toBeInTheDocument();
+    expect(screen.getByText('Obstruction type')).toBeInTheDocument();
+    expect(screen.getByText(/Describe the obstruction/i)).toBeInTheDocument();
+    expect(screen.queryByText('What condition is present at the designated monitoring point?')).not.toBeInTheDocument();
   });
 
-  it('routes deficiency photo-bucket action into the evidence step and focuses the obstruction bucket', async () => {
-    const user = userEvent.setup();
-    renderPage(buildStartedDetail({
-      inspection: {
-        ...buildInspection(),
-        flow_status: 'obstructed',
-        obstruction_observed: true,
-        obstruction_details: 'Vegetation: brush packed against the pipe opening',
-      },
-    }));
-
-    await waitForWizard();
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
-    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
-
-    await waitForStepHeading('Evidence');
-    expect(
-      screen.getByRole('button', { name: /Obstruction \/ deficiency/i }),
-    ).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  it('routes evidence-step continue to the next required step instead of skipping to review', async () => {
-    const user = userEvent.setup();
-    renderPage(buildStartedDetail({
-      inspection: {
-        ...buildInspection(),
-        flow_status: 'obstructed',
-        obstruction_observed: true,
-        obstruction_details: 'Vegetation: brush packed against the pipe opening',
-      },
-    }));
-
-    await waitForWizard();
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
-    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
-
-    await waitForStepHeading('Evidence');
-    await user.click(screen.getByRole('button', { name: 'Continue to review' }));
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(FIELD_VISIT_COPY.outcomeRequired);
-    });
-    expect(screen.getByRole('heading', { name: 'Evidence' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Review & Complete' })).not.toBeInTheDocument();
-  });
-
-  it('appends deficiency follow-up notes into the visible inspection notes field', async () => {
-    const user = userEvent.setup();
-    renderPage(buildStartedDetail({
-      inspection: {
-        ...buildInspection(),
-        flow_status: 'obstructed',
-        obstruction_observed: true,
-        obstruction_details: 'Vegetation: brush packed against the pipe opening',
-        inspector_notes: '',
-      },
-    }));
-
-    await waitForWizard();
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
-    await user.click(screen.getByRole('button', { name: 'Take required photo' }));
-    await waitForStepHeading('Evidence');
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
-
-    expect(
-      (screen.getByRole('textbox', { name: /Inspection notes/i }) as HTMLTextAreaElement).value,
-    ).toContain('Deficiency follow-up: vegetation obstruction observed at the outlet.');
-  });
-
-  it('keeps structured inspection fields and notes after save-and-continue and rerender', async () => {
+  it('keeps structured inspection notes after save-and-continue and rerender', async () => {
     const user = userEvent.setup();
     const expectedInspectionNote = 'Signage damaged and outlet partially blocked.';
     const saveInspection = vi.fn().mockImplementation(async (_visitId: string, inspection: Partial<OutletInspectionRecord>) => {
@@ -1002,17 +967,11 @@ describe('FieldVisitPage wizard', () => {
     );
 
     await waitForWizard();
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
 
-    await user.click(screen.getByRole('button', { name: 'Yes' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: /Flow status/i }), 'obstructed');
-    await user.selectOptions(screen.getByRole('combobox', { name: /Signage condition/i }), 'Damaged');
-    await user.selectOptions(screen.getByRole('combobox', { name: /Pipe condition/i }), 'Major Damage');
-    await user.selectOptions(screen.getByRole('combobox', { name: /Obstruction type/i }), 'Vegetation');
-    fireEvent.change(screen.getByRole('textbox', { name: /Describe the obstruction/i }), {
-      target: { value: 'Brush and vines block about half the opening.' },
-    });
+    await user.click(screen.getByRole('button', { name: 'Flowing discharge' }));
+
     fireEvent.change(screen.getByRole('textbox', { name: /Inspection notes/i }), {
       target: { value: expectedInspectionNote },
     });
@@ -1020,11 +979,11 @@ describe('FieldVisitPage wizard', () => {
       expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(expectedInspectionNote);
     });
 
-    await user.click(screen.getByRole('button', { name: 'Save inspection & continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue to sample collection' }));
     await waitFor(() => {
       expect(saveInspection).toHaveBeenCalled();
     });
-    await waitForStepHeading('Choose Outcome');
+    await waitForStepHeading('Sample Collection');
 
     view.rerender(
       <MemoryRouter initialEntries={['/field/visits/visit-1']}>
@@ -1035,16 +994,10 @@ describe('FieldVisitPage wizard', () => {
       </MemoryRouter>,
     );
 
-    await waitForStepHeading('Choose Outcome');
-    await user.click(getWizardButton(/Outlet Inspection/i));
-    await waitForStepHeading('Outlet Inspection');
+    await waitForStepHeading('Sample Collection');
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
 
-    expect(screen.getByRole('combobox', { name: /Signage condition/i })).toHaveValue('Damaged');
-    expect(screen.getByRole('combobox', { name: /Pipe condition/i })).toHaveValue('Major Damage');
-    expect(screen.getByRole('combobox', { name: /Obstruction type/i })).toHaveValue('Vegetation');
-    expect(screen.getByRole('textbox', { name: /Describe the obstruction/i })).toHaveValue(
-      'Brush and vines block about half the opening.',
-    );
     expect(screen.getByRole('textbox', { name: /Inspection notes/i })).toHaveValue(expectedInspectionNote);
   });
 

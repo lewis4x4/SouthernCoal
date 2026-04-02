@@ -5,7 +5,6 @@ export type FieldVisitStepId =
   | 'start_visit'
   | 'confirm_location'
   | 'inspection'
-  | 'choose_outcome'
   | 'outcome_details'
   | 'review_complete';
 

@@ -8,7 +8,6 @@ import {
 import { FIELD_VISIT_COPY } from '@/lib/fieldVisitValidationCopy';
 
 const base = () => ({
-  outcomeSelected: true,
   requiredFieldMeasurementsComplete: true,
   containerValidationBlocking: false,
   completeLatitude: 38.0,
@@ -48,15 +47,6 @@ describe('validateFieldVisitStartCoordinates', () => {
 describe('validateFieldVisitCompletion', () => {
   it('passes for valid sample_collected', () => {
     expect(validateFieldVisitCompletion(base())).toEqual({ ok: true });
-  });
-
-  it('fails when no outcome was explicitly selected', () => {
-    const r = validateFieldVisitCompletion({
-      ...base(),
-      outcomeSelected: false,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.outcomeRequired);
   });
 
   it('fails when completion coordinates are not finite (A3)', () => {
@@ -236,7 +226,6 @@ describe('getFieldVisitCompletionChecklistItems', () => {
   it('marks photo item done when online and synced photos exist', () => {
     const items = getFieldVisitCompletionChecklistItems({
       visitStarted: true,
-      outcomeSelected: true,
       requiredFieldMeasurementsComplete: true,
       containerValidationBlocking: false,
       completeLatitude: 38,

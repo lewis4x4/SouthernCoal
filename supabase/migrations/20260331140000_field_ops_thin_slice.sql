@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS outlet_inspections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   field_visit_id uuid NOT NULL UNIQUE REFERENCES field_visits(id) ON DELETE CASCADE,
   flow_status text NOT NULL DEFAULT 'unknown'
-    CHECK (flow_status IN ('flowing', 'no_flow', 'obstructed', 'unknown')),
+    CHECK (flow_status IN ('flowing', 'no_flow', 'obstructed', 'standing_water', 'unknown')),
   signage_condition text,
   pipe_condition text,
   erosion_observed boolean NOT NULL DEFAULT false,
