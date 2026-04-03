@@ -1,16 +1,31 @@
-import { Camera, CheckCircle2, ImagePlus, XCircle } from 'lucide-react';
+import { AlertTriangle, Camera, CheckCircle2, ImagePlus, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { OutletInspectionRecord, SiteConditionPresent, StandingWaterChecks } from '@/types';
+import type {
+  FlowEstimationCategory,
+  FlowEstimationMethod,
+  OutletInspectionRecord,
+  SiteConditionPresent,
+  StandingWaterChecks,
+} from '@/types';
 import {
   OBSTRUCTION_TYPE_OPTIONS,
   formatInspectionObstructionDetails,
   parseInspectionObstructionDetails,
 } from '@/lib/fieldVisitInspectionRouting';
+import {
+  clampFlowEstimateCfs,
+  FLOW_CATEGORY_MIDPOINT_CFS,
+  FLOW_ESTIMATION_METHOD_OPTIONS,
+  parseFlowEstimateCfsInput,
+  VISUAL_FLOW_CATEGORY_OPTIONS,
+} from '@/lib/fieldVisitStreamFlow';
 
 interface FieldVisitInspectionStepProps {
   inspection: Partial<OutletInspectionRecord>;
   visitLocked: boolean;
   onInspectionChange: (patch: Partial<OutletInspectionRecord>) => void;
+  /** Stream / receiving-stream / GW-SW monitoring points only (from outfall type). */
+  streamFlowEstimationEnabled: boolean;
   sameAsLastHelpers?: ReactNode;
   siteCondition: SiteConditionPresent | null;
   onSiteConditionChange: (condition: SiteConditionPresent | null) => void;
@@ -77,6 +92,7 @@ export function FieldVisitInspectionStep({
   inspection,
   visitLocked,
   onInspectionChange,
+  streamFlowEstimationEnabled,
   sameAsLastHelpers,
   siteCondition,
   onSiteConditionChange,
@@ -101,6 +117,16 @@ export function FieldVisitInspectionStep({
       standingWaterChecks.noDisturbance === false ||
       standingWaterChecks.pointVerified === false
     ));
+
+  const cfs = inspection.flow_estimate_cfs;
+  const streamFlowEstimateDone =
+    !streamFlowEstimationEnabled ||
+    (inspection.flow_category != null &&
+      inspection.flow_method != null &&
+      typeof cfs === 'number' &&
+      Number.isFinite(cfs) &&
+      cfs >= 0 &&
+      cfs <= 999);
 
   function handleReachabilityToggle(reachable: boolean) {
     if (reachable) {
@@ -327,11 +353,132 @@ export function FieldVisitInspectionStep({
         </div>
       )}
 
-      {/* Flowing discharge confirmation */}
-      {canReachSite && siteCondition === 'flowing_discharge' && (
+      {/* Visual stream flow (WV receiving-stream style) — only for applicable outfall types */}
+      {canReachSite && siteCondition === 'flowing_discharge' && streamFlowEstimationEnabled && (
+        <div className="space-y-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-4">
+          <div>
+            <div className="text-sm font-medium text-cyan-100">Estimated Stream Flow</div>
+            <p className="mt-1 text-xs text-text-secondary">
+              Visually assess the stream and select the best match. Consider stream width, depth, and water
+              velocity.
+            </p>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="sr-only">Flow category</legend>
+            <div className="grid gap-2">
+              {VISUAL_FLOW_CATEGORY_OPTIONS.map((opt) => {
+                const selected = inspection.flow_category === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={visitLocked}
+                    onClick={() =>
+                      onInspectionChange({
+                        flow_category: opt.value as FlowEstimationCategory,
+                        flow_estimate_cfs: FLOW_CATEGORY_MIDPOINT_CFS[opt.value],
+                        flow_safety_warning_shown: opt.value === 'flood',
+                      })
+                    }
+                    className={`min-h-12 rounded-2xl border px-4 py-3 text-left text-base font-medium transition-colors ${
+                      selected
+                        ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
+                        : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05] active:bg-white/[0.08]'
+                    } disabled:opacity-60`}
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                      <span>{opt.label}</span>
+                      <span className="text-xs font-normal text-text-muted">{opt.rangeLabel}</span>
+                    </div>
+                    <p className="mt-1 text-xs font-normal text-text-muted">{opt.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {inspection.flow_category ? (
+            <>
+              {inspection.flow_category === 'flood' && (
+                <div
+                  className="flex gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] px-4 py-3"
+                  role="status"
+                >
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
+                  <p className="text-sm text-amber-100">
+                    Do not enter the stream. Record visual observations and photos from a safe distance. Flow
+                    estimate is approximate.
+                  </p>
+                </div>
+              )}
+
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-text-muted">Estimated Flow (cfs)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={999}
+                  step={0.1}
+                  inputMode="decimal"
+                  disabled={visitLocked}
+                  value={
+                    inspection.flow_estimate_cfs != null && Number.isFinite(inspection.flow_estimate_cfs)
+                      ? inspection.flow_estimate_cfs
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const parsed = parseFlowEstimateCfsInput(e.target.value);
+                    onInspectionChange({
+                      flow_estimate_cfs: parsed == null ? null : clampFlowEstimateCfs(parsed),
+                    });
+                  }}
+                  placeholder={String(FLOW_CATEGORY_MIDPOINT_CFS[inspection.flow_category])}
+                  className="w-full min-h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
+                />
+              </label>
+
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-text-muted">Estimation Method</legend>
+                <div className="flex flex-wrap gap-2">
+                  {FLOW_ESTIMATION_METHOD_OPTIONS.map((opt) => {
+                    const selected = inspection.flow_method === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        aria-pressed={selected}
+                        disabled={visitLocked}
+                        onClick={() =>
+                          onInspectionChange({ flow_method: opt.value as FlowEstimationMethod })
+                        }
+                        className={`min-h-10 rounded-full border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                          selected
+                            ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
+                            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+                        } disabled:opacity-60`}
+                      >
+                        <span className="block">{opt.label}</span>
+                        <span className="mt-0.5 block text-[11px] font-normal text-text-muted">{opt.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {canReachSite && siteCondition === 'flowing_discharge' && streamFlowEstimateDone && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
-          <span className="text-sm text-emerald-100">Flowing discharge confirmed — proceed to sample collection</span>
+          <span className="text-sm text-emerald-100">
+            {streamFlowEstimationEnabled
+              ? 'Stream flow estimate captured — proceed to sample collection'
+              : 'Flowing discharge confirmed — proceed to sample collection'}
+          </span>
         </div>
       )}
 

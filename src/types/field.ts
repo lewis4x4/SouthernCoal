@@ -8,6 +8,11 @@ export type SiteConditionPresent =
   | 'inaccessible'
   | 'other';
 
+/** Visual stream flow band — stored for QA when estimating receiving-stream flow. */
+export type FlowEstimationCategory = 'trickle' | 'low' | 'moderate' | 'high' | 'flood';
+
+export type FlowEstimationMethod = 'visual' | 'float' | 'instrument';
+
 export interface StandingWaterChecks {
   sufficientWater: boolean | null;
   noDisturbance: boolean | null;
@@ -45,6 +50,8 @@ export interface OutfallOption {
   outfall_number: string;
   latitude: number | null;
   longitude: number | null;
+  /** From `outfalls.outfall_type` — drives stream vs discharge UI (e.g. visual flow estimation). */
+  outfall_type: string | null;
 }
 
 export interface FieldVisitRecord {
@@ -88,6 +95,8 @@ export interface FieldVisitListItem extends FieldVisitRecord {
   /** Filled when saving offline route copy or loading visit detail; used offline on visit shell. */
   scheduled_parameter_label?: string | null;
   schedule_instructions?: string | null;
+  /** From `outfalls.outfall_type` when dispatch/detail loads outfalls. */
+  outfall_type?: string | null;
 }
 
 export interface OutletInspectionRecord {
@@ -100,6 +109,10 @@ export interface OutletInspectionRecord {
   obstruction_observed: boolean;
   obstruction_details: string | null;
   inspector_notes: string | null;
+  flow_category: FlowEstimationCategory | null;
+  flow_estimate_cfs: number | null;
+  flow_method: FlowEstimationMethod | null;
+  flow_safety_warning_shown: boolean | null;
   created_by: string;
   created_at: string;
   updated_at: string;

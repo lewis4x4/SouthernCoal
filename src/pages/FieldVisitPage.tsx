@@ -32,6 +32,7 @@ import type { FieldVisitWizardProgressStep } from '@/components/field-visit/Fiel
 import { QuickPhrasePicker } from '@/components/field-visit/QuickPhrasePicker';
 import { FieldVisitEvidenceStep } from '@/components/field-visit/steps/FieldVisitEvidenceStep';
 import { FieldVisitInspectionStep } from '@/components/field-visit/steps/FieldVisitInspectionStep';
+import { isStreamFlowEstimationPointType } from '@/lib/fieldVisitStreamFlow';
 import { FieldVisitOutcomeDetailsStep } from '@/components/field-visit/steps/FieldVisitOutcomeDetailsStep';
 import { FieldVisitReviewStep } from '@/components/field-visit/steps/FieldVisitReviewStep';
 import { FieldVisitStartStep } from '@/components/field-visit/steps/FieldVisitStartStep';
@@ -40,6 +41,7 @@ import { EvidenceCaptureUpload } from '@/components/submissions/EvidenceCaptureU
 import { useFieldOps } from '@/hooks/useFieldOps';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { parseContainerScan, validateContainerAgainstStop } from '@/lib/containerScan';
 import {
   clearPersistedFieldEvidenceSyncFailuresForVisit,
@@ -146,7 +148,52 @@ const EMPTY_INSPECTION_STATE: Partial<OutletInspectionRecord> = {
   obstruction_observed: false,
   obstruction_details: '',
   inspector_notes: '',
+  flow_category: null,
+  flow_estimate_cfs: null,
+  flow_method: null,
+  flow_safety_warning_shown: null,
 };
+
+function computeOutletInspectionFlowPersistence(
+  inspection: Partial<OutletInspectionRecord>,
+  input: {
+    siteCondition: SiteConditionPresent | null;
+    siteConditionSampleable: boolean;
+    streamPoint: boolean;
+    isObstruction: boolean;
+  },
+): Pick<
+  OutletInspectionRecord,
+  'flow_category' | 'flow_estimate_cfs' | 'flow_method' | 'flow_safety_warning_shown'
+> {
+  if (input.siteCondition === 'standing_water' && input.siteConditionSampleable) {
+    return {
+      flow_category: null,
+      flow_estimate_cfs: 0,
+      flow_method: null,
+      flow_safety_warning_shown: null,
+    };
+  }
+  if (input.siteCondition !== 'flowing_discharge' || !input.streamPoint || input.isObstruction) {
+    return {
+      flow_category: null,
+      flow_estimate_cfs: null,
+      flow_method: null,
+      flow_safety_warning_shown: null,
+    };
+  }
+  let cfs = inspection.flow_estimate_cfs;
+  if (typeof cfs === 'number' && Number.isFinite(cfs)) {
+    cfs = Math.min(999, Math.max(0, Math.round(cfs * 10) / 10));
+  }
+  return {
+    flow_category: (inspection.flow_category ?? null) as OutletInspectionRecord['flow_category'],
+    flow_estimate_cfs: cfs ?? null,
+    flow_method: (inspection.flow_method ?? null) as OutletInspectionRecord['flow_method'],
+    flow_safety_warning_shown:
+      inspection.flow_category === 'flood' ? true : (inspection.flow_safety_warning_shown ?? false),
+  };
+}
 
 function formatOutcomeLabel(outcome: FieldVisitOutcome) {
   switch (outcome) {
@@ -227,6 +274,7 @@ export function FieldVisitPage() {
   const navigate = useNavigate();
   const { getEffectiveRole } = usePermissions();
   const { profile } = useUserProfile();
+  const { log: auditLog } = useAuditLog();
   const [completionConfirmed, setCompletionConfirmed] = useState(false);
   const [obstructionReportConfirmed, setObstructionReportConfirmed] = useState(false);
   const [notCollectableConfirmed, setNotCollectableConfirmed] = useState(false);
@@ -484,6 +532,13 @@ export function FieldVisitPage() {
             pipe_condition: normalizePipeCondition(detail.inspection.pipe_condition) || '',
             obstruction_details: detail.inspection.obstruction_details ?? '',
             inspector_notes: detail.inspection.inspector_notes ?? '',
+            flow_category: detail.inspection.flow_category ?? null,
+            flow_estimate_cfs:
+              detail.inspection.flow_estimate_cfs != null
+                ? Number(detail.inspection.flow_estimate_cfs)
+                : null,
+            flow_method: detail.inspection.flow_method ?? null,
+            flow_safety_warning_shown: detail.inspection.flow_safety_warning_shown ?? null,
           }
         : { ...EMPTY_INSPECTION_STATE };
 
@@ -497,7 +552,7 @@ export function FieldVisitPage() {
 
       return incoming;
     });
-  }, [detail?.visit.id, detail?.inspection?.updated_at]);
+  }, [detail]);
 
   useEffect(() => {
     if (!id || !wizardStateReady || wizardHydratedForVisitRef.current !== id) return;
@@ -562,6 +617,32 @@ export function FieldVisitPage() {
       standingWaterChecks.noDisturbance === false ||
       standingWaterChecks.pointVerified === false
     ));
+  const streamMonitoringPoint = useMemo(
+    () => isStreamFlowEstimationPointType(detail?.visit.outfall_type),
+    [detail?.visit.outfall_type],
+  );
+  const streamFlowSectionApplies = useMemo(
+    () =>
+      streamMonitoringPoint &&
+      !(inspection.obstruction_observed ?? false) &&
+      siteCondition === 'flowing_discharge',
+    [streamMonitoringPoint, inspection.obstruction_observed, siteCondition],
+  );
+  const streamFlowComplete = useMemo(() => {
+    if (!streamFlowSectionApplies) return true;
+    const cfs = inspection.flow_estimate_cfs;
+    const cfsOk =
+      typeof cfs === 'number' &&
+      Number.isFinite(cfs) &&
+      cfs >= 0 &&
+      cfs <= 999;
+    return inspection.flow_category != null && inspection.flow_method != null && cfsOk;
+  }, [
+    streamFlowSectionApplies,
+    inspection.flow_category,
+    inspection.flow_method,
+    inspection.flow_estimate_cfs,
+  ]);
   const isClientOnline = typeof navigator !== 'undefined' && navigator.onLine;
   const visitStarted = Boolean(detail?.visit.started_at);
   const canAttemptComplete = visitStarted && !visitLocked;
@@ -571,7 +652,10 @@ export function FieldVisitPage() {
       [],
     [detail?.measurements],
   );
-  const requiredMeasurements = detail?.required_field_measurements ?? [];
+  const requiredMeasurements = useMemo(
+    () => detail?.required_field_measurements ?? [],
+    [detail?.required_field_measurements],
+  );
   const additionalFieldObservations = useMemo(
     () =>
       generalMeasurements.filter(
@@ -702,9 +786,9 @@ export function FieldVisitPage() {
     detail.inspection.flow_status !== 'unknown';
   const inspectionReady =
     (inspection.obstruction_observed && Boolean(inspectionObstructionNarrative)) ||
-    siteConditionSampleable ||
+    (siteConditionSampleable && streamFlowComplete) ||
     (siteConditionNotCollectable && Boolean(notCollectableNotes.trim())) ||
-    serverFlowKnown;
+    (serverFlowKnown && !streamFlowSectionApplies);
   const noDischargeDetailsReady =
     Boolean(noDischargeNarrative.trim()) &&
     totalPhotoCount >= 1 &&
@@ -809,8 +893,35 @@ export function FieldVisitPage() {
     if (siteConditionNotCollectable && !notCollectableNotes.trim()) {
       return 'Describe the observed condition before submitting.';
     }
+    if (streamFlowSectionApplies) {
+      if (!inspection.flow_category) {
+        return 'Select a visual flow category for this stream monitoring point.';
+      }
+      if (!inspection.flow_method) {
+        return 'Select an estimation method (visual, float, or instrument).';
+      }
+      const cfs = inspection.flow_estimate_cfs;
+      if (
+        cfs == null ||
+        !Number.isFinite(cfs) ||
+        cfs < 0 ||
+        cfs > 999
+      ) {
+        return 'Enter estimated flow (cfs) between 0 and 999.';
+      }
+    }
     return 'Complete the site assessment before moving on.';
-  }, [inspection.obstruction_observed, inspectionObstructionNarrative, siteCondition, siteConditionNotCollectable, notCollectableNotes]);
+  }, [
+    inspection.flow_category,
+    inspection.flow_estimate_cfs,
+    inspection.flow_method,
+    inspection.obstruction_observed,
+    inspectionObstructionNarrative,
+    notCollectableNotes,
+    siteCondition,
+    siteConditionNotCollectable,
+    streamFlowSectionApplies,
+  ]);
   const outcomeDetailsBlockerMessage = useMemo(() => {
     if (outcome === 'sample_collected') {
       if (cocValidation.blocking) return FIELD_VISIT_COPY.sampleContainerMismatch;
@@ -993,7 +1104,7 @@ export function FieldVisitPage() {
       updated_at: stampedAt,
     }));
     toast.success('Applied last inspection summary');
-  }, [detail?.previous_visit_context]);
+  }, [detail?.previous_visit_context, detail?.visit.id]);
 
   const appendFollowUpNote = useCallback((note: string) => {
     setFieldNotes((current) => (current.trim() ? `${current.trim()}\n${note}` : note));
@@ -1185,20 +1296,50 @@ export function FieldVisitPage() {
   async function handleSaveInspection() {
     if (!detail || visitLocked) return;
 
+    if (streamFlowSectionApplies && !streamFlowComplete) {
+      toast.error(inspectionBlockerMessage);
+      return;
+    }
+
     const isObstruction = inspection.obstruction_observed ?? false;
     const flowStatus = autoFlowStatusFromCondition();
     const inspectionWithFlow = { ...inspection, flow_status: flowStatus };
+    const streamPoint = isStreamFlowEstimationPointType(detail.visit.outfall_type);
 
     if (siteCondition === 'standing_water' && siteConditionSampleable) {
       const swMeta = `[Standing water assessment: sufficient=${standingWaterChecks.sufficientWater}, undisturbed=${standingWaterChecks.noDisturbance}, point_verified=${standingWaterChecks.pointVerified}]`;
       const existing = (inspectionWithFlow.inspector_notes ?? '').trim();
       inspectionWithFlow.inspector_notes = existing ? `${existing}\n${swMeta}` : swMeta;
     }
+    Object.assign(
+      inspectionWithFlow,
+      computeOutletInspectionFlowPersistence(inspectionWithFlow, {
+        siteCondition,
+        siteConditionSampleable,
+        streamPoint,
+        isObstruction,
+      }),
+    );
 
     try {
       setSaving(true);
       setInspection(inspectionWithFlow);
       await saveInspection(detail.visit.id, inspectionWithFlow);
+
+      if (
+        inspectionWithFlow.flow_category === 'flood' &&
+        inspectionWithFlow.flow_safety_warning_shown
+      ) {
+        auditLog(
+          'field_visit_stream_flow_flood_safety_warning',
+          {
+            field_visit_id: detail.visit.id,
+            flow_estimate_cfs: inspectionWithFlow.flow_estimate_cfs,
+            flow_method: inspectionWithFlow.flow_method,
+          },
+          { module: 'field_ops', tableName: 'outlet_inspections', recordId: detail.visit.id },
+        );
+      }
 
       if (isObstruction) {
         const lat = detail.visit.outfall_latitude ?? 0;
@@ -1377,7 +1518,20 @@ export function FieldVisitPage() {
           cocSaveMetadata,
         );
       }
-      const inspectionForCompletion = { ...inspection, flow_status: autoFlowStatusFromCondition() };
+      const completionFlowStatus = autoFlowStatusFromCondition();
+      const inspectionForCompletion = {
+        ...inspection,
+        flow_status: completionFlowStatus,
+        ...computeOutletInspectionFlowPersistence(
+          { ...inspection, flow_status: completionFlowStatus },
+          {
+            siteCondition,
+            siteConditionSampleable,
+            streamPoint: isStreamFlowEstimationPointType(detail.visit.outfall_type),
+            isObstruction: inspection.obstruction_observed ?? false,
+          },
+        ),
+      };
       await saveInspection(detail.visit.id, inspectionForCompletion);
       await completeVisit(detail.visit, {
         outcome,
@@ -1515,6 +1669,7 @@ export function FieldVisitPage() {
       default:
         return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSaveInspection/handleCompletion are recreated each render
   }, [
     activeStep,
     goToStep,
@@ -2405,10 +2560,19 @@ export function FieldVisitPage() {
             onInspectionChange={handleInspectionChange}
             sameAsLastHelpers={sameAsLastHelpers}
             siteCondition={siteCondition}
+            streamFlowEstimationEnabled={streamFlowSectionApplies}
             onSiteConditionChange={(next) => {
               setSiteCondition(next);
               if (next !== 'standing_water') {
                 setStandingWaterChecks({ sufficientWater: null, noDisturbance: null, pointVerified: null });
+              }
+              if (next !== 'flowing_discharge') {
+                handleInspectionChange({
+                  flow_category: null,
+                  flow_estimate_cfs: null,
+                  flow_method: null,
+                  flow_safety_warning_shown: null,
+                });
               }
               if (next !== siteCondition) {
                 setNotCollectableNotes('');

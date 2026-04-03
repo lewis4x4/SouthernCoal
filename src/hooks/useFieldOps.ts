@@ -643,6 +643,7 @@ export function useFieldOps() {
       outfall_number: of?.outfall_number ?? null,
       outfall_latitude: of?.latitude ?? null,
       outfall_longitude: of?.longitude ?? null,
+      outfall_type: of?.outfall_type ?? null,
       assigned_to_name: displayName(userMap.get(visit.assigned_to) ?? {}),
       route_stop_sequence: routeStopSequence,
       route_priority_rank: routePriorityRank,
@@ -923,7 +924,7 @@ export function useFieldOps() {
     if (permitIds.length > 0) {
       const outfallRes = await supabase
         .from('outfalls')
-        .select('id, permit_id, outfall_number, latitude, longitude')
+        .select('id, permit_id, outfall_number, latitude, longitude, outfall_type')
         .in('permit_id', permitIds)
         .order('outfall_number');
 
@@ -935,10 +936,12 @@ export function useFieldOps() {
       }
       outfallRows = (outfallRes.data ?? []).map((row) => {
         const coords = parseOutfallCoords(row.latitude, row.longitude);
+        const ot = row.outfall_type;
         return {
           id: row.id as string,
           permit_id: row.permit_id as string,
           outfall_number: row.outfall_number as string,
+          outfall_type: typeof ot === 'string' && ot.trim() ? ot.trim() : null,
           ...coords,
         };
       });
@@ -1172,6 +1175,10 @@ export function useFieldOps() {
       obstruction_observed: inspection.obstruction_observed ?? false,
       obstruction_details: inspection.obstruction_details ?? null,
       inspector_notes: inspection.inspector_notes ?? null,
+      flow_category: inspection.flow_category ?? null,
+      flow_estimate_cfs: inspection.flow_estimate_cfs ?? null,
+      flow_method: inspection.flow_method ?? null,
+      flow_safety_warning_shown: inspection.flow_safety_warning_shown ?? null,
     };
 
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -1188,6 +1195,10 @@ export function useFieldOps() {
         obstructionObserved: payload.obstruction_observed,
         obstructionDetails: payload.obstruction_details,
         inspectorNotes: payload.inspector_notes,
+        flowCategory: payload.flow_category,
+        flowEstimateCfs: payload.flow_estimate_cfs,
+        flowMethod: payload.flow_method,
+        flowSafetyWarningShown: payload.flow_safety_warning_shown,
       });
 
       if (!ok) throw new Error('Could not save offline — storage blocked or full');
@@ -1205,6 +1216,10 @@ export function useFieldOps() {
           obstruction_observed: payload.obstruction_observed,
           obstruction_details: payload.obstruction_details,
           inspector_notes: payload.inspector_notes,
+          flow_category: payload.flow_category as OutletInspectionRecord['flow_category'],
+          flow_estimate_cfs: payload.flow_estimate_cfs,
+          flow_method: payload.flow_method as OutletInspectionRecord['flow_method'],
+          flow_safety_warning_shown: payload.flow_safety_warning_shown,
           created_by: userId ?? prev.inspection?.created_by ?? '',
           created_at: prev.inspection?.created_at ?? now,
           updated_at: now,
@@ -1234,6 +1249,10 @@ export function useFieldOps() {
         obstruction_observed: payload.obstruction_observed,
         obstruction_details: payload.obstruction_details,
         inspector_notes: payload.inspector_notes,
+        flow_category: payload.flow_category as OutletInspectionRecord['flow_category'],
+        flow_estimate_cfs: payload.flow_estimate_cfs,
+        flow_method: payload.flow_method as OutletInspectionRecord['flow_method'],
+        flow_safety_warning_shown: payload.flow_safety_warning_shown,
         created_by: prev.inspection?.created_by ?? userId ?? '',
         created_at: prev.inspection?.created_at ?? now,
         updated_at: now,

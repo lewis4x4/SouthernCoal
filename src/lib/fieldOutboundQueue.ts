@@ -29,6 +29,8 @@ const OUTBOUND_QUEUE_LOCK = 'scc-field-outbound-queue';
 const MAX_QUEUE_CAS_ATTEMPTS = 16;
 
 const FLOW_STATUSES = new Set(['flowing', 'no_flow', 'obstructed', 'standing_water', 'unknown']);
+const FLOW_CATEGORIES = new Set(['trickle', 'low', 'moderate', 'high', 'flood']);
+const FLOW_METHODS = new Set(['visual', 'float', 'instrument']);
 const TRANSIENT_OUTBOUND_ERROR_PATTERNS = [
   'failed to fetch',
   'fetch failed',
@@ -63,6 +65,10 @@ export type FieldOutboundOp =
       obstructionObserved: boolean;
       obstructionDetails: string | null;
       inspectorNotes: string | null;
+      flowCategory: string | null;
+      flowEstimateCfs: number | null;
+      flowMethod: string | null;
+      flowSafetyWarningShown: boolean | null;
       enqueuedAt: string;
     }
   | {
@@ -189,6 +195,22 @@ function isFieldVisitStartOp(
 function isOutletInspectionUpsertOp(
   o: Record<string, unknown>,
 ): o is Extract<FieldOutboundOp, { kind: 'outlet_inspection_upsert' }> {
+  const catOk =
+    !('flowCategory' in o) ||
+    o.flowCategory === null ||
+    (typeof o.flowCategory === 'string' && FLOW_CATEGORIES.has(o.flowCategory));
+  const cfsOk =
+    !('flowEstimateCfs' in o) ||
+    o.flowEstimateCfs === null ||
+    (typeof o.flowEstimateCfs === 'number' && Number.isFinite(o.flowEstimateCfs));
+  const methodOk =
+    !('flowMethod' in o) ||
+    o.flowMethod === null ||
+    (typeof o.flowMethod === 'string' && FLOW_METHODS.has(o.flowMethod));
+  const warnOk =
+    !('flowSafetyWarningShown' in o) ||
+    o.flowSafetyWarningShown === null ||
+    typeof o.flowSafetyWarningShown === 'boolean';
   return (
     o.kind === 'outlet_inspection_upsert' &&
     typeof o.id === 'string' &&
@@ -201,7 +223,11 @@ function isOutletInspectionUpsertOp(
     isNullableString(o.signageCondition) &&
     isNullableString(o.pipeCondition) &&
     isNullableString(o.obstructionDetails) &&
-    isNullableString(o.inspectorNotes)
+    isNullableString(o.inspectorNotes) &&
+    catOk &&
+    cfsOk &&
+    methodOk &&
+    warnOk
   );
 }
 
@@ -406,6 +432,10 @@ export async function enqueueOutletInspectionUpsert(params: {
   obstructionObserved: boolean;
   obstructionDetails: string | null;
   inspectorNotes: string | null;
+  flowCategory: string | null;
+  flowEstimateCfs: number | null;
+  flowMethod: string | null;
+  flowSafetyWarningShown: boolean | null;
 }): Promise<boolean> {
   const op: FieldOutboundOp = {
     kind: 'outlet_inspection_upsert',
@@ -418,6 +448,10 @@ export async function enqueueOutletInspectionUpsert(params: {
     obstructionObserved: params.obstructionObserved,
     obstructionDetails: params.obstructionDetails,
     inspectorNotes: params.inspectorNotes,
+    flowCategory: params.flowCategory,
+    flowEstimateCfs: params.flowEstimateCfs,
+    flowMethod: params.flowMethod,
+    flowSafetyWarningShown: params.flowSafetyWarningShown,
     enqueuedAt: new Date().toISOString(),
   };
   return mutateOutboundQueueStorage((latest) => mergeQueueById(latest, [op]));
@@ -699,6 +733,10 @@ export function mergeOutletInspectionWithQueue(
     obstruction_observed: last.obstructionObserved,
     obstruction_details: last.obstructionDetails,
     inspector_notes: last.inspectorNotes,
+    flow_category: (last.flowCategory ?? server?.flow_category ?? null) as OutletInspectionRecord['flow_category'],
+    flow_estimate_cfs: last.flowEstimateCfs ?? server?.flow_estimate_cfs ?? null,
+    flow_method: (last.flowMethod ?? server?.flow_method ?? null) as OutletInspectionRecord['flow_method'],
+    flow_safety_warning_shown: last.flowSafetyWarningShown ?? server?.flow_safety_warning_shown ?? null,
     created_by: userId ?? server?.created_by ?? '',
     created_at: server?.created_at ?? now,
     updated_at: now,
@@ -809,6 +847,10 @@ async function processFieldOutboundQueueUnlocked(
             obstruction_observed: op.obstructionObserved,
             obstruction_details: op.obstructionDetails,
             inspector_notes: op.inspectorNotes,
+            flow_category: op.flowCategory ?? null,
+            flow_estimate_cfs: op.flowEstimateCfs ?? null,
+            flow_method: op.flowMethod ?? null,
+            flow_safety_warning_shown: op.flowSafetyWarningShown ?? null,
           },
           { onConflict: 'field_visit_id' },
         );

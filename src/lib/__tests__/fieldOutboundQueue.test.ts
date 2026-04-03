@@ -329,6 +329,10 @@ describe('fieldOutboundQueue', () => {
       obstructionObserved: true,
       obstructionDetails: 'gate',
       inspectorNotes: 'n1',
+      flowCategory: null,
+      flowEstimateCfs: null,
+      flowMethod: null,
+      flowSafetyWarningShown: null,
     });
     await enqueueOutletInspectionUpsert({
       id: 'i2',
@@ -340,6 +344,10 @@ describe('fieldOutboundQueue', () => {
       obstructionObserved: false,
       obstructionDetails: null,
       inspectorNotes: 'n2',
+      flowCategory: null,
+      flowEstimateCfs: null,
+      flowMethod: null,
+      flowSafetyWarningShown: null,
     });
     const merged = mergeOutletInspectionWithQueue('v1', null, 'u1');
     expect(merged?.flow_status).toBe('flowing');
@@ -709,6 +717,10 @@ describe('fieldOutboundQueue', () => {
       obstructionObserved: false,
       obstructionDetails: null,
       inspectorNotes: null,
+      flowCategory: null,
+      flowEstimateCfs: null,
+      flowMethod: null,
+      flowSafetyWarningShown: null,
     });
     const insert = vi.fn().mockResolvedValue({ error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });

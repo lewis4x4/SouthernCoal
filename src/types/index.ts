@@ -82,6 +82,8 @@ export type {
   FieldVisitStatus,
   FieldVisitOutcome,
   SiteConditionPresent,
+  FlowEstimationCategory,
+  FlowEstimationMethod,
   StandingWaterChecks,
   GovernanceIssueType,
   GovernanceIssueStatus,

@@ -40,6 +40,10 @@ vi.mock('@/hooks/usePermissions', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useAuditLog', () => ({
+  useAuditLog: () => ({ log: vi.fn() }),
+}));
+
 vi.mock('@/components/field/FieldDataSyncBar', () => ({
   FieldDataSyncBar: () => <div>FieldDataSyncBar</div>,
 }));
@@ -142,6 +146,7 @@ function buildDetail(overrides: Partial<FieldVisitDetails> = {}): FieldVisitDeta
       scheduled_parameter_label: null,
       schedule_instructions: null,
       route_priority_reason: null,
+      outfall_type: 'Outfall',
       ...(overrides.visit ?? {}),
     },
     inspection: overrides.inspection ?? null,
@@ -175,6 +180,10 @@ function buildInspection(): NonNullable<FieldVisitDetails['inspection']> {
     obstruction_observed: false,
     obstruction_details: null,
     inspector_notes: 'No visible issues.',
+    flow_category: null,
+    flow_estimate_cfs: null,
+    flow_method: null,
+    flow_safety_warning_shown: null,
     created_at: '2026-04-01T12:00:00Z',
     updated_at: '2026-04-01T12:00:00Z',
     created_by: 'user-1',
@@ -587,6 +596,29 @@ describe('FieldVisitPage wizard', () => {
     expect(screen.getByText(/Flowing discharge confirmed — proceed to sample collection/i)).toBeInTheDocument();
   });
 
+  it('shows stream flow estimation for receiving-stream outfall types before confirmation', async () => {
+    const user = userEvent.setup();
+    renderPage(
+      buildStartedDetail({
+        visit: { outfall_type: 'Receiving Stream' },
+        inspection: null,
+      }),
+    );
+
+    await waitForWizard();
+    await user.click(getWizardButton(/Site Assessment/i));
+    await waitForStepHeading('Site Assessment');
+
+    await user.click(screen.getByRole('button', { name: 'Flowing discharge' }));
+
+    expect(screen.getByText('Estimated Stream Flow')).toBeInTheDocument();
+    expect(screen.queryByText(/Stream flow estimate captured/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Moderate Flow/i }));
+    await user.click(screen.getByRole('button', { name: /Visual only/i }));
+    expect(screen.getByText(/Stream flow estimate captured — proceed to sample collection/i)).toBeInTheDocument();
+  });
+
   it('shows standing water sub-questions and sampleable confirmation when all pass', async () => {
     const user = userEvent.setup();
     renderPage(buildStartedDetail());
@@ -926,6 +958,10 @@ describe('FieldVisitPage wizard', () => {
             obstruction_observed: inspection.obstruction_observed ?? false,
             obstruction_details: inspection.obstruction_details ?? null,
             inspector_notes: expectedInspectionNote,
+            flow_category: inspection.flow_category ?? null,
+            flow_estimate_cfs: inspection.flow_estimate_cfs ?? null,
+            flow_method: inspection.flow_method ?? null,
+            flow_safety_warning_shown: inspection.flow_safety_warning_shown ?? null,
             created_at: '2026-04-01T12:00:00Z',
             updated_at: '2026-04-01T12:05:00Z',
             created_by: 'user-1',

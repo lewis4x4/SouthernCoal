@@ -9,7 +9,7 @@ import type { Role } from '@/types/auth';
  * ADDING A NEW PAGE CHECKLIST:
  *  1. Pick the role group below (or create a new one here).
  *  2. Add a RouteConfig entry in APP_ROUTES (App.tsx) with `roles`.
- *  3. Add a NavItem in NAV_GROUPS (Sidebar.tsx) with `roles`.
+ *  3. Add a NavItem in NAV_GROUPS (`src/lib/navGroups.ts`) with `roles`.
  *  4. TypeScript will refuse to compile if `roles` is missing.
  */
 

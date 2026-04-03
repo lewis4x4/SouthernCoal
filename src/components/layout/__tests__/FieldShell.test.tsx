@@ -9,7 +9,18 @@ const signOutMock = vi.fn();
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     signOut: signOutMock,
+    user: { email: 'sampler@example.com' },
   }),
+}));
+
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    getEffectiveRole: () => 'admin' as const,
+  }),
+}));
+
+vi.mock('@/hooks/useFtsNavBadge', () => ({
+  useFtsNavBadge: () => null,
 }));
 
 describe('FieldShell', () => {
@@ -36,7 +47,7 @@ describe('FieldShell', () => {
     expect(screen.getByText('Field content')).toBeInTheDocument();
   });
 
-  it('opens the mobile drawer and signs out', async () => {
+  it('opens the mobile More menu and signs out', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/field/route']}>
@@ -46,8 +57,8 @@ describe('FieldShell', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Open field navigation' }));
-    expect(screen.getByText('Field Navigation')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open main app menu' }));
+    expect(screen.getByText('SCC Monitor')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(signOutMock).toHaveBeenCalled();
   });
