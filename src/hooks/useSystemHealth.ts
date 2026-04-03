@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -23,24 +24,54 @@ export function useSystemHealth() {
   const [runningRetentionAudit, setRunningRetentionAudit] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const reportFetchError = useCallback((label: string, error: { message: string }) => {
+    setFetchError(`Failed to load ${label}: ${error.message}`);
+    console.error(`[health] ${label} fetch error:`, error.message);
+  }, []);
+
+  const fetchScopedRows = useCallback(
+    async <T,>(options: {
+      table: string;
+      orderColumn: string;
+      label: string;
+      limit?: number;
+      setRows: Dispatch<SetStateAction<T[]>>;
+    }) => {
+      if (!orgId) return;
+
+      let query = supabase
+        .from(options.table)
+        .select('*')
+        .eq('organization_id', orgId)
+        .order(options.orderColumn, { ascending: false });
+
+      if (typeof options.limit === 'number') {
+        query = query.limit(options.limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        reportFetchError(options.label, error);
+        return;
+      }
+
+      options.setRows((data ?? []) as T[]);
+    },
+    [orgId, reportFetchError],
+  );
+
   // -- Data Integrity Checks --
 
   const fetchIntegrityChecks = useCallback(async () => {
-    if (!orgId) return;
-    const { data, error } = await supabase
-      .from('data_integrity_checks')
-      .select('*')
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (error) {
-      setFetchError(`Failed to load integrity checks: ${error.message}`);
-      console.error('[health] integrity checks fetch error:', error.message);
-    } else {
-      setIntegrityChecks((data ?? []) as DataIntegrityCheck[]);
-    }
-  }, [orgId]);
+    await fetchScopedRows<DataIntegrityCheck>({
+      table: 'data_integrity_checks',
+      orderColumn: 'created_at',
+      label: 'integrity checks',
+      limit: 20,
+      setRows: setIntegrityChecks,
+    });
+  }, [fetchScopedRows]);
 
   const runIntegrityCheck = useCallback(async () => {
     if (!orgId) return;
@@ -65,20 +96,13 @@ export function useSystemHealth() {
   // -- Retention Policies --
 
   const fetchRetentionPolicies = useCallback(async () => {
-    if (!orgId) return;
-    const { data, error } = await supabase
-      .from('retention_policies')
-      .select('*')
-      .eq('organization_id', orgId)
-      .order('record_type');
-
-    if (error) {
-      setFetchError(`Failed to load retention policies: ${error.message}`);
-      console.error('[health] retention policies fetch error:', error.message);
-    } else {
-      setRetentionPolicies((data ?? []) as RetentionPolicy[]);
-    }
-  }, [orgId]);
+    await fetchScopedRows<RetentionPolicy>({
+      table: 'retention_policies',
+      orderColumn: 'record_type',
+      label: 'retention policies',
+      setRows: setRetentionPolicies,
+    });
+  }, [fetchScopedRows]);
 
   const updateRetentionPolicy = useCallback(async (id: string, updates: Partial<RetentionPolicy>) => {
     const { error } = await supabase.from('retention_policies').update(updates).eq('id', id);
@@ -117,21 +141,14 @@ export function useSystemHealth() {
   // -- System Health Logs --
 
   const fetchHealthLogs = useCallback(async () => {
-    if (!orgId) return;
-    const { data, error } = await supabase
-      .from('system_health_logs')
-      .select('*')
-      .eq('organization_id', orgId)
-      .order('snapshot_at', { ascending: false })
-      .limit(30);
-
-    if (error) {
-      setFetchError(`Failed to load system health logs: ${error.message}`);
-      console.error('[health] health logs fetch error:', error.message);
-    } else {
-      setHealthLogs((data ?? []) as SystemHealthLog[]);
-    }
-  }, [orgId]);
+    await fetchScopedRows<SystemHealthLog>({
+      table: 'system_health_logs',
+      orderColumn: 'snapshot_at',
+      label: 'system health logs',
+      limit: 30,
+      setRows: setHealthLogs,
+    });
+  }, [fetchScopedRows]);
 
   const captureHealthSnapshot = useCallback(async () => {
     if (!orgId) return null;

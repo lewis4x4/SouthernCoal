@@ -6,6 +6,13 @@ import {
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import {
+  buildHealthExportRows,
+  buildIntegrityExportRows,
+  buildRetentionExportRows,
+  getSnapshotAgeHours,
+  getSystemHealthSignalPosture,
+} from '@/lib/systemHealth';
 import type { DataIntegrityCheck, IntegrityCheckResult } from '@/types/database';
 
 type Tab = 'integrity' | 'retention' | 'health';
@@ -17,7 +24,7 @@ const STATUS_ICON: Record<string, { icon: typeof CheckCircle2; color: string }> 
   running: { icon: Activity, color: 'text-cyan-400' },
 };
 
-const CHECK_STATUS_COLOR: Record<string, string> = {
+const CHECK_STATUS_COLOR: Record<IntegrityCheckResult['status'], string> = {
   pass: 'text-green-400',
   warn: 'text-amber-400',
   fail: 'text-red-400',
@@ -39,76 +46,24 @@ export function SystemHealthPage() {
   const enforcedPolicies = retentionPolicies.filter(p => p.is_enforced);
   const totalOutsidePolicy = retentionPolicies.reduce((s, p) => s + (p.records_outside_policy ?? 0), 0);
   const totalOnHold = retentionPolicies.reduce((s, p) => s + (p.records_on_hold ?? 0), 0);
-  const snapshotAgeHours = latestHealth
-    ? Math.max(0, (Date.now() - new Date(latestHealth.snapshot_at).getTime()) / (1000 * 60 * 60))
-    : null;
-
-  const signalPosture = (() => {
-    if (fetchError) {
-      return {
-        label: 'Unavailable',
-        tone: 'text-red-300',
-        detail: 'Telemetry feed is not available.',
-      };
-    }
-
-    if (!latestHealth && !latestCheck) {
-      return {
-        label: 'Bootstrapping',
-        tone: 'text-amber-300',
-        detail: 'Capture the first snapshot to establish live telemetry.',
-      };
-    }
-
-    if (latestCheck?.status === 'failed' || (latestHealth?.error_count_24h ?? 0) >= 3) {
-      return {
-        label: 'Critical',
-        tone: 'text-red-300',
-        detail: 'Integrity or error signals need immediate review.',
-      };
-    }
-
-    if (latestCheck?.status === 'warnings' || (snapshotAgeHours != null && snapshotAgeHours > 24)) {
-      return {
-        label: 'Watch',
-        tone: 'text-amber-300',
-        detail: 'Telemetry is present, but signal freshness or warnings need attention.',
-      };
-    }
-
-    return {
-      label: 'Healthy',
-      tone: 'text-emerald-300',
-      detail: 'Recent telemetry and integrity signals are within expected bounds.',
-    };
-  })();
+  const snapshotAgeHours = getSnapshotAgeHours(latestHealth);
+  const signalPosture = getSystemHealthSignalPosture({
+    fetchError,
+    latestCheck,
+    latestHealth,
+    snapshotAgeHours,
+  });
 
   const handleExportCSV = () => {
     if (tab === 'integrity') {
       const headers = ['Run Date', 'Type', 'Status', 'Total', 'Passed', 'Warned', 'Failed', 'Duration (ms)'];
-      const rows = integrityChecks.map(c => [
-        new Date(c.created_at).toLocaleString(), c.run_type, c.status,
-        String(c.checks_total), String(c.checks_passed), String(c.checks_warned),
-        String(c.checks_failed), String(c.duration_ms ?? ''),
-      ]);
-      exportCSV(headers, rows, 'integrity-checks');
+      exportCSV(headers, buildIntegrityExportRows(integrityChecks), 'integrity-checks');
     } else if (tab === 'retention') {
       const headers = ['Record Type', 'Display Name', 'Retention (years)', 'Regulatory Basis', 'Enforced', 'Within Policy', 'Outside Policy', 'On Legal Hold', 'Last Audit'];
-      const rows = retentionPolicies.map(p => [
-        p.record_type, p.display_name, String(p.retention_years), p.regulatory_basis,
-        p.is_enforced ? 'Yes' : 'No', String(p.records_within_policy ?? 0),
-        String(p.records_outside_policy ?? 0), String(p.records_on_hold ?? 0),
-        p.last_audit_at ? new Date(p.last_audit_at).toLocaleString() : '',
-      ]);
-      exportCSV(headers, rows, 'retention-policies');
+      exportCSV(headers, buildRetentionExportRows(retentionPolicies), 'retention-policies');
     } else {
       const headers = ['Snapshot', 'DB Size (MB)', 'Storage (MB)', 'Active Users 24h', 'Errors 24h', 'Avg Response (ms)'];
-      const rows = healthLogs.map(h => [
-        new Date(h.snapshot_at).toLocaleString(), String(h.db_size_mb ?? ''),
-        String(h.storage_usage_mb ?? ''), String(h.active_users_24h ?? ''),
-        String(h.error_count_24h ?? ''), String(h.avg_response_ms ?? ''),
-      ]);
-      exportCSV(headers, rows, 'system-health');
+      exportCSV(headers, buildHealthExportRows(healthLogs), 'system-health');
     }
     log('system_health_exported', { tab }, { module: 'system_health', tableName: 'system_health_logs' });
   };
