@@ -248,6 +248,7 @@ export function ScheduledReportsPage() {
           {reports.map((report) => {
             const isExpanded = expandedReport === report.id;
             const history = runHistories[report.id] ?? [];
+            const recipients = Array.isArray(report.recipients) ? report.recipients : [];
 
             return (
               <SpotlightCard key={report.id} className="overflow-hidden">
@@ -274,8 +275,8 @@ export function ScheduledReportsPage() {
                         {report.last_run_at && (
                           <span>Last: {new Date(report.last_run_at).toLocaleDateString()}</span>
                         )}
-                        {report.recipients.length > 0 && (
-                          <span>{report.recipients.length} recipient{report.recipients.length !== 1 ? 's' : ''}</span>
+                        {recipients.length > 0 && (
+                          <span>{recipients.length} recipient{recipients.length !== 1 ? 's' : ''}</span>
                         )}
                       </div>
                     </div>
@@ -347,11 +348,11 @@ export function ScheduledReportsPage() {
                     )}
 
                     {/* Recipients */}
-                    {report.recipients.length > 0 && (
+                    {recipients.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-white/5">
                         <h4 className="text-xs font-medium text-text-secondary mb-1">Recipients</h4>
                         <div className="flex flex-wrap gap-1">
-                          {report.recipients.map((email) => (
+                          {recipients.map((email) => (
                             <span key={email} className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary">
                               {email}
                             </span>

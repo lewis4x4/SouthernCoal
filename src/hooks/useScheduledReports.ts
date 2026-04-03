@@ -10,6 +10,13 @@ import type {
   ReportOutputFormat,
 } from '@/types/database';
 
+function normalizeScheduledReport(row: Partial<ScheduledReport>): ScheduledReport {
+  return {
+    ...row,
+    recipients: Array.isArray(row.recipients) ? row.recipients : [],
+  } as ScheduledReport;
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -37,7 +44,7 @@ export function useScheduledReports() {
       console.error('[scheduled_reports] fetch error:', error.message);
       toast.error('Failed to load scheduled reports');
     } else {
-      setReports((data ?? []) as ScheduledReport[]);
+      setReports(((data ?? []) as Partial<ScheduledReport>[]).map(normalizeScheduledReport));
     }
     setLoading(false);
   }, [orgId]);
@@ -84,7 +91,7 @@ export function useScheduledReports() {
 
       toast.success('Report schedule created');
       fetchReports();
-      return data as ScheduledReport;
+      return normalizeScheduledReport(data as Partial<ScheduledReport>);
     },
     [orgId, profile, log, fetchReports],
   );
