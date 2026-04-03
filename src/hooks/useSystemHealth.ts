@@ -20,6 +20,7 @@ export function useSystemHealth() {
   const [loading, setLoading] = useState(true);
   const [runningCheck, setRunningCheck] = useState(false);
   const [capturingSnapshot, setCapturingSnapshot] = useState(false);
+  const [runningRetentionAudit, setRunningRetentionAudit] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // -- Data Integrity Checks --
@@ -90,6 +91,29 @@ export function useSystemHealth() {
     fetchRetentionPolicies();
   }, [fetchRetentionPolicies, log]);
 
+  const runRetentionAudit = useCallback(async () => {
+    if (!orgId) return null;
+
+    setRunningRetentionAudit(true);
+    try {
+      const { data, error } = await supabase.rpc('run_retention_policy_audit', {
+        p_org_id: orgId,
+      });
+
+      if (error) {
+        toast.error('Retention audit failed');
+        console.error('[health] retention audit error:', error.message);
+        return null;
+      }
+
+      toast.success('Retention audit complete');
+      await fetchRetentionPolicies();
+      return data as number;
+    } finally {
+      setRunningRetentionAudit(false);
+    }
+  }, [fetchRetentionPolicies, orgId]);
+
   // -- System Health Logs --
 
   const fetchHealthLogs = useCallback(async () => {
@@ -156,9 +180,11 @@ export function useSystemHealth() {
     loading,
     runningCheck,
     capturingSnapshot,
+    runningRetentionAudit,
     fetchError,
     runIntegrityCheck,
     captureHealthSnapshot,
+    runRetentionAudit,
     updateRetentionPolicy,
     fetchIntegrityChecks,
     fetchRetentionPolicies,

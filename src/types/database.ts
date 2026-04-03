@@ -1241,6 +1241,7 @@ export interface RetentionPolicy {
   last_audit_at: string | null;
   records_within_policy: number | null;
   records_outside_policy: number | null;
+  records_on_hold: number;
   created_at: string;
   updated_at: string;
 }

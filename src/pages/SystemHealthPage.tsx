@@ -26,8 +26,8 @@ const CHECK_STATUS_COLOR: Record<string, string> = {
 export function SystemHealthPage() {
   const {
     integrityChecks, retentionPolicies, healthLogs,
-    loading, runningCheck, capturingSnapshot, fetchError,
-    runIntegrityCheck, captureHealthSnapshot, updateRetentionPolicy,
+    loading, runningCheck, capturingSnapshot, runningRetentionAudit, fetchError,
+    runIntegrityCheck, captureHealthSnapshot, runRetentionAudit, updateRetentionPolicy,
   } = useSystemHealth();
   const { log } = useAuditLog();
 
@@ -38,6 +38,7 @@ export function SystemHealthPage() {
   const latestHealth = healthLogs[0] ?? null;
   const enforcedPolicies = retentionPolicies.filter(p => p.is_enforced);
   const totalOutsidePolicy = retentionPolicies.reduce((s, p) => s + (p.records_outside_policy ?? 0), 0);
+  const totalOnHold = retentionPolicies.reduce((s, p) => s + (p.records_on_hold ?? 0), 0);
   const snapshotAgeHours = latestHealth
     ? Math.max(0, (Date.now() - new Date(latestHealth.snapshot_at).getTime()) / (1000 * 60 * 60))
     : null;
@@ -92,11 +93,12 @@ export function SystemHealthPage() {
       ]);
       exportCSV(headers, rows, 'integrity-checks');
     } else if (tab === 'retention') {
-      const headers = ['Record Type', 'Display Name', 'Retention (years)', 'Regulatory Basis', 'Enforced', 'Within Policy', 'Outside Policy'];
+      const headers = ['Record Type', 'Display Name', 'Retention (years)', 'Regulatory Basis', 'Enforced', 'Within Policy', 'Outside Policy', 'On Legal Hold', 'Last Audit'];
       const rows = retentionPolicies.map(p => [
         p.record_type, p.display_name, String(p.retention_years), p.regulatory_basis,
         p.is_enforced ? 'Yes' : 'No', String(p.records_within_policy ?? 0),
-        String(p.records_outside_policy ?? 0),
+        String(p.records_outside_policy ?? 0), String(p.records_on_hold ?? 0),
+        p.last_audit_at ? new Date(p.last_audit_at).toLocaleString() : '',
       ]);
       exportCSV(headers, rows, 'retention-policies');
     } else {
@@ -158,6 +160,16 @@ export function SystemHealthPage() {
             >
               <Radio className="w-3.5 h-3.5" />
               {capturingSnapshot ? 'Capturing…' : 'Capture Snapshot'}
+            </button>
+          )}
+          {tab === 'retention' && (
+            <button
+              onClick={runRetentionAudit}
+              disabled={runningRetentionAudit}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 text-amber-200 disabled:opacity-50"
+            >
+              <Archive className="w-3.5 h-3.5" />
+              {runningRetentionAudit ? 'Auditing…' : 'Run Retention Audit'}
             </button>
           )}
         </div>
@@ -229,6 +241,9 @@ export function SystemHealthPage() {
           {totalOutsidePolicy > 0 && (
             <p className="text-[10px] text-amber-400">{totalOutsidePolicy} records outside policy</p>
           )}
+          {totalOnHold > 0 && (
+            <p className="text-[10px] text-fuchsia-300">{totalOnHold} records under legal hold</p>
+          )}
         </SpotlightCard>
         <SpotlightCard className="p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -286,7 +301,10 @@ export function SystemHealthPage() {
             </p>
           )}
           {retentionPolicies.map(policy => (
-            <SpotlightCard key={policy.id} className="p-4">
+            <SpotlightCard
+              key={policy.id}
+              className={`p-4 ${policy.records_outside_policy ? 'border-amber-500/25' : policy.records_on_hold ? 'border-fuchsia-500/20' : ''}`}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -308,6 +326,11 @@ export function SystemHealthPage() {
                     {(policy.records_outside_policy ?? 0) > 0 && (
                       <span className="text-xs text-amber-400">
                         {policy.records_outside_policy} outside policy
+                      </span>
+                    )}
+                    {(policy.records_on_hold ?? 0) > 0 && (
+                      <span className="text-xs text-fuchsia-300">
+                        {policy.records_on_hold} on legal hold
                       </span>
                     )}
                     {policy.last_audit_at && (
