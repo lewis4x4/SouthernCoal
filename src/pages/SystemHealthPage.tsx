@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Activity, Database, Shield, Clock, AlertTriangle, CheckCircle2,
-  XCircle, Play, Archive,
+  XCircle, Play, Archive, Radio,
 } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
@@ -26,8 +26,8 @@ const CHECK_STATUS_COLOR: Record<string, string> = {
 export function SystemHealthPage() {
   const {
     integrityChecks, retentionPolicies, healthLogs,
-    loading, runningCheck, fetchError,
-    runIntegrityCheck, updateRetentionPolicy,
+    loading, runningCheck, capturingSnapshot, fetchError,
+    runIntegrityCheck, captureHealthSnapshot, updateRetentionPolicy,
   } = useSystemHealth();
   const { log } = useAuditLog();
 
@@ -38,6 +38,49 @@ export function SystemHealthPage() {
   const latestHealth = healthLogs[0] ?? null;
   const enforcedPolicies = retentionPolicies.filter(p => p.is_enforced);
   const totalOutsidePolicy = retentionPolicies.reduce((s, p) => s + (p.records_outside_policy ?? 0), 0);
+  const snapshotAgeHours = latestHealth
+    ? Math.max(0, (Date.now() - new Date(latestHealth.snapshot_at).getTime()) / (1000 * 60 * 60))
+    : null;
+
+  const signalPosture = (() => {
+    if (fetchError) {
+      return {
+        label: 'Unavailable',
+        tone: 'text-red-300',
+        detail: 'Telemetry feed is not available.',
+      };
+    }
+
+    if (!latestHealth && !latestCheck) {
+      return {
+        label: 'Bootstrapping',
+        tone: 'text-amber-300',
+        detail: 'Capture the first snapshot to establish live telemetry.',
+      };
+    }
+
+    if (latestCheck?.status === 'failed' || (latestHealth?.error_count_24h ?? 0) >= 3) {
+      return {
+        label: 'Critical',
+        tone: 'text-red-300',
+        detail: 'Integrity or error signals need immediate review.',
+      };
+    }
+
+    if (latestCheck?.status === 'warnings' || (snapshotAgeHours != null && snapshotAgeHours > 24)) {
+      return {
+        label: 'Watch',
+        tone: 'text-amber-300',
+        detail: 'Telemetry is present, but signal freshness or warnings need attention.',
+      };
+    }
+
+    return {
+      label: 'Healthy',
+      tone: 'text-emerald-300',
+      detail: 'Recent telemetry and integrity signals are within expected bounds.',
+    };
+  })();
 
   const handleExportCSV = () => {
     if (tab === 'integrity') {
@@ -107,6 +150,16 @@ export function SystemHealthPage() {
               {runningCheck ? 'Running…' : 'Run Check'}
             </button>
           )}
+          {tab === 'health' && (
+            <button
+              onClick={captureHealthSnapshot}
+              disabled={capturingSnapshot}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-500/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30 text-cyan-200 disabled:opacity-50"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              {capturingSnapshot ? 'Capturing…' : 'Capture Snapshot'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -123,6 +176,22 @@ export function SystemHealthPage() {
         </SpotlightCard>
         </div>
       )}
+
+      <SpotlightCard className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">Operational Signal</p>
+            <p className={`mt-2 text-lg font-semibold ${signalPosture.tone}`}>{signalPosture.label}</p>
+            <p className="mt-1 text-sm text-text-secondary">{signalPosture.detail}</p>
+          </div>
+          <div className="text-right text-xs text-text-secondary">
+            <p>{latestHealth ? `Snapshot ${new Date(latestHealth.snapshot_at).toLocaleString()}` : 'No snapshot yet'}</p>
+            {snapshotAgeHours != null && (
+              <p className="mt-1">{snapshotAgeHours < 1 ? 'Fresh within the hour' : `${Math.round(snapshotAgeHours)}h old`}</p>
+            )}
+          </div>
+        </div>
+      </SpotlightCard>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -264,7 +333,12 @@ export function SystemHealthPage() {
       {tab === 'health' && (
         <div className="space-y-2">
           {!fetchError && healthLogs.length === 0 && (
-            <p className="text-center text-text-secondary text-sm py-8">No health snapshots recorded yet.</p>
+            <div className="py-8 text-center">
+              <p className="text-sm text-text-secondary">No health snapshots recorded yet.</p>
+              <p className="mt-2 text-xs text-text-secondary/70">
+                Capture the first snapshot to materialize live database size, storage proxy, activity, and recent error signals.
+              </p>
+            </div>
           )}
           {healthLogs.map(h => (
             <SpotlightCard key={h.id} className="p-4">

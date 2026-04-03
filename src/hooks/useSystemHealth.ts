@@ -19,6 +19,7 @@ export function useSystemHealth() {
   const [healthLogs, setHealthLogs] = useState<SystemHealthLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [runningCheck, setRunningCheck] = useState(false);
+  const [capturingSnapshot, setCapturingSnapshot] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // -- Data Integrity Checks --
@@ -108,6 +109,29 @@ export function useSystemHealth() {
     }
   }, [orgId]);
 
+  const captureHealthSnapshot = useCallback(async () => {
+    if (!orgId) return null;
+
+    setCapturingSnapshot(true);
+    try {
+      const { data, error } = await supabase.rpc('capture_system_health_snapshot', {
+        p_org_id: orgId,
+      });
+
+      if (error) {
+        toast.error('Failed to capture system snapshot');
+        console.error('[health] capture snapshot error:', error.message);
+        return null;
+      }
+
+      toast.success('System health snapshot captured');
+      await fetchHealthLogs();
+      return data as string;
+    } finally {
+      setCapturingSnapshot(false);
+    }
+  }, [fetchHealthLogs, orgId]);
+
   // -- Init --
 
   useEffect(() => {
@@ -131,8 +155,10 @@ export function useSystemHealth() {
     healthLogs,
     loading,
     runningCheck,
+    capturingSnapshot,
     fetchError,
     runIntegrityCheck,
+    captureHealthSnapshot,
     updateRetentionPolicy,
     fetchIntegrityChecks,
     fetchRetentionPolicies,
