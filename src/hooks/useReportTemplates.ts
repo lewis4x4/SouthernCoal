@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from './useAuditLog';
 import { toast } from 'sonner';
 
@@ -41,15 +43,21 @@ function getErrorMessage(err: unknown): string {
 export function useReportTemplates() {
     const [templates, setTemplates] = useState<ReportTemplate[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const { profile } = useUserProfile();
     const { log } = useAuditLog();
+    const orgId = profile?.organization_id ?? null;
 
     const fetchTemplates = useCallback(async () => {
+        if (!orgId) return;
         try {
             setLoading(true);
             const { data, error } = await supabase
                 .from('report_templates')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .eq('organization_id', orgId)
+                .order('created_at', { ascending: false })
+                .limit(200);
 
             if (error) throw error;
             setTemplates(data || []);
@@ -59,7 +67,7 @@ export function useReportTemplates() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [orgId]);
 
     const createTemplate = useCallback(async (
         name: string,
@@ -67,27 +75,17 @@ export function useReportTemplates() {
         reports: TemplateReportEntry[],
         isShared: boolean,
     ) => {
+        if (!user || !orgId) return;
         try {
-            const { data: user } = await supabase.auth.getUser();
-            if (!user.user) throw new Error('Not authenticated');
-
-            const { data: profile } = await supabase
-                .from('user_profiles')
-                .select('organization_id')
-                .eq('id', user.user.id)
-                .single();
-
-            if (!profile) throw new Error('User profile not found');
-
             const { data, error } = await supabase
                 .from('report_templates')
                 .insert({
-                    organization_id: profile.organization_id,
+                    organization_id: orgId,
                     name,
                     description,
                     reports,
                     is_shared: isShared,
-                    created_by: user.user.id,
+                    created_by: user.id,
                 })
                 .select()
                 .single();
@@ -107,7 +105,7 @@ export function useReportTemplates() {
             console.error('Failed to create template:', err);
             toast.error(getErrorMessage(err) || 'Failed to create template');
         }
-    }, [log]);
+    }, [user, orgId, log]);
 
     const updateTemplate = useCallback(async (
         id: string,

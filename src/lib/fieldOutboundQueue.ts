@@ -1024,3 +1024,75 @@ export async function processFieldOutboundQueue(client: SupabaseClient): Promise
     outboundProcessChain = null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 1 — Admin operations for stuck queue management
+// ---------------------------------------------------------------------------
+
+/** Remove a specific op from the queue by ID. Used by admin sync queue UI. */
+export async function dismissOutboundQueueOp(opId: string): Promise<boolean> {
+  return mutateOutboundQueueStorage((latest) => latest.filter((op) => op.id !== opId));
+}
+
+/** Remove ALL ops for a specific visit. Used when admin confirms the server state is correct. */
+export async function dismissOutboundQueueOpsForVisit(visitId: string): Promise<number> {
+  let removed = 0;
+  const ok = await mutateOutboundQueueStorage((latest) => {
+    const filtered = latest.filter((op) => {
+      if (op.visitId === visitId) {
+        removed += 1;
+        return false;
+      }
+      return true;
+    });
+    return filtered;
+  });
+  return ok ? removed : 0;
+}
+
+/** Clear the entire outbound queue. Admin emergency action with audit trail. */
+export async function clearOutboundQueue(): Promise<number> {
+  const count = readQueue().length;
+  const ok = await mutateOutboundQueueStorage(() => []);
+  return ok ? count : 0;
+}
+
+/** Log a sync flush result to the server for admin visibility. Fire-and-forget. */
+export function logSyncFlushToServer(
+  client: SupabaseClient,
+  result: FieldOutboundQueueFlushResult,
+  userId: string,
+  organizationId: string,
+): void {
+  const heldOps = result.blockedOp ? [result.blockedOp.kind] : [];
+  const heldVisitIds = result.blockedOp ? [result.blockedOp.visitId] : [];
+  const conflictReason = result.failed && isFieldOutboundConflictHoldError(result.failed)
+    ? result.failed.reason
+    : null;
+
+  Promise.resolve(
+    client
+      .from('field_outbound_sync_log')
+      .insert({
+        organization_id: organizationId,
+        user_id: userId,
+        ops_processed: result.processed,
+        ops_failed: result.failed ? 1 : 0,
+        ops_held: heldOps.length,
+        held_op_kinds: heldOps,
+        held_visit_ids: heldVisitIds,
+        error_message: result.failed?.message ?? null,
+        conflict_hold_reason: conflictReason,
+        device_info: {
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          timestamp: new Date().toISOString(),
+        },
+      }),
+  )
+    .then(({ error }) => {
+      if (error) console.warn('[sync-log] Failed to log sync result:', error.message);
+    })
+    .catch((err: unknown) => {
+      console.warn('[sync-log] Exception logging sync result:', err);
+    });
+}

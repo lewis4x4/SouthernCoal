@@ -7,6 +7,16 @@ export const ROLES = [
   'lab_tech',
   'admin',
   'read_only',
+  // Phase 2 — expanded roles
+  'wv_supervisor',
+  'float_sampler',
+  'courier',
+  'compliance_reviewer',
+  'coo',
+  'ceo_view',
+  'chief_counsel',
+  'maintenance_owner',
+  'lab_liaison',
 ] as const;
 
 export type Role = (typeof ROLES)[number];
@@ -48,4 +58,19 @@ export type Permission =
   | 'ca_sign_responsible'
   | 'ca_sign_approver'
   | 'ca_reopen'
-  | 'ca_generate_pdf';
+  | 'ca_generate_pdf'
+  // Phase 2 — governance & classification permissions
+  | 'governance_review'
+  | 'governance_decide'
+  | 'classify_records'
+  | 'legal_hold'
+  | 'dispatch_override';
+
+/** 6-level record classification per Phase 2 spec. */
+export type RecordClassification =
+  | 'operational_internal'
+  | 'compliance_sensitive'
+  | 'privileged'
+  | 'public_eligible'
+  | 'regulator_shareable'
+  | 'restricted';

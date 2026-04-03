@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ClipboardCheck, AlertTriangle, Clock, CheckCircle2, PlayCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ClipboardCheck, AlertTriangle, Clock, CheckCircle2, PlayCircle, BarChart3 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCorrectiveActions } from '@/hooks/useCorrectiveActions';
 import { CorrectiveActionList } from '@/components/corrective-actions/CorrectiveActionList';
@@ -30,18 +30,27 @@ export function CorrectiveActionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-          <ClipboardCheck className="h-6 w-6 text-cyan-400" />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+            <ClipboardCheck className="h-6 w-6 text-cyan-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-text-primary">
+              Corrective Actions
+            </h1>
+            <p className="text-sm text-text-muted">
+              EMS Document 2015-013 — 7-Step Corrective Action Workflow
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-text-primary">
-            Corrective Actions
-          </h1>
-          <p className="text-sm text-text-muted">
-            EMS Document 2015-013 — 7-Step Corrective Action Workflow
-          </p>
-        </div>
+        <Link
+          to="/corrective-actions/analytics"
+          className="flex items-center gap-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
+        >
+          <BarChart3 size={14} />
+          Analytics
+        </Link>
       </div>
 
       {/* Summary Cards */}

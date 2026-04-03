@@ -22,6 +22,21 @@ import {
   FIELD_SCHEDULE_ROLES,
   GOVERNANCE_ROUTE_ROLES,
   AUDIT_LOG_ROUTE_ROLES,
+  NOTIFICATION_ADMIN_ROLES,
+  TRAINING_ADMIN_ROLES,
+  EQUIPMENT_ADMIN_ROLES,
+  PROFILE_ROLES,
+  INCIDENT_ROLES,
+  CA_ANALYTICS_ROLES,
+  DMR_SUBMISSION_ROLES,
+  WORK_ORDER_ROLES,
+  COMPLIANCE_DB_ROLES,
+  EXECUTIVE_DASHBOARD_ROLES,
+  REPORT_SCHEDULE_ROLES,
+  AUDIT_READINESS_ROLES,
+  EMERGENCY_ROLES,
+  SYSTEM_HEALTH_ROLES,
+  GO_LIVE_ROLES,
 } from '@/lib/rbac';
 
 // ---------------------------------------------------------------------------
@@ -60,6 +75,29 @@ const FieldDispatchPage = lazyRoute(() => import('@/pages/FieldDispatchPage'), '
 const FieldRouteTodayPage = lazyRoute(() => import('@/pages/FieldRouteTodayPage'), 'FieldRouteTodayPage');
 const FieldVisitPage = lazyRoute(() => import('@/pages/FieldVisitPage'), 'FieldVisitPage');
 const GovernanceIssuesPage = lazyRoute(() => import('@/pages/GovernanceIssuesPage'), 'GovernanceIssuesPage');
+const SyncQueuePage = lazyRoute(() => import('@/pages/SyncQueuePage'), 'SyncQueuePage');
+const NotificationPreferencesPage = lazyRoute(() => import('@/pages/NotificationPreferencesPage'), 'NotificationPreferencesPage');
+const TrainingAdminPage = lazyRoute(() => import('@/pages/TrainingAdminPage'), 'TrainingAdminPage');
+const EquipmentAdminPage = lazyRoute(() => import('@/pages/EquipmentAdminPage'), 'EquipmentAdminPage');
+const ProfileCertificationsPage = lazyRoute(() => import('@/pages/ProfileCertificationsPage'), 'ProfileCertificationsPage');
+const IncidentsPage = lazyRoute(() => import('@/pages/IncidentsPage'), 'IncidentsPage');
+const IncidentDetailPage = lazyRoute(() => import('@/pages/IncidentDetailPage'), 'IncidentDetailPage');
+const CAAnalyticsPage = lazyRoute(() => import('@/pages/CAAnalyticsPage'), 'CAAnalyticsPage');
+const DmrSubmissionsPage = lazyRoute(() => import('@/pages/DmrSubmissionsPage'), 'DmrSubmissionsPage');
+const DmrDetailPage = lazyRoute(() => import('@/pages/DmrDetailPage'), 'DmrDetailPage');
+const WorkOrdersPage = lazyRoute(() => import('@/pages/WorkOrdersPage'), 'WorkOrdersPage');
+const WorkOrderDetailPage = lazyRoute(() => import('@/pages/WorkOrderDetailPage'), 'WorkOrderDetailPage');
+const ComplianceViolationsPage = lazyRoute(() => import('@/pages/ComplianceViolationsPage'), 'ComplianceViolationsPage');
+const ComplianceViolationDetailPage = lazyRoute(() => import('@/pages/ComplianceViolationDetailPage'), 'ComplianceViolationDetailPage');
+const ComplianceDashboardPage = lazyRoute(() => import('@/pages/ComplianceDashboardPage'), 'ComplianceDashboardPage');
+const ScheduledReportsPage = lazyRoute(() => import('@/pages/ScheduledReportsPage'), 'ScheduledReportsPage');
+const AuditChecklistsPage = lazyRoute(() => import('@/pages/AuditChecklistsPage'), 'AuditChecklistsPage');
+const AuditChecklistDetailPage = lazyRoute(() => import('@/pages/AuditChecklistDetailPage'), 'AuditChecklistDetailPage');
+const DocumentCompletenessPage = lazyRoute(() => import('@/pages/DocumentCompletenessPage'), 'DocumentCompletenessPage');
+const ObligationEvidencePage = lazyRoute(() => import('@/pages/ObligationEvidencePage'), 'ObligationEvidencePage');
+const EmergencyProceduresPage = lazyRoute(() => import('@/pages/EmergencyProceduresPage'), 'EmergencyProceduresPage');
+const SystemHealthPage = lazyRoute(() => import('@/pages/SystemHealthPage'), 'SystemHealthPage');
+const GoLiveValidationPage = lazyRoute(() => import('@/pages/GoLiveValidationPage'), 'GoLiveValidationPage');
 
 // ---------------------------------------------------------------------------
 // Route configuration — TypeScript requires `roles` on every entry.
@@ -84,6 +122,13 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/admin/audit-log',              element: <AuditLogPage />,               roles: AUDIT_LOG_ROUTE_ROLES,      guardScope: 'global',     shell: 'app' },
   { path: '/admin/reports',                element: <AdminReportsPage />,           roles: ADMIN_ROLES,                guardScope: 'global',     shell: 'app' },
   { path: '/admin/access-control',         element: <AccessControlPage />,          roles: ADMIN_ONLY_ROLES,           guardScope: 'global',     shell: 'app' },
+  { path: '/admin/sync-queue',             element: <SyncQueuePage />,              roles: ADMIN_ROLES,                guardScope: 'global',     shell: 'app' },
+  { path: '/admin/notifications',          element: <NotificationPreferencesPage />, roles: NOTIFICATION_ADMIN_ROLES,   guardScope: 'global',     shell: 'app' },
+  { path: '/admin/training',               element: <TrainingAdminPage />,           roles: TRAINING_ADMIN_ROLES,       guardScope: 'global',     shell: 'app' },
+  { path: '/admin/equipment',              element: <EquipmentAdminPage />,          roles: EQUIPMENT_ADMIN_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/profile/certifications',       element: <ProfileCertificationsPage />,   roles: PROFILE_ROLES,              guardScope: 'assignment', shell: 'app' },
+  { path: '/incidents',                    element: <IncidentsPage />,              roles: INCIDENT_ROLES,             guardScope: 'global',     shell: 'app' },
+  { path: '/incidents/:id',                element: <IncidentDetailPage />,         roles: INCIDENT_ROLES,             guardScope: 'global',     shell: 'app' },
   { path: '/corrections',                  element: <CorrectionsPage />,            roles: REPORTING_ROLES,            guardScope: 'global',     shell: 'app' },
   { path: '/roadmap',                      element: <RoadmapPage />,                roles: ADMIN_ROLES,                guardScope: 'global',     shell: 'app' },
   { path: '/search',                       element: <SearchPage />,                 roles: ALL_ROLES,                  guardScope: 'assignment', shell: 'app' },
@@ -97,8 +142,24 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/field/visits/:id',             element: <FieldVisitPage />,             roles: FIELD_ROUTE_ROLES,          guardScope: 'assignment', shell: 'field' },
   { path: '/governance/issues',            element: <GovernanceIssuesPage />,       roles: GOVERNANCE_ROUTE_ROLES,     guardScope: 'global',     shell: 'app' },
   { path: '/search/observability',         element: <SearchObservabilityPage />,    roles: ADMIN_ONLY_ROLES,           guardScope: 'global',     shell: 'app' },
+  { path: '/dmr',                           element: <DmrSubmissionsPage />,          roles: DMR_SUBMISSION_ROLES,       guardScope: 'global',     shell: 'app' },
+  { path: '/dmr/:id',                      element: <DmrDetailPage />,              roles: DMR_SUBMISSION_ROLES,       guardScope: 'global',     shell: 'app' },
+  { path: '/work-orders',                  element: <WorkOrdersPage />,             roles: WORK_ORDER_ROLES,           guardScope: 'global',     shell: 'app' },
+  { path: '/work-orders/:id',              element: <WorkOrderDetailPage />,        roles: WORK_ORDER_ROLES,           guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/violations',        element: <ComplianceViolationsPage />,   roles: COMPLIANCE_DB_ROLES,        guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/violations/:id',    element: <ComplianceViolationDetailPage />, roles: COMPLIANCE_DB_ROLES,     guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/dashboard',         element: <ComplianceDashboardPage />,    roles: EXECUTIVE_DASHBOARD_ROLES,  guardScope: 'global',     shell: 'app' },
+  { path: '/admin/scheduled-reports',      element: <ScheduledReportsPage />,       roles: REPORT_SCHEDULE_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/audit/checklists',             element: <AuditChecklistsPage />,        roles: AUDIT_READINESS_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/audit/checklists/:id',         element: <AuditChecklistDetailPage />,   roles: AUDIT_READINESS_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/audit/documents',              element: <DocumentCompletenessPage />,   roles: AUDIT_READINESS_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/audit/evidence',               element: <ObligationEvidencePage />,     roles: AUDIT_READINESS_ROLES,      guardScope: 'global',     shell: 'app' },
   { path: '/corrective-actions',           element: <CorrectiveActionsPage />,      roles: CORRECTIVE_ACTION_ROLES,    guardScope: 'assignment', shell: 'app' },
+  { path: '/corrective-actions/analytics', element: <CAAnalyticsPage />,            roles: CA_ANALYTICS_ROLES,         guardScope: 'global',     shell: 'app' },
   { path: '/corrective-actions/:id',       element: <CorrectiveActionDetailPage />, roles: CORRECTIVE_ACTION_ROLES,    guardScope: 'assignment', shell: 'app' },
+  { path: '/emergency',                   element: <EmergencyProceduresPage />,    roles: EMERGENCY_ROLES,            guardScope: 'global',     shell: 'app' },
+  { path: '/admin/system-health',         element: <SystemHealthPage />,           roles: SYSTEM_HEALTH_ROLES,        guardScope: 'global',     shell: 'app' },
+  { path: '/admin/go-live',              element: <GoLiveValidationPage />,       roles: GO_LIVE_ROLES,              guardScope: 'global',     shell: 'app' },
 ];
 
 function PageLoader() {

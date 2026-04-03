@@ -84,6 +84,7 @@ export const SOURCE_TYPES = [
   'audit',
   'inspection',
   'manual',
+  'incident',
 ] as const;
 
 export type SourceType = (typeof SOURCE_TYPES)[number];
@@ -94,6 +95,7 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   audit: 'Audit Finding',
   inspection: 'Inspection Finding',
   manual: 'Manual Entry',
+  incident: 'Incident',
 };
 
 // ---------------------------------------------------------------------------

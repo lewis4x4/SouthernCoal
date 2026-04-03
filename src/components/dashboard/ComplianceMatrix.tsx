@@ -216,6 +216,7 @@ export function ComplianceMatrix() {
                       min={0}
                       value={expectedCounts[state.code] ?? ''}
                       onChange={(e) => handleExpectedChange(state.code, e.target.value)}
+                      aria-label={`Expected count for ${state.code}`}
                       className="w-full h-7 rounded bg-white/[0.03] border border-white/[0.08] text-center text-text-secondary text-[10px] font-mono focus:outline-none focus:border-status-queued/50"
                       placeholder="—"
                     />

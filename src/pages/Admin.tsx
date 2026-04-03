@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Settings, ScrollText, Shield, Bell, MapPin, FileText } from 'lucide-react';
+import { Settings, ScrollText, Shield, Bell, MapPin, FileText, Wifi, Award, Wrench } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 const ADMIN_CARDS = [
@@ -28,12 +28,36 @@ const ADMIN_CARDS = [
     ready: true,
   },
   {
+    label: 'Sync Queue',
+    description: 'View and manage offline field operations pending sync. Dismiss stuck ops, force retry, view sync history.',
+    href: '/admin/sync-queue',
+    icon: Wifi,
+    color: 'rgba(245, 158, 11, 0.08)',
+    ready: true,
+  },
+  {
     label: 'Notification Preferences',
     description: 'Email, SMS, and in-app notification settings per event type.',
-    href: '/admin',
+    href: '/admin/notifications',
     icon: Bell,
     color: 'rgba(245, 158, 11, 0.08)',
-    ready: false,
+    ready: true,
+  },
+  {
+    label: 'Training & Certification',
+    description: 'Manage training catalog, requirements, and verify completions. Expired certifications block dispatch.',
+    href: '/admin/training',
+    icon: Award,
+    color: 'rgba(16, 185, 129, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Equipment Management',
+    description: 'Track equipment inventory, assignments, calibration schedules, and maintenance.',
+    href: '/admin/equipment',
+    icon: Wrench,
+    color: 'rgba(249, 115, 22, 0.08)',
+    ready: true,
   },
   {
     label: 'State Regulatory Config',

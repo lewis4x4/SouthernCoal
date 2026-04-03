@@ -14,9 +14,14 @@ export function useDataCorrections() {
   const [loading, setLoading] = useState(true);
 
   const fetchCorrections = useCallback(async () => {
+    if (!profile?.organization_id) {
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('data_corrections')
       .select('*')
+      .eq('organization_id', profile.organization_id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -27,7 +32,7 @@ export function useDataCorrections() {
 
     setCorrections((data ?? []) as DataCorrection[]);
     setLoading(false);
-  }, []);
+  }, [profile?.organization_id]);
 
   useEffect(() => {
     fetchCorrections();

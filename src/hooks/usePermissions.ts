@@ -7,14 +7,17 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   executive: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records',
   ],
   site_manager: [
     'view', 'upload', 'export', 'command_palette', 'search',
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
+    'dispatch_override',
   ],
   environmental_manager: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_reopen', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records',
   ],
   safety_manager: [
     'view', 'upload', 'command_palette', 'search',
@@ -31,21 +34,72 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
     'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
     'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records', 'legal_hold', 'dispatch_override',
   ],
   read_only: [
     'view', 'export', 'command_palette', 'search',
+    'ca_view',
+  ],
+  // Phase 2 — expanded roles
+  wv_supervisor: [
+    'view', 'upload', 'export', 'command_palette', 'search',
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_generate_pdf',
+    'dispatch_override',
+  ],
+  float_sampler: [
+    'view', 'upload', 'command_palette', 'search',
+    'ca_view',
+  ],
+  courier: [
+    'view', 'search',
+  ],
+  compliance_reviewer: [
+    'view', 'upload', 'export', 'command_palette', 'search',
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records',
+  ],
+  coo: [
+    'view', 'upload', 'process', 'retry', 'bulk_process', 'export', 'verify', 'set_expected', 'command_palette', 'search',
+    'ca_view', 'ca_edit', 'ca_advance_workflow', 'ca_sign_responsible', 'ca_sign_approver', 'ca_reopen', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records', 'dispatch_override',
+  ],
+  ceo_view: [
+    'view', 'export', 'command_palette', 'search',
+    'ca_view', 'ca_generate_pdf',
+    'governance_review',
+  ],
+  chief_counsel: [
+    'view', 'export', 'command_palette', 'search',
+    'ca_view', 'ca_generate_pdf',
+    'governance_review', 'governance_decide', 'classify_records', 'legal_hold',
+  ],
+  maintenance_owner: [
+    'view', 'upload', 'command_palette', 'search',
+    'ca_view', 'ca_edit',
+  ],
+  lab_liaison: [
+    'view', 'upload', 'command_palette', 'search',
     'ca_view',
   ],
 };
 
 const ROLE_PRIORITY: Role[] = [
   'read_only',
+  'courier',
+  'float_sampler',
   'field_sampler',
   'lab_tech',
+  'lab_liaison',
+  'maintenance_owner',
   'safety_manager',
+  'wv_supervisor',
   'site_manager',
+  'compliance_reviewer',
   'environmental_manager',
+  'ceo_view',
+  'chief_counsel',
   'executive',
+  'coo',
   'admin',
 ];
 

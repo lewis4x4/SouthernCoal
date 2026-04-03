@@ -337,7 +337,7 @@ function IdentificationForm({ data, onChange, readOnly }: StepFormProps) {
         rows={4}
         placeholder="Detailed description of what occurred..."
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormInput
           label="Date Received"
           value={data.date_received || ''}
@@ -357,7 +357,7 @@ function IdentificationForm({ data, onChange, readOnly }: StepFormProps) {
           }))}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormSelect
           label="Source Type"
           value={data.source_type || ''}
@@ -376,7 +376,7 @@ function IdentificationForm({ data, onChange, readOnly }: StepFormProps) {
           placeholder="e.g., 40 CFR 122.41"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormInput
           label="Issuing Agency"
           value={data.issuing_agency || ''}
@@ -534,7 +534,7 @@ function VerificationForm({ data, onChange, readOnly }: StepFormProps) {
         rows={4}
         placeholder="Assessment of whether corrective actions were effective..."
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormInput
           label="Verified By"
           value={data.verified_by || ''}

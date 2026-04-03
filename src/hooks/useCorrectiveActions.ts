@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   useCorrectiveActionsStore,
@@ -18,6 +19,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
  */
 export function useCorrectiveActions() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { log } = useAuditLog();
 
   const actions = useCorrectiveActionsStore((s) => s.actions);
@@ -205,15 +207,15 @@ export function useCorrectiveActions() {
 
   // Issue #13 Fix: Use useMemo for channel name - recalculates on user change (logout/login)
   const channelName = useMemo(
-    () => `ca-changes-${user?.id ?? 'anon'}`,
-    [user?.id]
+    () => `ca-changes-${profile?.organization_id ?? user?.id ?? 'anon'}`,
+    [profile?.organization_id, user?.id]
   );
 
   // -------------------------------------------------------------------------
   // Realtime subscription
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile?.organization_id) return;
 
     const channel = supabase
       .channel(channelName)
@@ -223,6 +225,7 @@ export function useCorrectiveActions() {
           event: '*',
           schema: 'public',
           table: 'corrective_actions',
+          filter: `organization_id=eq.${profile.organization_id}`,
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (import.meta.env.DEV) console.log('[useCorrectiveActions] Realtime event:', payload.eventType);
@@ -251,8 +254,8 @@ export function useCorrectiveActions() {
           if (import.meta.env.DEV) console.warn('[corrective-actions] unsubscribe failed', err);
         });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to user.id, not user object
-  }, [user?.id, channelName]); // Issue #13: Include channelName in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to user.id + org, not objects
+  }, [user?.id, profile?.organization_id, channelName]); // Issue #13: Include channelName in deps
 
   // -------------------------------------------------------------------------
   // Derived data
@@ -260,6 +263,85 @@ export function useCorrectiveActions() {
   const filtered = filterActions(actions, filters);
   const statusCounts = getStatusCounts(actions);
   const overdueCount = getOverdueCount(actions);
+
+  // -------------------------------------------------------------------------
+  // Reassign a CA
+  // -------------------------------------------------------------------------
+  const reassignAction = useCallback(
+    async (caId: string, newAssigneeId: string): Promise<{ error: string | null }> => {
+      const ca = actions.find((a) => a.id === caId);
+      const oldAssignee = ca?.followup_assigned_to ?? null;
+
+      const result = await updateAction(caId, { followup_assigned_to: newAssigneeId } as Partial<CorrectiveAction>);
+
+      if (!result.error) {
+        log('ca_reassigned', {
+          ca_id: caId,
+          old_assignee: oldAssignee,
+          new_assignee: newAssigneeId,
+        }, {
+          module: 'corrective_actions',
+          tableName: 'corrective_actions',
+          recordId: caId,
+          oldValues: { followup_assigned_to: oldAssignee },
+          newValues: { followup_assigned_to: newAssigneeId },
+        });
+      }
+
+      return result;
+    },
+    [actions, updateAction, log],
+  );
+
+  // -------------------------------------------------------------------------
+  // Bulk reassign
+  // -------------------------------------------------------------------------
+  const bulkReassign = useCallback(
+    async (caIds: string[], newAssigneeId: string): Promise<{ error: string | null; count: number }> => {
+      let successCount = 0;
+      for (const caId of caIds) {
+        const result = await updateAction(caId, { followup_assigned_to: newAssigneeId } as Partial<CorrectiveAction>);
+        if (!result.error) successCount++;
+      }
+
+      log('ca_bulk_reassigned', {
+        ca_ids: caIds,
+        new_assignee: newAssigneeId,
+        success_count: successCount,
+      }, {
+        module: 'corrective_actions',
+        tableName: 'corrective_actions',
+      });
+
+      return { error: successCount === 0 ? 'All updates failed' : null, count: successCount };
+    },
+    [updateAction, log],
+  );
+
+  // -------------------------------------------------------------------------
+  // Bulk priority change
+  // -------------------------------------------------------------------------
+  const bulkChangePriority = useCallback(
+    async (caIds: string[], newPriority: string): Promise<{ error: string | null; count: number }> => {
+      let successCount = 0;
+      for (const caId of caIds) {
+        const result = await updateAction(caId, { priority: newPriority } as Partial<CorrectiveAction>);
+        if (!result.error) successCount++;
+      }
+
+      log('ca_bulk_priority_changed', {
+        ca_ids: caIds,
+        new_priority: newPriority,
+        success_count: successCount,
+      }, {
+        module: 'corrective_actions',
+        tableName: 'corrective_actions',
+      });
+
+      return { error: successCount === 0 ? 'All updates failed' : null, count: successCount };
+    },
+    [updateAction, log],
+  );
 
   return {
     // Data
@@ -283,5 +365,8 @@ export function useCorrectiveActions() {
     fetchActivities,
     updateAction,
     updateStepData,
+    reassignAction,
+    bulkReassign,
+    bulkChangePriority,
   };
 }

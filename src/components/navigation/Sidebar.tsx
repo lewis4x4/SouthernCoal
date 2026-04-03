@@ -5,6 +5,9 @@ import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useFtsNavBadge } from '@/hooks/useFtsNavBadge';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { readStoredBoolean, writeStoredBoolean } from '@/lib/safeStorage';
 import { NAV_GROUPS } from '@/lib/navGroups';
 
@@ -37,6 +40,8 @@ export function Sidebar() {
   const role = getEffectiveRole();
   const roleLabel = ROLE_LABELS[role] ?? role;
   const ftsBadge = useFtsNavBadge();
+  const { notifications, unreadCount, markRead, markAllRead, dismiss } = useNotifications();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Persist pin state and dispatch event for AppShell to listen
   useEffect(() => {
@@ -52,6 +57,7 @@ export function Sidebar() {
     .filter((group) => group.items.length > 0);
 
   return (
+    <>
     <aside
       className={cn(
         'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-crystal-surface/95 backdrop-blur-xl transition-all duration-300 ease-in-out',
@@ -146,8 +152,17 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom Section: Role + User */}
+      {/* Bottom Section: Notifications + Role + User */}
       <div className="border-t border-white/[0.06] p-3">
+        {/* Notification Bell */}
+        <div className="mb-2 px-1">
+          <NotificationBell
+            unreadCount={unreadCount}
+            isExpanded={isExpanded}
+            onClick={() => setDrawerOpen((prev) => !prev)}
+          />
+        </div>
+
         {/* Role Badge */}
         <div
           className={cn(
@@ -194,5 +209,15 @@ export function Sidebar() {
         )}
       </div>
     </aside>
+
+      <NotificationDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        notifications={notifications}
+        onMarkRead={markRead}
+        onMarkAllRead={markAllRead}
+        onDismiss={dismiss}
+      />
+    </>
   );
 }

@@ -125,6 +125,7 @@ export function FtsViolationsTable({ violations }: Props) {
             <input
               type="text"
               placeholder="Search DNR..."
+              aria-label="Search by DNR number"
               value={dnrSearch}
               onChange={(e) => setDnrSearch(e.target.value)}
               className="rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-white/20 w-40"

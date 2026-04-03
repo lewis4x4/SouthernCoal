@@ -17,6 +17,7 @@ import { GlassBadge } from '@/components/ui/GlassBadge';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { CorrectiveActionWorkflow } from './CorrectiveActionWorkflow';
 import { CorrectiveActionForm } from './CorrectiveActionForm';
+import { RCAPanelSection } from './RCAPanelSection';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useWorkflowTransition } from '@/hooks/useWorkflowTransition';
 import { useCorrectiveActionsStore } from '@/stores/correctiveActions';
@@ -168,6 +169,16 @@ export function CorrectiveActionDetail({
             )}
           </div>
           <CorrectiveActionForm action={action} step={activeStep} />
+
+          {/* Structured RCA panel — shown at root_cause_analysis step */}
+          {activeStep === 'root_cause_analysis' && (
+            <div className="mt-6 pt-4 border-t border-white/[0.06]">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+                Structured Root Cause Analysis
+              </h3>
+              <RCAPanelSection caId={action.id} readOnly={isClosed} />
+            </div>
+          )}
         </SpotlightCard>
 
         {/* Action Bar */}
@@ -314,10 +325,20 @@ export function CorrectiveActionDetail({
             )}
             {action.source_id && (
               <div className="pt-2 border-t border-white/[0.06]">
-                <button className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1">
-                  View Source Record
-                  <ExternalLink className="h-3 w-3" />
-                </button>
+                {action.source_type === 'incident' ? (
+                  <Link
+                    to={`/incidents/${action.source_id}`}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
+                  >
+                    View Source Incident
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <button className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1">
+                    View Source Record
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             )}
           </div>

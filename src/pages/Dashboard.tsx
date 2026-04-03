@@ -158,18 +158,27 @@ export function Dashboard() {
 
   switch (role) {
     case 'field_sampler':
+    case 'float_sampler':
       return <FieldSamplerDashboard />;
     case 'lab_tech':
+    case 'lab_liaison':
       return <LabTechDashboard />;
     case 'safety_manager':
+    case 'maintenance_owner':
       return <SafetyManagerDashboard />;
     case 'site_manager':
+    case 'wv_supervisor':
       return <SiteManagerDashboard />;
     case 'environmental_manager':
+    case 'compliance_reviewer':
       return <EnvManagerDashboard />;
     case 'executive':
     case 'admin':
+    case 'coo':
+    case 'ceo_view':
+    case 'chief_counsel':
       return <ExecutiveDashboard />;
+    case 'courier':
     case 'read_only':
       return <ReadOnlyDashboard />;
     default:

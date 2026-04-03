@@ -1,10 +1,12 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MONTH_ABBR } from '@/lib/constants';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useFtsStore } from '@/stores/fts';
 import type { FtsUpload, FtsViolation, FtsMonthlyTotal, FtsKpis } from '@/types/fts';
 
 export function useFtsData() {
+  const { profile } = useUserProfile();
   const uploads = useFtsStore((s) => s.uploads);
   const violations = useFtsStore((s) => s.violations);
   const monthlyTotals = useFtsStore((s) => s.monthlyTotals);
@@ -73,13 +75,20 @@ export function useFtsData() {
     refetch();
   }, [refetch]);
 
-  // ── Realtime subscription on fts_uploads ──
+  // ── Realtime subscription on fts_uploads (org-scoped) ──
   useEffect(() => {
+    if (!profile?.organization_id) return;
+
     const channel = supabase
-      .channel('fts-uploads-changes')
+      .channel(`fts-uploads-changes:${profile.organization_id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'fts_uploads' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fts_uploads',
+          filter: `organization_id=eq.${profile.organization_id}`,
+        },
         (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             upsertUpload(payload.new as unknown as FtsUpload);
@@ -100,7 +109,7 @@ export function useFtsData() {
         if (import.meta.env.DEV) console.warn('[fts] removeChannel failed', err);
       });
     };
-  }, [upsertUpload, fetchViolations, fetchMonthlyTotals]);
+  }, [profile?.organization_id, upsertUpload, fetchViolations, fetchMonthlyTotals]);
 
   // ── Compute KPIs ──
   // Financial KPIs use monthlyTotals (small dataset, no row-limit issues).

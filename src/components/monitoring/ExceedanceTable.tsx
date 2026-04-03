@@ -134,6 +134,10 @@ export function ExceedanceTable({
                     isExpanded && 'bg-white/5',
                   )}
                   onClick={() => setExpandedId(isExpanded ? null : exceedance.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : exceedance.id); } }}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={isExpanded}
                 >
                   <td className="py-3 px-4">
                     {isExpanded ? (

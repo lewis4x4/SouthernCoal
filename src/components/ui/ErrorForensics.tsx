@@ -82,6 +82,7 @@ export function ErrorForensics({ errorLog, onRetry, className }: ErrorForensicsP
               }}
               className="absolute top-2 right-2 p-1.5 rounded text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
               title="Copy error details"
+              aria-label="Copy error details"
             >
               <Copy size={12} />
               {copied && (

@@ -15,7 +15,8 @@ export function useRoadmapTasks() {
     const { data, error } = await supabase
       .from('roadmap_tasks')
       .select('*')
-      .order('task_id', { ascending: true });
+      .order('task_id', { ascending: true })
+      .limit(500);
 
     if (error) {
       console.error('[roadmap] Failed to fetch tasks:', error.message);

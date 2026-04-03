@@ -16,6 +16,7 @@ import {
   isFieldOutboundConflictHoldError,
   processFieldOutboundQueue,
   shouldQueueFieldOutboundFailure,
+  logSyncFlushToServer,
 } from '@/lib/fieldOutboundQueue';
 import {
   FIELD_DISPATCH_STATE_CODE,
@@ -762,6 +763,10 @@ export function useFieldOps() {
     }
 
     const flushResult = await processFieldOutboundQueue(supabase);
+    // Fire-and-forget server-side sync log for admin visibility
+    if (userId && organizationId && (flushResult.processed > 0 || flushResult.failed)) {
+      logSyncFlushToServer(supabase, flushResult, userId, organizationId);
+    }
     await refreshOutboundPendingCount();
     const totalProcessed = evidenceSyncResult.uploaded + flushResult.processed;
 
