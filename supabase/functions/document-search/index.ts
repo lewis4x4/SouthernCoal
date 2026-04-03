@@ -253,9 +253,9 @@ serve(async (req: Request) => {
     );
 
     if (rpcError) {
-      console.error("RPC error:", rpcError);
+      console.error("[document-search] RPC error:", rpcError);
       return new Response(
-        JSON.stringify({ success: false, error: `Search failed: ${rpcError.message}` }),
+        JSON.stringify({ success: false, error: "Search operation failed. Please try again." }),
         { status: 500, headers },
       );
     }
@@ -313,9 +313,9 @@ serve(async (req: Request) => {
       { status: 200, headers },
     );
   } catch (err) {
-    console.error("document-search error:", err);
+    console.error("[document-search] Unexpected error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: (err as Error).message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers },
     );
   }

@@ -71,11 +71,6 @@ async function validateAuth(
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
 
-    // Check if this is the actual service role key (exact match, not JWT decode)
-    if (token === SUPABASE_SERVICE_ROLE_KEY) {
-      return { authorized: true, userId: null, orgId: null, role: "system" };
-    }
-
     // Path 3: User JWT (frontend "Sync Now") — verify signature via Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return denied;

@@ -32,15 +32,24 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
     onSearch(query);
   }
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or Escape key
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowRecent(false);
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowRecent(false);
+      }
+    }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   return (
@@ -75,6 +84,7 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
           <button
             type="button"
             onClick={() => setValue('')}
+            aria-label="Clear search"
             className="rounded p-0.5 text-text-muted transition-colors hover:text-text-secondary"
           >
             <X className="h-4 w-4" />

@@ -27,6 +27,7 @@ import {
   Siren,
   HeartPulse,
   Rocket,
+  CloudRain,
 } from 'lucide-react';
 import type { Role } from '@/types/auth';
 import {
@@ -54,6 +55,9 @@ import {
   EMERGENCY_ROLES,
   SYSTEM_HEALTH_ROLES,
   GO_LIVE_ROLES,
+  RAIN_EVENT_CONFIG_ROLES,
+  RAIN_EVENT_ALERT_ROLES,
+  RAIN_EVENT_VIEW_ROLES,
 } from '@/lib/rbac';
 
 export type NavItem = {
@@ -99,6 +103,17 @@ export const NAV_GROUPS: NavGroup[] = [
     activeColor: 'bg-emerald-500/15 text-emerald-300 shadow-lg shadow-emerald-500/5',
     hoverColor: 'hover:text-emerald-400',
     accentColor: 'border-emerald-500/30',
+  },
+  {
+    label: 'Weather',
+    items: [
+      { label: 'Stations', href: '/weather/stations', icon: Satellite, roles: RAIN_EVENT_CONFIG_ROLES },
+      { label: 'Rain Events', href: '/weather/alerts', icon: CloudRain, roles: RAIN_EVENT_ALERT_ROLES },
+      { label: 'Precipitation', href: '/weather/data', icon: BarChart3, roles: RAIN_EVENT_VIEW_ROLES },
+    ],
+    activeColor: 'bg-teal-500/15 text-teal-300 shadow-lg shadow-teal-500/5',
+    hoverColor: 'hover:text-teal-400',
+    accentColor: 'border-teal-500/30',
   },
   {
     label: 'Compliance',

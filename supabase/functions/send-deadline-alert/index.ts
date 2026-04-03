@@ -6,7 +6,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 /** SPA origin for deep links in transactional email (same secret as other Edge Functions). */
-const FRONTEND_URL = (Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173").replace(/\/$/, "");
+const _frontendEnv = Deno.env.get("FRONTEND_URL");
+const FRONTEND_URL = (_frontendEnv ?? (
+  (Deno.env.get("SUPABASE_URL") ?? "").includes("localhost") ? "http://localhost:5173" : ""
+)).replace(/\/$/, "");
 
 const TIER_LABELS: Record<string, string> = {
   tier_1: "Tier 1 Alert",

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Upload, ClipboardList, FileText, Activity, DollarSign,
-  MapPin, ClipboardCheck,
+  MapPin, ClipboardCheck, CloudRain,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { Role } from '@/types/auth';
@@ -71,6 +71,14 @@ const TILES: Tile[] = [
     icon: ClipboardCheck,
     gradient: 'from-cyan-600 to-cyan-500',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler'],
+  },
+  {
+    title: 'Rain Events',
+    description: 'Weather alerts and precipitation monitoring',
+    href: '/weather/alerts',
+    icon: CloudRain,
+    gradient: 'from-sky-600 to-sky-500',
+    roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'wv_supervisor', 'coo'],
   },
 ];
 

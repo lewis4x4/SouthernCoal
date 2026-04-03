@@ -36,6 +36,8 @@ export function useReportGeneration() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportKeyRef = useRef<string>('');
   const pollingInFlight = useRef(false);
+  const pollAttempts = useRef(0);
+  const MAX_POLL_ATTEMPTS = 100; // ~5 minutes at 3s intervals
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -59,6 +61,16 @@ export function useReportGeneration() {
       // Prevent concurrent polls from accumulating
       if (pollingInFlight.current) return;
       pollingInFlight.current = true;
+      pollAttempts.current += 1;
+
+      if (pollAttempts.current > MAX_POLL_ATTEMPTS) {
+        stopPolling();
+        setGenerating(false);
+        setJob((prev) => prev ? { ...prev, status: 'failed', error_message: 'Report generation timed out' } : null);
+        toast.error('Report generation timed out. Please try again.');
+        pollingInFlight.current = false;
+        return;
+      }
 
       try {
         const token = await getFreshToken();
@@ -117,6 +129,7 @@ export function useReportGeneration() {
     ): Promise<GenerationJob | null> => {
       setGenerating(true);
       stopPolling();
+      pollAttempts.current = 0;
       reportKeyRef.current = reportKey;
 
       try {

@@ -9,6 +9,7 @@ import { RecentVisitsCard } from '@/components/dashboard/RecentVisitsCard';
 import { OutboundQueueCard } from '@/components/dashboard/OutboundQueueCard';
 import { CorrectiveActionSummaryCard } from '@/components/dashboard/CorrectiveActionSummaryCard';
 import { UploadQueueSummaryCard } from '@/components/dashboard/UploadQueueSummaryCard';
+import { RainEventAlertCard } from '@/components/weather/RainEventAlertCard';
 
 function FieldSamplerDashboard() {
   return (
@@ -65,9 +66,10 @@ function SiteManagerDashboard() {
         title="Site Manager Dashboard"
         subtitle="Field activity across your sites, corrective actions, and compliance status"
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <TodaysRouteSummaryCard scope="org" />
         <CorrectiveActionSummaryCard />
+        <RainEventAlertCard />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <OperationalStatusCard />
@@ -89,9 +91,10 @@ function EnvManagerDashboard() {
         <FinancialRiskCard />
         <CorrectiveActionSummaryCard />
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <OperationalStatusCard />
         <ActionQueueCard />
+        <RainEventAlertCard />
       </div>
       <TodaysRouteSummaryCard scope="org" />
       <QuickAccessTiles />

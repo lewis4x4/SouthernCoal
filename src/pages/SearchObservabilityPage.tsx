@@ -448,8 +448,8 @@ export function SearchObservabilityPage() {
             {topQueries.length === 0 ? (
               <p className="py-4 text-center text-xs text-text-muted">No queries yet</p>
             ) : (
-              topQueries.map(({ query, count }, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+              topQueries.map(({ query, count }) => (
+                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
                   <span className="truncate text-text-secondary">{query}</span>
                   <span className="shrink-0 font-mono text-text-muted">{count}</span>
                 </div>
@@ -465,8 +465,8 @@ export function SearchObservabilityPage() {
             {zeroResultQueries.length === 0 ? (
               <p className="py-4 text-center text-xs text-text-muted">No zero-result queries</p>
             ) : (
-              zeroResultQueries.map(({ query, count }, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+              zeroResultQueries.map(({ query, count }) => (
+                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
                   <span className="truncate text-text-secondary">{query}</span>
                   <span className="shrink-0 font-mono text-text-muted">{count}</span>
                 </div>
@@ -484,8 +484,8 @@ export function SearchObservabilityPage() {
             SQL Validation Blocks ({validationBlocks.length})
           </h3>
           <div className="max-h-48 space-y-2 overflow-y-auto">
-            {validationBlocks.map((block, i) => (
-              <div key={i} className="rounded-lg border border-red-500/10 bg-red-500/[0.03] p-2 text-xs">
+            {validationBlocks.map((block) => (
+              <div key={`${block.date}-${block.reason}`} className="rounded-lg border border-red-500/10 bg-red-500/[0.03] p-2 text-xs">
                 <p className="font-medium text-red-300">{block.reason}</p>
                 <p className="mt-0.5 truncate text-text-muted">{block.query}</p>
                 {block.sql && (
@@ -573,8 +573,8 @@ export function SearchObservabilityPage() {
               {citationQuality.length === 0 ? (
                 <p className="py-4 text-center text-xs text-text-muted">No document searches yet</p>
               ) : (
-                citationQuality.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                citationQuality.map((item) => (
+                  <div key={`${item.date}-${item.query}`} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
                     <span className="min-w-0 truncate text-text-secondary">{item.query}</span>
                     <div className="flex shrink-0 items-center gap-2 font-mono text-text-muted">
                       <span>{item.chunkCount} chunks</span>

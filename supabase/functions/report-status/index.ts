@@ -10,7 +10,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 // ── Constants ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").trim();
 const SERVICE_KEY = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim();
-const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173";
+const _reportStatusEnvOrigin = Deno.env.get("FRONTEND_URL");
+const _isLocal = Deno.env.get("ENVIRONMENT") === "local" ||
+  SUPABASE_URL.includes("localhost") || SUPABASE_URL.includes("127.0.0.1");
+const ALLOWED_ORIGIN = _reportStatusEnvOrigin ?? (_isLocal ? "http://localhost:5173" : "");
+if (!ALLOWED_ORIGIN) {
+  console.error("[report-status] FRONTEND_URL not set in non-local environment");
+}
 const SIGNED_URL_EXPIRY = 3600; // 1 hour
 
 // ── CORS (GET allowed for polling) ───────────────────────────────────────────
@@ -67,6 +73,8 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const jobId = url.searchParams.get("job_id");
   if (!jobId) return json({ error: "job_id query parameter required" }, 400);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(jobId)) return json({ error: "Invalid job_id format" }, 400);
 
   // 3. Fetch job (service role bypasses RLS)
   const { data: job, error: fetchError } = await sb

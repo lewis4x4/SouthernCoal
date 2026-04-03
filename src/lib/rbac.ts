@@ -149,3 +149,62 @@ export const PROFILE_ROLES: Role[] = [
   'compliance_reviewer', 'coo', 'ceo_view', 'chief_counsel',
   'maintenance_owner', 'lab_liaison',
 ];
+
+// ---------------------------------------------------------------------------
+// Rain Event Monitoring Module
+// ---------------------------------------------------------------------------
+
+/** All roles — precipitation data is viewable by everyone */
+export const RAIN_EVENT_VIEW_ROLES: Role[] = ALL_ROLES;
+
+/** Roles that can see rain event alerts */
+export const RAIN_EVENT_ALERT_ROLES: Role[] = [
+  'wv_supervisor', 'environmental_manager', 'site_manager', 'executive',
+  'admin', 'coo',
+];
+
+/** Roles that can declare (activate sampling for) a rain event */
+export const RAIN_EVENT_DECLARE_ROLES: Role[] = [
+  'wv_supervisor', 'environmental_manager', 'site_manager', 'admin',
+];
+
+/** Roles that can dismiss an automated rain event alert */
+export const RAIN_EVENT_DISMISS_ROLES: Role[] = [
+  'wv_supervisor', 'environmental_manager', 'admin',
+];
+
+/** Roles that can manually enter precipitation readings */
+export const RAIN_EVENT_MANUAL_ENTRY_ROLES: Role[] = [
+  'wv_supervisor', 'environmental_manager', 'field_sampler', 'admin',
+  'float_sampler',
+];
+
+/** Roles that can configure trigger thresholds and assign stations */
+export const RAIN_EVENT_CONFIG_ROLES: Role[] = [
+  'environmental_manager', 'admin',
+];
+
+/** Roles that can register new weather stations */
+export const RAIN_EVENT_STATION_ADMIN_ROLES: Role[] = ['admin'];
+
+/** Roles that can claim a precipitation exemption */
+export const RAIN_EVENT_EXEMPTION_CLAIM_ROLES: Role[] = [
+  'environmental_manager', 'site_manager', 'admin',
+];
+
+/** Roles that can approve an exemption claim (must be different person than claimant) */
+export const RAIN_EVENT_EXEMPTION_APPROVE_ROLES: Role[] = [
+  'executive', 'environmental_manager', 'admin',
+];
+
+/** Roles that can generate evidence packet PDFs */
+export const RAIN_EVENT_EVIDENCE_ROLES: Role[] = [
+  'wv_supervisor', 'environmental_manager', 'site_manager', 'executive',
+  'admin', 'coo',
+];
+
+/** Roles that can view the full audit trail of rain event decisions */
+export const RAIN_EVENT_AUDIT_ROLES: Role[] = [
+  'executive', 'environmental_manager', 'admin', 'read_only',
+  'coo', 'chief_counsel',
+];

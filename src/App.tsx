@@ -37,6 +37,9 @@ import {
   EMERGENCY_ROLES,
   SYSTEM_HEALTH_ROLES,
   GO_LIVE_ROLES,
+  RAIN_EVENT_CONFIG_ROLES,
+  RAIN_EVENT_ALERT_ROLES,
+  RAIN_EVENT_VIEW_ROLES,
 } from '@/lib/rbac';
 
 // ---------------------------------------------------------------------------
@@ -98,6 +101,9 @@ const ObligationEvidencePage = lazyRoute(() => import('@/pages/ObligationEvidenc
 const EmergencyProceduresPage = lazyRoute(() => import('@/pages/EmergencyProceduresPage'), 'EmergencyProceduresPage');
 const SystemHealthPage = lazyRoute(() => import('@/pages/SystemHealthPage'), 'SystemHealthPage');
 const GoLiveValidationPage = lazyRoute(() => import('@/pages/GoLiveValidationPage'), 'GoLiveValidationPage');
+const WeatherStationsPage = lazyRoute(() => import('@/pages/WeatherStationsPage'), 'WeatherStationsPage');
+const RainEventAlertsPage = lazyRoute(() => import('@/pages/RainEventAlertsPage'), 'RainEventAlertsPage');
+const PrecipitationDataPage = lazyRoute(() => import('@/pages/PrecipitationDataPage'), 'PrecipitationDataPage');
 
 // ---------------------------------------------------------------------------
 // Route configuration — TypeScript requires `roles` on every entry.
@@ -160,6 +166,9 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/emergency',                   element: <EmergencyProceduresPage />,    roles: EMERGENCY_ROLES,            guardScope: 'global',     shell: 'app' },
   { path: '/admin/system-health',         element: <SystemHealthPage />,           roles: SYSTEM_HEALTH_ROLES,        guardScope: 'global',     shell: 'app' },
   { path: '/admin/go-live',              element: <GoLiveValidationPage />,       roles: GO_LIVE_ROLES,              guardScope: 'global',     shell: 'app' },
+  { path: '/weather/stations',           element: <WeatherStationsPage />,        roles: RAIN_EVENT_CONFIG_ROLES,    guardScope: 'global',     shell: 'app' },
+  { path: '/weather/alerts',             element: <RainEventAlertsPage />,        roles: RAIN_EVENT_ALERT_ROLES,     guardScope: 'global',     shell: 'app' },
+  { path: '/weather/data',               element: <PrecipitationDataPage />,      roles: RAIN_EVENT_VIEW_ROLES,      guardScope: 'assignment', shell: 'app' },
 ];
 
 function PageLoader() {

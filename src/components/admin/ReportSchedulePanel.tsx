@@ -61,18 +61,37 @@ export function ReportSchedulePanel({ reportDef }: Props) {
   }, [reportDef.id]);
 
   async function save() {
-    if (!cronExpr.trim()) {
+    const trimmed = cronExpr.trim();
+    if (!trimmed) {
       toast.error('Cron expression is required');
+      return;
+    }
+    // Validate cron: 5 space-separated fields (min hour day month weekday)
+    const cronParts = trimmed.split(/\s+/);
+    if (cronParts.length !== 5 || !cronParts.every((p) => /^[\d,\-*/]+$/.test(p))) {
+      toast.error('Invalid cron expression. Expected 5 fields: min hour day month weekday');
       return;
     }
     setSaving(true);
 
+    if (!user) {
+      toast.error('Session expired — please log in again');
+      setSaving(false);
+      return;
+    }
+
     // Get user's org
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('organization_id')
-      .eq('id', user!.id)
+      .eq('id', user.id)
       .single();
+
+    if (profileError || !profile?.organization_id) {
+      toast.error('Failed to resolve organization. Please refresh and try again.');
+      setSaving(false);
+      return;
+    }
 
     if (schedule) {
       // Update existing
@@ -97,13 +116,13 @@ export function ReportSchedulePanel({ reportDef }: Props) {
       const { data, error } = await supabase
         .from('scheduled_reports')
         .insert({
-          organization_id: profile?.organization_id,
+          organization_id: profile.organization_id,
           report_definition_id: reportDef.id,
           report_config: {},
           cron_expression: cronExpr,
           timezone,
           is_active: isActive,
-          created_by: user!.id,
+          created_by: user.id,
           next_run_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         })
         .select('id, cron_expression, timezone, is_active, last_run_at, next_run_at')

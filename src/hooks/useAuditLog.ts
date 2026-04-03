@@ -185,7 +185,18 @@ type AuditAction =
   | 'deployment_stage_advanced'
   | 'smoke_test_recorded'
   | 'go_live_sign_off_created'
-  | 'go_live_readiness_calculated';
+  | 'go_live_readiness_calculated'
+  // Rain Event Monitoring
+  | 'weather_station_created'
+  | 'weather_station_updated'
+  | 'weather_station_deleted'
+  | 'weather_station_assigned'
+  | 'weather_station_unassigned'
+  | 'rain_event_activated'
+  | 'rain_event_dismissed'
+  | 'rain_event_manual_declared'
+  | 'precipitation_reading_manual'
+  | 'precipitation_data_export_csv';
 
 export type { AuditAction };
 
