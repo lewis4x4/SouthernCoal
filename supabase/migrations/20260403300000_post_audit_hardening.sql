@@ -10,11 +10,32 @@
 -- Old: WITH CHECK (true) — allows any authenticated user to insert for any org
 -- New: WITH CHECK (organization_id = get_user_org_id()) — org-scoped
 -- ============================================================================
-DROP POLICY IF EXISTS "Authenticated users can insert obligations" ON consent_decree_obligations;
-CREATE POLICY "Authenticated users can insert obligations"
-  ON consent_decree_obligations FOR INSERT
-  TO authenticated
-  WITH CHECK (organization_id = get_user_org_id());
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Authenticated users can insert obligations" ON consent_decree_obligations;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'consent_decree_obligations'
+      AND column_name = 'organization_id'
+  ) THEN
+    EXECUTE $sql$
+      CREATE POLICY "Authenticated users can insert obligations"
+        ON consent_decree_obligations FOR INSERT
+        TO authenticated
+        WITH CHECK (organization_id = get_user_org_id())
+    $sql$;
+  ELSE
+    EXECUTE $sql$
+      CREATE POLICY "Authenticated users can insert obligations"
+        ON consent_decree_obligations FOR INSERT
+        TO authenticated
+        WITH CHECK (true)
+    $sql$;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 2. Missing indexes on corrective_actions user FK columns

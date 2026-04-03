@@ -402,13 +402,39 @@ CREATE TRIGGER trg_dmr_notify_status
 -- ============================================================================
 -- 5. Additional indexes for DMR queries
 -- ============================================================================
-CREATE INDEX IF NOT EXISTS idx_dmr_submissions_org_status
-  ON dmr_submissions (organization_id, status)
-  WHERE status != 'accepted';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'dmr_submissions'
+      AND column_name = 'organization_id'
+  ) THEN
+    EXECUTE $sql$
+      CREATE INDEX IF NOT EXISTS idx_dmr_submissions_org_status
+        ON dmr_submissions (organization_id, status)
+        WHERE status != 'accepted'
+    $sql$;
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_dmr_line_items_exceedance
-  ON dmr_line_items (submission_id)
-  WHERE is_exceedance = true;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'dmr_line_items'
+      AND column_name = 'submission_id'
+  ) THEN
+    EXECUTE $sql$
+      CREATE INDEX IF NOT EXISTS idx_dmr_line_items_exceedance
+        ON dmr_line_items (submission_id)
+        WHERE is_exceedance = true
+    $sql$;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_sampling_events_outfall_date
   ON sampling_events (outfall_id, sample_date DESC);

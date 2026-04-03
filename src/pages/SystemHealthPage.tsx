@@ -26,7 +26,7 @@ const CHECK_STATUS_COLOR: Record<string, string> = {
 export function SystemHealthPage() {
   const {
     integrityChecks, retentionPolicies, healthLogs,
-    loading, runningCheck,
+    loading, runningCheck, fetchError,
     runIntegrityCheck, updateRetentionPolicy,
   } = useSystemHealth();
   const { log } = useAuditLog();
@@ -110,6 +110,20 @@ export function SystemHealthPage() {
         </div>
       </div>
 
+      {fetchError && (
+        <div role="alert">
+        <SpotlightCard className="border border-red-500/25 bg-red-500/[0.08] px-4 py-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 text-red-300" />
+            <div>
+              <p className="text-sm font-medium text-red-100">Could not load system health data</p>
+              <p className="mt-1 text-xs text-red-200/90">{fetchError}</p>
+            </div>
+          </div>
+        </SpotlightCard>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SpotlightCard className="p-4">
@@ -180,7 +194,7 @@ export function SystemHealthPage() {
       {/* Integrity Checks */}
       {tab === 'integrity' && (
         <div className="space-y-2">
-          {integrityChecks.length === 0 && (
+          {!fetchError && integrityChecks.length === 0 && (
             <p className="text-center text-text-secondary text-sm py-8">No integrity checks run yet. Click "Run Check" to start.</p>
           )}
           {integrityChecks.map(check => (
@@ -197,6 +211,11 @@ export function SystemHealthPage() {
       {/* Retention Policies */}
       {tab === 'retention' && (
         <div className="space-y-2">
+          {!fetchError && retentionPolicies.length === 0 && (
+            <p className="text-center text-text-secondary text-sm py-8">
+              No retention policies are configured for this organization yet.
+            </p>
+          )}
           {retentionPolicies.map(policy => (
             <SpotlightCard key={policy.id} className="p-4">
               <div className="flex items-start justify-between">
@@ -244,7 +263,7 @@ export function SystemHealthPage() {
       {/* Health Logs */}
       {tab === 'health' && (
         <div className="space-y-2">
-          {healthLogs.length === 0 && (
+          {!fetchError && healthLogs.length === 0 && (
             <p className="text-center text-text-secondary text-sm py-8">No health snapshots recorded yet.</p>
           )}
           {healthLogs.map(h => (

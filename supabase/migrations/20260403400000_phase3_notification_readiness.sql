@@ -47,15 +47,81 @@ CREATE TABLE IF NOT EXISTS notifications (
   dismissed_at timestamptz
 );
 
+ALTER TABLE notifications
+  ADD COLUMN IF NOT EXISTS organization_id uuid,
+  ADD COLUMN IF NOT EXISTS recipient_id uuid,
+  ADD COLUMN IF NOT EXISTS priority notification_priority DEFAULT 'info',
+  ADD COLUMN IF NOT EXISTS title text,
+  ADD COLUMN IF NOT EXISTS body text,
+  ADD COLUMN IF NOT EXISTS channels text[] DEFAULT '{in_app}',
+  ADD COLUMN IF NOT EXISTS in_app_read_at timestamptz,
+  ADD COLUMN IF NOT EXISTS email_sent_at timestamptz,
+  ADD COLUMN IF NOT EXISTS sms_sent_at timestamptz,
+  ADD COLUMN IF NOT EXISTS email_error text,
+  ADD COLUMN IF NOT EXISTS sms_error text,
+  ADD COLUMN IF NOT EXISTS entity_type text,
+  ADD COLUMN IF NOT EXISTS entity_id uuid,
+  ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS dismissed_at timestamptz;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'notifications'
+      AND column_name = 'user_id'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE notifications
+      SET recipient_id = user_id
+      WHERE recipient_id IS NULL
+    $sql$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'notifications'
+      AND column_name = 'recipient_id'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE notifications n
+      SET organization_id = up.organization_id
+      FROM user_profiles up
+      WHERE n.recipient_id = up.id
+        AND n.organization_id IS NULL
+    $sql$;
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'notifications'
+      AND column_name = 'user_id'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE notifications n
+      SET organization_id = up.organization_id
+      FROM user_profiles up
+      WHERE n.user_id = up.id
+        AND n.organization_id IS NULL
+    $sql$;
+  END IF;
+END $$;
+
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Users can only read their own notifications
+DROP POLICY IF EXISTS "Users read own notifications" ON notifications;
 CREATE POLICY "Users read own notifications"
   ON notifications FOR SELECT
   TO authenticated
   USING (recipient_id = auth.uid());
 
 -- Users can update (mark read/dismiss) their own notifications
+DROP POLICY IF EXISTS "Users update own notifications" ON notifications;
 CREATE POLICY "Users update own notifications"
   ON notifications FOR UPDATE
   TO authenticated
@@ -63,16 +129,17 @@ CREATE POLICY "Users update own notifications"
   WITH CHECK (recipient_id = auth.uid());
 
 -- System inserts via RPC or edge functions (org-scoped)
+DROP POLICY IF EXISTS "Org-scoped notification insert" ON notifications;
 CREATE POLICY "Org-scoped notification insert"
   ON notifications FOR INSERT
   TO authenticated
   WITH CHECK (organization_id = get_user_org_id());
 
-CREATE INDEX idx_notifications_recipient_unread
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread
   ON notifications (recipient_id, created_at DESC)
   WHERE in_app_read_at IS NULL AND dismissed_at IS NULL;
 
-CREATE INDEX idx_notifications_org_event
+CREATE INDEX IF NOT EXISTS idx_notifications_org_event
   ON notifications (organization_id, event_type, created_at DESC);
 
 -- ============================================================================
@@ -92,6 +159,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 
 ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own preferences" ON notification_preferences;
 CREATE POLICY "Users manage own preferences"
   ON notification_preferences FOR ALL
   TO authenticated

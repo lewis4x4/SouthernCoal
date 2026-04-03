@@ -19,6 +19,7 @@ export function useSystemHealth() {
   const [healthLogs, setHealthLogs] = useState<SystemHealthLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [runningCheck, setRunningCheck] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // -- Data Integrity Checks --
 
@@ -32,6 +33,7 @@ export function useSystemHealth() {
       .limit(20);
 
     if (error) {
+      setFetchError(`Failed to load integrity checks: ${error.message}`);
       console.error('[health] integrity checks fetch error:', error.message);
     } else {
       setIntegrityChecks((data ?? []) as DataIntegrityCheck[]);
@@ -69,6 +71,7 @@ export function useSystemHealth() {
       .order('record_type');
 
     if (error) {
+      setFetchError(`Failed to load retention policies: ${error.message}`);
       console.error('[health] retention policies fetch error:', error.message);
     } else {
       setRetentionPolicies((data ?? []) as RetentionPolicy[]);
@@ -98,6 +101,7 @@ export function useSystemHealth() {
       .limit(30);
 
     if (error) {
+      setFetchError(`Failed to load system health logs: ${error.message}`);
       console.error('[health] health logs fetch error:', error.message);
     } else {
       setHealthLogs((data ?? []) as SystemHealthLog[]);
@@ -107,8 +111,13 @@ export function useSystemHealth() {
   // -- Init --
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      setLoading(false);
+      setFetchError('Your user profile is not assigned to an organization.');
+      return;
+    }
     setLoading(true);
+    setFetchError(null);
     Promise.all([
       fetchIntegrityChecks(),
       fetchRetentionPolicies(),
@@ -122,6 +131,7 @@ export function useSystemHealth() {
     healthLogs,
     loading,
     runningCheck,
+    fetchError,
     runIntegrityCheck,
     updateRetentionPolicy,
     fetchIntegrityChecks,

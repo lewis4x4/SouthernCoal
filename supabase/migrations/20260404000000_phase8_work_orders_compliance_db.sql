@@ -349,9 +349,7 @@ CREATE TABLE IF NOT EXISTS legal_holds (
   decree_paragraphs text[],
   notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  -- Only one active hold per entity
-  CONSTRAINT legal_holds_unique_active UNIQUE (entity_type, entity_id) WHERE (is_active = true)
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE legal_holds ENABLE ROW LEVEL SECURITY;
@@ -364,6 +362,10 @@ CREATE POLICY legal_holds_org_insert ON legal_holds
 
 CREATE POLICY legal_holds_org_update ON legal_holds
   FOR UPDATE USING (organization_id = get_user_org_id());
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_legal_holds_unique_active
+  ON legal_holds (entity_type, entity_id)
+  WHERE is_active = true;
 
 -- ============================================================================
 -- 8. Triggers
