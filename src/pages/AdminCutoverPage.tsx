@@ -73,6 +73,15 @@ export function AdminCutoverPage() {
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-6">
+          <SpotlightCard className="p-5 space-y-3">
+            <h2 className="text-lg font-semibold text-text-primary">Matrix Rules</h2>
+            <div className="text-sm text-text-secondary space-y-2">
+              <p>Every row must end with one disposition: <span className="text-text-primary font-medium">live</span>, <span className="text-text-primary font-medium">archive</span>, or <span className="text-text-primary font-medium">exclude</span>.</p>
+              <p>Best matching columns: <span className="font-mono text-xs">state_code</span>, <span className="font-mono text-xs">site_name</span>, <span className="font-mono text-xs">permit_number</span>, <span className="font-mono text-xs">outfall_number</span>.</p>
+              <p>Optional helpers: <span className="font-mono text-xs">external_npdes_id</span>, <span className="font-mono text-xs">mine_id</span>, <span className="font-mono text-xs">notes</span>.</p>
+            </div>
+          </SpotlightCard>
+
           <SpotlightCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <DatabaseZap className="h-5 w-5 text-cyan-300" />
