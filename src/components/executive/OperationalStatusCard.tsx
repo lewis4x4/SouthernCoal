@@ -46,7 +46,7 @@ export function OperationalStatusCard() {
             supabase.from('sites').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
             supabase
               .from('live_program_roster')
-              .select('site_id, state_code')
+              .select('site_id, permit_id, outfall_id, state_code')
               .eq('organization_id', orgId),
             supabase.from('npdes_permits').select('id').eq('organization_id', orgId).limit(5000),
             supabase.from('fts_violations').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
@@ -87,6 +87,16 @@ export function OperationalStatusCard() {
 
           const rosterRows = rosterRes.data ?? [];
           const uniqueSites = new Set(rosterRows.map((row) => row.site_id));
+          const uniquePermits = new Set(
+            rosterRows
+              .map((row) => row.permit_id)
+              .filter((permitId): permitId is string => typeof permitId === 'string' && permitId.length > 0),
+          );
+          const uniqueOutfalls = new Set(
+            rosterRows
+              .map((row) => row.outfall_id)
+              .filter((outfallId): outfallId is string => typeof outfallId === 'string' && outfallId.length > 0),
+          );
           const uniqueStates = new Set(
             rosterRows
               .map((row) => row.state_code)
@@ -98,8 +108,8 @@ export function OperationalStatusCard() {
             activeStateCount: uniqueStates.size,
             hasCutoverRoster: uniqueSites.size > 0,
             siteCount: sitesRes.count ?? 0,
-            permitCount: permitIds.length,
-            outfallCount: outfallsRes.count ?? 0,
+            permitCount: uniquePermits.size > 0 ? uniquePermits.size : permitIds.length,
+            outfallCount: uniqueOutfalls.size > 0 ? uniqueOutfalls.size : (outfallsRes.count ?? 0),
             violationCount: violationsRes.count ?? 0,
             ftsCompletedUploads: ftsUploadsRes.count ?? 0,
           });

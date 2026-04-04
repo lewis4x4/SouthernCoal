@@ -6,6 +6,8 @@ import { formatDollars } from '@/lib/format';
 import { MONTH_ABBR } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useLiveProgramScope } from '@/hooks/useLiveProgramScope';
+import { ftsMonthlyTotalInScope } from '@/lib/liveProgramScope';
 import type { FtsMonthlyTotal } from '@/types/fts';
 import type { PenaltyTier } from '@/types/obligations';
 
@@ -24,6 +26,7 @@ const STATE_BAR_COLORS: Record<string, string> = {
 
 export function FinancialRiskCard() {
   const { profile } = useUserProfile();
+  const { scope } = useLiveProgramScope();
   const orgId = profile?.organization_id ?? null;
   const [monthlyTotals, setMonthlyTotals] = useState<FtsMonthlyTotal[]>([]);
   const [obligations, setObligations] = useState<{ tier1: ObligationTier; tier2: ObligationTier; tier3: ObligationTier; total: number }>({
@@ -87,7 +90,7 @@ export function FinancialRiskCard() {
           return;
         }
 
-        if (ftsRes.data) setMonthlyTotals(ftsRes.data);
+        if (ftsRes.data) setMonthlyTotals(ftsRes.data.filter((row) => ftsMonthlyTotalInScope(row, scope)));
 
         if (obligRes.data) {
           const tier1: ObligationTier = { count: 0, amount: 0 };
@@ -126,7 +129,7 @@ export function FinancialRiskCard() {
 
     void fetchData();
     return () => { cancelled = true; };
-  }, [orgId]);
+  }, [orgId, scope]);
 
   // Compute FTS KPIs from monthly totals
   const ftsKpis = useMemo(() => {

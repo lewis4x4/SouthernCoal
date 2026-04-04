@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useLiveProgramScope } from '@/hooks/useLiveProgramScope';
+import { complianceViolationInScope } from '@/lib/liveProgramScope';
 import { toast } from 'sonner';
 import type {
   ComplianceViolation,
@@ -18,6 +20,7 @@ import type {
 export function useComplianceViolations() {
   const { profile } = useUserProfile();
   const { log } = useAuditLog();
+  const { scope } = useLiveProgramScope();
   const orgId = profile?.organization_id ?? null;
 
   const [violations, setViolations] = useState<ComplianceViolationWithRelations[]>([]);
@@ -44,16 +47,18 @@ export function useComplianceViolations() {
       toast.error('Failed to load violations');
     } else {
       setViolations(
-        (data ?? []).map((v: Record<string, unknown>) => ({
-          ...v,
-          site_name: (v.site as Record<string, string> | null)?.name ?? null,
-          permit_number: (v.permit as Record<string, string> | null)?.permit_number ?? null,
-          parameter_name: (v.parameter as Record<string, string> | null)?.name ?? null,
-        })) as ComplianceViolationWithRelations[],
+        (data ?? [])
+          .map((v: Record<string, unknown>) => ({
+            ...v,
+            site_name: (v.site as Record<string, string> | null)?.name ?? null,
+            permit_number: (v.permit as Record<string, string> | null)?.permit_number ?? null,
+            parameter_name: (v.parameter as Record<string, string> | null)?.name ?? null,
+          }))
+          .filter((violation) => complianceViolationInScope(violation as ComplianceViolationWithRelations, scope)) as ComplianceViolationWithRelations[],
       );
     }
     setLoading(false);
-  }, [orgId]);
+  }, [orgId, scope]);
 
   useEffect(() => {
     fetchViolations();

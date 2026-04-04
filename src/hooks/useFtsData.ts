@@ -2,11 +2,14 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MONTH_ABBR } from '@/lib/constants';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useLiveProgramScope } from '@/hooks/useLiveProgramScope';
 import { useFtsStore } from '@/stores/fts';
+import { ftsMonthlyTotalInScope, ftsViolationInScope } from '@/lib/liveProgramScope';
 import type { FtsUpload, FtsViolation, FtsMonthlyTotal, FtsKpis } from '@/types/fts';
 
 export function useFtsData() {
   const { profile } = useUserProfile();
+  const { scope } = useLiveProgramScope();
   const uploads = useFtsStore((s) => s.uploads);
   const violations = useFtsStore((s) => s.violations);
   const monthlyTotals = useFtsStore((s) => s.monthlyTotals);
@@ -34,6 +37,7 @@ export function useFtsData() {
 
     while (true) {
       let query = supabase.from('fts_violations').select('*');
+      if (profile?.organization_id) query = query.eq('organization_id', profile.organization_id);
       if (filters.year) query = query.eq('monitoring_year', filters.year);
       if (filters.quarter) query = query.eq('monitoring_quarter', filters.quarter);
       if (filters.state) query = query.eq('state', filters.state);
@@ -45,23 +49,24 @@ export function useFtsData() {
 
       const { data, error } = await query.returns<FtsViolation[]>();
       if (error || !data || data.length === 0) break;
-      allData.push(...data);
+      allData.push(...data.filter((row) => ftsViolationInScope(row, scope)));
       if (data.length < PAGE_SIZE) break;
       from += PAGE_SIZE;
     }
 
     setViolations(allData);
-  }, [filters, setViolations]);
+  }, [filters, profile?.organization_id, scope, setViolations]);
 
   // ── Fetch monthly totals ──
   const fetchMonthlyTotals = useCallback(async () => {
     let query = supabase.from('fts_monthly_totals').select('*');
+    if (profile?.organization_id) query = query.eq('organization_id', profile.organization_id);
     if (filters.year) query = query.eq('monitoring_year', filters.year);
     query = query.order('monitoring_month', { ascending: true }).limit(1000);
 
     const { data, error } = await query.returns<FtsMonthlyTotal[]>();
-    if (!error && data) setMonthlyTotals(data);
-  }, [filters.year, setMonthlyTotals]);
+    if (!error && data) setMonthlyTotals(data.filter((row) => ftsMonthlyTotalInScope(row, scope)));
+  }, [filters.year, profile?.organization_id, scope, setMonthlyTotals]);
 
   // ── Refetch all ──
   const refetch = useCallback(() => {
