@@ -28,6 +28,8 @@ import {
   HeartPulse,
   Rocket,
   CloudRain,
+  Archive,
+  FolderInput,
 } from 'lucide-react';
 import type { Role } from '@/types/auth';
 import {
@@ -44,6 +46,7 @@ import {
   REPORT_SCHEDULE_ROLES,
   REPORTING_ROLES,
   ADMIN_ROLES,
+  ADMIN_ONLY_ROLES,
   FIELD_ROUTE_ROLES,
   FIELD_SCHEDULE_ROLES,
   GOVERNANCE_ROUTE_ROLES,
@@ -168,6 +171,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Scheduled Reports', href: '/admin/scheduled-reports', icon: FileText, roles: REPORT_SCHEDULE_ROLES },
       { label: 'System Health', href: '/admin/system-health', icon: HeartPulse, roles: SYSTEM_HEALTH_ROLES },
       { label: 'Go-Live', href: '/admin/go-live', icon: Rocket, roles: GO_LIVE_ROLES },
+      { label: 'Cutover', href: '/admin/cutover', icon: FolderInput, roles: ADMIN_ONLY_ROLES },
+      { label: 'Archive', href: '/admin/archive', icon: Archive, roles: ADMIN_ONLY_ROLES },
     ],
     activeColor: 'bg-purple-500/15 text-purple-300 shadow-lg shadow-purple-500/5',
     hoverColor: 'hover:text-purple-400',

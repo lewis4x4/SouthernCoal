@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Settings, ScrollText, Shield, Bell, MapPin, FileText, Wifi, Award, Wrench } from 'lucide-react';
+import { Settings, ScrollText, Shield, Bell, MapPin, FileText, Wifi, Award, Wrench, Archive, FolderInput } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 const ADMIN_CARDS = [
@@ -57,6 +57,22 @@ const ADMIN_CARDS = [
     href: '/admin/equipment',
     icon: Wrench,
     color: 'rgba(249, 115, 22, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Live Reset Cutover',
+    description: 'Upload state matrices, validate the live roster, preview impacts, and execute the April 15 reset.',
+    href: '/admin/cutover',
+    icon: FolderInput,
+    color: 'rgba(34, 197, 94, 0.08)',
+    ready: true,
+  },
+  {
+    label: 'Archive Mode',
+    description: 'Browse executed cutover batches, inspect archived tables, and preview restore behavior.',
+    href: '/admin/archive',
+    icon: Archive,
+    color: 'rgba(168, 85, 247, 0.08)',
     ready: true,
   },
   {

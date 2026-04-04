@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatDollars } from '@/lib/format';
 import { MONTH_ABBR } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import type { FtsMonthlyTotal } from '@/types/fts';
 import type { PenaltyTier } from '@/types/obligations';
 
@@ -22,6 +23,8 @@ const STATE_BAR_COLORS: Record<string, string> = {
 };
 
 export function FinancialRiskCard() {
+  const { profile } = useUserProfile();
+  const orgId = profile?.organization_id ?? null;
   const [monthlyTotals, setMonthlyTotals] = useState<FtsMonthlyTotal[]>([]);
   const [obligations, setObligations] = useState<{ tier1: ObligationTier; tier2: ObligationTier; tier3: ObligationTier; total: number }>({
     tier1: { count: 0, amount: 0 },
@@ -32,6 +35,12 @@ export function FinancialRiskCard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!orgId) {
+      setMonthlyTotals([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function fetchData() {
@@ -40,14 +49,29 @@ export function FinancialRiskCard() {
           supabase
             .from('fts_monthly_totals')
             .select('*')
+            .eq('organization_id', orgId)
             .order('monitoring_year', { ascending: true })
             .order('monitoring_month', { ascending: true })
             .limit(1000)
             .returns<FtsMonthlyTotal[]>(),
-          supabase
-            .from('consent_decree_obligations')
-            .select('id, penalty_tier, accrued_penalty')
-            .in('status', ['pending', 'in_progress', 'overdue']),
+          (async () => {
+            const scoped = await supabase
+              .from('consent_decree_obligations')
+              .select('id, penalty_tier, accrued_penalty')
+              .eq('organization_id', orgId)
+              .in('status', ['pending', 'in_progress', 'overdue']);
+
+            if (!scoped.error) return scoped;
+
+            if (scoped.error.message.includes('organization_id')) {
+              return supabase
+                .from('consent_decree_obligations')
+                .select('id, penalty_tier, accrued_penalty')
+                .in('status', ['pending', 'in_progress', 'overdue']);
+            }
+
+            return scoped;
+          })(),
         ]);
 
         if (cancelled) return;
@@ -102,7 +126,7 @@ export function FinancialRiskCard() {
 
     void fetchData();
     return () => { cancelled = true; };
-  }, []);
+  }, [orgId]);
 
   // Compute FTS KPIs from monthly totals
   const ftsKpis = useMemo(() => {

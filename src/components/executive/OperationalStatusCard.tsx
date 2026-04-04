@@ -3,6 +3,7 @@ import { Building2, FileCheck, Droplet, Calendar, AlertCircle, AlertTriangle } f
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
 import { useQueueStore } from '@/stores/queue';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface StatRow {
   label: string;
@@ -13,8 +14,13 @@ interface StatRow {
 }
 
 export function OperationalStatusCard() {
+  const { profile } = useUserProfile();
+  const orgId = profile?.organization_id ?? null;
   const [dbStats, setDbStats] = useState<{
-    orgCount: number;
+    activeFacilityCount: number;
+    activeStateCount: number;
+    hasCutoverRoster: boolean;
+    siteCount: number;
     permitCount: number;
     outfallCount: number;
     violationCount: number;
@@ -25,33 +31,52 @@ export function OperationalStatusCard() {
   const queueEntries = useQueueStore((s) => s.entries);
 
   useEffect(() => {
+    if (!orgId) {
+      setLoading(false);
+      setDbStats(null);
+      return;
+    }
+
     let cancelled = false;
 
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const [orgsRes, permitsRes, outfallsRes, violationsRes, ftsUploadsRes] = await Promise.all([
-            supabase.from('organizations').select('id', { count: 'exact', head: true }),
-            supabase.from('npdes_permits').select('id', { count: 'exact', head: true }),
-            supabase.from('outfalls').select('id', { count: 'exact', head: true }),
-            supabase.from('fts_violations').select('id', { count: 'exact', head: true }),
+          const [sitesRes, rosterRes, permitRowsRes, violationsRes, ftsUploadsRes] = await Promise.all([
+            supabase.from('sites').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
+            supabase
+              .from('live_program_roster')
+              .select('site_id, state_code')
+              .eq('organization_id', orgId),
+            supabase.from('npdes_permits').select('id').eq('organization_id', orgId).limit(5000),
+            supabase.from('fts_violations').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
             supabase
               .from('fts_uploads')
               .select('id', { count: 'exact', head: true })
+              .eq('organization_id', orgId)
               .eq('parse_status', 'completed'),
           ]);
+
+          const permitIds = (permitRowsRes.data ?? []).map((row) => row.id);
+          const outfallsRes = permitIds.length > 0
+            ? await supabase.from('outfalls').select('id', { count: 'exact', head: true }).in('permit_id', permitIds)
+            : { count: 0, error: null };
 
           if (cancelled) return;
 
           const queryError =
-            orgsRes.error ||
-            permitsRes.error ||
+            sitesRes.error ||
+            rosterRes.error ||
+            permitRowsRes.error ||
             outfallsRes.error ||
             violationsRes.error ||
             ftsUploadsRes.error;
           if (queryError) {
             setDbStats({
-              orgCount: 0,
+              activeFacilityCount: 0,
+              activeStateCount: 0,
+              hasCutoverRoster: false,
+              siteCount: 0,
               permitCount: 0,
               outfallCount: 0,
               violationCount: 0,
@@ -60,9 +85,20 @@ export function OperationalStatusCard() {
             return;
           }
 
+          const rosterRows = rosterRes.data ?? [];
+          const uniqueSites = new Set(rosterRows.map((row) => row.site_id));
+          const uniqueStates = new Set(
+            rosterRows
+              .map((row) => row.state_code)
+              .filter((stateCode): stateCode is string => typeof stateCode === 'string' && stateCode.length > 0),
+          );
+
           setDbStats({
-            orgCount: orgsRes.count ?? 0,
-            permitCount: permitsRes.count ?? 0,
+            activeFacilityCount: uniqueSites.size > 0 ? uniqueSites.size : (sitesRes.count ?? 0),
+            activeStateCount: uniqueStates.size,
+            hasCutoverRoster: uniqueSites.size > 0,
+            siteCount: sitesRes.count ?? 0,
+            permitCount: permitIds.length,
             outfallCount: outfallsRes.count ?? 0,
             violationCount: violationsRes.count ?? 0,
             ftsCompletedUploads: ftsUploadsRes.count ?? 0,
@@ -70,7 +106,10 @@ export function OperationalStatusCard() {
         } catch {
           if (!cancelled) {
             setDbStats({
-              orgCount: 0,
+              activeFacilityCount: 0,
+              activeStateCount: 0,
+              hasCutoverRoster: false,
+              siteCount: 0,
               permitCount: 0,
               outfallCount: 0,
               violationCount: 0,
@@ -87,14 +126,17 @@ export function OperationalStatusCard() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [orgId]);
 
   const processingCount = queueEntries.filter(
     (e) => e.status === 'processing' || e.status === 'queued',
   ).length;
   const failedCount = queueEntries.filter((e) => e.status === 'failed').length;
 
-  const orgCount = dbStats?.orgCount ?? 0;
+  const activeFacilityCount = dbStats?.activeFacilityCount ?? 0;
+  const activeStateCount = dbStats?.activeStateCount ?? 0;
+  const hasCutoverRoster = dbStats?.hasCutoverRoster ?? false;
+  const siteCount = dbStats?.siteCount ?? 0;
   const permitCount = dbStats?.permitCount ?? 0;
   const outfallCount = dbStats?.outfallCount ?? 0;
   const violationCount = dbStats?.violationCount ?? 0;
@@ -103,8 +145,10 @@ export function OperationalStatusCard() {
   const stats: StatRow[] = [
     {
       label: 'Active Facilities',
-      value: orgCount,
-      subtext: '5 states (AL, KY, TN, VA, WV)',
+      value: activeFacilityCount,
+      subtext: hasCutoverRoster
+        ? `${activeStateCount} states in live program roster`
+        : `${siteCount} sites currently loaded`,
       icon: Building2,
       status: 'good',
     },
