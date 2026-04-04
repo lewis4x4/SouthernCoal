@@ -246,6 +246,124 @@ export function useArchiveCutover() {
     setArchivePreviewRows(((data as { rows?: Record<string, unknown>[] } | null)?.rows ?? []) as Record<string, unknown>[]);
   }, []);
 
+  const downloadStarterMatrix = useCallback(async () => {
+    if (!orgId) return;
+    setWorking(true);
+    try {
+      const [sitesRes, permitsRes, outfallsRes] = await Promise.all([
+        supabase
+          .from('sites')
+          .select('id, name, state_code')
+          .eq('organization_id', orgId)
+          .order('name', { ascending: true }),
+        supabase
+          .from('npdes_permits')
+          .select('id, site_id, permit_number')
+          .eq('organization_id', orgId)
+          .order('permit_number', { ascending: true }),
+        supabase
+          .from('outfalls')
+          .select('id, permit_id, outfall_number')
+          .order('outfall_number', { ascending: true })
+          .limit(5000),
+      ]);
+
+      if (sitesRes.error || permitsRes.error || outfallsRes.error) {
+        toast.error('Failed to generate starter matrix');
+        return;
+      }
+
+      const siteById = new Map((sitesRes.data ?? []).map((site) => [site.id, site]));
+      const outfallsByPermitId = new Map<string, Array<{ id: string; outfall_number: string }>>();
+
+      (outfallsRes.data ?? []).forEach((outfall) => {
+        const list = outfallsByPermitId.get(outfall.permit_id) ?? [];
+        list.push({ id: outfall.id, outfall_number: outfall.outfall_number });
+        outfallsByPermitId.set(outfall.permit_id, list);
+      });
+
+      const header = [
+        'state_code',
+        'site_name',
+        'facility_name',
+        'permit_number',
+        'outfall_number',
+        'external_npdes_id',
+        'mine_id',
+        'disposition',
+        'notes',
+      ];
+
+      const rows: string[][] = [header];
+
+      (permitsRes.data ?? []).forEach((permit) => {
+        const site = siteById.get(permit.site_id);
+        const outfalls = outfallsByPermitId.get(permit.id) ?? [];
+
+        if (outfalls.length === 0) {
+          rows.push([
+            site?.state_code ?? '',
+            site?.name ?? '',
+            site?.name ?? '',
+            permit.permit_number ?? '',
+            '',
+            permit.permit_number ?? '',
+            '',
+            'live',
+            '',
+          ]);
+          return;
+        }
+
+        outfalls.forEach((outfall) => {
+          rows.push([
+            site?.state_code ?? '',
+            site?.name ?? '',
+            site?.name ?? '',
+            permit.permit_number ?? '',
+            outfall.outfall_number ?? '',
+            permit.permit_number ?? '',
+            '',
+            'live',
+            '',
+          ]);
+        });
+      });
+
+      if (rows.length === 1) {
+        (sitesRes.data ?? []).forEach((site) => {
+          rows.push([
+            site.state_code ?? '',
+            site.name ?? '',
+            site.name ?? '',
+            '',
+            '',
+            '',
+            '',
+            'live',
+            '',
+          ]);
+        });
+      }
+
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell ?? '').split('"').join('""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `cutover_starter_matrix_${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+
+      toast.success('Starter matrix downloaded');
+    } finally {
+      setWorking(false);
+    }
+  }, [orgId]);
+
   return {
     batches,
     uploads,
@@ -265,5 +383,6 @@ export function useArchiveCutover() {
     executeBatch,
     previewRestore,
     fetchArchiveTablePreview,
+    downloadStarterMatrix,
   };
 }

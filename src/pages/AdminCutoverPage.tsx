@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, DatabaseZap, FileUp, PlayCircle, RefreshCw } from 'lucide-react';
+import { CalendarDays, DatabaseZap, Download, FileUp, PlayCircle, RefreshCw } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useArchiveCutover } from '@/hooks/useArchiveCutover';
 import type { CutoverBatch } from '@/types/cutover';
@@ -33,6 +33,7 @@ export function AdminCutoverPage() {
     previewBatch,
     executeBatch,
     fetchBatchDetail,
+    downloadStarterMatrix,
   } = useArchiveCutover();
 
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
@@ -204,6 +205,12 @@ export function AdminCutoverPage() {
                 <div className="mt-2 text-2xl font-semibold text-text-primary">{uploads.length}</div>
               </SpotlightCard>
               <SpotlightCard className="p-4">
+                <div className="text-xs uppercase tracking-widest text-text-secondary">Archive Rows</div>
+                <div className="mt-2 text-2xl font-semibold text-text-primary">
+                  {summaryValue(previewSummary, ['row_counts', 'archive_rows'])}
+                </div>
+              </SpotlightCard>
+              <SpotlightCard className="p-4">
                 <div className="text-xs uppercase tracking-widest text-text-secondary">Unresolved</div>
                 <div className="mt-2 text-2xl font-semibold text-amber-300">
                   {summaryValue(previewSummary, ['row_counts', 'unresolved_rows'])}
@@ -218,7 +225,29 @@ export function AdminCutoverPage() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <div className="text-xs uppercase tracking-widest text-text-secondary">Archive Preview</div>
+              <div className="text-xs uppercase tracking-widest text-text-secondary">Live After Preview</div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {Object.entries((previewSummary?.live_after_preview as Record<string, unknown> | undefined) ?? {}).map(([tableName, count]) => (
+                  <div key={tableName} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
+                    <div className="text-text-secondary">{tableName}</div>
+                    <div className="mt-1 font-semibold text-emerald-200">{String(count)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-widest text-text-secondary">Archive Preview</div>
+                <button
+                  onClick={() => void downloadStarterMatrix()}
+                  disabled={working}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Starter Matrix
+                </button>
+              </div>
               <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries((previewSummary?.archive_preview as Record<string, unknown> | undefined) ?? {}).map(([tableName, count]) => (
                   <div key={tableName} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
