@@ -8,6 +8,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 // Environment
 // ---------------------------------------------------------------------------
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
@@ -162,20 +163,28 @@ IMPORTANT RULES:
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Verify JWT from Authorization header. Returns user ID or null. */
-async function verifyAuth(
-  req: Request,
-  supabase: ReturnType<typeof createClient>,
-): Promise<string | null> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
+/** Verify JWT from Authorization header. Returns user ID or null.
+ *  Uses anon-scoped client for getUser(jwt) (recommended for validating user tokens). */
+async function verifyAuth(req: Request): Promise<string | null> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return null;
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getUser(token);
-  const user = data?.user ?? null;
+    const token = authHeader.replace("Bearer ", "");
+    if (!SUPABASE_ANON_KEY) {
+      console.error("[parse-permit-pdf] SUPABASE_ANON_KEY not set");
+      return null;
+    }
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await authClient.auth.getUser(token);
+    const user = data?.user ?? null;
 
-  if (error || !user) return null;
-  return user.id;
+    if (error || !user) return null;
+    return user.id;
+  } catch (e) {
+    console.error("[parse-permit-pdf] verifyAuth:", e);
+    return null;
+  }
 }
 
 /** Generate a signed URL for a storage file. */
@@ -497,13 +506,13 @@ serve(async (req: Request) => {
     return jsonResponse({ success: false, error: "Method not allowed" }, 405);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  // 1. Verify JWT (before config checks — auth failure should be 401 not 500)
-  const userId = await verifyAuth(req, supabase);
+  // 1. Verify JWT before service-role client (only authenticated users need DB access).
+  const userId = await verifyAuth(req);
   if (!userId) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Check required secrets
   if (!ANTHROPIC_API_KEY) {
