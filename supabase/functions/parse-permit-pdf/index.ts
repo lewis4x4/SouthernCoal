@@ -171,10 +171,8 @@ async function verifyAuth(
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  const user = data?.user ?? null;
 
   if (error || !user) return null;
   return user.id;
@@ -487,6 +485,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 // ---------------------------------------------------------------------------
 
 serve(async (req: Request) => {
+  try {
   console.log("[parse-permit-pdf] Invoked at", new Date().toISOString());
 
   // CORS preflight
@@ -500,16 +499,16 @@ serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+  // 1. Verify JWT (before config checks — auth failure should be 401 not 500)
+  const userId = await verifyAuth(req, supabase);
+  if (!userId) {
+    return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  }
+
   // Check required secrets
   if (!ANTHROPIC_API_KEY) {
     console.error("[parse-permit-pdf] ANTHROPIC_API_KEY not set");
     return jsonResponse({ success: false, error: "Server configuration error" }, 500);
-  }
-
-  // 1. Verify JWT
-  const userId = await verifyAuth(req, supabase);
-  if (!userId) {
-    return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
 
   // 2. Parse request body
@@ -714,5 +713,12 @@ serve(async (req: Request) => {
 
     // Return 200 — failure state delivered via Realtime, not HTTP response
     return jsonResponse({ success: true, message: "Processing failed — see queue status" });
+  }
+  } catch (err) {
+    console.error("[parse-permit-pdf] Unhandled exception:", err);
+    return new Response(JSON.stringify({ success: false, error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
