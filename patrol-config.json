@@ -13,6 +13,23 @@
   "production": {
     "url": "https://southerncoal.netlify.app"
   },
+  "perf_endpoints": [
+    {
+      "url": "https://southerncoal.netlify.app/",
+      "name": "Homepage",
+      "expected_ms": 2000
+    },
+    {
+      "url": "https://southerncoal.netlify.app/manifest.webmanifest",
+      "name": "Web app manifest",
+      "expected_ms": 2000
+    },
+    {
+      "url": "https://zymenlnwyzpnohljwifx.supabase.co/rest/v1/",
+      "name": "Supabase REST",
+      "expected_ms": 500
+    }
+  ],
   "netlify": {
     "site_slug": "southerncoal",
     "site_id": "b71738e3-5d48-4543-b279-8aa136721c20"
