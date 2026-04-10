@@ -1,8 +1,8 @@
 # Lane A — Milestone 2 (active next phase)
 
 **Status:** Active (engineering focus after M1 code readiness)  
-**Last updated:** 2026-04-01  
-**Depends on:** [`LANE_A_MILESTONE_1.md`](./LANE_A_MILESTONE_1.md) — implementation is in repo; **formal closure** = staging A1–A6 sign-off per [`LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md`](./LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md).  
+**Last updated:** 2026-04-10  
+**Depends on:** [`LANE_A_MILESTONE_1.md`](./LANE_A_MILESTONE_1.md) — implementation is in repo; **formal closure** = staging A1–A6 sign-off per [`LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md`](./LANE_A_MILESTONE_1_STAGING_CLOSURE_AND_BLOCKERS.md). **Milestone 2 staging QA:** [`LANE_A_MILESTONE_2_QA.md`](./LANE_A_MILESTONE_2_QA.md).  
 **Codex mapping:** **Phase 4 — Offline sync and conflict resolution** ([`SCC Water Sampling Platform — Codex Handoff Roadmap.md`](./SCC%20Water%20Sampling%20Platform%20—%20Codex%20Handoff%20Roadmap.md)).
 
 **Code anchor:** `src/lib/laneAMilestone.ts` — `LANE_A_MILESTONE_2_ID`.
@@ -50,7 +50,7 @@ This is a **vertical slice** toward Codex Phase 4 “done when”: *multi-hour o
 2. **Offline/cache UX honesty** — banners or badges on `FieldRouteTodayPage` / `FieldVisitPage` when data is from cache vs live (reuse load alerts patterns). **Shipped:** `FieldDataSourceBanner`, `detailLoadSource` in `useFieldOps`.
 3. **Queue + evidence diagnostics** — consolidate “why sync failed” into one discoverable surface (sync bar + visit header). **Shipped:** `FieldDataSyncBar` hosts queue-blocked + evidence upload failures (`#field-sync-health`); visit header link when either is active.
 4. **Conflict hold rules** — identify 1–2 real conflict paths in outbound flush; implement block + toast + audit, not auto-merge. **Shipped:** pre-flight in `processFieldOutboundQueue` for `field_visit_start` (server terminal) and `field_visit_complete` (outcome mismatch); `FieldOutboundConflictHoldError`; audit `field_outbound_conflict_hold`; diagnostic `conflictHold` + sync bar title.
-5. **QA script** — add `LANE_A_MILESTONE_2_QA.md` (short B1–B5 checklist) when slice 2–4 land.
+5. **QA script** — [`LANE_A_MILESTONE_2_QA.md`](./LANE_A_MILESTONE_2_QA.md) (B1–B5 checklist). **Done** when merged and executed in staging.
 
 ---
 
