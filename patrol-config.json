@@ -34,6 +34,14 @@
     "site_slug": "southerncoal",
     "site_id": "b71738e3-5d48-4543-b279-8aa136721c20"
   },
+  "sup007_data_integrity": {
+    "live_query_rpc": "patrol_data_integrity_snapshot",
+    "probe_script": "scripts/probe-data-integrity.ts",
+    "source_rpc": "run_data_integrity_check",
+    "source_migration": "supabase/migrations/20260404300000_phase11_emergency_hardening.sql",
+    "patrol_migration": "supabase/migrations/20260518140000_patrol_data_integrity_snapshot.sql",
+    "required_secret_env": ["SUPABASE_SERVICE_ROLE_KEY"]
+  },
   "checks": {
     "SUP-001": { "enabled": true },
     "SUP-002": { "enabled": true },
@@ -82,5 +90,70 @@
     }
   },
   "known_drift": [],
-  "integrity_queries": []
+  "integrity_queries": [
+    {
+      "id": "permits_without_sites",
+      "label": "Permits without sites",
+      "description": "npdes_permits.site_id IS NULL",
+      "severity": "warn",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "permits_without_sites"
+    },
+    {
+      "id": "orphaned_outfalls",
+      "label": "Orphaned outfalls",
+      "description": "outfalls with no matching npdes_permits row",
+      "severity": "fail",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "orphaned_outfalls"
+    },
+    {
+      "id": "exceedances_without_lab_results",
+      "label": "Exceedances without lab results",
+      "description": "exceedances.lab_result_id does not resolve to lab_results",
+      "severity": "fail",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "exceedances_without_lab_results"
+    },
+    {
+      "id": "corrective_actions_without_source_type",
+      "label": "Corrective actions without source type",
+      "description": "corrective_actions.source_type IS NULL",
+      "severity": "warn",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "corrective_actions_without_source_type"
+    },
+    {
+      "id": "active_users_without_organization",
+      "label": "Active users without organization",
+      "description": "user_profiles.is_active = true AND organization_id IS NULL",
+      "severity": "fail",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "active_users_without_organization"
+    },
+    {
+      "id": "orphaned_sampling_events",
+      "label": "Orphaned sampling events",
+      "description": "sampling_events.outfall_id does not resolve to outfalls",
+      "severity": "fail",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "orphaned_sampling_events"
+    },
+    {
+      "id": "violations_without_violation_type",
+      "label": "Violations without violation type",
+      "description": "compliance_violations.violation_type IS NULL",
+      "severity": "warn",
+      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "snapshot_key": "violations_without_violation_type"
+    },
+    {
+      "id": "audit_log_activity_24h",
+      "label": "Audit log activity (24h)",
+      "description": "audit_log rows in the last 24 hours (warn when zero)",
+      "severity": "warn",
+      "pass_condition": { "field": "count", "op": "gt", "value": 0 },
+      "snapshot_key": "audit_log_activity_24h"
+    }
+  ]
 }
