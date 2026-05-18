@@ -1792,7 +1792,7 @@ export function FieldVisitPage() {
             const notes = evidenceType === 'photo'
               ? serializePhotoEvidenceCategory(uploadPhotoCategoryRef.current)
               : undefined;
-            recordEvidenceAsset({
+            return recordEvidenceAsset({
               fieldVisitId: detail.visit.id,
               storagePath: path,
               bucket: 'field-inspections',
@@ -1804,8 +1804,6 @@ export function FieldVisitPage() {
                     longitude: Number(completeCoords.longitude),
                   }
                 : undefined,
-            }).catch((error) => {
-              toast.error(error instanceof Error ? error.message : 'Failed to record evidence');
             });
           }}
         />
@@ -2624,7 +2622,7 @@ export function FieldVisitPage() {
                       message: 'Photo saved on this device; it will upload when you are back online',
                     };
                   }}
-                  onUploaded={(path) => {
+                  onUploaded={(path) =>
                     recordEvidenceAsset({
                       fieldVisitId: detail.visit.id,
                       storagePath: path,
@@ -2637,10 +2635,8 @@ export function FieldVisitPage() {
                             longitude: detail.visit.outfall_longitude,
                           }
                         : undefined,
-                    }).catch((err) => {
-                      toast.error(err instanceof Error ? err.message : 'Failed to record photo');
-                    });
-                  }}
+                    })
+                  }
                 />
               ) : undefined
             }
@@ -2676,7 +2672,7 @@ export function FieldVisitPage() {
                       message: 'Photo saved on this device; it will upload when you are back online',
                     };
                   }}
-                  onUploaded={(path) => {
+                  onUploaded={(path) =>
                     recordEvidenceAsset({
                       fieldVisitId: detail.visit.id,
                       storagePath: path,
@@ -2689,10 +2685,8 @@ export function FieldVisitPage() {
                             longitude: detail.visit.outfall_longitude,
                           }
                         : undefined,
-                    }).catch((err) => {
-                      toast.error(err instanceof Error ? err.message : 'Failed to record photo');
-                    });
-                  }}
+                    })
+                  }
                 />
               ) : undefined
             }

@@ -11,7 +11,7 @@ interface EvidenceCaptureProps {
   referenceId: string;
   bucket: string;
   pathPrefix: string;
-  onUploaded: (path: string) => void;
+  onUploaded: (path: string) => void | Promise<void>;
   onFileAccepted?: (file: File) => Promise<{ handled: boolean; message?: string } | void>;
   acceptedTypes?: string[];
   disabled?: boolean;
@@ -131,8 +131,8 @@ export function EvidenceCaptureUpload({
         tableName: 'evidence',
       });
 
+      await onUploaded(storagePath);
       setUploadedPath(storagePath);
-      onUploaded(storagePath);
       toast.success(`Evidence uploaded: ${file.name}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Upload failed';
