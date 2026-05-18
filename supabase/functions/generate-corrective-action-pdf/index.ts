@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,10 @@ async function verifyAuth(
   }
 
   const token = authHeader.replace("Bearer ", "");
+  if (isPrivilegedOrAnonymousJwt(token)) {
+    return { userId: null, orgId: null };
+  }
+
   const {
     data: { user },
     error,
@@ -387,20 +392,20 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Verify auth
+  // Verify auth (before method/body guards — SEC-003)
   const { userId, orgId } = await verifyAuth(req, supabase);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -24,6 +24,31 @@ interface SupabaseClient {
   };
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns true when the bearer token must be rejected (anon, service_role, or missing sub).
+ * SEC-003: the project anon key is a valid JWT; gateway verify_jwt alone does not block it.
+ */
+export function isPrivilegedOrAnonymousJwt(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return true;
+  const role = payload.role;
+  if (role === "anon" || role === "service_role") return true;
+  if (typeof payload.sub !== "string" || !payload.sub) return true;
+  return false;
+}
+
 /**
  * Verify JWT token from request Authorization header.
  * Returns user ID if valid, null otherwise.
@@ -36,6 +61,8 @@ export async function verifyAuth(
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.replace("Bearer ", "");
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
+
   const {
     data: { user },
     error,

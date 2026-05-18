@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -171,6 +172,7 @@ async function verifyAuth(req: Request): Promise<string | null> {
     if (!authHeader?.startsWith("Bearer ")) return null;
 
     const token = authHeader.replace("Bearer ", "");
+    if (isPrivilegedOrAnonymousJwt(token)) return null;
     if (!SUPABASE_ANON_KEY) {
       console.error("[parse-permit-pdf] SUPABASE_ANON_KEY not set");
       return null;
@@ -502,14 +504,14 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return jsonResponse({ success: false, error: "Method not allowed" }, 405);
-  }
-
-  // 1. Verify JWT before service-role client (only authenticated users need DB access).
+  // 1. Verify JWT before method/body/service-role (SEC-003)
   const userId = await verifyAuth(req);
   if (!userId) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse({ success: false, error: "Method not allowed" }, 405);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);

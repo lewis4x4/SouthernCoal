@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 /**
  * import-lab-data Edge Function
@@ -95,6 +96,8 @@ async function verifyAuth(
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.replace("Bearer ", "");
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
+
   const {
     data: { user },
     error,
@@ -184,18 +187,18 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return jsonResponse({ success: false, error: "Method not allowed" }, 405);
-  }
-
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // 1. Verify JWT and get user's organization
+  // 1. Verify JWT (before method/body guards — SEC-003)
   const auth = await verifyAuth(req, supabase);
   if (!auth) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
   const { userId, organizationId: userOrgId, canImport } = auth;
+
+  if (req.method !== "POST") {
+    return jsonResponse({ success: false, error: "Method not allowed" }, 405);
+  }
 
   // 1b. Verify user has role that allows import
   if (!canImport) {
