@@ -44,6 +44,8 @@ export function useComplianceMatrix(): MatrixData {
           status: 'empty',
           count: 0,
           verified: false,
+          reviewableCount: 0,
+          verifiedCount: 0,
         };
       }
     }
@@ -75,10 +77,11 @@ export function useComplianceMatrix(): MatrixData {
           cell.status !== 'processing'
         ) {
           cell.status = 'imported';
-          // Check verification status per v6 5c
+          cell.reviewableCount++;
           const vStatus = verificationStatuses[entry.id];
           if (vStatus === 'verified') {
             cell.verified = true;
+            cell.verifiedCount++;
           }
         } else if (
           cell.status === 'empty' &&

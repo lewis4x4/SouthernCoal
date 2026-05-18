@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
@@ -103,6 +104,8 @@ const BULK_IMPORT_SIZE_THRESHOLD = 500 * 1024;
  * Status tracked via Realtime subscription.
  */
 export function useLabDataProcessing() {
+  const { log } = useAuditLog();
+
   /**
    * Process a single lab data file.
    * Files >500KB → bulk-import-lab-data (combined parse+import, server-side SheetJS)
@@ -232,6 +235,12 @@ export function useLabDataProcessing() {
       return;
     }
 
+    log(
+      'bulk_process_lab_data',
+      { count: queued.length, source: 'processing_queue' },
+      { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+    );
+
     const bulkCount = queued.filter((e) => (e.file_size_bytes ?? 0) > BULK_IMPORT_SIZE_THRESHOLD).length;
     const smallCount = queued.length - bulkCount;
     toast.info(
@@ -329,7 +338,7 @@ export function useLabDataProcessing() {
     if (freshEntries) {
       useQueueStore.getState().setEntries(freshEntries as QueueEntry[]);
     }
-  }, []);
+  }, [log]);
 
   /**
    * Retry a failed lab data file.

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
@@ -10,6 +11,8 @@ import type { QueueEntry } from '@/types/queue';
  * Status tracked via Realtime subscription.
  */
 export function usePermitProcessing() {
+  const { log } = useAuditLog();
+
   /**
    * Process a single permit PDF.
    */
@@ -84,6 +87,12 @@ export function usePermitProcessing() {
       return;
     }
 
+    log(
+      'bulk_process_permits',
+      { count: queued.length, source: 'processing_queue' },
+      { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+    );
+
     toast.info(`Processing ${queued.length} queued permit${queued.length > 1 ? 's' : ''}...`);
 
     for (let i = 0; i < queued.length; i++) {
@@ -141,7 +150,7 @@ export function usePermitProcessing() {
     if (freshEntries) {
       useQueueStore.getState().setEntries(freshEntries as QueueEntry[]);
     }
-  }, []);
+  }, [log]);
 
   /**
    * Retry a failed permit.

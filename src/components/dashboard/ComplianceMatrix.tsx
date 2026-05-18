@@ -6,6 +6,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { GlassProgress } from '@/components/ui/GlassProgress';
 import { CATEGORIES, STATES } from '@/lib/constants';
 import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
+import { formatMatrixCellExport } from '@/lib/matrix-export';
 import { cn } from '@/lib/cn';
 import { Download, CheckCircle2 } from 'lucide-react';
 
@@ -77,7 +78,7 @@ export function ComplianceMatrix() {
       const row = [state.code];
       for (const cat of CATEGORIES) {
         const cell = cells[state.code]?.[cat.dbKey];
-        row.push(cell ? `${cell.count} (${cell.status})` : '0');
+        row.push(formatMatrixCellExport(cell));
       }
       row.push(`${stateProgress[state.code] ?? 0}%`);
       rows.push(row);

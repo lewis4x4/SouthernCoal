@@ -16,6 +16,8 @@ const ACTION_COLORS: Record<string, string> = {
   audit_log_export_csv: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   coverage_export_csv: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   bulk_process: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  bulk_process_permits: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  bulk_process_lab_data: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_retry: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   role_change: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   user_deactivated: 'bg-red-500/10 text-red-400 border-red-500/20',
