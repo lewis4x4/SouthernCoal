@@ -27,7 +27,6 @@ interface RequestBody {
 
 interface ObligationRow {
   id: string;
-  organization_id: string | null;
   description: string | null;
   title: string | null;
   days_at_risk: number;
@@ -159,9 +158,11 @@ serve(async (req) => {
       });
     }
 
+    // SYSTEM-WIDE: consent_decree_obligations has no organization_id (same as
+    // generate-report rptConsentDecree). Org tenant gate deferred until column exists.
     const { data: obligation, error: obligationError } = await supabase
       .from("consent_decree_obligations")
-      .select("id, organization_id, description, title, days_at_risk, penalty_tier, accrued_penalty")
+      .select("id, description, title, days_at_risk, penalty_tier, accrued_penalty")
       .eq("id", obligationId)
       .maybeSingle();
 
@@ -181,12 +182,6 @@ serve(async (req) => {
     }
 
     const row = obligation as ObligationRow;
-    if (row.organization_id && row.organization_id !== userOrgId) {
-      return new Response(JSON.stringify({ error: "Obligation not in your organization" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const normalizedRecipient = normalizeEmail(recipientEmail);
     const { data: orgRecipients, error: recipientError } = await supabase
