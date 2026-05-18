@@ -122,7 +122,7 @@ export default function FtsTrendChartInner({ monthlyTotals }: Props) {
               fontFamily: 'JetBrains Mono, monospace',
               fontSize: '12px',
             }}
-            formatter={(value: number | undefined) => [formatDollars(value ?? 0)]}
+            formatter={(value) => [formatDollars(Number(value ?? 0))]}
           />
           {visibleStates.has('KY') ? (
             <Line type="monotone" dataKey="KY" stroke={STATE_COLORS.KY} strokeWidth={2} dot={{ r: 3 }} />
