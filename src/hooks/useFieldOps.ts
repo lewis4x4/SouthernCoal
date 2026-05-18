@@ -60,7 +60,6 @@ import type {
   FieldMeasurementRecord,
   FieldOpsUser,
   FieldVisitPreviousContext,
-  FieldVisitRequiredMeasurement,
   FieldVisitDetails,
   FieldVisitListItem,
   FieldVisitOutcome,
@@ -448,8 +447,6 @@ export function useFieldOps() {
     let routePriorityReason: string | null = null;
     let scheduledParameterLabel: string | null = null;
     let scheduleInstructions: string | null = null;
-    let stopRequirements: FieldVisitStopRequirement[] = [];
-    let requiredFieldMeasurements: FieldVisitRequiredMeasurement[] = [];
     let previousVisitContext: FieldVisitPreviousContext | null = null;
 
     const [routeStopRes, currentCalendarRes, stopCalendarsRes, previousVisitRes] = await Promise.all([
@@ -570,8 +567,8 @@ export function useFieldOps() {
       }>).map((row) => [row.id, row]),
     );
 
-    stopRequirements = buildStopRequirements(stopCalendarRows, parameterById, scheduleById);
-    requiredFieldMeasurements = deriveRequiredFieldMeasurements(stopRequirements);
+    const stopRequirements = buildStopRequirements(stopCalendarRows, parameterById, scheduleById);
+    const requiredFieldMeasurements = deriveRequiredFieldMeasurements(stopRequirements);
 
     if (currentCalendarRow?.parameter_id) {
       const currentParameter = parameterById.get(currentCalendarRow.parameter_id);

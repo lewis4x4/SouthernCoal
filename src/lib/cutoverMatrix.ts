@@ -103,7 +103,7 @@ function rowsToObjects(rows: string[][]): Record<string, unknown>[] {
 export async function parseCutoverMatrixFile(file: File): Promise<ParsedCutoverMatrixRowInput[]> {
   const lowerName = file.name.toLowerCase();
 
-  let records: Record<string, unknown>[] = [];
+  let records: Record<string, unknown>[];
 
   if (lowerName.endsWith('.xlsx')) {
     const { default: readXlsxFile } = await import('read-excel-file/browser');
