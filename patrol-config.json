@@ -42,6 +42,15 @@
     "patrol_migration": "supabase/migrations/20260518140000_patrol_data_integrity_snapshot.sql",
     "required_secret_env": ["SUPABASE_SERVICE_ROLE_KEY"]
   },
+  "sup001_rls_audit": {
+    "live_query_rpc": "patrol_export_rls_policies",
+    "baseline_snapshot_path": "patrol/baselines/pg_policies.snapshot.json",
+    "schemas": ["public", "storage"],
+    "refresh_interval_hours": 6,
+    "export_script": "scripts/export-rls-policy-baseline.ts",
+    "diff_script": "scripts/diff-rls-policy-baseline.ts",
+    "required_secret_env": ["SUPABASE_SERVICE_ROLE_KEY"]
+  },
   "checks": {
     "SUP-001": { "enabled": true },
     "SUP-002": { "enabled": true },
