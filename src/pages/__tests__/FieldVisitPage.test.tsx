@@ -232,13 +232,7 @@ function renderPage(detail?: FieldVisitDetails, hookOverrides: Record<string, un
   });
 
   return render(
-    <MemoryRouter
-      initialEntries={['/field/visits/visit-1']}
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
+    <MemoryRouter initialEntries={['/field/visits/visit-1']}>
       <Routes>
         <Route path="/field/visits/:id" element={<FieldVisitPage />} />
         <Route path="/field/dispatch" element={<div>Field queue</div>} />
