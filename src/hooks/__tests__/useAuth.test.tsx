@@ -147,6 +147,24 @@ describe('useAuth', () => {
     refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
     signOutMock.mockResolvedValue({ error: null });
     localStorage.setItem('scc_role_assignments', 'cached');
+    localStorage.setItem(
+      'scc.fieldOutboundQueue.v1',
+      JSON.stringify({
+        revision: 1,
+        ops: [
+          {
+            kind: 'field_measurement_insert',
+            id: 'auth-test-op',
+            visitId: 'v-auth',
+            parameterName: 'pH',
+            measuredValue: 7,
+            measuredText: null,
+            unit: null,
+            enqueuedAt: new Date().toISOString(),
+          },
+        ],
+      }),
+    );
 
     const { useAuth } = await loadUseAuthModule();
     const { result } = renderHook(() => useAuth());
@@ -162,6 +180,7 @@ describe('useAuth', () => {
     expect(clearFieldRouteCacheMock).toHaveBeenCalled();
     expect(clearAllFieldVisitCachesMock).toHaveBeenCalled();
     expect(localStorage.getItem('scc_role_assignments')).toBeNull();
+    expect(localStorage.getItem('scc.fieldOutboundQueue.v1')).toBeNull();
     expect(signOutMock).toHaveBeenCalled();
   });
 });

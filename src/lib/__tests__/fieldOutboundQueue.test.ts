@@ -22,6 +22,7 @@ import {
   optimisticMeasurementsFromQueue,
   isFieldOutboundConflictHoldError,
   processFieldOutboundQueue,
+  clearOutboundQueueStorageSync,
   shouldQueueFieldOutboundFailure,
 } from '@/lib/fieldOutboundQueue';
 
@@ -49,6 +50,21 @@ describe('fieldOutboundQueue', () => {
     localStorage.clear();
     setNavigatorLocks(undefined);
     vi.restoreAllMocks();
+  });
+
+  it('clearOutboundQueueStorageSync removes persisted queue', async () => {
+    await enqueueFieldMeasurementInsert({
+      id: 'clear-sync-1',
+      visitId: 'v1',
+      parameterName: 'pH',
+      measuredValue: 7,
+      measuredText: null,
+      unit: null,
+    });
+    expect(getFieldOutboundQueueLength()).toBe(1);
+    clearOutboundQueueStorageSync();
+    expect(getFieldOutboundQueueLength()).toBe(0);
+    expect(localStorage.getItem(OUTBOUND_QUEUE_STORAGE_KEY)).toBeNull();
   });
 
   it('enqueue and read queue', async () => {
