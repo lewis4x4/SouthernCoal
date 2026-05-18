@@ -4,7 +4,7 @@
 -- STEP 1: Create user via Supabase Dashboard
 --   Authentication > Users > Add User
 --   Email: blewis@lewisinsurance.com
---   Password: Sp33dy22
+--   Password: (set a strong unique password in Dashboard — never commit credentials)
 --   Check "Auto Confirm"
 --   Copy the generated User UID
 --
