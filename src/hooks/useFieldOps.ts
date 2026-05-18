@@ -25,6 +25,7 @@ import {
 import {
   clearPersistedFieldEvidenceSyncFailures,
   persistFieldEvidenceSyncFailures,
+  registerFieldEvidenceAfterUpload,
   syncFieldEvidenceDrafts,
   type FieldEvidenceDraftSyncFailure,
 } from '@/lib/fieldEvidenceDrafts';
@@ -1449,22 +1450,18 @@ export function useFieldOps() {
   }) => {
     if (!organizationId || !userId) throw new Error('Missing organization context');
 
-    const { error } = await supabase
-      .from('field_evidence_assets')
-      .insert({
-        organization_id: organizationId,
-        field_visit_id: input.fieldVisitId,
-        governance_issue_id: input.governanceIssueId ?? null,
-        storage_path: input.storagePath,
-        bucket: input.bucket,
-        evidence_type: input.evidenceType,
-        uploaded_by: userId,
-        latitude: input.coords?.latitude ?? null,
-        longitude: input.coords?.longitude ?? null,
-        notes: input.notes ?? null,
-      });
-
-    if (error) throw new Error(error.message);
+    await registerFieldEvidenceAfterUpload(supabase, {
+      organizationId,
+      userId,
+      fieldVisitId: input.fieldVisitId,
+      storagePath: input.storagePath,
+      bucket: input.bucket,
+      evidenceType: input.evidenceType,
+      governanceIssueId: input.governanceIssueId,
+      latitude: input.coords?.latitude,
+      longitude: input.coords?.longitude,
+      notes: input.notes,
+    });
     await loadVisitDetails(input.fieldVisitId);
   }, [loadVisitDetails, organizationId, userId]);
 

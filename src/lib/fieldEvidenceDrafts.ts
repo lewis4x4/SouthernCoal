@@ -238,6 +238,52 @@ export async function countFieldEvidenceDrafts(): Promise<number> {
   }
 }
 
+export type RegisterFieldEvidenceAfterUploadInput = {
+  organizationId: string;
+  userId: string;
+  fieldVisitId: string;
+  storagePath: string;
+  bucket: string;
+  evidenceType: FieldEvidenceAssetRecord['evidence_type'];
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
+  governanceIssueId?: string | null;
+};
+
+/** Insert metadata after storage upload; compensating delete when insert fails. */
+export async function registerFieldEvidenceAfterUpload(
+  client: SupabaseClient,
+  input: RegisterFieldEvidenceAfterUploadInput,
+): Promise<void> {
+  const { error: insertError } = await client.from('field_evidence_assets').insert({
+    organization_id: input.organizationId,
+    field_visit_id: input.fieldVisitId,
+    governance_issue_id: input.governanceIssueId ?? null,
+    storage_path: input.storagePath,
+    bucket: input.bucket,
+    evidence_type: input.evidenceType,
+    uploaded_by: input.userId,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    notes: input.notes ?? null,
+  });
+
+  if (!insertError) return;
+
+  const { error: removeError } = await client.storage
+    .from(input.bucket)
+    .remove([input.storagePath]);
+
+  if (removeError) {
+    throw new Error(
+      `Could not register evidence (${insertError.message}); storage cleanup also failed (${removeError.message})`,
+    );
+  }
+
+  throw new Error(insertError.message);
+}
+
 export async function listFieldEvidenceDrafts(fieldVisitId: string): Promise<FieldEvidenceDraft[]> {
   return withStore('readonly', async (store) => {
     const index = store.index('fieldVisitId');
@@ -296,24 +342,17 @@ export async function syncFieldEvidenceDrafts(
         });
       if (uploadError) throw new Error(uploadError.message);
 
-      const { error: insertError } = await client
-        .from('field_evidence_assets')
-        .insert({
-          organization_id: input.organizationId,
-          field_visit_id: draft.fieldVisitId,
-          governance_issue_id: null,
-          storage_path: storagePath,
-          bucket: draft.bucket,
-          evidence_type: draft.evidenceType,
-          uploaded_by: input.userId,
-          latitude: draft.latitude,
-          longitude: draft.longitude,
-          notes: draft.notes,
-        });
-      if (insertError) {
-        await client.storage.from(draft.bucket).remove([storagePath]);
-        throw new Error(insertError.message);
-      }
+      await registerFieldEvidenceAfterUpload(client, {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        fieldVisitId: draft.fieldVisitId,
+        storagePath,
+        bucket: draft.bucket,
+        evidenceType: draft.evidenceType,
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        notes: draft.notes,
+      });
 
       await withStore('readwrite', async (store) => {
         await requestToPromise(store.delete(draft.id));
