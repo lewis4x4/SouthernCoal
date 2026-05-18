@@ -123,6 +123,33 @@ export function clearPersistedFieldEvidenceSyncFailures(): void {
   }
 }
 
+/**
+ * Synchronous wipe of durable evidence draft storage (sign-out / user switch).
+ * Clears persisted sync-failure UI state and deletes the IndexedDB database without awaiting
+ * (auth teardown must not block on IDB). Callers must run this before a new session can flush drafts.
+ */
+export function clearAllFieldEvidenceDraftsSync(): void {
+  clearPersistedFieldEvidenceSyncFailures();
+  if (typeof indexedDB === 'undefined') return;
+  try {
+    void indexedDB.deleteDatabase(DB_NAME);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Awaitable full wipe (tests and admin tooling). */
+export async function clearAllFieldEvidenceDrafts(): Promise<void> {
+  clearPersistedFieldEvidenceSyncFailures();
+  if (typeof indexedDB === 'undefined') return;
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error('Could not delete field evidence drafts'));
+    request.onblocked = () => resolve();
+  });
+}
+
 export function clearPersistedFieldEvidenceSyncFailuresForVisit(visitId: string): void {
   if (!visitId) return;
   const rest = readPersistedFieldEvidenceSyncFailures().filter((f) => f.fieldVisitId !== visitId);

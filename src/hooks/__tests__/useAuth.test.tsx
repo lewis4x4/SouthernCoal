@@ -1,6 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import type { Session } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY } from '@/lib/fieldOutboundQueueDiagnostic';
 
 const clearFieldRouteCacheMock = vi.fn();
 const clearAllFieldVisitCachesMock = vi.fn();
@@ -165,6 +166,31 @@ describe('useAuth', () => {
         ],
       }),
     );
+    localStorage.setItem(
+      'scc.fieldEvidenceSyncFailures.v1',
+      JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        failures: [
+          {
+            draftId: 'd1',
+            fieldVisitId: 'v-auth',
+            fileName: 'photo.jpg',
+            message: 'upload failed',
+          },
+        ],
+      }),
+    );
+    localStorage.setItem(
+      OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        message: 'held',
+        opKind: 'field_visit_start',
+        visitId: 'v-auth',
+        savedAt: new Date().toISOString(),
+      }),
+    );
 
     const { useAuth } = await loadUseAuthModule();
     const { result } = renderHook(() => useAuth());
@@ -181,6 +207,59 @@ describe('useAuth', () => {
     expect(clearAllFieldVisitCachesMock).toHaveBeenCalled();
     expect(localStorage.getItem('scc_role_assignments')).toBeNull();
     expect(localStorage.getItem('scc.fieldOutboundQueue.v1')).toBeNull();
+    expect(localStorage.getItem('scc.fieldEvidenceSyncFailures.v1')).toBeNull();
+    expect(localStorage.getItem(OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY)).toBeNull();
     expect(signOutMock).toHaveBeenCalled();
+  });
+
+  it('clears durable field stores when auth user id changes', async () => {
+    const sessionUserA = {
+      ...validSession,
+      user: { id: 'user-a', email: 'a@example.com' },
+    } as Session;
+    const sessionUserB = {
+      ...validSession,
+      user: { id: 'user-b', email: 'b@example.com' },
+    } as Session;
+
+    getSessionMock.mockResolvedValue({ data: { session: sessionUserA }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: sessionUserA }, error: null });
+
+    localStorage.setItem(
+      'scc.fieldOutboundQueue.v1',
+      JSON.stringify({ revision: 1, ops: [] }),
+    );
+    localStorage.setItem(
+      'scc.fieldEvidenceSyncFailures.v1',
+      JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        failures: [],
+      }),
+    );
+
+    const { useAuth } = await loadUseAuthModule();
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalled();
+    });
+
+    const authListener = onAuthStateChangeMock.mock.calls[0][0] as (
+      event: string,
+      session: Session | null,
+    ) => void;
+
+    clearFieldRouteCacheMock.mockClear();
+    clearAllFieldVisitCachesMock.mockClear();
+
+    await act(async () => {
+      authListener('SIGNED_IN', sessionUserB);
+    });
+
+    expect(clearFieldRouteCacheMock).toHaveBeenCalled();
+    expect(clearAllFieldVisitCachesMock).toHaveBeenCalled();
+    expect(localStorage.getItem('scc.fieldOutboundQueue.v1')).toBeNull();
+    expect(localStorage.getItem('scc.fieldEvidenceSyncFailures.v1')).toBeNull();
   });
 });
