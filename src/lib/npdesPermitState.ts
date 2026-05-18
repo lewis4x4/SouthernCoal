@@ -164,7 +164,23 @@ export type RawPermitRowDataQuality = RawPermitRowFieldDispatch & {
   expiration_date: string | null;
   status: string;
   administratively_continued: boolean | null;
+  requires_administrative_investigation: boolean;
 };
+
+/** RLS-scoped count of permits flagged for admin follow-up (GST-25). */
+export async function countNpdesPermitsRequiringAdministrativeInvestigation(
+  client: SupabaseClient,
+): Promise<{ count: number; error: { message: string } | null }> {
+  const { count, error } = await client
+    .from('npdes_permits')
+    .select('id', { count: 'exact', head: true })
+    .eq('requires_administrative_investigation', true);
+
+  if (error) {
+    return { count: 0, error: { message: error.message } };
+  }
+  return { count: count ?? 0, error: null };
+}
 
 type PermitLoadResult<T extends RawPermitRowFieldDispatch> = {
   rawPermits: T[];
@@ -213,7 +229,7 @@ export async function loadPermitsWithStateCodes(
   const { data, error } = await client
     .from('npdes_permits')
     .select(
-      'id, permit_number, permittee_name, expiration_date, status, administratively_continued, site_id',
+      'id, permit_number, permittee_name, expiration_date, status, administratively_continued, requires_administrative_investigation, site_id',
     )
     .eq('status', 'expired')
     .is('administratively_continued', null)

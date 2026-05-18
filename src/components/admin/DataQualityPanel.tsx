@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { loadPermitsWithStateCodes } from '@/lib/npdesPermitState';
+import {
+  countNpdesPermitsRequiringAdministrativeInvestigation,
+  loadPermitsWithStateCodes,
+} from '@/lib/npdesPermitState';
+import {
+  buildNpdesPermitDispositionUpdate,
+  type AdministrativeDispositionResolution,
+} from '@/lib/permitAdministrativeDisposition';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -13,21 +20,26 @@ interface UnconfirmedPermit {
   expiration_date: string | null;
   status: string;
   administratively_continued: boolean | null;
+  requires_administrative_investigation: boolean;
 }
-
-type Resolution = 'continued' | 'expired' | 'investigate';
 
 export function DataQualityPanel() {
   const { log } = useAuditLog();
   const [permits, setPermits] = useState<UnconfirmedPermit[]>([]);
+  const [investigationCount, setInvestigationCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<string>('all');
 
   useEffect(() => {
     async function fetch() {
-      const { rawPermits: rows, siteIdToState, permitError, sitesStateError } =
-        await loadPermitsWithStateCodes(supabase, { kind: 'data_quality_expired' });
+      const [
+        { rawPermits: rows, siteIdToState, permitError, sitesStateError },
+        { count: flaggedCount, error: countError },
+      ] = await Promise.all([
+        loadPermitsWithStateCodes(supabase, { kind: 'data_quality_expired' }),
+        countNpdesPermitsRequiringAdministrativeInvestigation(supabase),
+      ]);
       if (permitError) {
         toast.error(`Failed to load permits: ${permitError.message}`);
         setLoading(false);
@@ -35,6 +47,11 @@ export function DataQualityPanel() {
       }
       if (sitesStateError) {
         toast.error(`Failed to load permit states: ${sitesStateError.message}`);
+      }
+      if (countError) {
+        toast.error(`Failed to load investigation count: ${countError.message}`);
+      } else {
+        setInvestigationCount(flaggedCount);
       }
       const mapped: UnconfirmedPermit[] = rows
         .map((row) => ({
@@ -45,6 +62,7 @@ export function DataQualityPanel() {
           expiration_date: row.expiration_date,
           status: row.status,
           administratively_continued: row.administratively_continued,
+          requires_administrative_investigation: row.requires_administrative_investigation,
         }))
         .sort(
           (a, b) =>
@@ -57,35 +75,49 @@ export function DataQualityPanel() {
     fetch();
   }, []);
 
-  async function resolve(permit: UnconfirmedPermit, resolution: Resolution) {
+  async function resolve(
+    permit: UnconfirmedPermit,
+    resolution: AdministrativeDispositionResolution,
+  ) {
     setSaving(permit.id);
 
-    let update: Record<string, unknown> = {};
-    if (resolution === 'continued') {
-      update = { administratively_continued: true };
-    } else if (resolution === 'expired') {
-      update = { administratively_continued: false };
-    } else {
-      // 'investigate' — mark as false for now but flag in audit
-      update = { administratively_continued: false };
-    }
+    const oldValues = {
+      administratively_continued: permit.administratively_continued,
+      requires_administrative_investigation: permit.requires_administrative_investigation,
+    };
+    const newValues = buildNpdesPermitDispositionUpdate(resolution);
 
     const { error } = await supabase
       .from('npdes_permits')
-      .update(update)
+      .update(newValues)
       .eq('id', permit.id);
 
     if (error) {
       toast.error(`Failed to update ${permit.permit_number}: ${error.message}`);
     } else {
       setPermits((prev) => prev.filter((p) => p.id !== permit.id));
+      if (resolution === 'investigate') {
+        setInvestigationCount((n) => n + 1);
+      } else if (permit.requires_administrative_investigation) {
+        setInvestigationCount((n) => Math.max(0, n - 1));
+      }
       toast.success(`${permit.permit_number} marked as ${resolution}`);
-      log('data_quality_status_changed', {
-        action: 'permit_status_resolution',
-        permit_number: permit.permit_number,
-        resolution,
-        state: permit.state_code,
-      });
+      log(
+        'data_quality_status_changed',
+        {
+          action: 'permit_status_resolution',
+          permit_number: permit.permit_number,
+          resolution,
+          state: permit.state_code,
+        },
+        {
+          module: 'admin',
+          tableName: 'npdes_permits',
+          recordId: permit.id,
+          oldValues,
+          newValues,
+        },
+      );
     }
     setSaving(null);
   }
@@ -119,6 +151,16 @@ export function DataQualityPanel() {
           </h4>
           <p className="text-xs text-text-muted mt-1">
             These permits show as &quot;expired&quot; but may be administratively continued.
+            {investigationCount > 0 && (
+              <>
+                {' '}
+                <span className="text-amber-300/90">
+                  {investigationCount} permit{investigationCount === 1 ? '' : 's'} flagged for
+                  investigation.
+                </span>
+              </>
+            )}
+            {' '}
             Owner: Steve Ball. Every resolution is logged to the audit trail.
           </p>
         </div>
