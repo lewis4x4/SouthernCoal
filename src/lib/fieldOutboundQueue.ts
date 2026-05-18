@@ -1050,6 +1050,19 @@ export async function dismissOutboundQueueOpsForVisit(visitId: string): Promise<
   return ok ? removed : 0;
 }
 
+/**
+ * Synchronous wipe of persisted queue state (sign-out / user switch).
+ * Does not use navigator.locks — auth teardown must not await queue CAS.
+ */
+export function clearOutboundQueueStorageSync(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Clear the entire outbound queue. Admin emergency action with audit trail. */
 export async function clearOutboundQueue(): Promise<number> {
   const count = readQueue().length;
