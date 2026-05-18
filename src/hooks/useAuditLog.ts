@@ -7,6 +7,8 @@ type AuditAction =
   | 'matrix_export_csv'
   | 'matrix_export_markdown'
   | 'bulk_process'
+  | 'bulk_process_permits'
+  | 'bulk_process_lab_data'
   | 'bulk_retry'
   | 'staging_clear_all'
   | 'command_palette_action'

@@ -4,6 +4,10 @@ export interface MatrixCell {
   status: 'empty' | 'uploaded' | 'processing' | 'imported' | 'failed';
   count: number;
   verified: boolean;
+  /** Imported/parsed/embedded entries eligible for human verification */
+  reviewableCount: number;
+  /** Entries marked verified in the extraction trust layer */
+  verifiedCount: number;
 }
 
 export interface SummaryStats {

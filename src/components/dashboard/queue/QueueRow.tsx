@@ -1,7 +1,9 @@
 import { GlassBadge } from '@/components/ui/GlassBadge';
+import { VerificationBadge } from '@/components/dashboard/queue/VerificationBadge';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useQueueStore } from '@/stores/queue';
+import { useVerificationStore } from '@/stores/verification';
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES, CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
 import { cn } from '@/lib/cn';
@@ -47,6 +49,8 @@ export function QueueRow({ entry, can }: QueueRowProps) {
   const isExpanded = expandedRowId === entry.id;
   const isPermit = entry.file_category === 'npdes_permit';
   const isLabData = entry.file_category === 'lab_data';
+  const verificationStatus = useVerificationStore((s) => s.getStatus(entry.id));
+  const showVerificationBadge = isPermit || isLabData;
   const canProcess = (isPermit || isLabData) && entry.status === 'queued' && can('process');
   const canRetry = (isPermit || isLabData) && entry.status === 'failed' && can('retry');
 
@@ -168,6 +172,16 @@ export function QueueRow({ entry, can }: QueueRowProps) {
           ))}
         </select>
       </div>
+
+      {/* AI extraction trust (collapsed row) */}
+      {showVerificationBadge && (
+        <div
+          className="flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <VerificationBadge status={verificationStatus} />
+        </div>
+      )}
 
       {/* Status badge */}
       <GlassBadge variant={entry.status as FileStatus}>
