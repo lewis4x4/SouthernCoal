@@ -1,4 +1,5 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { waitFor } from '@testing-library/dom';
+import { act, renderHook } from '@testing-library/react';
 import type { Session } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY } from '@/lib/fieldOutboundQueueDiagnostic';
