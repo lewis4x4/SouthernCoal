@@ -25,8 +25,8 @@
       "expected_ms": 2000
     },
     {
-      "url": "https://zymenlnwyzpnohljwifx.supabase.co/rest/v1/",
-      "name": "Supabase REST",
+      "url": "https://zymenlnwyzpnohljwifx.supabase.co/auth/v1/health?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5bWVubG53eXpwbm9obGp3aWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NTY0NjcsImV4cCI6MjA4NjIzMjQ2N30.Q6uKHhUEKhnanBuWEeCIVoJN08t5afqUx74zGZ4VMgQ",
+      "name": "Supabase Auth health",
       "expected_ms": 500
     }
   ],
@@ -40,7 +40,9 @@
     "source_rpc": "run_data_integrity_check",
     "source_migration": "supabase/migrations/20260404300000_phase11_emergency_hardening.sql",
     "patrol_migration": "supabase/migrations/20260518140000_patrol_data_integrity_snapshot.sql",
-    "required_secret_env": ["SUPABASE_SERVICE_ROLE_KEY"]
+    "required_secret_env": [
+      "SUPABASE_SERVICE_ROLE_KEY"
+    ]
   },
   "sup001_rls_audit": {
     "live_query_rpc": "patrol_export_rls_policies",
@@ -52,32 +54,77 @@
     "required_secret_env": ["SUPABASE_SERVICE_ROLE_KEY"]
   },
   "checks": {
-    "SUP-001": { "enabled": true },
-    "SUP-002": { "enabled": true },
-    "SUP-003": { "enabled": true },
-    "SUP-004": { "enabled": true },
-    "SUP-005": { "enabled": true },
-    "SUP-006": { "enabled": true },
-    "SUP-007": { "enabled": true },
-    "REP-001": { "enabled": true },
-    "REP-002": { "enabled": true },
-    "REP-003": { "enabled": true },
-    "REP-004": { "enabled": true },
-    "REP-005": { "enabled": true },
-    "INF-001": { "enabled": true },
-    "INF-002": { "enabled": true },
-    "INF-003": { "enabled": true },
-    "INF-004": { "enabled": true },
+    "SUP-001": {
+      "enabled": true
+    },
+    "SUP-002": {
+      "enabled": true
+    },
+    "SUP-003": {
+      "enabled": true
+    },
+    "SUP-004": {
+      "enabled": true
+    },
+    "SUP-005": {
+      "enabled": true
+    },
+    "SUP-006": {
+      "enabled": true
+    },
+    "SUP-007": {
+      "enabled": true
+    },
+    "REP-001": {
+      "enabled": true
+    },
+    "REP-002": {
+      "enabled": true
+    },
+    "REP-003": {
+      "enabled": true
+    },
+    "REP-004": {
+      "enabled": true
+    },
+    "REP-005": {
+      "enabled": true
+    },
+    "INF-001": {
+      "enabled": true
+    },
+    "INF-002": {
+      "enabled": true
+    },
+    "INF-003": {
+      "enabled": true
+    },
+    "INF-004": {
+      "enabled": true
+    },
     "INF-005": {
       "enabled": false,
       "reason": "No Cloudflare Workers on this project"
     },
-    "INF-006": { "enabled": true },
-    "INF-007": { "enabled": true },
-    "SEC-001": { "enabled": true },
-    "SEC-002": { "enabled": true, "severity": "high" },
-    "SEC-003": { "enabled": true },
-    "SEC-004": { "enabled": true },
+    "INF-006": {
+      "enabled": true
+    },
+    "INF-007": {
+      "enabled": true
+    },
+    "SEC-001": {
+      "enabled": true
+    },
+    "SEC-002": {
+      "enabled": true,
+      "severity": "high"
+    },
+    "SEC-003": {
+      "enabled": true
+    },
+    "SEC-004": {
+      "enabled": true
+    },
     "E2E-001": {
       "enabled": false,
       "reason": "No Playwright suite configured in this repository"
@@ -87,8 +134,14 @@
     "phase_a": {
       "expect_disable_signup": false,
       "rules": [
-        { "key": "mailer_autoconfirm", "expect": false },
-        { "key": "phone_autoconfirm", "expect": false }
+        {
+          "key": "mailer_autoconfirm",
+          "expect": false
+        },
+        {
+          "key": "phone_autoconfirm",
+          "expect": false
+        }
       ]
     },
     "phase_b": {
@@ -105,7 +158,11 @@
       "label": "Permits without sites",
       "description": "npdes_permits.site_id IS NULL",
       "severity": "warn",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "permits_without_sites"
     },
     {
@@ -113,7 +170,11 @@
       "label": "Orphaned outfalls",
       "description": "outfalls with no matching npdes_permits row",
       "severity": "fail",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "orphaned_outfalls"
     },
     {
@@ -121,7 +182,11 @@
       "label": "Exceedances without lab results",
       "description": "exceedances.lab_result_id does not resolve to lab_results",
       "severity": "fail",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "exceedances_without_lab_results"
     },
     {
@@ -129,7 +194,11 @@
       "label": "Corrective actions without source type",
       "description": "corrective_actions.source_type IS NULL",
       "severity": "warn",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "corrective_actions_without_source_type"
     },
     {
@@ -137,7 +206,11 @@
       "label": "Active users without organization",
       "description": "user_profiles.is_active = true AND organization_id IS NULL",
       "severity": "fail",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "active_users_without_organization"
     },
     {
@@ -145,7 +218,11 @@
       "label": "Orphaned sampling events",
       "description": "sampling_events.outfall_id does not resolve to outfalls",
       "severity": "fail",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "orphaned_sampling_events"
     },
     {
@@ -153,7 +230,11 @@
       "label": "Violations without violation type",
       "description": "compliance_violations.violation_type IS NULL",
       "severity": "warn",
-      "pass_condition": { "field": "count", "op": "eq", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "eq",
+        "value": 0
+      },
       "snapshot_key": "violations_without_violation_type"
     },
     {
@@ -161,8 +242,22 @@
       "label": "Audit log activity (24h)",
       "description": "audit_log rows in the last 24 hours (warn when zero)",
       "severity": "warn",
-      "pass_condition": { "field": "count", "op": "gt", "value": 0 },
+      "pass_condition": {
+        "field": "count",
+        "op": "gt",
+        "value": 0
+      },
       "snapshot_key": "audit_log_activity_24h"
     }
-  ]
+  ],
+  "inf006_supabase_probe": {
+    "url": "https://zymenlnwyzpnohljwifx.supabase.co/auth/v1/health",
+    "auth_mode": "apikey_query",
+    "auth_env": [
+      "VITE_SUPABASE_ANON_KEY",
+      "SUPABASE_ANON_KEY"
+    ],
+    "expected_ms": 500,
+    "note": "Publishable anon key required in probe URL for Sentinel plain-GET INF-006. REST /rest/v1/ root returns 401 without credentials (BLA-930)."
+  }
 }
