@@ -149,10 +149,6 @@ async function sendEmailAlert(alert: DeadlineAlert) {
   await supabase.functions.invoke('send-deadline-alert', {
     body: {
       obligation_id: alert.id,
-      obligation_name: alert.description,
-      days_late: alert.daysAtRisk,
-      penalty_tier: alert.penaltyTier,
-      accrued_penalty: alert.accruedPenalty,
       recipient_email: session.user.email,
     },
   });

@@ -11,6 +11,8 @@ const FRONTEND_URL = (_frontendEnv ?? (
   (Deno.env.get("SUPABASE_URL") ?? "").includes("localhost") ? "http://localhost:5173" : ""
 )).replace(/\/$/, "");
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const TIER_LABELS: Record<string, string> = {
   tier_1: "Tier 1 Alert",
   tier_2: "Tier 2 Warning",
@@ -19,11 +21,18 @@ const TIER_LABELS: Record<string, string> = {
 
 interface RequestBody {
   obligation_id: string;
-  obligation_name: string;
-  days_late: number;
+  /** Optional; must be an active user in the caller's organization. Defaults to caller email. */
+  recipient_email?: string;
+}
+
+interface ObligationRow {
+  id: string;
+  organization_id: string | null;
+  description: string | null;
+  title: string | null;
+  days_at_risk: number;
   penalty_tier: string;
   accrued_penalty: number;
-  recipient_email: string;
 }
 
 /** Prevent HTML injection in email templates */
@@ -34,6 +43,14 @@ function escapeHtml(v: string | number): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 serve(async (req) => {
@@ -94,6 +111,28 @@ serve(async (req) => {
       });
     }
 
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("organization_id, email")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile?.organization_id) {
+      return new Response(JSON.stringify({ error: "User profile not found" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userOrgId = profile.organization_id as string;
+    const callerEmail = (user.email ?? profile.email ?? "").trim();
+    if (!callerEmail) {
+      return new Response(JSON.stringify({ error: "Caller email not available" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let body: RequestBody;
     try {
       body = await req.json() as RequestBody;
@@ -104,40 +143,94 @@ serve(async (req) => {
       });
     }
 
-    const {
-      obligation_name,
-      days_late,
-      penalty_tier,
-      accrued_penalty,
-      recipient_email,
-    } = body;
-
-    if (!recipient_email || !obligation_name) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    const obligationId = body.obligation_id?.trim();
+    if (!obligationId || !UUID_RE.test(obligationId)) {
+      return new Response(JSON.stringify({ error: "obligation_id must be a valid UUID" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(recipient_email)) {
+    const recipientEmail = (body.recipient_email?.trim() || callerEmail);
+    if (!isValidEmail(recipientEmail)) {
       return new Response(JSON.stringify({ error: "Invalid email address" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (typeof days_late !== "number" || !Number.isFinite(days_late)) {
-      return new Response(JSON.stringify({ error: "days_late must be a finite number" }), {
-        status: 400,
+    const { data: obligation, error: obligationError } = await supabase
+      .from("consent_decree_obligations")
+      .select("id, organization_id, description, title, days_at_risk, penalty_tier, accrued_penalty")
+      .eq("id", obligationId)
+      .maybeSingle();
+
+    if (obligationError) {
+      console.error("[send-deadline-alert] obligation lookup:", obligationError.message);
+      return new Response(JSON.stringify({ error: "Obligation lookup failed" }), {
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (typeof accrued_penalty !== "number" || !Number.isFinite(accrued_penalty)) {
-      return new Response(JSON.stringify({ error: "accrued_penalty must be a finite number" }), {
-        status: 400,
+    if (!obligation) {
+      return new Response(JSON.stringify({ error: "Obligation not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const row = obligation as ObligationRow;
+    if (row.organization_id && row.organization_id !== userOrgId) {
+      return new Response(JSON.stringify({ error: "Obligation not in your organization" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const normalizedRecipient = normalizeEmail(recipientEmail);
+    const { data: orgRecipients, error: recipientError } = await supabase
+      .from("user_profiles")
+      .select("email")
+      .eq("organization_id", userOrgId)
+      .eq("is_active", true);
+
+    if (recipientError) {
+      console.error("[send-deadline-alert] recipient lookup:", recipientError.message);
+      return new Response(JSON.stringify({ error: "Recipient validation failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const allowedEmails = new Set(
+      [callerEmail, ...(orgRecipients ?? []).map((r) => r.email as string)]
+        .filter(Boolean)
+        .map((email) => normalizeEmail(email)),
+    );
+
+    if (!allowedEmails.has(normalizedRecipient)) {
+      return new Response(JSON.stringify({ error: "Recipient not allowed for this organization" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const obligationName = (row.description?.trim() || row.title?.trim() || "Unnamed obligation");
+    const daysLate = Number(row.days_at_risk);
+    const penaltyTier = String(row.penalty_tier ?? "none");
+    const accruedPenalty = Number(row.accrued_penalty);
+
+    if (!Number.isFinite(daysLate) || daysLate < 0) {
+      return new Response(JSON.stringify({ error: "Invalid obligation days_at_risk" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!Number.isFinite(accruedPenalty) || accruedPenalty < 0) {
+      return new Response(JSON.stringify({ error: "Invalid obligation accrued_penalty" }), {
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -151,28 +244,28 @@ serve(async (req) => {
       );
     }
 
-    const tierLabel = TIER_LABELS[penalty_tier] ?? "Alert";
-    const subject = `[SCC Compliance] ${tierLabel}: ${obligation_name}`;
+    const tierLabel = TIER_LABELS[penaltyTier] ?? "Alert";
+    const subject = `[SCC Compliance] ${tierLabel}: ${obligationName}`;
     const obligationsHref = `${FRONTEND_URL}/obligations`;
 
     const htmlBody = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1a1a2e; color: #f1f5f9; border-radius: 12px; padding: 24px; border: 1px solid ${penalty_tier === 'tier_3' ? '#ef4444' : penalty_tier === 'tier_2' ? '#f97316' : '#eab308'}40;">
-          <h2 style="margin: 0 0 16px; color: ${penalty_tier === 'tier_3' ? '#ef4444' : penalty_tier === 'tier_2' ? '#f97316' : '#eab308'};">
+        <div style="background: #1a1a2e; color: #f1f5f9; border-radius: 12px; padding: 24px; border: 1px solid ${penaltyTier === 'tier_3' ? '#ef4444' : penaltyTier === 'tier_2' ? '#f97316' : '#eab308'}40;">
+          <h2 style="margin: 0 0 16px; color: ${penaltyTier === 'tier_3' ? '#ef4444' : penaltyTier === 'tier_2' ? '#f97316' : '#eab308'};">
             ${escapeHtml(tierLabel)}
           </h2>
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Obligation</td>
-              <td style="padding: 8px 0; color: #f1f5f9; font-weight: 600;">${escapeHtml(obligation_name)}</td>
+              <td style="padding: 8px 0; color: #f1f5f9; font-weight: 600;">${escapeHtml(obligationName)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Days Overdue</td>
-              <td style="padding: 8px 0; color: #ef4444; font-weight: 700;">${escapeHtml(days_late)}</td>
+              <td style="padding: 8px 0; color: #ef4444; font-weight: 700;">${escapeHtml(daysLate)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Accrued Penalty</td>
-              <td style="padding: 8px 0; color: #f97316; font-weight: 700;">$${escapeHtml(accrued_penalty.toLocaleString())}</td>
+              <td style="padding: 8px 0; color: #f97316; font-weight: 700;">$${escapeHtml(accruedPenalty.toLocaleString())}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #94a3b8;">Penalty Tier</td>
@@ -202,7 +295,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: "SCC Compliance <compliance@scc-monitor.com>",
-        to: [recipient_email],
+        to: [recipientEmail],
         subject,
         html: htmlBody,
       }),
