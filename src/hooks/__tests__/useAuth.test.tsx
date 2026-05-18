@@ -245,10 +245,11 @@ describe('useAuth', () => {
       expect(onAuthStateChangeMock).toHaveBeenCalled();
     });
 
-    const authListener = onAuthStateChangeMock.mock.calls[0][0] as (
-      event: string,
-      session: Session | null,
-    ) => void;
+    const authListener = onAuthStateChangeMock.mock.calls[0]?.[0];
+    expect(authListener).toBeDefined();
+    if (typeof authListener !== 'function') {
+      throw new Error('onAuthStateChange listener was not registered');
+    }
 
     clearFieldRouteCacheMock.mockClear();
     clearAllFieldVisitCachesMock.mockClear();
