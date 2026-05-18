@@ -3,7 +3,9 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { clearFieldRouteCache } from '@/lib/fieldRouteLocalCache';
 import { clearAllFieldVisitCaches } from '@/lib/fieldVisitLocalCache';
+import { clearAllFieldEvidenceDraftsSync } from '@/lib/fieldEvidenceDrafts';
 import { clearOutboundQueueStorageSync } from '@/lib/fieldOutboundQueue';
+import { clearStoredOutboundQueueDiagnostic } from '@/lib/fieldOutboundQueueDiagnostic';
 
 export type AuthStatus = 'bootstrapping' | 'authenticated' | 'unauthenticated' | 'expired';
 
@@ -51,6 +53,8 @@ function clearAuthCaches() {
   clearFieldRouteCache();
   clearAllFieldVisitCaches();
   clearOutboundQueueStorageSync();
+  clearStoredOutboundQueueDiagnostic();
+  clearAllFieldEvidenceDraftsSync();
   try {
     localStorage.removeItem(ROLE_ASSIGNMENTS_CACHE_KEY);
   } catch {

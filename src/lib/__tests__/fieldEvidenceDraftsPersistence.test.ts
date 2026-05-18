@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+  clearAllFieldEvidenceDraftsSync,
   clearPersistedFieldEvidenceSyncFailures,
   clearPersistedFieldEvidenceSyncFailuresForVisit,
   persistFieldEvidenceSyncFailures,
@@ -48,6 +49,12 @@ describe('field evidence sync failure persistence', () => {
   it('persist empty clears storage', () => {
     persistFieldEvidenceSyncFailures([f1]);
     persistFieldEvidenceSyncFailures([]);
+    expect(readPersistedFieldEvidenceSyncFailures()).toEqual([]);
+  });
+
+  it('clearAllFieldEvidenceDraftsSync removes persisted sync failures', () => {
+    persistFieldEvidenceSyncFailures([f1]);
+    clearAllFieldEvidenceDraftsSync();
     expect(readPersistedFieldEvidenceSyncFailures()).toEqual([]);
   });
 });
