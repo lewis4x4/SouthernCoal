@@ -51,6 +51,58 @@ const validSession = {
   },
 } as Session;
 
+function seedDurableFieldStores() {
+  localStorage.setItem(
+    'scc.fieldOutboundQueue.v1',
+    JSON.stringify({
+      revision: 1,
+      ops: [
+        {
+          kind: 'field_measurement_insert',
+          id: 'refresh-guard-op',
+          visitId: 'v-refresh',
+          parameterName: 'pH',
+          measuredValue: 7,
+          measuredText: null,
+          unit: null,
+          enqueuedAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  );
+  localStorage.setItem(
+    'scc.fieldEvidenceSyncFailures.v1',
+    JSON.stringify({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      failures: [
+        {
+          draftId: 'd-refresh',
+          fieldVisitId: 'v-refresh',
+          fileName: 'photo.jpg',
+          message: 'upload failed',
+        },
+      ],
+    }),
+  );
+  localStorage.setItem(
+    OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      message: 'held',
+      opKind: 'field_visit_start',
+      visitId: 'v-refresh',
+      savedAt: new Date().toISOString(),
+    }),
+  );
+}
+
+function expectDurableFieldStoresRetained() {
+  expect(localStorage.getItem('scc.fieldOutboundQueue.v1')).not.toBeNull();
+  expect(localStorage.getItem('scc.fieldEvidenceSyncFailures.v1')).not.toBeNull();
+  expect(localStorage.getItem(OUTBOUND_QUEUE_DIAGNOSTIC_STORAGE_KEY)).not.toBeNull();
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -263,5 +315,63 @@ describe('useAuth', () => {
     expect(clearAllFieldVisitCachesMock).toHaveBeenCalled();
     expect(localStorage.getItem('scc.fieldOutboundQueue.v1')).toBeNull();
     expect(localStorage.getItem('scc.fieldEvidenceSyncFailures.v1')).toBeNull();
+  });
+
+  it('preserves durable field stores on TOKEN_REFRESHED for the same user', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+
+    const { useAuth } = await loadUseAuthModule();
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalled();
+    });
+
+    const authListener = onAuthStateChangeMock.mock.calls[0]?.[0];
+    expect(typeof authListener).toBe('function');
+
+    seedDurableFieldStores();
+    clearFieldRouteCacheMock.mockClear();
+    clearAllFieldVisitCachesMock.mockClear();
+
+    await act(async () => {
+      authListener('TOKEN_REFRESHED', validSession);
+    });
+
+    expect(clearFieldRouteCacheMock).not.toHaveBeenCalled();
+    expect(clearAllFieldVisitCachesMock).not.toHaveBeenCalled();
+    expectDurableFieldStoresRetained();
+  });
+
+  it('preserves durable field stores after online reconnect refresh for the same user', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+
+    const { useAuth } = await loadUseAuthModule();
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+    });
+
+    seedDurableFieldStores();
+    clearFieldRouteCacheMock.mockClear();
+    clearAllFieldVisitCachesMock.mockClear();
+    refreshSessionMock.mockClear();
+    getSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+    refreshSessionMock.mockResolvedValue({ data: { session: validSession }, error: null });
+
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(clearFieldRouteCacheMock).not.toHaveBeenCalled();
+    expect(clearAllFieldVisitCachesMock).not.toHaveBeenCalled();
+    expectDurableFieldStoresRetained();
   });
 });
