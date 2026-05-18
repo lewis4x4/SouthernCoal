@@ -44,7 +44,7 @@ export function useRealtimeQueue() {
   const { profile } = useUserProfile();
   const setEntries = useQueueStore((s) => s.setEntries);
   const upsertEntry = useQueueStore((s) => s.upsertEntry);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const lastEventRef = useRef<number>(Date.now());
   const initialLoadDone = useRef(false);
 
