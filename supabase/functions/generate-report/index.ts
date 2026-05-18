@@ -6,6 +6,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").trim();
@@ -56,10 +57,12 @@ function json(body: Record<string, unknown>, status = 200): Response {
 async function authenticate(req: Request, sb: SB): Promise<Auth | null> {
   const hdr = req.headers.get("Authorization");
   if (!hdr?.startsWith("Bearer ")) return null;
+  const token = hdr.replace("Bearer ", "");
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
   const {
     data: { user },
     error,
-  } = await sb.auth.getUser(hdr.replace("Bearer ", ""));
+  } = await sb.auth.getUser(token);
   if (error || !user) return null;
 
   const { data: profile } = await sb
@@ -990,15 +993,16 @@ Deno.serve(async (req: Request) => {
   if (!SUPABASE_URL || !SERVICE_KEY) {
     return json({ error: "Server misconfiguration" }, 503);
   }
-  if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
-  }
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // 1. Authenticate
+  // 1. Authenticate (before method/body guards — SEC-003)
   const auth = await authenticate(req, sb);
   if (!auth) return json({ error: "Unauthorized" }, 401);
+
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
+  }
 
   // 2. Parse body
   let body: Record<string, unknown>;

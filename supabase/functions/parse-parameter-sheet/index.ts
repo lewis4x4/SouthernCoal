@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -130,6 +131,8 @@ async function verifyAuth(
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.replace("Bearer ", "");
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
+
   const {
     data: { user },
     error,
@@ -582,10 +585,24 @@ serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // 1. Verify JWT before method/body (SEC-003)
+  const userId = await verifyAuth(req, supabase);
+  if (!userId) {
+    console.error("[parse-parameter-sheet] Unauthorized: Missing or invalid JWT");
+    return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  }
+  console.log(`[parse-parameter-sheet] Authenticated user: ${userId}`);
+
+  if (req.method !== "POST") {
+    return jsonResponse({ success: false, error: "Method not allowed" }, 405);
+  }
+
   let queueId = "";
 
   try {
-    // 1. Parse request
+    // 2. Parse request
     const body = await req.json();
     queueId = body.queue_id;
 
@@ -595,18 +612,7 @@ serve(async (req: Request) => {
 
     console.log(`[parse-parameter-sheet] Processing queue entry: ${queueId}`);
 
-    // 2. Create Supabase client with service role (for storage access)
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // 3. Verify JWT (CRITICAL: Authenticate before processing)
-    const userId = await verifyAuth(req, supabase);
-    if (!userId) {
-      console.error("[parse-parameter-sheet] Unauthorized: Missing or invalid JWT");
-      return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-    }
-    console.log(`[parse-parameter-sheet] Authenticated user: ${userId}`);
-
-    // 5. Fetch queue entry
+    // 3. Fetch queue entry
     const { data: entry, error: fetchError } = await supabase
       .from("file_processing_queue")
       .select("*")
