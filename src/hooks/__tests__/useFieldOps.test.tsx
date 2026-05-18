@@ -11,6 +11,71 @@ const getFieldSyncPendingCountMock = vi.fn();
 const toastErrorMock = vi.fn();
 const fromMock = vi.fn();
 
+const { loadPermitsWithStateCodesMock, permitLoadGate } = vi.hoisted(() => {
+  const WV_SITE_ID = 'site-wv';
+  const wvSiteMap = new Map<string, string>([[WV_SITE_ID, 'WV']]);
+
+  const emptyPermitLoad = {
+    rawPermits: [] as Array<{
+      id: string;
+      permit_number: string;
+      permittee_name: string | null;
+      site_id: string | null;
+    }>,
+    siteIdToState: wvSiteMap,
+    permitError: null,
+    sitesStateError: null,
+  };
+
+  let resolveSlowPermitLoad: (() => void) | null = null;
+  let slowPermitLoadPending = false;
+
+  const loadPermitsWithStateCodesMock = vi.fn(async () => {
+    if (slowPermitLoadPending) {
+      slowPermitLoadPending = false;
+      await new Promise<void>((resolve) => {
+        resolveSlowPermitLoad = resolve;
+      });
+      return {
+        ...emptyPermitLoad,
+        rawPermits: [
+          {
+            id: 'permit-old',
+            permit_number: 'OLD-PERMIT',
+            permittee_name: 'Stale Permittee',
+            site_id: WV_SITE_ID,
+          },
+        ],
+      };
+    }
+
+    return {
+      ...emptyPermitLoad,
+      rawPermits: [
+        {
+          id: 'permit-new',
+          permit_number: 'NEW-PERMIT',
+          permittee_name: 'Fresh Permittee',
+          site_id: WV_SITE_ID,
+        },
+      ],
+    };
+  });
+
+  return {
+    loadPermitsWithStateCodesMock,
+    permitLoadGate: {
+      armSlowPermitLoad() {
+        slowPermitLoadPending = true;
+      },
+      releaseSlowPermitLoad() {
+        resolveSlowPermitLoad?.();
+        resolveSlowPermitLoad = null;
+      },
+    },
+  };
+});
+
 function installMockStorage() {
   const store = new Map<string, string>();
   const storage: Storage = {
@@ -83,14 +148,18 @@ vi.mock('@/lib/fieldOutboundQueue', () => ({
   mergeOutletInspectionWithQueue: (_visitId: string, record: unknown) => record,
   mergeVisitWithQueuedLifecycle: <T,>(visit: T) => visit,
   optimisticMeasurementsFromQueue: () => [],
-  processFieldOutboundQueue: vi.fn(),
+  processFieldOutboundQueue: vi.fn(async () => ({ processed: 0, failed: null })),
   shouldQueueFieldOutboundFailure: () => false,
 }));
 
 vi.mock('@/lib/fieldEvidenceDrafts', () => ({
   clearPersistedFieldEvidenceSyncFailures: vi.fn(),
   persistFieldEvidenceSyncFailures: vi.fn(),
-  syncFieldEvidenceDrafts: vi.fn(),
+  syncFieldEvidenceDrafts: vi.fn(async () => ({
+    uploaded: 0,
+    failures: [],
+    syncedVisitIds: [],
+  })),
 }));
 
 vi.mock('@/lib/fieldOutboundQueueDiagnostic', () => ({
@@ -102,12 +171,9 @@ vi.mock('@/lib/fieldOutboundQueueDiagnostic', () => ({
 }));
 
 vi.mock('@/lib/npdesPermitState', () => ({
-  loadPermitsWithStateCodes: vi.fn().mockResolvedValue({
-    rawPermits: [],
-    siteIdToState: new Map<string, string>(),
-    permitError: null,
-    sitesStateError: null,
-  }),
+  loadPermitsWithStateCodes: (
+    ...args: Parameters<typeof loadPermitsWithStateCodesMock>
+  ) => loadPermitsWithStateCodesMock(...args),
 }));
 
 vi.mock('@/lib/fieldSyncPending', () => ({
@@ -280,6 +346,68 @@ describe('didDispatchContextLoadSucceed', () => {
         routeStopError: { message: 'stops failed' },
       }),
     ).toBe(false);
+  });
+});
+
+describe('useFieldOps loadDispatchContext request ordering', () => {
+  beforeEach(() => {
+    installMockStorage();
+    vi.clearAllMocks();
+    setNavigatorOnline(true);
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        email: 'field@example.com',
+      },
+    });
+    useUserProfileMock.mockReturnValue({
+      profile: {
+        organization_id: 'org-1',
+        first_name: 'Field',
+        last_name: 'Tester',
+      },
+    });
+    getFieldSyncPendingCountMock.mockResolvedValue(0);
+
+    const emptyRows: never[] = [];
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'field_visits') {
+        return createResolvedBuilder({
+          thenResult: { data: emptyRows, error: null },
+        });
+      }
+      return createResolvedBuilder({
+        thenResult: { data: emptyRows, error: null },
+        maybeSingleResult: { data: null, error: null },
+      });
+    });
+  });
+
+  it('ignores stale loadDispatchContext results after a newer refresh completes', async () => {
+    const { result } = renderHook(() => useFieldOps());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    permitLoadGate.armSlowPermitLoad();
+    act(() => {
+      void result.current.refresh();
+    });
+    act(() => {
+      void result.current.refresh();
+    });
+
+    await waitFor(() => {
+      expect(result.current.permits[0]?.permit_number).toBe('NEW-PERMIT');
+    });
+
+    permitLoadGate.releaseSlowPermitLoad();
+
+    await waitFor(() => {
+      expect(result.current.permits[0]?.permit_number).toBe('NEW-PERMIT');
+    });
   });
 });
 
