@@ -179,6 +179,13 @@ export function CommandPalette() {
                   onSelect={() =>
                     runAction('retry_all_failed', () => {
                       const failed = entries.filter((e) => e.status === 'failed');
+                      if (failed.length > 0) {
+                        log(
+                          'bulk_retry',
+                          { count: failed.length, source: 'command_palette' },
+                          { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+                        );
+                      }
                       for (const entry of failed) {
                         if (entry.file_category === 'npdes_permit') retryPermit(entry.id);
                         else if (entry.file_category === 'lab_data') retryLabData(entry.id);
