@@ -203,6 +203,19 @@ async function rptPermitInventory(
   return { columns, rows, flags: makeFlags(rows) };
 }
 
+/** Mirrors `formatAdministrativeDispositionLabel` for CSV export (edge function has no src import). */
+function formatPermitRenewalAdminContinued(
+  administrativelyContinued: boolean | null | undefined,
+  requiresAdministrativeInvestigation: boolean | null | undefined,
+): string {
+  if (administrativelyContinued === null || administrativelyContinued === undefined) {
+    return "Unreviewed";
+  }
+  if (administrativelyContinued === true) return "Yes";
+  if (requiresAdministrativeInvestigation === true) return "Investigate";
+  return "No";
+}
+
 // ── Report #2: Permit Renewal Tracker ────────────────────────────────────────
 async function rptPermitRenewalTracker(
   sb: SB,
@@ -214,7 +227,7 @@ async function rptPermitRenewalTracker(
     .from("npdes_permits")
     .select(
       `permit_number, status, effective_date, expiration_date,
-       administratively_continued, facility_name,
+       administratively_continued, requires_administrative_investigation, facility_name,
        sites(name, states(code)), organizations(name)`,
     )
     .in("organization_id", orgIds)
@@ -238,7 +251,12 @@ async function rptPermitRenewalTracker(
       : null;
     return [
       r.permit_number, r.status, r.effective_date, r.expiration_date,
-      daysUntil, r.administratively_continued ? "Yes" : "No", r.facility_name,
+      daysUntil,
+      formatPermitRenewalAdminContinued(
+        r.administratively_continued as boolean | null,
+        r.requires_administrative_investigation as boolean | null,
+      ),
+      r.facility_name,
       site?.name, state?.code, org?.name,
     ];
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  countNpdesPermitsRequiringAdministrativeInvestigation,
   fetchSiteIdToStateCodeMap,
   fetchSiteIdToStateCodeMapViaStateId,
   stateCodeFromPermitSiteEmbed,
@@ -198,6 +199,25 @@ describe('fetchSiteIdToStateCodeMap', () => {
 
     expect(error?.message).toBe('states rls');
     expect(map.size).toBe(0);
+  });
+});
+
+describe('countNpdesPermitsRequiringAdministrativeInvestigation', () => {
+  it('returns exact count from head query', async () => {
+    const eq = vi.fn(() =>
+      Promise.resolve({ count: 3, error: null }),
+    );
+    const client = {
+      from: () => ({
+        select: () => ({ eq }),
+      }),
+    } as unknown as SupabaseClient;
+
+    const { count, error } = await countNpdesPermitsRequiringAdministrativeInvestigation(client);
+
+    expect(error).toBeNull();
+    expect(count).toBe(3);
+    expect(eq).toHaveBeenCalledWith('requires_administrative_investigation', true);
   });
 });
 
