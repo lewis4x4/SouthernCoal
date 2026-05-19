@@ -1,0 +1,28 @@
+{
+  "service": "supabase",
+  "change_type": "auth_config",
+  "project_ref": "zymenlnwyzpnohljwifx",
+  "changes": [
+    {
+      "key": "password_min_length",
+      "value": 8,
+      "previous": 6
+    },
+    {
+      "key": "site_url",
+      "value": "https://southerncoal.netlify.app",
+      "previous": "http://localhost:3000"
+    },
+    {
+      "key": "uri_allow_list",
+      "value": "https://southerncoal.netlify.app/**\nhttp://localhost:5173/**\nhttp://localhost:3000/**",
+      "previous": ""
+    }
+  ],
+  "patch_body": {
+    "password_min_length": 8,
+    "site_url": "https://southerncoal.netlify.app",
+    "uri_allow_list": "https://southerncoal.netlify.app/**\nhttp://localhost:5173/**\nhttp://localhost:3000/**"
+  },
+  "notes": "Do not change jwt_exp (already 3600). GET config/auth before PATCH; confirm uri_allow_list field format matches API (string vs array). Board approval required before Deployer applies."
+}
