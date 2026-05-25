@@ -1,6 +1,11 @@
 [build]
-  command = "npm run build"
+  # Fresh ci on Linux avoids stale macOS-cached node_modules missing @rollup/rollup-linux-x64-gnu
+  command = "npm ci && npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_CONFIG_INCLUDE = "optional"
 
 [[redirects]]
   from = "/*"
