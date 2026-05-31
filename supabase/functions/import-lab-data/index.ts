@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
 
 /**
  * import-lab-data Edge Function
@@ -417,7 +418,10 @@ serve(async (req: Request) => {
         // Store actual time or null; COALESCE index handles null → 00:00:00 conversion
         sample_time: sampleTime === "00:00:00" ? null : sampleTime || null,
         lab_name: firstRecord.lab_name || null,
-        status: "imported",
+        // sampling_events.status CHECK allows pending/in_lab/results_received/validated/rejected.
+        // Lab EDD import means analytical results are now loaded → results_received.
+        // ('imported' is the file_processing_queue status, a different column/domain.)
+        status: "results_received",
         metadata: {
           import_id: importId,
           source_file_id: queueId,
@@ -608,6 +612,18 @@ serve(async (req: Request) => {
       "| Results:", totalResultsCreated,
       "| Skipped (no param):", skippedNoParameter,
     );
+
+    if (totalResultsCreated > 0) {
+      try {
+        await triggerInternalEdgeFunction("dispatch-exceedance-alerts", {
+          organization_id: organizationId,
+          source: "lab_import",
+          lab_results_created: totalResultsCreated,
+        });
+      } catch (err) {
+        console.error("[import-lab-data] exceedance alert dispatch failed:", err);
+      }
+    }
 
     return jsonResponse({
       success: true,
