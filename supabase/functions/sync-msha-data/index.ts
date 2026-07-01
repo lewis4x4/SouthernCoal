@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unzip } from "https://esm.sh/unzipit@1.4.0";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -79,6 +78,32 @@ async function validateAuth(
   }
 
   return { authorized: true, userId: user.id };
+}
+
+async function loadActiveMineIdMap(
+  supabase: ReturnType<typeof createClient>,
+): Promise<Record<string, string>> {
+  const { data: rows } = await supabase
+    .from("msha_mine_org_map")
+    .select("mine_id, organization_id")
+    .eq("is_active", true);
+
+  const map: Record<string, string> = {};
+  for (const row of rows ?? []) {
+    map[row.mine_id] = row.organization_id;
+  }
+
+  if (Object.keys(map).length > 0) return map;
+
+  if (MSHA_MINE_ID_MAP) {
+    try {
+      return parseMineIdMap(MSHA_MINE_ID_MAP);
+    } catch {
+      return {};
+    }
+  }
+
+  return map;
 }
 
 function parseMineIdMap(raw: string): Record<string, string> {
@@ -194,7 +219,7 @@ async function streamViolations(
   return { scanned, matched, skippedLookback };
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -226,7 +251,10 @@ serve(async (req) => {
   const lookbackYears = body.lookback_years ?? DEFAULT_LOOKBACK_YEARS;
   const runTag = body.run_tag ?? (syncType === "scheduled" ? "cron-weekly-msha" : "manual-msha");
 
-  if (!MSHA_MINE_ID_MAP) {
+  const mineIdMap = await loadActiveMineIdMap(supabase);
+  const configuredMineIds = Object.keys(mineIdMap);
+
+  if (configuredMineIds.length === 0) {
     await supabase.from("external_sync_log").insert({
       source: "msha",
       sync_type: syncType,
@@ -234,44 +262,16 @@ serve(async (req) => {
       completed_at: new Date().toISOString(),
       records_synced: 0,
       records_failed: 0,
-      error_details: { reason: "MSHA mine ID mapping not configured", run_tag: runTag },
-    });
-
-    await supabase.from("audit_log").insert({
-      user_id: auth.userId,
-      action: "external_sync_failed",
-      module: "external_data",
-      description: JSON.stringify({
-        source: "msha",
-        reason: "MSHA_MINE_ID_MAP env var not set. Contact admin to configure mine IDs.",
-      }),
+      error_details: { reason: "No active MSHA mine mappings", run_tag: runTag },
     });
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: "MSHA sync requires mine ID mapping. Contact admin to configure.",
-        hint: 'Set MSHA_MINE_ID_MAP as JSON: {"4601432":"<org_uuid>", ...}',
+        error: "MSHA sync requires active mine mappings in msha_mine_org_map.",
+        hint: "Run refresh-msha-mine-map or seed the 106-mine map via migration.",
       }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-
-  let mineIdMap: Record<string, string>;
-  try {
-    mineIdMap = parseMineIdMap(MSHA_MINE_ID_MAP);
-  } catch {
-    return new Response(
-      JSON.stringify({ success: false, error: "Invalid MSHA_MINE_ID_MAP format. Expected JSON object." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-
-  const configuredMineIds = Object.keys(mineIdMap);
-  if (configuredMineIds.length === 0) {
-    return new Response(
-      JSON.stringify({ success: false, error: "MSHA_MINE_ID_MAP is empty." }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
