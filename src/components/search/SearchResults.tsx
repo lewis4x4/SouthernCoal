@@ -18,7 +18,7 @@ const RECORD_ROUTES: Record<string, string> = {
   outfalls: '/permits',
   exceedances: '/exceedances',
   corrective_actions: '/corrective-actions',
-  stipulated_penalties: '/penalties',
+  stipulated_penalties: '/compliance/penalty-ledger',
   sampling_schedules: '/sampling',
   sampling_calendar: '/sampling',
   organizations: '/organizations',

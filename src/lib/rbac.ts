@@ -42,6 +42,16 @@ export const COUNSEL_EVIDENCE_ROLES: Role[] = [
   'chief_counsel',
 ];
 
+/** Draft stipulated-penalty ledger — executive/compliance view */
+export const PENALTY_LEDGER_ROLES: Role[] = [
+  ...COUNSEL_EVIDENCE_ROLES,
+];
+
+/** Sign-off on penalty ledger coverage review (audit only — not legal certification) */
+export const PENALTY_LEDGER_SIGNOFF_ROLES: Role[] = [
+  'admin', 'executive', 'coo', 'chief_counsel',
+];
+
 export const CORRECTIVE_ACTION_ROLES: Role[] = [
   'admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler',
   'coo', 'wv_supervisor', 'compliance_reviewer', 'maintenance_owner',

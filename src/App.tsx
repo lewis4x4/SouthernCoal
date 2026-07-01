@@ -15,6 +15,7 @@ import {
   COMPLIANCE_FULL_ROLES,
   COMPLIANCE_ADVANCED_ROLES,
   COUNSEL_EVIDENCE_ROLES,
+  PENALTY_LEDGER_ROLES,
   CORRECTIVE_ACTION_ROLES,
   REPORTING_ROLES,
   ADMIN_ROLES,
@@ -74,6 +75,7 @@ const CorrectiveActionDetailPage = lazyRoute(
 const FailureToSamplePage = lazyRoute(() => import('@/pages/FailureToSamplePage'), 'FailureToSamplePage');
 const MissedAtRiskPage = lazyRoute(() => import('@/pages/MissedAtRiskPage'), 'MissedAtRiskPage');
 const LateIncompleteEddPage = lazyRoute(() => import('@/pages/LateIncompleteEddPage'), 'LateIncompleteEddPage');
+const PenaltyLedgerPage = lazyRoute(() => import('@/pages/PenaltyLedgerPage'), 'PenaltyLedgerPage');
 const DefensibleMissPage = lazyRoute(() => import('@/pages/DefensibleMissPage'), 'DefensibleMissPage');
 const ExternalDataPage = lazyRoute(() => import('@/pages/ExternalDataPage'), 'ExternalDataPage');
 const AdminReportsPage = lazyRoute(() => import('@/pages/AdminReportsPage'), 'AdminReportsPage');
@@ -148,6 +150,7 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/compliance/missed-at-risk',     element: <MissedAtRiskPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/late-incomplete-edd', element: <LateIncompleteEddPage />,    roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/defensible-miss',   element: <DefensibleMissPage />,       roles: COUNSEL_EVIDENCE_ROLES,     guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/penalty-ledger',   element: <PenaltyLedgerPage />,        roles: PENALTY_LEDGER_ROLES,       guardScope: 'global',     shell: 'app' },
   { path: '/compliance/review-queue',      element: <ReviewQueuePage />,            roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/external-data',     element: <ExternalDataPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/field/schedule',               element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment', shell: 'app' },
