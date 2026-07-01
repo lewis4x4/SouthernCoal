@@ -24,7 +24,8 @@ Execute `docs/UNIFIED_MASTER_ROADMAP.md` across parallel lanes A/B/C. Data and s
 | Run verify after every slice | Stop after one feature waiting for approval |
 | Commit + push when verify passes | Enter plan-only mode when implementation is clear |
 | Apply migrations + deploy functions when backend slice is done | Treat git or Supabase deploy as human gates |
-| Report progress compactly at natural boundaries | Bury Brian in option menus |
+| Report progress in one line between slices | End turn with "next up" or queue checklist |
+| Chain slice N+1 in the same turn after shipping slice N | Stop after commit/push and wait for Brian |
 
 ## Sub-agent mesh
 
@@ -63,7 +64,13 @@ Fire independent tasks in one message. Wait for blockers only.
    - Functions: `supabase functions deploy <name> --project-ref zymenlnwyzpnohljwifx`
    - Use MCP `get_logs` / `get_advisors` if deploy fails; fix and retry.
 8. **Merge** — When verify green on branch: open PR via `gh pr create` if not on `main`, merge when checks pass (or merge locally if no CI). Push `main`.
-9. **Next** — Immediately start the next roadmap item. No pause.
+9. **Next** — Immediately start the next roadmap item **in the same turn**. No pause. Never end a response with "next up is …" — either implement it or pivot to another lane.
+
+## Anti-stop checklist (every turn before sending)
+
+- [ ] Did I just ship something? → Next slice must be in progress or shipped in this same turn.
+- [ ] Does my last paragraph ask Brian to continue? → Delete it; keep building.
+- [ ] Am I only reporting a queue checklist? → Replace with implementation work.
 
 ## Lane sequencing (parallel default)
 

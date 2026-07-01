@@ -1,0 +1,29 @@
+---
+description: FORBIDDEN to end a turn after shipping without starting the next roadmap slice
+alwaysApply: true
+---
+
+# No pause after ship — mandatory same-session chaining
+
+Completing a slice is **mid-loop**, not a stopping point.
+
+## FORBIDDEN in assistant responses (hard stop violations)
+
+- "Next up is QW3" / "QW3 is next" / "Lane C queue: … ✓ — QW3 is next"
+- "Say the word" / "unless you redirect" / "ready when you are"
+- Ending a turn immediately after commit/push/migrate with only a status summary
+- Asking Brian whether to continue, proceed, or start the next item
+
+## REQUIRED behavior
+
+After verify → commit → push → migrate/deploy for slice N:
+
+1. **In the same turn**, begin slice N+1 (explore → implement) unless a **hard gate** blocks it.
+2. If blocked on a hard gate, **immediately pivot** to another parallel lane item (B Upload Dashboard, A QA fix) — do not end the turn idle.
+3. User-facing progress notes are **one line max** between slices; never a handoff prompt.
+
+## Hard gates (only valid stop)
+
+See `docs/ENGINEERING_FREEDOM.md` — external submit, destructive DDL, verified-dollar sign-off, secrets, explicit session kill-switch.
+
+Shipped code, empty UI, missing client data, and "what should I build next?" are **never** stops.
