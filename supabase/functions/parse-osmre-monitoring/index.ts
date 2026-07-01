@@ -11,6 +11,11 @@ import {
   validateLabQueueEntry,
   verifyLabParserAuth,
 } from "../_shared/lab-parser-queue.ts";
+import {
+  aliasSourceForDocumentType,
+  applyEnrichmentToExtracted,
+  enrichLabImportRecords,
+} from "../_shared/lab-record-enrichment.ts";
 import { parseOsmreMonitoringSheets, type OsmreSheetInput } from "../_shared/osmre-monitoring-parse.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -99,7 +104,21 @@ Deno.serve(async (req: Request) => {
       sheets = workbookToSheets(new Uint8Array(buffer));
     }
 
-    const { extracted, sheetsParsed, sheetsSkipped } = parseOsmreMonitoringSheets(sheets);
+    const { extracted: parsed, sheetsParsed, sheetsSkipped } = parseOsmreMonitoringSheets(sheets);
+
+    let extracted = parsed;
+    if (entry.organization_id) {
+      const enrichment = await enrichLabImportRecords(
+        supabase,
+        entry.organization_id,
+        parsed.records,
+        {
+          persistOutfallAliases: true,
+          aliasSource: aliasSourceForDocumentType(parsed.document_type),
+        },
+      );
+      extracted = applyEnrichmentToExtracted(parsed, enrichment);
+    }
 
     if (extracted.parsed_rows === 0) {
       const errMsg = extracted.validation_errors[0]?.message ??

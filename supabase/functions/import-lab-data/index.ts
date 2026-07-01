@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
+import {
+  aliasSourceForDocumentType,
+  enrichLabImportRecords,
+  type OutfallAliasSource,
+} from "../_shared/lab-record-enrichment.ts";
+import type { LabDocumentType } from "../_shared/lab-import-records.ts";
 
 /**
  * import-lab-data Edge Function
@@ -71,7 +77,7 @@ interface ParsedRecord {
 }
 
 interface ExtractedLabData {
-  document_type: "lab_data_edd";
+  document_type: LabDocumentType;
   records: ParsedRecord[];
   import_id: string | null;
   // ... other fields
@@ -320,8 +326,32 @@ serve(async (req: Request) => {
   );
 
   try {
-    // 8. Group records by sampling event
-    const eventGroups = groupByEvent(extractedData.records);
+    // 8. Enrich unresolved outfall/parameter IDs (state parsers + safety net)
+    const aliasSource: OutfallAliasSource = aliasSourceForDocumentType(
+      extractedData.document_type ?? "lab_data_edd",
+    );
+    const enrichment = await enrichLabImportRecords(
+      supabase,
+      organizationId,
+      extractedData.records,
+      { persistOutfallAliases: true, aliasSource },
+    );
+    if (enrichment.warnings.length > 0) {
+      console.log("[import-lab-data] Enrichment warnings:", enrichment.warnings.join("; "));
+    }
+    console.log(
+      "[import-lab-data] Enrichment:",
+      enrichment.stats.outfallsResolved,
+      "outfalls,",
+      enrichment.stats.parametersResolved,
+      "parameters on",
+      enrichment.stats.recordsTotal,
+      "records",
+    );
+    const importRecords = enrichment.records;
+
+    // 9. Group records by sampling event
+    const eventGroups = groupByEvent(importRecords);
 
     if (eventGroups.size === 0) {
       return jsonResponse(
@@ -337,7 +367,7 @@ serve(async (req: Request) => {
 
     // 9. SECURITY: Validate all outfalls belong to user's organization
     const outfallIds = [...new Set(
-      extractedData.records
+      importRecords
         .map(r => r.outfall_db_id)
         .filter((id): id is string => !!id)
     )];

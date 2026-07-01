@@ -7,6 +7,11 @@ import {
   type AlSheetInput,
 } from "../_shared/al-lab-parse.ts";
 import {
+  aliasSourceForDocumentType,
+  applyEnrichmentToExtracted,
+  enrichLabImportRecords,
+} from "../_shared/lab-record-enrichment.ts";
+import {
   downloadQueueFile,
   jsonResponse,
   loadLabQueueEntry,
@@ -121,7 +126,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { extracted, formatDetected, sheetsParsed, sheetsSkipped } = result;
+    const { extracted: parsed, formatDetected, sheetsParsed, sheetsSkipped } = result;
+
+    let extracted = parsed;
+    if (entry.organization_id) {
+      const enrichment = await enrichLabImportRecords(
+        supabase,
+        entry.organization_id,
+        parsed.records,
+        {
+          persistOutfallAliases: true,
+          aliasSource: aliasSourceForDocumentType(parsed.document_type),
+        },
+      );
+      extracted = applyEnrichmentToExtracted(parsed, enrichment);
+    }
 
     if (extracted.parsed_rows === 0) {
       const errMsg = extracted.validation_errors[0]?.message ??

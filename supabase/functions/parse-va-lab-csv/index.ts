@@ -10,6 +10,11 @@ import {
   validateLabQueueEntry,
   verifyLabParserAuth,
 } from "../_shared/lab-parser-queue.ts";
+import {
+  aliasSourceForDocumentType,
+  applyEnrichmentToExtracted,
+  enrichLabImportRecords,
+} from "../_shared/lab-record-enrichment.ts";
 import { parseVaLabFileContent } from "../_shared/va-lab-fixed-width.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -63,7 +68,21 @@ Deno.serve(async (req: Request) => {
   try {
     const buffer = await downloadQueueFile(supabase, entry);
     const text = new TextDecoder("utf-8").decode(new Uint8Array(buffer));
-    const { extracted, formatDetected } = parseVaLabFileContent(text);
+    const { extracted: parsed, formatDetected } = parseVaLabFileContent(text);
+
+    let extracted = parsed;
+    if (entry.organization_id) {
+      const enrichment = await enrichLabImportRecords(
+        supabase,
+        entry.organization_id,
+        parsed.records,
+        {
+          persistOutfallAliases: true,
+          aliasSource: aliasSourceForDocumentType(parsed.document_type),
+        },
+      );
+      extracted = applyEnrichmentToExtracted(parsed, enrichment);
+    }
 
     if (extracted.parsed_rows === 0) {
       const errMsg = extracted.validation_errors[0]?.message ??

@@ -212,6 +212,40 @@ export function parseValue(
   return { value: num, belowDetection, qualifier, raw };
 }
 
+function buildOutfallSummary(records: LabImportRecord[]) {
+  const outfallDetails = new Map<
+    string,
+    { matched: string | null; dbId: string | null; method: string | null; count: number }
+  >();
+
+  for (const r of records) {
+    const key = r.outfall_raw || "(empty)";
+    const entry = outfallDetails.get(key) ?? {
+      matched: r.outfall_matched,
+      dbId: r.outfall_db_id,
+      method: r.outfall_match_method,
+      count: 0,
+    };
+    entry.count++;
+    if (r.outfall_db_id) {
+      entry.matched = r.outfall_matched;
+      entry.dbId = r.outfall_db_id;
+      entry.method = r.outfall_match_method;
+    }
+    outfallDetails.set(key, entry);
+  }
+
+  return [...outfallDetails.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([name, detail]) => ({
+      raw_name: name,
+      matched_id: detail.matched,
+      outfall_db_id: detail.dbId,
+      match_method: detail.method,
+      sample_count: detail.count,
+    }));
+}
+
 export function buildExtractedLabData(
   partial: Omit<
     ExtractedLabDataBase,
@@ -274,24 +308,19 @@ export function buildExtractedLabData(
     parameters_resolved: parametersResolved,
     parameter_summary: [...parameterCounts.entries()]
       .sort((a, b) => b[1].total - a[1].total)
-      .map(([name, counts]) => ({
-        canonical_name: name,
-        parameter_id: null,
-        sample_count: counts.total,
-        below_detection_count: counts.belowDet,
-      })),
+      .map(([name, counts]) => {
+        const sample = records.find((r) => r.parameter_canonical === name);
+        return {
+          canonical_name: name,
+          parameter_id: sample?.parameter_id ?? null,
+          sample_count: counts.total,
+          below_detection_count: counts.belowDet,
+        };
+      }),
     outfalls_found: outfallCounts.size,
     outfalls_resolved: outfallsResolved,
     outfall_aliases_created: 0,
-    outfall_summary: [...outfallCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => ({
-        raw_name: name,
-        matched_id: null,
-        outfall_db_id: null,
-        match_method: null,
-        sample_count: count,
-      })),
+    outfall_summary: buildOutfallSummary(records),
     date_range: {
       earliest: allDates[0] ?? null,
       latest: allDates[allDates.length - 1] ?? null,
