@@ -6,6 +6,11 @@ import { useStagingStore } from '@/stores/staging';
 import { useQueueStore } from '@/stores/queue';
 import { useUserProfile } from './useUserProfile';
 import { CATEGORY_BY_DB_KEY } from '@/lib/constants';
+import {
+  DUPLICATE_UPLOAD_MESSAGE,
+  hasOrgScopedDuplicate,
+  isOrgScopedDedupViolation,
+} from '@/lib/uploadDedup';
 import type { StagedFile } from '@/types/upload';
 import type { QueueEntry } from '@/types/queue';
 
@@ -72,42 +77,33 @@ export function useFileUpload() {
   }
 
   /**
-   * Check for duplicate file hash in the queue.
-   * RLS already scopes to user's org via uploaded_by → user_profiles chain.
+   * Check for duplicate file hash in the queue (org-scoped).
+   * RLS also scopes reads to the user's organization.
    */
   async function checkDuplicate(
     fileHash: string,
     storageBucket: string,
     organizationId?: string | null,
   ): Promise<boolean> {
-    const baseQuery = supabase
+    if (!organizationId) {
+      console.warn('[upload] Duplicate check skipped — missing organization_id');
+      return false;
+    }
+
+    const { data, error } = await supabase
       .from('file_processing_queue')
       .select('id')
       .eq('file_hash', fileHash)
       .eq('storage_bucket', storageBucket)
+      .eq('organization_id', organizationId)
       .limit(1);
 
-    if (organizationId) {
-      const { data, error } = await baseQuery.eq('organization_id', organizationId);
-      if (error) {
-        // Fallback for older schemas without organization_id
-        if (error.message.includes('organization_id')) {
-          const { data: fallback } = await baseQuery;
-          return (fallback?.length ?? 0) > 0;
-        }
-        console.error('[upload] Duplicate check failed:', error.message);
-        return false;
-      }
-      return (data?.length ?? 0) > 0;
-    }
-
-    const { data, error } = await baseQuery;
     if (error) {
       console.error('[upload] Duplicate check failed:', error.message);
       return false;
     }
 
-    return (data?.length ?? 0) > 0;
+    return hasOrgScopedDuplicate(data);
   }
 
   /**
@@ -121,6 +117,11 @@ export function useFileUpload() {
         return;
       }
       const userProfile = { id: profile.id, organization_id: profile.organization_id };
+
+      if (!userProfile.organization_id) {
+        toast.error('Your account is missing an organization assignment. Contact an administrator.');
+        return;
+      }
 
       const uploadStore = useUploadStore.getState();
       if (!uploadStore.canStartUpload()) {
@@ -160,7 +161,7 @@ export function useFileUpload() {
         );
         if (isDuplicate) {
           uploadStore.completeUpload(stagedFile.id);
-          toast.warning('This file has already been uploaded (matching file hash).');
+          toast.warning(DUPLICATE_UPLOAD_MESSAGE);
           return;
         }
 
@@ -199,38 +200,35 @@ export function useFileUpload() {
           uploaded_by: userProfile.id,
         };
 
-        const insertPayloadWithOrg = {
+        const insertPayload = {
           ...insertPayloadBase,
-          organization_id: userProfile.organization_id ?? null,
+          organization_id: userProfile.organization_id,
         };
 
-        let insertError: Error | null = null;
-        let insertedId: string | null = null;
+        const { data, error } = await supabase
+          .from('file_processing_queue')
+          .insert(insertPayload)
+          .select('id')
+          .single();
 
-        const attemptInsert = async (payload: typeof insertPayloadBase) => {
-          const { data, error } = await supabase
-            .from('file_processing_queue')
-            .insert(payload)
-            .select('id')
-            .single();
-          insertError = error ? new Error(error.message) : null;
-          insertedId = (data as { id?: string } | null)?.id ?? null;
-        };
+        const insertError = error ? error : null;
+        const insertedId = (data as { id?: string } | null)?.id ?? null;
 
-        await attemptInsert(insertPayloadWithOrg);
+        if (insertError) {
+          await supabase.storage.from(categoryConfig.bucket).remove([storagePath]);
 
-        if (insertError && (insertError as Error).message.includes('organization_id')) {
-          // Fallback for schemas without organization_id
-          insertError = null;
-          insertedId = null;
-          await attemptInsert(insertPayloadBase);
+          if (isOrgScopedDedupViolation(insertError)) {
+            uploadStore.completeUpload(stagedFile.id);
+            toast.warning(DUPLICATE_UPLOAD_MESSAGE);
+            return;
+          }
+
+          throw new Error(`Queue insert failed: ${insertError.message}`);
         }
 
-        if (insertError || !insertedId) {
-          // Clean up the storage file since the queue row failed
+        if (!insertedId) {
           await supabase.storage.from(categoryConfig.bucket).remove([storagePath]);
-          const message = (insertError as Error | null)?.message ?? 'Queue insert failed';
-          throw new Error(`Queue insert failed: ${message}`);
+          throw new Error('Queue insert failed: no row returned');
         }
 
         if (import.meta.env.DEV) console.log('[upload] Queue row created:', insertedId);

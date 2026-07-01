@@ -109,13 +109,16 @@ export function useComplianceMatrix(): MatrixData {
             if (typeof data.limit_count === 'number') totalLimits += data.limit_count;
           }
         }
+      }
 
-        // Awaiting review: imported/embedded + unreviewed (v6 5d)
-        if (entry.status === 'imported' || entry.status === 'embedded') {
-          const vStatus = verificationStatuses[entry.id];
-          if (!vStatus || vStatus === 'unreviewed') {
-            awaitingReview++;
-          }
+      // Awaiting review: imported/embedded + unreviewed (v6 5d — reviewable categories)
+      if (
+        (entry.status === 'imported' || entry.status === 'embedded') &&
+        (catKey === 'npdes_permit' || catKey === 'lab_data' || catKey === 'dmr')
+      ) {
+        const vStatus = verificationStatuses[entry.id];
+        if (!vStatus || vStatus === 'unreviewed') {
+          awaitingReview++;
         }
       }
     }
