@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "seed:wv-uat-auth": "node scripts/create-wv-uat-auth-users.mjs"
+    "seed:wv-uat-auth": "node scripts/create-wv-uat-auth-users.mjs",
+    "import:npdes-mappings": "node scripts/import-npdes-overrides.mjs",
+    "report:npdes-gaps": "node scripts/report-npdes-gaps.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
