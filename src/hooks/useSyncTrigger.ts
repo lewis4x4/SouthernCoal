@@ -6,6 +6,9 @@ interface SyncResult {
   success: boolean;
   permitsSynced?: number;
   dmrsInserted?: number;
+  recordsSynced?: number;
+  rowsMatched?: number;
+  configuredMineIds?: string[];
   errors?: string[];
   error?: string;
 }
@@ -43,9 +46,15 @@ export function useSyncTrigger() {
 
       const result = data as SyncResult;
       if (result.success) {
-        toast.success(
-          `${source.toUpperCase()} sync complete: ${result.permitsSynced ?? 0} facilities, ${result.dmrsInserted ?? 0} DMRs`,
-        );
+        if (source === 'msha') {
+          toast.success(
+            `MSHA sync complete: ${result.recordsSynced ?? 0} violations stored (${result.rowsMatched ?? 0} matched)`,
+          );
+        } else {
+          toast.success(
+            `${source.toUpperCase()} sync complete: ${result.permitsSynced ?? 0} facilities, ${result.dmrsInserted ?? 0} DMRs`,
+          );
+        }
       } else {
         toast.error(result.error || `${source.toUpperCase()} sync failed`);
       }
