@@ -1,7 +1,8 @@
 # SCC Compliance Monitor — Brain Guide
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last updated:** 2026-07-01  
+**Orchestrator:** `.cursor/skills/orchestrator/SKILL.md` — continuous build; sub-agents; autonomous git + Supabase deploy  
 **Overnight run:** `OVERNIGHT_GOAL.md` (branch `overnight/20260701-goal-pack`)
 **Audience:** Brian, AI agents (Cursor, Codex, Claude), contractors  
 **Purpose:** Single load-in document — what this system is, how it’s organized, what to build next, and what never to break.
@@ -72,7 +73,7 @@ npm run report:npdes-gaps       # Read-only gap report (requires service role ke
 | **A — WV field spine** | Field routes, visits, offline sync, evidence, governance hooks | **Codex Handoff** phases 0→10; **Lane A first** policy |
 | **B — Compliance platform** | Upload Dashboard, ECHO, DMR pipeline, review queue, alerts | UNIFIED roadmap phases 1–5 |
 
-**Policy (`plans/LANE_A_FIRST.md`):** Do **not** advance Lane B until Lane A is done — unless explicitly redirected.
+**Policy:** Lanes A/B/C run **in parallel** per `docs/UNIFIED_MASTER_ROADMAP.md`. Lane A “first” in `plans/LANE_A_FIRST.md` means **QA sign-off order**, not “engineering must stop B/C until A closes.” See `docs/ENGINEERING_FREEDOM.md`.
 
 ### Milestone status (Lane A)
 
@@ -93,10 +94,13 @@ npm run report:npdes-gaps       # Read-only gap report (requires service role ke
 
 When docs conflict, use this order:
 
-1. **`UNIFIED_ROADMAP.md`** — Hub: task IDs (3.xx, 5.xx), phases 1–5, crosswalk
-2. **`Roadmap/SCC Water Sampling Platform — Codex Handoff Roadmap.md`** — **Build sequence** for WV field OS
-3. **`Roadmap/SCC_Water_Sampling_Platform_Definitive_Build_Roadmap.md`** — Product depth, acceptance criteria
-4. **`SCC_Upload_Dashboard_Handoff_v5.md` + v6 DELTA** — Upload Dashboard spec (Lane B critical path)
+1. **`docs/UNIFIED_MASTER_ROADMAP.md`** — **Build order** — Lanes A/B/C, parallel sequencing
+2. **`docs/ENGINEERING_FREEDOM.md`** — **Build authority** — orchestrator mode; autonomous vs hard human gates (supersedes legacy wait/approve language)
+3. **`.cursor/skills/orchestrator/SKILL.md`** — **How to run** — sub-agent mesh, infinite loop, git/migrate/deploy protocol
+4. **`UNIFIED_ROADMAP.md`** — Hub: task IDs (3.xx, 5.xx), phases 1–5, crosswalk
+5. **`Roadmap/SCC Water Sampling Platform — Codex Handoff Roadmap.md`** — **Build sequence** for WV field OS
+6. **`Roadmap/SCC_Water_Sampling_Platform_Definitive_Build_Roadmap.md`** — Product depth, acceptance criteria
+7. **`SCC_Upload_Dashboard_Handoff_v5.md` + v6 DELTA** — Upload Dashboard spec (Lane B critical path)
 
 **Phase numbers are NOT interchangeable.** Codex Phase 4 (offline) ≠ Definitive Phase 4 (DMR engine).
 
@@ -222,10 +226,12 @@ Shared logic lives in `supabase/functions/_shared/`.
 - Frontend MUST log client-only actions via `useAuditLog` (exports, bulk ops, filter changes, sync actions)
 - Fire-and-forget — never block UI on audit failure
 
-### Database protection
+### Database & backend (per `docs/UNIFIED_MASTER_ROADMAP.md`)
 
-- **DO NOT** modify tables, Edge Functions, or buckets without explicit approval
-- **DO NOT** create migrations without approval
+- **Add migrations, tables, RPCs, and Edge Functions as the build requires** — no pre-approval gate. Extend the spine; do not rebuild Module 1 from scratch.
+- New tables: RLS enabled, org-scoped policies, follow existing migration naming and patterns
+- **DO NOT** drop or alter production-critical seeded data without explicit human sign-off
+- **DO NOT** modify existing **storage bucket** policies without review — buckets are shared infrastructure
 - Verify table/function counts in repo + Supabase — planning doc numbers are not authoritative
 
 ### Security
@@ -292,15 +298,18 @@ From live `roadmap_tasks` (org `2bffc35c-e2c4-4396-868f-207f80e1e2c4`):
 ### Session start checklist
 
 1. Read this Brain Guide
-2. Check `git status` and `Roadmap/LANE_A_MILESTONE_2.md` for active work
-3. Confirm lane: **A unless user redirects to B**
-4. Never commit unless user asks
+2. Read `docs/ENGINEERING_FREEDOM.md` and `.cursor/skills/orchestrator/SKILL.md`
+3. Check `git status` and `Roadmap/LANE_A_MILESTONE_2.md` for active work
+4. Confirm lane scope from `docs/UNIFIED_MASTER_ROADMAP.md` (default: parallel A/B/C unless Brian narrows)
+5. Execute orchestrator loop — commit/push/merge/deploy autonomously when verify passes
 
 ### Workflow for new features
 
 ```
-Explore relevant files → Propose approach → Wait for approval on compliance/legal touches → Implement → typecheck + lint + test → Verify acceptance criteria
+Explore (sub-agents if large) → Implement → typecheck + lint + test + build → commit + push + merge + migrate/deploy → next item
 ```
+
+Hard human gates (external submit/certify, destructive prod DDL, verified-dollar sign-off, secrets): **stop** — see `docs/ENGINEERING_FREEDOM.md`. Git, additive migrations, and Edge Function deploy are **autonomous**.
 
 ### RBAC checklist (every new page)
 
@@ -373,10 +382,12 @@ Explore relevant files → Propose approach → Wait for approval on compliance/
 
 ```
 User asks for a change
-  ├─ Touches compliance/legal data? → Propose first, confirm audit trail
-  ├─ New DB table/migration? → Stop, get explicit approval
+  ├─ Hard human gate? (external submit/certify, destructive DDL, verified dollars, secrets) → STOP — ENGINEERING_FREEDOM.md
+  └─ Else → orchestrator loop (sub-agents → build → verify → commit/push/merge → db push/functions deploy → next item)
+  ├─ New DB table/migration/Edge Function? → BUILD (RLS + audit + RBAC)
   ├─ Field/offline/sync? → Lane A, check M2 acceptance criteria
   ├─ Upload/ECHO/DMR/review queue? → Lane B, check v5+v6 handoff
+  ├─ Detection/parsers/ledgers/MSHA? → Lane C, UNIFIED_MASTER_ROADMAP
   ├─ New page/route? → RBAC three-file checklist
   └─ UI only, no domain logic? → Match Living Crystal, run typecheck
 ```
