@@ -301,7 +301,7 @@ From live `roadmap_tasks` (org `2bffc35c-e2c4-4396-868f-207f80e1e2c4`):
 2. Read `docs/ENGINEERING_FREEDOM.md` and `.cursor/skills/orchestrator/SKILL.md`
 3. Check `git status` and `Roadmap/LANE_A_MILESTONE_2.md` for active work
 4. Confirm lane scope from `docs/UNIFIED_MASTER_ROADMAP.md` (default: parallel A/B/C unless Brian narrows)
-5. Execute orchestrator loop — commit/push/merge/deploy autonomously when verify passes
+5. Execute orchestrator loop — commit/push/merge/deploy autonomously when verify passes. **Never end a turn with only "next up is …"** — chain the next slice in the same turn (see `.cursor/rules/no-end-turn-without-next-slice.mdc`).
 
 ### Workflow for new features
 
