@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import {
+  importPermitPdfExtractedData,
+  PERMIT_PDF_IMPORT_TYPES,
+  type ExtractedPermitPdf,
+} from "../_shared/permit-pdf-import.ts";
 
 /**
  * import-permit-limits Edge Function
@@ -284,16 +289,37 @@ serve(async (req: Request) => {
     );
   }
 
-  // 6. Validate extracted_data exists
-  const extractedData = queueEntry.extracted_data as ExtractedParameterSheet | null;
-  if (!extractedData || extractedData.document_type !== "parameter_sheet") {
+  // 6. Validate extracted_data exists — parameter sheet OR parsed permit PDF
+  const extractedRaw = queueEntry.extracted_data as
+    | ExtractedParameterSheet
+    | ExtractedPermitPdf
+    | null;
+
+  if (!extractedRaw?.document_type) {
     return jsonResponse(
-      { success: false, error: "No valid parameter_sheet data found in extracted_data" },
+      { success: false, error: "No valid extracted_data found in queue entry" },
       400,
     );
   }
 
-  if (!extractedData.permits || extractedData.permits.length === 0) {
+  const isParameterSheet = extractedRaw.document_type === "parameter_sheet";
+  const isPermitPdf = PERMIT_PDF_IMPORT_TYPES.has(extractedRaw.document_type);
+
+  if (!isParameterSheet && !isPermitPdf) {
+    return jsonResponse(
+      {
+        success: false,
+        error: `Unsupported document_type '${extractedRaw.document_type}' for import-permit-limits`,
+      },
+      400,
+    );
+  }
+
+  const extractedData = isParameterSheet
+    ? (extractedRaw as ExtractedParameterSheet)
+    : null;
+
+  if (isParameterSheet && (!extractedData?.permits || extractedData.permits.length === 0)) {
     return jsonResponse(
       { success: false, error: "No permits found in extracted_data" },
       400,
@@ -320,17 +346,100 @@ serve(async (req: Request) => {
     );
   }
 
-  const stateCode = queueEntry.state_code || extractedData.state_code || "WV";
+  const stateCode = queueEntry.state_code
+    || (isParameterSheet ? extractedData!.state_code : (extractedRaw as ExtractedPermitPdf).state)
+    || "WV";
   const regulatoryAgency = STATE_AGENCIES[stateCode] || null;
 
   // Generate import batch ID for rollback support
   const importBatchId = crypto.randomUUID();
 
+  if (isPermitPdf) {
+    const pdfData = extractedRaw as ExtractedPermitPdf;
+    console.log(
+      "[import-permit-limits] Importing permit PDF",
+      pdfData.permit_number,
+      "with",
+      pdfData.limits?.length ?? 0,
+      "limits from",
+      queueEntry.file_name,
+    );
+
+    try {
+      const pdfResult = await importPermitPdfExtractedData(
+        supabase,
+        pdfData,
+        organizationId,
+        stateCode,
+        regulatoryAgency,
+        importBatchId,
+      );
+
+      const now = new Date().toISOString();
+      await supabase
+        .from("file_processing_queue")
+        .update({
+          status: "imported",
+          imported_at: now,
+          updated_at: now,
+          records_imported: pdfResult.limitsCreated,
+        })
+        .eq("id", queueId);
+
+      const auditPayload = {
+        user_id: userId,
+        organization_id: organizationId,
+        action: "bulk_process",
+        module: "import",
+        table_name: "permit_limits",
+        record_id: queueId,
+        description: JSON.stringify({
+          action_type: "permit_pdf_imported",
+          file_name: queueEntry.file_name,
+          state_code: stateCode,
+          document_type: pdfData.document_type,
+          permits_created: pdfResult.permitsCreated,
+          outfalls_created: pdfResult.outfallsCreated,
+          limits_created: pdfResult.limitsCreated,
+          skipped_no_parameter: pdfResult.skippedNoParameter,
+          import_batch_id: importBatchId,
+        }),
+      };
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const { error: auditError } = await supabase.from("audit_log").insert(auditPayload);
+        if (!auditError) break;
+        if (attempt === 3) {
+          await supabase
+            .from("file_processing_queue")
+            .update({ metadata: { pending_audit_log: auditPayload } })
+            .eq("id", queueId);
+        } else {
+          await new Promise((r) => setTimeout(r, 500 * attempt));
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        document_type: pdfData.document_type,
+        permits_created: pdfResult.permitsCreated,
+        outfalls_created: pdfResult.outfallsCreated,
+        limits_created: pdfResult.limitsCreated,
+        skipped_no_parameter: pdfResult.skippedNoParameter,
+        import_batch_id: importBatchId,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[import-permit-limits] Permit PDF import failed:", message);
+      return jsonResponse({ success: false, error: message }, 500);
+    }
+  }
+
   console.log(
     "[import-permit-limits] Importing",
-    extractedData.permits.length,
+    extractedData!.permits.length,
     "permits,",
-    extractedData.summary.total_limits,
+    extractedData!.summary.total_limits,
     "limits from",
     queueEntry.file_name,
   );
@@ -345,7 +454,7 @@ serve(async (req: Request) => {
     const importedLimitIds: string[] = [];
 
     // Process each permit in the extracted data
-    for (const permit of extractedData.permits) {
+    for (const permit of extractedData!.permits) {
       console.log("[import-permit-limits] Processing permit:", permit.permit_number);
 
       // 8. Find or create permit record

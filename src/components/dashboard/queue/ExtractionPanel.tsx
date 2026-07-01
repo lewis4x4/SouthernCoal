@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useObligationGeneration } from '@/hooks/useObligationGeneration';
 import { useLabDataImport } from '@/hooks/useLabDataImport';
 import { useDmrImport } from '@/hooks/useDmrImport';
+import { usePermitLimitsImport } from '@/hooks/usePermitLimitsImport';
 import { VerificationBadge } from './VerificationBadge';
 import { ParameterSheetExtractionPanel } from './ParameterSheetExtractionPanel';
 import {
@@ -139,6 +140,8 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const docLabel = DOCUMENT_TYPE_LABELS[docType] ?? docType;
   const hasLimits = TYPES_WITH_LIMITS.includes(docType);
   const limits = data.limits ?? [];
+  const { importPermitLimits, isImporting: isPermitImporting } = usePermitLimitsImport();
+  const canImportPermit = hasLimits && limits.length > 0 && !!data.permit_number;
 
   return (
     <div className="space-y-4">
@@ -283,6 +286,44 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
             </p>
           </div>
         )}
+
+      {/* Approve & Import — parsed permit PDF → domain tables */}
+      {entry.status === 'parsed' && canImportPermit && can('process') && (
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
+          <button
+            onClick={() => importPermitLimits(entry.id)}
+            disabled={isPermitImporting(entry.id)}
+            className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={
+              isPermitImporting(entry.id)
+                ? 'Importing permit data...'
+                : 'Approve and import permit data to database'
+            }
+          >
+            {isPermitImporting(entry.id) ? (
+              <>
+                <Loader2 size={12} className="inline mr-1.5 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Upload size={12} className="inline mr-1.5" />
+                Approve & Import
+              </>
+            )}
+          </button>
+          <p className="text-[10px] text-text-muted mt-1.5">
+            Creates permit, outfall, and limit rows from AI extraction. Human review recommended before relying on limits.
+          </p>
+        </div>
+      )}
+
+      {entry.status === 'imported' && canImportPermit && (
+        <div className="mt-4 pt-3 border-t border-black/[0.06] flex items-center gap-2 text-xs text-emerald-300">
+          <CheckCircle2 size={14} />
+          <span>Permit data successfully imported to domain tables</span>
+        </div>
+      )}
     </div>
   );
 }
