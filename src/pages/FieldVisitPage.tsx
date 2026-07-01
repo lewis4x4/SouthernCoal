@@ -63,6 +63,7 @@ import {
   getFieldVisitCompletionChecklistItems,
   isValidFieldGpsPair,
   parseFieldGpsCoordinate,
+  shouldSkipCocResaveOnCompletion,
   summarizeCompletionChecklist,
   validateFieldVisitCompletion,
   validateFieldVisitOutcomeEvidence,
@@ -1521,7 +1522,7 @@ export function FieldVisitPage() {
       cocPreservativeConfirmed,
       syncedPhotoCount: photoCount,
       pendingPhotoCount,
-      isOnline: typeof navigator !== 'undefined' && navigator.onLine,
+      isOnline: online,
       noDischargeNarrativeTrimmed: noDischargeNarrative.trim(),
       noDischargeObstructionObserved,
       noDischargeObstructionDetailsTrimmed: noDischargeObstructionDetails.trim(),
@@ -1536,7 +1537,17 @@ export function FieldVisitPage() {
 
     try {
       setSaving(true);
-      if (outcome === 'sample_collected') {
+      const cocRow = detail.measurements.find(
+        (m) => m.parameter_name === FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER,
+      );
+      const cocAlreadySaved = shouldSkipCocResaveOnCompletion({
+        outcome,
+        cocContainerIdTrimmed: cocContainerId.trim(),
+        cocPreservativeConfirmed,
+        savedCocText: cocRow?.measured_text,
+        savedPreservativeConfirmed: cocRow?.metadata?.preservative_confirmed as boolean | undefined,
+      });
+      if (outcome === 'sample_collected' && !cocAlreadySaved) {
         await saveCocPrimaryContainer(
           detail.visit.id,
           cocContainerId,
@@ -1559,7 +1570,7 @@ export function FieldVisitPage() {
         ),
       };
       await saveInspection(detail.visit.id, inspectionForCompletion);
-      await completeVisit(detail.visit, {
+      const { queued } = await completeVisit(detail.visit, {
         outcome,
         completedCoords: { latitude: completeLatitude, longitude: completeLongitude },
         weatherConditions: formatWeatherForPersistence(observedSiteConditions, systemWeather),
@@ -1582,6 +1593,11 @@ export function FieldVisitPage() {
       });
       clearStoredFieldVisitDraft(detail.visit.id);
       setCompletionConfirmed(true);
+      toast.success(
+        queued
+          ? 'Visit saved on this device; will sync when you are back online'
+          : 'Visit completed',
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to complete visit');
     } finally {

@@ -1280,7 +1280,9 @@ export function useFieldOps() {
       }
       throw new Error(error.message);
     }
-    await loadVisitDetails(visitId);
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      await loadVisitDetails(visitId);
+    }
     return { queued: false };
   }, [detail?.inspection, detail?.visit.id, loadVisitDetails, refreshOutboundPendingCount, userId]);
 
@@ -1435,7 +1437,9 @@ export function useFieldOps() {
       throw error;
     }
 
-    await loadVisitDetails(visitId);
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      await loadVisitDetails(visitId);
+    }
     return { queued: false };
   }, [loadVisitDetails, refreshOutboundPendingCount, userId]);
 

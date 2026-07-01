@@ -3,6 +3,7 @@ import {
   getFieldVisitCompletionChecklistItems,
   isValidFieldGpsPair,
   parseFieldGpsCoordinate,
+  shouldSkipCocResaveOnCompletion,
   summarizeCompletionChecklist,
   validateFieldVisitCompletion,
   validateFieldVisitStartCoordinates,
@@ -346,5 +347,43 @@ describe('getFieldVisitCompletionChecklistItems', () => {
       accessIssueNarrativeTrimmed: '',
     });
     expect(items.find((i) => i.id === 'completion_gps')?.done).toBe(false);
+  });
+});
+
+describe('shouldSkipCocResaveOnCompletion (A6 offline completion)', () => {
+  it('skips when COC row already matches form', () => {
+    expect(
+      shouldSkipCocResaveOnCompletion({
+        outcome: 'sample_collected',
+        cocContainerIdTrimmed: 'BTL-001',
+        cocPreservativeConfirmed: true,
+        savedCocText: 'BTL-001',
+        savedPreservativeConfirmed: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not skip when container id differs', () => {
+    expect(
+      shouldSkipCocResaveOnCompletion({
+        outcome: 'sample_collected',
+        cocContainerIdTrimmed: 'BTL-002',
+        cocPreservativeConfirmed: true,
+        savedCocText: 'BTL-001',
+        savedPreservativeConfirmed: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('does not skip when preservative not confirmed on saved row', () => {
+    expect(
+      shouldSkipCocResaveOnCompletion({
+        outcome: 'sample_collected',
+        cocContainerIdTrimmed: 'BTL-001',
+        cocPreservativeConfirmed: true,
+        savedCocText: 'BTL-001',
+        savedPreservativeConfirmed: false,
+      }),
+    ).toBe(false);
   });
 });

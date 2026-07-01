@@ -3,7 +3,7 @@
 **Date:** 2026-07-01  
 **Branch:** `main`  
 **Base commit:** `b936541` (+ uncommitted M1 preflight wiring)  
-**Environment:** Local Vitest (staging browser QA not run this session)
+**Environment:** Local Vitest + prior browser run (see `lane-a-staging-browser-20260701.md`)
 
 ## Decision
 
@@ -14,9 +14,10 @@
 
 | Gate | Command | Result |
 |------|---------|--------|
-| M1 online field execution | `npm run qa:lane-a-m1` | **Pass** — 7 files, 76 tests |
-| M2 offline sync slice | `npm run qa:lane-a-m2` | **Pass** — 6 files, 69 tests |
+| M1 online field execution | `npm run qa:lane-a-m1` | **Pass** — 7 files, 89 tests (re-run 2026-07-01 14:02 ET) |
+| M2 offline sync slice | `npm run qa:lane-a-m2` | **Pass** — 6 files, 71 tests (re-run 2026-07-01 14:02 ET) |
 | Combined | `npm run qa:lane-a` | **Pass** |
+| Full preflight | `npm run qa:lane-a-staging` | **Pass** |
 
 ### M1 coverage map (`src/lib/milestone1QaMap.ts`)
 

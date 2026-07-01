@@ -181,6 +181,23 @@ export function validateFieldVisitCompletion(
   return { ok: true };
 }
 
+/** A6 — skip redundant offline COC queue op when primary container already saved on device/server row. */
+export function shouldSkipCocResaveOnCompletion(input: {
+  outcome: FieldVisitOutcome;
+  cocContainerIdTrimmed: string;
+  cocPreservativeConfirmed: boolean;
+  savedCocText?: string | null;
+  savedPreservativeConfirmed?: boolean | null;
+}): boolean {
+  if (input.outcome !== 'sample_collected') return false;
+  if (!input.cocPreservativeConfirmed) return false;
+  if (!input.savedCocText?.trim()) return false;
+  return (
+    input.savedCocText.trim() === input.cocContainerIdTrimmed
+    && Boolean(input.savedPreservativeConfirmed)
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Completion Gate checklist (read-only UI; mirrors validation predicates)
 // ---------------------------------------------------------------------------
