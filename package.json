@@ -24,6 +24,7 @@
     "qa:qw1": "node scripts/qw1-preflight.mjs",
     "qa:qw2": "node scripts/qw2-preflight.mjs",
     "qa:qw4": "node scripts/qw4-preflight.mjs",
+    "qa:qw3": "node scripts/qw3-preflight.mjs",
     "validate:parameter-aliases": "node scripts/validate-parameter-aliases.mjs",
     "seed:wv-uat-auth": "node scripts/create-wv-uat-auth-users.mjs",
     "import:npdes-mappings": "node scripts/import-npdes-overrides.mjs",
