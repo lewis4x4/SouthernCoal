@@ -4,12 +4,12 @@ import type { ReportDefinitionWithAccess } from '@/hooks/useReportDefinitions';
 
 const PRIORITY_COLORS: Record<string, { dot: string; glow: string; spotlight: string }> = {
   CRITICAL: {
-    dot: 'bg-red-400',
+    dot: 'bg-qo-risk',
     glow: 'shadow-[0_0_8px_rgba(248,113,113,0.8)]',
     spotlight: 'rgba(239, 68, 68, 0.05)',
   },
   HIGH: {
-    dot: 'bg-amber-400',
+    dot: 'bg-qo-ochre',
     glow: 'shadow-[0_0_8px_rgba(251,191,36,0.8)]',
     spotlight: 'rgba(245, 158, 11, 0.05)',
   },
@@ -34,7 +34,7 @@ export function ReportCard({ report, onGenerate, lastGenerated }: ReportCardProp
   return (
     <SpotlightCard
       spotlightColor={isDisabled ? 'rgba(100, 100, 100, 0.02)' : colors.spotlight}
-      className={`p-4 border-transparent bg-white/[0.01] transition-all ${isDisabled ? 'opacity-50' : 'hover:bg-white/[0.03]'}`}
+      className={`p-4 border-transparent bg-white transition-all ${isDisabled ? 'opacity-50' : 'hover:bg-qo-nested'}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -68,7 +68,7 @@ export function ReportCard({ report, onGenerate, lastGenerated }: ReportCardProp
               {report.formats_available.map((fmt) => (
                 <span
                   key={fmt}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-white/[0.04] text-text-muted border border-white/[0.06]"
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-black/[0.03] text-text-muted border border-black/[0.06]"
                 >
                   {fmt}
                 </span>
@@ -84,7 +84,7 @@ export function ReportCard({ report, onGenerate, lastGenerated }: ReportCardProp
 
           {/* Lock reason */}
           {report.is_locked && report.prerequisite_condition && (
-            <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-400/80">
+            <div className="mt-2 flex items-start gap-1.5 text-[10px] text-qo-ochre-text/80">
               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
               <span>{report.prerequisite_condition}</span>
             </div>
@@ -96,7 +96,7 @@ export function ReportCard({ report, onGenerate, lastGenerated }: ReportCardProp
           onClick={() => onGenerate(report)}
           disabled={isDisabled}
           className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${isDisabled
-              ? 'bg-white/[0.03] text-text-muted cursor-not-allowed'
+              ? 'bg-qo-nested text-text-muted cursor-not-allowed'
               : 'bg-primary/10 text-primary hover:bg-primary/20 active:scale-95'
             }`}
           title={

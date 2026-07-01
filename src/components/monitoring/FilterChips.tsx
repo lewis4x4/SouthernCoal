@@ -35,7 +35,7 @@ function Chip({ label, active, onClick, color }: ChipProps) {
         'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
         active
           ? color || 'bg-primary/20 text-primary border border-primary/30'
-          : 'bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10',
+          : 'bg-qo-nested text-muted-foreground border border-black/[0.08] hover:bg-black/[0.06]',
       )}
     >
       {label}
@@ -66,7 +66,7 @@ export function FilterChips() {
             active={filters.severity === option.value}
             onClick={() => setFilters({ severity: option.value })}
             color={
-              option.value === 'critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+              option.value === 'critical' ? 'bg-red-500/20 text-qo-risk border border-red-500/30' :
               option.value === 'major' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
               option.value === 'moderate' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
               option.value === 'minor' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
@@ -86,7 +86,7 @@ export function FilterChips() {
             active={filters.status === option.value}
             onClick={() => setFilters({ status: option.value })}
             color={
-              option.value === 'open' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+              option.value === 'open' ? 'bg-red-500/20 text-qo-risk border border-red-500/30' :
               option.value === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
               option.value === 'resolved' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
               undefined

@@ -73,13 +73,13 @@ export function ManualDeclarationDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="inline-flex rounded-lg bg-gradient-to-br from-sky-600 to-sky-500 p-2">
-              <CloudRain className="h-5 w-5 text-white" />
+              <CloudRain className="h-5 w-5 text-text-primary" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">Declare Rain Event</h2>
@@ -88,7 +88,7 @@ export function ManualDeclarationDialog({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -98,12 +98,12 @@ export function ManualDeclarationDialog({
           {/* Station */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-              Weather Station <span className="text-red-400">*</span>
+              Weather Station <span className="text-qo-risk">*</span>
             </label>
             <select
               value={stationId}
               onChange={(e) => setStationId(e.target.value)}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
+              className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
             >
               <option value="">Select station...</option>
               {stations.map((s) => (
@@ -115,7 +115,7 @@ export function ManualDeclarationDialog({
           {/* Rainfall Amount */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-              Rainfall Amount (inches) <span className="text-red-400">*</span>
+              Rainfall Amount (inches) <span className="text-qo-risk">*</span>
             </label>
             <input
               type="number"
@@ -124,19 +124,19 @@ export function ManualDeclarationDialog({
               value={rainfallInches}
               onChange={(e) => setRainfallInches(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
+              className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
             />
           </div>
 
           {/* Reason Code */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-              Declaration Reason <span className="text-red-400">*</span>
+              Declaration Reason <span className="text-qo-risk">*</span>
             </label>
             <select
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value as ManualTriggerReasonCode)}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
+              className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-sky-500/50"
             >
               <option value="">Select a reason...</option>
               {MANUAL_TRIGGER_REASON_OPTIONS.map((opt) => (
@@ -150,7 +150,7 @@ export function ManualDeclarationDialog({
           {/* Justification */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-              Justification <span className="text-red-400">*</span>
+              Justification <span className="text-qo-risk">*</span>
               <span className="ml-2 text-xs text-text-muted">
                 ({trimmedJustification.length}/{MIN_JUSTIFICATION_LENGTH} min)
               </span>
@@ -163,7 +163,7 @@ export function ManualDeclarationDialog({
               className={`w-full rounded-lg border px-3 py-2.5 text-sm text-text-primary outline-none ${
                 trimmedJustification.length > 0 && trimmedJustification.length < MIN_JUSTIFICATION_LENGTH
                   ? 'border-red-500/50 bg-red-500/5'
-                  : 'border-white/[0.08] bg-white/[0.04] focus:border-sky-500/50'
+                  : 'border-black/[0.08] bg-black/[0.03] focus:border-sky-500/50'
               }`}
             />
           </div>
@@ -173,7 +173,7 @@ export function ManualDeclarationDialog({
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">
               Supporting Evidence
             </label>
-            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/[0.20] hover:bg-white/[0.04]">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-black/[0.12] bg-qo-nested px-4 py-3 transition-colors hover:border-black/[0.15] hover:bg-black/[0.04]">
               <Upload className="h-4 w-4 text-text-muted" />
               <span className="text-sm text-text-muted">
                 {evidenceFiles.length > 0
@@ -193,21 +193,21 @@ export function ManualDeclarationDialog({
 
         {/* Error */}
         {error && (
-          <p className="mt-4 text-sm text-red-400">{error}</p>
+          <p className="mt-4 text-sm text-qo-risk">{error}</p>
         )}
 
         {/* Actions */}
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.04]"
+            className="rounded-lg border border-black/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-black/[0.04]"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? 'Declaring...' : 'Declare Rain Event'}
           </button>

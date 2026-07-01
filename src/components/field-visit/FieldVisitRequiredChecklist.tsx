@@ -16,7 +16,7 @@ export function FieldVisitRequiredChecklist({
   const orderedItems = [...items].sort((a, b) => Number(a.done) - Number(b.done));
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4">
+    <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
@@ -28,7 +28,7 @@ export function FieldVisitRequiredChecklist({
               : `${summary.blockerCount} item${summary.blockerCount === 1 ? '' : 's'} still need attention before completion.`}
           </p>
         </div>
-        <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-text-primary">
+        <div className="rounded-full border border-black/[0.08] bg-qo-nested px-3 py-1 text-xs font-medium text-text-primary">
           {summary.completedCount}/{summary.totalCount}
         </div>
       </div>

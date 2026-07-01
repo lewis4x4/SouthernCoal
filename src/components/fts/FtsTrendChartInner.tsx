@@ -67,7 +67,7 @@ export default function FtsTrendChartInner({ monthlyTotals }: Props) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-6 ">
         <h3 className="text-sm font-semibold text-text-primary">Penalty Trend</h3>
         <p className="mt-4 text-sm text-text-muted">No data available</p>
       </div>
@@ -75,7 +75,7 @@ export default function FtsTrendChartInner({ monthlyTotals }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-6 ">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-text-primary">Penalty Trend</h3>
         <div className="flex gap-1.5">
@@ -86,8 +86,8 @@ export default function FtsTrendChartInner({ monthlyTotals }: Props) {
               className={cn(
                 'rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide transition-all',
                 visibleStates.has(state)
-                  ? 'border-white/20 bg-white/10 text-text-primary'
-                  : 'border-white/[0.06] bg-transparent text-text-muted',
+                  ? 'border-black/[0.12] bg-black/[0.06] text-text-primary'
+                  : 'border-black/[0.06] bg-transparent text-text-muted',
               )}
               style={{
                 borderColor: visibleStates.has(state) ? STATE_COLORS[state] : undefined,

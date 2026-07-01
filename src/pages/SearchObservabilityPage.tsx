@@ -377,7 +377,7 @@ export function SearchObservabilityPage() {
         <button
           onClick={fetchData}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] disabled:opacity-50"
         >
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -425,7 +425,7 @@ export function SearchObservabilityPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             {[0, 1].map((card) => (
               <SpotlightCard key={card} className="p-4">
-                <div className="h-56 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.03]" />
+                <div className="h-56 animate-pulse rounded-xl border border-black/[0.06] bg-qo-nested" />
               </SpotlightCard>
             ))}
           </div>
@@ -449,7 +449,7 @@ export function SearchObservabilityPage() {
               <p className="py-4 text-center text-xs text-text-muted">No queries yet</p>
             ) : (
               topQueries.map(({ query, count }) => (
-                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-black/[0.04]">
                   <span className="truncate text-text-secondary">{query}</span>
                   <span className="shrink-0 font-mono text-text-muted">{count}</span>
                 </div>
@@ -466,7 +466,7 @@ export function SearchObservabilityPage() {
               <p className="py-4 text-center text-xs text-text-muted">No zero-result queries</p>
             ) : (
               zeroResultQueries.map(({ query, count }) => (
-                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                <div key={query} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-black/[0.04]">
                   <span className="truncate text-text-secondary">{query}</span>
                   <span className="shrink-0 font-mono text-text-muted">{count}</span>
                 </div>
@@ -498,9 +498,9 @@ export function SearchObservabilityPage() {
       )}
 
       {/* Document Search Section */}
-      <div className="border-t border-white/[0.06] pt-6">
+      <div className="border-t border-black/[0.06] pt-6">
         <div className="mb-4 flex items-center gap-2">
-          <FileText className="h-5 w-5 text-cyan-400" />
+          <FileText className="h-5 w-5 text-qo-accent" />
           <h2 className="text-lg font-semibold text-text-primary">Document Search (RAG)</h2>
         </div>
 
@@ -574,7 +574,7 @@ export function SearchObservabilityPage() {
                 <p className="py-4 text-center text-xs text-text-muted">No document searches yet</p>
               ) : (
                 citationQuality.map((item) => (
-                  <div key={`${item.date}-${item.query}`} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                  <div key={`${item.date}-${item.query}`} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-black/[0.04]">
                     <span className="min-w-0 truncate text-text-secondary">{item.query}</span>
                     <div className="flex shrink-0 items-center gap-2 font-mono text-text-muted">
                       <span>{item.chunkCount} chunks</span>
@@ -589,9 +589,9 @@ export function SearchObservabilityPage() {
       </div>
 
       {/* Sync Health Section */}
-      <div className="border-t border-white/[0.06] pt-6">
+      <div className="border-t border-black/[0.06] pt-6">
         <div className="mb-4 flex items-center gap-2">
-          <Wifi className="h-5 w-5 text-emerald-400" />
+          <Wifi className="h-5 w-5 text-qo-sage-text" />
           <h2 className="text-lg font-semibold text-text-primary">External Sync Health</h2>
         </div>
 
@@ -644,20 +644,20 @@ export function SearchObservabilityPage() {
                   const isStale = log.source.includes('echo') ? (hoursSince ?? 999) > 48 : (hoursSince ?? 999) > 168;
 
                   return (
-                    <div key={log.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-white/[0.04]">
+                    <div key={log.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-black/[0.04]">
                       <div className="flex items-center gap-2">
                         {log.status === 'completed' ? (
-                          <Wifi size={12} className={isStale ? 'text-red-400' : 'text-emerald-400'} />
+                          <Wifi size={12} className={isStale ? 'text-qo-risk' : 'text-qo-sage-text'} />
                         ) : log.status === 'running' ? (
-                          <RefreshCw size={12} className="animate-spin text-cyan-400" />
+                          <RefreshCw size={12} className="animate-spin text-qo-accent" />
                         ) : (
-                          <WifiOff size={12} className="text-red-400" />
+                          <WifiOff size={12} className="text-qo-risk" />
                         )}
                         <span className="uppercase text-text-muted font-medium">{log.source}</span>
                       </div>
                       <div className="flex items-center gap-3 font-mono text-text-muted">
                         <span>{log.records_synced} synced</span>
-                        {log.records_failed > 0 && <span className="text-red-400">{log.records_failed} failed</span>}
+                        {log.records_failed > 0 && <span className="text-qo-risk">{log.records_failed} failed</span>}
                         <span>{new Date(log.started_at).toLocaleDateString()}</span>
                       </div>
                     </div>

@@ -58,7 +58,7 @@ export function EvidencePacketButton({
         href={downloadUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-500 ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-teal-500 ${className}`}
       >
         <Download className="h-3.5 w-3.5" />
         Download Evidence Packet
@@ -71,7 +71,7 @@ export function EvidencePacketButton({
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className={`inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
       >
         {loading ? (
           <>
@@ -86,7 +86,7 @@ export function EvidencePacketButton({
         )}
       </button>
       {error && (
-        <p className="mt-1 text-xs text-red-400">{error}</p>
+        <p className="mt-1 text-xs text-qo-risk">{error}</p>
       )}
     </div>
   );

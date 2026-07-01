@@ -44,10 +44,10 @@ const RUN_STATUS_ICONS: Record<string, typeof Clock> = {
 };
 
 const RUN_STATUS_COLORS: Record<string, string> = {
-  pending: 'text-amber-400',
-  running: 'text-cyan-400 animate-spin',
-  completed: 'text-emerald-400',
-  failed: 'text-red-400',
+  pending: 'text-qo-ochre-text',
+  running: 'text-qo-accent animate-spin',
+  completed: 'text-qo-sage-text',
+  failed: 'text-qo-risk',
 };
 
 export function ScheduledReportsPage() {
@@ -127,7 +127,7 @@ export function ScheduledReportsPage() {
             <FileText className="w-6 h-6 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Scheduled Reports</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Scheduled Reports</h1>
             <p className="text-sm text-text-secondary">
               Automated report generation and distribution
             </p>
@@ -145,14 +145,14 @@ export function ScheduledReportsPage() {
       {/* Create Form */}
       {showCreate && (
         <SpotlightCard className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white">Create Report Schedule</h3>
+          <h3 className="text-lg font-semibold text-text-primary">Create Report Schedule</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm text-text-secondary mb-1">Title *</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
                 placeholder="e.g., Weekly Compliance Summary"
               />
             </div>
@@ -161,7 +161,7 @@ export function ScheduledReportsPage() {
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value as ReportType)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-purple-500/50 focus:outline-none"
               >
                 {Object.entries(REPORT_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -173,7 +173,7 @@ export function ScheduledReportsPage() {
               <select
                 value={outputFormat}
                 onChange={(e) => setOutputFormat(e.target.value as ReportOutputFormat)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-purple-500/50 focus:outline-none"
               >
                 {Object.entries(FORMAT_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -185,7 +185,7 @@ export function ScheduledReportsPage() {
               <input
                 value={scheduleCron}
                 onChange={(e) => setScheduleCron(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
                 placeholder="e.g., 0 8 * * 1 (Mon 8am)"
               />
             </div>
@@ -195,7 +195,7 @@ export function ScheduledReportsPage() {
                 type="number"
                 value={dateRangeDays}
                 onChange={(e) => setDateRangeDays(parseInt(e.target.value) || 30)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-purple-500/50 focus:outline-none"
               />
             </div>
             <div className="md:col-span-2">
@@ -203,7 +203,7 @@ export function ScheduledReportsPage() {
               <input
                 value={recipientInput}
                 onChange={(e) => setRecipientInput(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none"
                 placeholder="brian@scc.com, environmental@scc.com"
               />
             </div>
@@ -213,13 +213,13 @@ export function ScheduledReportsPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none resize-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-purple-500/50 focus:outline-none resize-none"
                 placeholder="Report details..."
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-white">
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
               Cancel
             </button>
             <button
@@ -256,15 +256,15 @@ export function ScheduledReportsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-white font-medium">{report.title}</h3>
-                        <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary">
+                        <h3 className="text-text-primary font-medium">{report.title}</h3>
+                        <span className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary">
                           {REPORT_TYPE_LABELS[report.report_type]}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary">
+                        <span className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary">
                           {FORMAT_LABELS[report.output_format]}
                         </span>
                         {!report.is_active && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400">
+                          <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-qo-risk">
                             Paused
                           </span>
                         )}
@@ -283,32 +283,32 @@ export function ScheduledReportsPage() {
                     <div className="flex items-center gap-2 ml-4">
                       <button
                         onClick={() => toggleActive(report.id, !report.is_active)}
-                        className="p-1.5 rounded hover:bg-white/5 text-text-secondary hover:text-white"
+                        className="p-1.5 rounded hover:bg-qo-nested text-text-secondary hover:text-text-primary"
                         title={report.is_active ? 'Pause' : 'Activate'}
                       >
                         {report.is_active ? (
-                          <ToggleRight className="w-5 h-5 text-emerald-400" />
+                          <ToggleRight className="w-5 h-5 text-qo-sage-text" />
                         ) : (
                           <ToggleLeft className="w-5 h-5" />
                         )}
                       </button>
                       <button
                         onClick={() => handleRun(report.id)}
-                        className="p-1.5 rounded hover:bg-white/5 text-text-secondary hover:text-cyan-400"
+                        className="p-1.5 rounded hover:bg-qo-nested text-text-secondary hover:text-qo-accent"
                         title="Run Now"
                       >
                         <Play className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => deleteReport(report.id)}
-                        className="p-1.5 rounded hover:bg-white/5 text-text-secondary hover:text-red-400"
+                        className="p-1.5 rounded hover:bg-qo-nested text-text-secondary hover:text-qo-risk"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleExpand(report.id)}
-                        className="p-1.5 rounded hover:bg-white/5 text-text-secondary"
+                        className="p-1.5 rounded hover:bg-qo-nested text-text-secondary"
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -318,7 +318,7 @@ export function ScheduledReportsPage() {
 
                 {/* Expanded: Run History */}
                 {isExpanded && (
-                  <div className="border-t border-white/5 p-4 bg-white/[0.01]">
+                  <div className="border-t border-white/5 p-4 bg-white">
                     <h4 className="text-xs font-medium text-text-secondary mb-3">Run History</h4>
                     {history.length === 0 ? (
                       <p className="text-xs text-text-secondary">No runs yet</p>
@@ -329,7 +329,7 @@ export function ScheduledReportsPage() {
                           return (
                             <div key={run.id} className="flex items-center gap-3 text-sm">
                               <StatusIcon className={clsx('w-4 h-4', RUN_STATUS_COLORS[run.status])} />
-                              <span className="text-white capitalize">{run.status}</span>
+                              <span className="text-text-primary capitalize">{run.status}</span>
                               <span className="text-text-secondary text-xs">
                                 {run.triggered_by}
                               </span>
@@ -339,7 +339,7 @@ export function ScheduledReportsPage() {
                                 </span>
                               )}
                               {run.error_message && (
-                                <span className="text-red-400 text-xs truncate">{run.error_message}</span>
+                                <span className="text-qo-risk text-xs truncate">{run.error_message}</span>
                               )}
                             </div>
                           );
@@ -353,7 +353,7 @@ export function ScheduledReportsPage() {
                         <h4 className="text-xs font-medium text-text-secondary mb-1">Recipients</h4>
                         <div className="flex flex-wrap gap-1">
                           {recipients.map((email) => (
-                            <span key={email} className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary">
+                            <span key={email} className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary">
                               {email}
                             </span>
                           ))}

@@ -64,7 +64,7 @@ export function ReportConfigDrawer({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[480px] border-l border-white/[0.08] bg-crystal-base/95 backdrop-blur-xl shadow-2xl overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 z-50 w-[480px] border-l border-black/[0.08] bg-crystal-base/95  shadow-2xl overflow-y-auto">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -79,7 +79,7 @@ export function ReportConfigDrawer({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-text-primary transition-colors"
+            className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-text-primary transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -103,8 +103,8 @@ export function ReportConfigDrawer({
                   className={`rounded-lg px-4 py-2 text-xs font-medium uppercase transition-all ${format === f
                     ? 'bg-primary/15 text-primary border border-primary/30'
                     : available
-                      ? 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
-                      : 'bg-white/[0.02] text-text-muted/50 border border-white/[0.04] cursor-not-allowed'
+                      ? 'bg-black/[0.03] text-text-muted border border-black/[0.06] hover:bg-black/[0.05]'
+                      : 'bg-qo-nested text-text-muted/50 border border-black/[0.05] cursor-not-allowed'
                     }`}
                 >
                   {f}
@@ -115,7 +115,7 @@ export function ReportConfigDrawer({
         </div>
 
         {showAdvanced && (
-          <div className="space-y-6 pt-2 border-t border-white/[0.04] mt-2 animate-in slide-in-from-top-2 opacity-0 fade-in fill-mode-forwards duration-300">
+          <div className="space-y-6 pt-2 border-t border-black/[0.05] mt-2 animate-in slide-in-from-top-2 opacity-0 fade-in fill-mode-forwards duration-300">
             {/* Date Range */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-text-secondary">
@@ -128,7 +128,7 @@ export function ReportConfigDrawer({
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -137,7 +137,7 @@ export function ReportConfigDrawer({
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs text-text-primary focus:border-primary/50 focus:outline-none"
                   />
                 </div>
               </div>
@@ -155,7 +155,7 @@ export function ReportConfigDrawer({
                     onClick={() => toggleState(st)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${selectedStates.includes(st)
                       ? 'bg-primary/15 text-primary border border-primary/30'
-                      : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.06]'
+                      : 'bg-black/[0.03] text-text-muted border border-black/[0.06] hover:bg-black/[0.05]'
                       }`}
                   >
                     {st}
@@ -184,7 +184,7 @@ export function ReportConfigDrawer({
                 type="checkbox"
                 checked={deliveryDownload}
                 onChange={(e) => setDeliveryDownload(e.target.checked)}
-                className="rounded border-white/20 bg-white/[0.05] text-primary focus:ring-primary/30"
+                className="rounded border-black/[0.12] bg-black/[0.03] text-primary focus:ring-primary/30"
               />
               <Download className="h-3.5 w-3.5 text-text-muted" />
               <span className="text-xs text-text-secondary">Download file</span>
@@ -194,7 +194,7 @@ export function ReportConfigDrawer({
                 type="checkbox"
                 checked={deliveryEmail}
                 onChange={(e) => setDeliveryEmail(e.target.checked)}
-                className="rounded border-white/20 bg-white/[0.05] text-primary focus:ring-primary/30"
+                className="rounded border-black/[0.12] bg-black/[0.03] text-primary focus:ring-primary/30"
               />
               <Mail className="h-3.5 w-3.5 text-text-muted" />
               <span className="text-xs text-text-secondary">Email to recipients</span>

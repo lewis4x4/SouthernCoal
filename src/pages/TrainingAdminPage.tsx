@@ -58,7 +58,7 @@ export function TrainingAdminPage() {
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="inline-flex rounded-xl bg-emerald-500/10 p-2.5">
-          <Award className="h-6 w-6 text-emerald-400" />
+          <Award className="h-6 w-6 text-qo-sage-text" />
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -70,7 +70,7 @@ export function TrainingAdminPage() {
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1.5 rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl bg-qo-accent/15 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/25 transition-colors"
         >
           <Plus size={16} />
           Add Training
@@ -80,7 +80,7 @@ export function TrainingAdminPage() {
       {/* Pending verifications alert */}
       {pendingVerification.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] px-4 py-3">
-          <Clock size={18} className="text-amber-400 shrink-0" />
+          <Clock size={18} className="text-qo-ochre-text shrink-0" />
           <span className="text-sm text-text-secondary">
             <strong className="text-amber-300">{pendingVerification.length}</strong> completion{pendingVerification.length !== 1 ? 's' : ''} pending verification
           </span>
@@ -97,12 +97,12 @@ export function TrainingAdminPage() {
               placeholder="Training name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
             <select
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value as TrainingCategory)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{TRAINING_CATEGORY_LABELS[cat]}</option>
@@ -114,7 +114,7 @@ export function TrainingAdminPage() {
             value={newDescription}
             onChange={(e) => setNewDescription(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
           />
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
@@ -122,7 +122,7 @@ export function TrainingAdminPage() {
                 type="checkbox"
                 checked={newIsCert}
                 onChange={(e) => setNewIsCert(e.target.checked)}
-                className="rounded border-white/20"
+                className="rounded border-black/[0.12]"
               />
               Is a certification
             </label>
@@ -134,7 +134,7 @@ export function TrainingAdminPage() {
                   placeholder="months"
                   value={newValidity}
                   onChange={(e) => setNewValidity(e.target.value)}
-                  className="w-20 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                  className="w-20 rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                 />
                 months
               </label>
@@ -159,7 +159,7 @@ export function TrainingAdminPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06] pb-0">
+      <div className="flex gap-1 border-b border-black/[0.06] pb-0">
         {(['catalog', 'completions'] as const).map((tab) => (
           <button
             key={tab}
@@ -167,13 +167,13 @@ export function TrainingAdminPage() {
             className={cn(
               'rounded-t-lg px-4 py-2 text-sm font-medium transition-colors border-b-2',
               activeTab === tab
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-qo-accent text-qo-accent'
                 : 'border-transparent text-text-muted hover:text-text-secondary',
             )}
           >
             {tab === 'catalog' ? 'Training Catalog' : 'Completions'}
             {tab === 'completions' && pendingVerification.length > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-qo-ochre-text">
                 {pendingVerification.length}
               </span>
             )}
@@ -185,7 +185,7 @@ export function TrainingAdminPage() {
       {activeTab === 'catalog' && (
         <div className="space-y-3">
           {catalog.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-12 text-center text-sm text-text-muted">
+            <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-12 text-center text-sm text-text-muted">
               No training items yet. Add your first training course or certification above.
             </div>
           ) : (
@@ -200,7 +200,7 @@ export function TrainingAdminPage() {
                     .map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
+                        className="rounded-xl border border-black/[0.08] bg-qo-nested p-3"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-text-primary">{item.name}</span>
@@ -231,7 +231,7 @@ export function TrainingAdminPage() {
       {activeTab === 'completions' && (
         <div className="space-y-2">
           {completions.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-12 text-center text-sm text-text-muted">
+            <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-12 text-center text-sm text-text-muted">
               No training completions recorded yet.
             </div>
           ) : (
@@ -246,7 +246,7 @@ export function TrainingAdminPage() {
               return (
                 <div
                   key={comp.id}
-                  className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3"
                 >
                   <StatusIcon size={16} className={colors.text} />
                   <div className="min-w-0 flex-1">

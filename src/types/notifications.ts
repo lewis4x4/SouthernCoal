@@ -79,9 +79,9 @@ export const EVENT_TYPE_LABELS: Record<NotificationEventType, string> = {
 };
 
 export const PRIORITY_COLORS: Record<NotificationPriority, { bg: string; border: string; text: string }> = {
-  info: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400' },
-  warning: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  info: { bg: 'bg-qo-accent/10', border: 'border-qo-accent/20', text: 'text-qo-accent' },
+  warning: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-qo-ochre-text' },
   urgent: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
-  critical: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
+  critical: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-qo-risk' },
   emergency: { bg: 'bg-red-600/15', border: 'border-red-600/30', text: 'text-red-300' },
 };

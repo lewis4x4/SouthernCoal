@@ -120,7 +120,7 @@ export function ComplianceSearch() {
             type="checkbox"
             checked={chunksMode}
             onChange={() => setChunksMode((v) => !v)}
-            className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.05] text-purple-500 focus:ring-0 focus:ring-offset-0"
+            className="h-3.5 w-3.5 rounded border-black/[0.12] bg-black/[0.03] text-purple-500 focus:ring-0 focus:ring-offset-0"
           />
           Raw chunks debug mode
         </label>
@@ -133,7 +133,7 @@ export function ComplianceSearch() {
             type="checkbox"
             checked={reviewMode}
             onChange={toggleReviewMode}
-            className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.05] text-blue-500 focus:ring-0 focus:ring-offset-0"
+            className="h-3.5 w-3.5 rounded border-black/[0.12] bg-black/[0.03] text-blue-500 focus:ring-0 focus:ring-offset-0"
           />
           Review SQL before execution
         </label>

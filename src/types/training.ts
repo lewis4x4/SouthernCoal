@@ -62,8 +62,8 @@ export const TRAINING_CATEGORY_LABELS: Record<TrainingCategory, string> = {
 };
 
 export const COMPLETION_STATUS_COLORS: Record<TrainingCompletionStatus, { bg: string; border: string; text: string }> = {
-  active: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  expired: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
+  active: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-qo-sage-text' },
+  expired: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-qo-risk' },
   revoked: { bg: 'bg-red-600/10', border: 'border-red-600/20', text: 'text-red-300' },
-  pending_verification: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  pending_verification: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-qo-ochre-text' },
 };

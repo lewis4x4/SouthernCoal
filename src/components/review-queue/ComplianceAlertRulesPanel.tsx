@@ -39,7 +39,7 @@ export function ComplianceAlertRulesPanel() {
           <p className="text-xs text-text-muted mt-1">
             Fires automatically after ECHO discrepancy detection and weekly sync. Configure channels
             under{' '}
-            <Link to="/admin/notifications" className="text-cyan-400 hover:text-cyan-300">
+            <Link to="/admin/notifications" className="text-qo-accent hover:text-qo-accent">
               Notification Preferences
             </Link>
             .
@@ -50,7 +50,7 @@ export function ComplianceAlertRulesPanel() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-text-muted border-b border-white/[0.06]">
+            <tr className="text-text-muted border-b border-black/[0.06]">
               <th className="text-left py-2 px-4 font-medium">Rule</th>
               <th className="text-left py-2 px-4 font-medium">When</th>
               <th className="text-left py-2 px-4 font-medium">Channels</th>

@@ -346,7 +346,7 @@ export function FieldRouteTodayPage() {
           type="date"
           value={routeDate}
           onChange={(e) => setRouteDate(e.target.value)}
-          className="min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none focus:border-emerald-400/30"
+          className="min-h-12 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 text-base text-text-primary outline-none focus:border-emerald-400/30"
         />
         {canSeeOrgWide ? (
           <div className="flex gap-1">
@@ -356,7 +356,7 @@ export function FieldRouteTodayPage() {
               className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
                 scope === 'mine'
                   ? 'bg-emerald-500/20 text-emerald-200'
-                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
               }`}
             >
               Mine
@@ -367,7 +367,7 @@ export function FieldRouteTodayPage() {
               className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
                 scope === 'org'
                   ? 'bg-emerald-500/20 text-emerald-200'
-                  : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
               }`}
             >
               All
@@ -381,7 +381,7 @@ export function FieldRouteTodayPage() {
             className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
               !openStopsOnly
                 ? 'bg-emerald-500/20 text-emerald-200'
-                : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+                : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
             }`}
           >
             All
@@ -392,7 +392,7 @@ export function FieldRouteTodayPage() {
             className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
               openStopsOnly
                 ? 'bg-emerald-500/20 text-emerald-200'
-                : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08] active:bg-white/[0.12]'
+                : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
             }`}
           >
             Open
@@ -405,7 +405,7 @@ export function FieldRouteTodayPage() {
           <button
             type="button"
             onClick={handleSaveOffline}
-            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-black/[0.08] bg-qo-nested text-text-secondary transition-colors hover:bg-black/[0.05] active:bg-white/[0.1]"
             aria-label="Save route offline"
             title="Save route offline"
           >
@@ -417,7 +417,7 @@ export function FieldRouteTodayPage() {
             href={fullRouteHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-emerald-200"
+            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-black/[0.08] bg-qo-nested text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-emerald-200"
             aria-label="Open full route in Maps"
           >
             <Navigation className="h-5 w-5" />
@@ -438,11 +438,11 @@ export function FieldRouteTodayPage() {
       ) : null}
 
       {hasRouteAlerts ? (
-        <details className="rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+        <details className="rounded-2xl border border-black/[0.06] bg-qo-nested">
           <summary className="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-sm text-text-secondary">
-            {forceMajeureFlaggedCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-400" /> : null}
+            {forceMajeureFlaggedCount > 0 ? <span className="h-2 w-2 rounded-full bg-qo-ochre" /> : null}
             {accessIssueOutcomeCount > 0 ? <span className="h-2 w-2 rounded-full bg-rose-400" /> : null}
-            {outboundQueueDiagnostic ? <span className="h-2 w-2 rounded-full bg-red-400" /> : null}
+            {outboundQueueDiagnostic ? <span className="h-2 w-2 rounded-full bg-qo-risk" /> : null}
             <span className="flex-1">
               {openStopsCount > 0 ? `${openStopsCount} open` : 'Route alerts'}
               {forceMajeureFlaggedCount > 0 ? ` · ${forceMajeureFlaggedCount} FM` : ''}
@@ -450,7 +450,7 @@ export function FieldRouteTodayPage() {
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 transition-transform [[open]>&]:rotate-90" aria-hidden />
           </summary>
-          <div className="space-y-3 border-t border-white/[0.06] p-3">
+          <div className="space-y-3 border-t border-black/[0.06] p-3">
             <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
             <FieldSameOutfallDayWarning groups={routeOutfallDayConflicts} contextLabel={"Today's route list"} />
           </div>
@@ -463,11 +463,11 @@ export function FieldRouteTodayPage() {
 
       {!online && !effectiveRouteCache ? (
         <div className="space-y-3">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+          <div className="rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm text-text-secondary">
             Offline with no saved route for this date. Go online, open this page, then save offline.
           </div>
           {offlineSavedRouteHint ? (
-            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+            <div className="rounded-2xl border border-qo-accent/25 bg-qo-accent/10 px-4 py-3 text-sm text-qo-accent">
               <p>
                 A saved offline route exists for{' '}
                 <span className="font-medium">{offlineSavedRouteHint.routeDate}</span>
@@ -479,7 +479,7 @@ export function FieldRouteTodayPage() {
                   setRouteDate(offlineSavedRouteHint.routeDate);
                   setScope(offlineSavedRouteHint.scope);
                 }}
-                className="mt-3 min-h-10 rounded-xl border border-cyan-400/35 bg-cyan-500/15 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-500/25"
+                className="mt-3 min-h-10 rounded-xl border border-qo-accent/35 bg-qo-accent/15 px-4 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/25"
               >
                 Open saved route date
               </button>
@@ -491,16 +491,16 @@ export function FieldRouteTodayPage() {
       {/* Stop list */}
       {showRouteLoader ? (
         <div className="flex justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400/60" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/[0.12] border-t-emerald-400/60" />
         </div>
       ) : dayVisits.length === 0 ? (
         online || effectiveRouteCache ? (
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-8 text-center text-sm text-text-muted">
+          <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-8 text-center text-sm text-text-muted">
             No field visits for this date{scope === 'mine' ? ' assigned to you' : ''}.
           </div>
         ) : null
       ) : openStopsOnly && displayDayVisits.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-8 text-center text-sm text-text-muted">
+        <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-8 text-center text-sm text-text-muted">
           All stops complete. Switch to &quot;All&quot; to review.
         </div>
       ) : (
@@ -513,7 +513,7 @@ export function FieldRouteTodayPage() {
             if (isHero) {
               return (
                 <li key={visit.id}>
-                  <div className="rounded-2xl border-2 border-cyan-400/30 bg-cyan-500/[0.06] p-4">
+                  <div className="rounded-2xl border-2 border-qo-accent/30 bg-qo-accent/[0.06] p-4">
                     <div className="flex items-center gap-4">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-2xl font-bold text-emerald-200">
                         {visit.route_stop_sequence ?? '—'}
@@ -526,7 +526,7 @@ export function FieldRouteTodayPage() {
                           <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold uppercase ${
                             visit.visit_status === 'in_progress'
                               ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                              : 'border-white/[0.1] bg-white/[0.04] text-text-muted'
+                              : 'border-white/[0.1] bg-black/[0.03] text-text-muted'
                           }`}>
                             {visit.visit_status.replace('_', ' ')}
                           </span>
@@ -556,7 +556,7 @@ export function FieldRouteTodayPage() {
                           href={mapsSearchUrl(coord.lat, coord.lng)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-emerald-200"
+                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-black/[0.08] bg-qo-nested text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-emerald-200"
                         >
                           <Navigation className="h-4 w-4" />
                           Navigate
@@ -572,10 +572,10 @@ export function FieldRouteTodayPage() {
               <li key={visit.id}>
                 <Link
                   to={`/field/visits/${visit.id}`}
-                  className={`flex min-h-[56px] items-center gap-3 rounded-2xl border px-4 py-2 transition-colors hover:bg-white/[0.04] active:bg-white/[0.06] ${
+                  className={`flex min-h-[56px] items-center gap-3 rounded-2xl border px-4 py-2 transition-colors hover:bg-black/[0.04] active:bg-black/[0.04] ${
                     needsDisposition
                       ? 'border-l-2 border-l-cyan-400/30 border-y-white/[0.06] border-r-white/[0.06]'
-                      : 'border-white/[0.06]'
+                      : 'border-black/[0.06]'
                   }`}
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-sm font-bold text-emerald-200">
@@ -594,11 +594,11 @@ export function FieldRouteTodayPage() {
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
                       : visit.visit_status === 'in_progress'
                         ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                        : 'border-white/[0.1] bg-white/[0.04] text-text-muted'
+                        : 'border-white/[0.1] bg-black/[0.03] text-text-muted'
                   }`}>
                     {visit.visit_status.replace('_', ' ')}
                   </span>
-                  {visit.potential_force_majeure ? <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" /> : null}
+                  {visit.potential_force_majeure ? <span className="h-2 w-2 shrink-0 rounded-full bg-qo-ochre" /> : null}
                   {visit.outcome === 'access_issue' ? <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" /> : null}
                   <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
                 </Link>

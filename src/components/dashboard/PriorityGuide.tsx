@@ -15,10 +15,10 @@ export function PriorityGuide() {
   const sorted = [...CATEGORIES].sort((a, b) => a.priority - b.priority);
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-4 py-3 border-b border-white/[0.06] hover:bg-white/[0.02] transition-colors"
+        className="flex items-center justify-between w-full px-4 py-3 border-b border-black/[0.06] hover:bg-qo-nested transition-colors"
       >
         <h3 className="text-sm font-semibold text-text-primary">Priority Guide</h3>
         <span className="text-text-muted">
@@ -37,7 +37,7 @@ export function PriorityGuide() {
                 key={cat.dbKey}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors',
-                  'hover:bg-white/[0.03]',
+                  'hover:bg-qo-nested',
                 )}
               >
                 {hasFiles ? (

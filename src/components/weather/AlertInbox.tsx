@@ -18,9 +18,9 @@ const STATUS_CONFIG: Record<PrecipitationEventStatus, {
   bgColor: string;
   icon: typeof Clock;
 }> = {
-  alert_generated: { label: 'Pending', color: 'text-amber-400', bgColor: 'bg-amber-500/20', icon: Clock },
-  activated: { label: 'Activated', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', icon: CheckCircle },
-  dismissed: { label: 'Dismissed', color: 'text-text-muted', bgColor: 'bg-white/[0.06]', icon: XCircle },
+  alert_generated: { label: 'Pending', color: 'text-qo-ochre-text', bgColor: 'bg-amber-500/20', icon: Clock },
+  activated: { label: 'Activated', color: 'text-qo-sage-text', bgColor: 'bg-emerald-500/20', icon: CheckCircle },
+  dismissed: { label: 'Dismissed', color: 'text-text-muted', bgColor: 'bg-black/[0.04]', icon: XCircle },
   completed: { label: 'Completed', color: 'text-sky-400', bgColor: 'bg-sky-500/20', icon: CheckCircle },
 };
 
@@ -65,7 +65,7 @@ export function AlertInbox({
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+          <div key={i} className="h-20 animate-pulse rounded-xl bg-black/[0.03]" />
         ))}
       </div>
     );
@@ -81,13 +81,13 @@ export function AlertInbox({
             onClick={() => onStatusFilterChange(tab.value)}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
               statusFilter === tab.value
-                ? 'bg-white/[0.10] text-text-primary'
-                : 'text-text-muted hover:bg-white/[0.04] hover:text-text-secondary'
+                ? 'bg-black/[0.07] text-text-primary'
+                : 'text-text-muted hover:bg-black/[0.04] hover:text-text-secondary'
             }`}
           >
             {tab.label}
             {(counts[tab.value] ?? 0) > 0 && (
-              <span className="ml-1 rounded-full bg-white/[0.08] px-1.5 py-0.5 text-xs">
+              <span className="ml-1 rounded-full bg-black/[0.06] px-1.5 py-0.5 text-xs">
                 {counts[tab.value]}
               </span>
             )}
@@ -97,7 +97,7 @@ export function AlertInbox({
 
       {/* Event list */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+        <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-8 text-center">
           <CloudRain className="mx-auto mb-2 h-8 w-8 text-text-muted" />
           <p className="text-sm text-text-muted">
             {statusFilter === 'all' ? 'No rain events recorded' : `No ${statusFilter.replace('_', ' ')} events`}
@@ -116,7 +116,7 @@ export function AlertInbox({
                 onMouseEnter={() => setHoveredId(event.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => onSelect(event)}
-                className="group cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.04]"
+                className="group cursor-pointer rounded-xl border border-black/[0.06] bg-qo-nested p-4 transition-all hover:border-black/[0.12] hover:bg-black/[0.04]"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export function AlertInbox({
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color}`}>
                           {config.label}
                         </span>
-                        <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-text-muted">
+                        <span className="rounded-full bg-black/[0.04] px-2 py-0.5 text-xs text-text-muted">
                           {event.trigger_source}
                         </span>
                       </div>
@@ -150,7 +150,7 @@ export function AlertInbox({
                             e.stopPropagation();
                             onActivate(event);
                           }}
-                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500"
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-emerald-500"
                         >
                           Activate
                         </button>
@@ -159,7 +159,7 @@ export function AlertInbox({
                             e.stopPropagation();
                             onDismiss(event);
                           }}
-                          className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+                          className="rounded-lg border border-black/[0.12] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
                         >
                           Dismiss
                         </button>
@@ -171,7 +171,7 @@ export function AlertInbox({
 
                 {/* Dismissal note */}
                 {event.status === 'dismissed' && event.dismiss_reason_code && (
-                  <div className="mt-2 rounded-lg bg-white/[0.03] px-3 py-2">
+                  <div className="mt-2 rounded-lg bg-qo-nested px-3 py-2">
                     <p className="text-xs text-text-muted">
                       <span className="font-medium text-text-secondary">
                         {event.dismiss_reason_code.replace('_', ' ')}:

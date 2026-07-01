@@ -109,18 +109,18 @@ export interface EscalationChainStep {
 export const SEVERITY_COLORS: Record<IncidentSeverity, { bg: string; border: string; text: string }> = {
   critical: { bg: 'bg-red-600/15', border: 'border-red-600/30', text: 'text-red-300' },
   high: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
-  medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
-  low: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400' },
+  medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-qo-ochre-text' },
+  low: { bg: 'bg-qo-accent/10', border: 'border-qo-accent/20', text: 'text-qo-accent' },
 };
 
 export const STATUS_COLORS: Record<IncidentStatus, { bg: string; border: string; text: string }> = {
-  open: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
-  investigating: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  open: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-qo-risk' },
+  investigating: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-qo-ochre-text' },
   escalated: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
   pending_action: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400' },
   action_taken: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
-  monitoring: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400' },
-  closed: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+  monitoring: { bg: 'bg-qo-accent/10', border: 'border-qo-accent/20', text: 'text-qo-accent' },
+  closed: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-qo-sage-text' },
   closed_no_action: { bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
 };
 
@@ -135,7 +135,7 @@ export const CATEGORY_LABELS: Record<IncidentCategory, string> = {
 };
 
 export const RECOVERABILITY_LABELS: Record<IncidentRecoverability, { label: string; color: string }> = {
-  recoverable: { label: 'Recoverable', color: 'text-emerald-400' },
-  non_recoverable: { label: 'Non-Recoverable', color: 'text-red-400' },
+  recoverable: { label: 'Recoverable', color: 'text-qo-sage-text' },
+  non_recoverable: { label: 'Non-Recoverable', color: 'text-qo-risk' },
   unknown: { label: 'Unknown', color: 'text-text-muted' },
 };

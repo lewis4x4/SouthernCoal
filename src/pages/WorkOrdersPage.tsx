@@ -29,10 +29,10 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
 const STATUS_COLORS: Record<WorkOrderStatus, string> = {
   open: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   assigned: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  in_progress: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  in_progress: 'bg-qo-accent/20 text-qo-accent border-qo-accent/30',
   completed: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
   verified: 'bg-green-500/20 text-green-300 border-green-500/30',
-  cancelled: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  cancelled: 'bg-gray-500/20 text-text-muted border-gray-500/30',
 };
 
 const PRIORITY_COLORS: Record<WorkOrderPriority, string> = {
@@ -132,17 +132,17 @@ export function WorkOrdersPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-amber-500/20">
-            <ClipboardList className="w-6 h-6 text-amber-400" />
+            <ClipboardList className="w-6 h-6 text-qo-ochre-text" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Work Orders</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Work Orders</h1>
             <p className="text-sm text-text-secondary">Deficiency tracking and SLA management</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -160,13 +160,13 @@ export function WorkOrdersPage() {
       {/* Status Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
-          { key: 'all' as const, label: 'All', count: workOrders.length, icon: ClipboardList, color: 'text-white' },
+          { key: 'all' as const, label: 'All', count: workOrders.length, icon: ClipboardList, color: 'text-text-primary' },
           { key: 'open' as const, label: 'Open', count: statusCounts.open, icon: Clock, color: 'text-blue-400' },
-          { key: 'assigned' as const, label: 'Assigned', count: statusCounts.assigned, icon: User, color: 'text-amber-400' },
-          { key: 'in_progress' as const, label: 'In Progress', count: statusCounts.in_progress, icon: Wrench, color: 'text-cyan-400' },
-          { key: 'completed' as const, label: 'Completed', count: statusCounts.completed, icon: CheckCircle2, color: 'text-emerald-400' },
+          { key: 'assigned' as const, label: 'Assigned', count: statusCounts.assigned, icon: User, color: 'text-qo-ochre-text' },
+          { key: 'in_progress' as const, label: 'In Progress', count: statusCounts.in_progress, icon: Wrench, color: 'text-qo-accent' },
+          { key: 'completed' as const, label: 'Completed', count: statusCounts.completed, icon: CheckCircle2, color: 'text-qo-sage-text' },
           { key: 'verified' as const, label: 'Verified', count: statusCounts.verified, icon: CheckCircle2, color: 'text-green-400' },
-          { key: 'overdue' as const, label: 'Overdue', count: statusCounts.overdue, icon: AlertTriangle, color: 'text-red-400' },
+          { key: 'overdue' as const, label: 'Overdue', count: statusCounts.overdue, icon: AlertTriangle, color: 'text-qo-risk' },
         ].map(({ key, label, count, icon: Icon, color }) => (
           <button
             key={key}
@@ -174,12 +174,12 @@ export function WorkOrdersPage() {
             className={clsx(
               'p-3 rounded-lg border text-left transition-all',
               statusFilter === key
-                ? 'bg-white/10 border-white/20'
-                : 'bg-white/[0.02] border-white/5 hover:bg-white/5',
+                ? 'bg-black/[0.06] border-black/[0.12]'
+                : 'bg-qo-nested border-white/5 hover:bg-qo-nested',
             )}
           >
             <Icon className={clsx('w-4 h-4 mb-1', color)} />
-            <div className="text-xl font-bold text-white">{count}</div>
+            <div className="text-xl font-bold text-text-primary">{count}</div>
             <div className="text-xs text-text-secondary">{label}</div>
           </button>
         ))}
@@ -188,14 +188,14 @@ export function WorkOrdersPage() {
       {/* Create Form */}
       {showCreate && (
         <SpotlightCard className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white">New Work Order</h3>
+          <h3 className="text-lg font-semibold text-text-primary">New Work Order</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm text-text-secondary mb-1">Title *</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
                 placeholder="Describe the work needed..."
               />
             </div>
@@ -205,7 +205,7 @@ export function WorkOrdersPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none resize-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none resize-none"
                 placeholder="Additional details..."
               />
             </div>
@@ -214,7 +214,7 @@ export function WorkOrdersPage() {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as WorkOrderPriority)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-amber-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-amber-500/50 focus:outline-none"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -227,7 +227,7 @@ export function WorkOrdersPage() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as WorkOrderCategory)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-amber-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-amber-500/50 focus:outline-none"
               >
                 <option value="">Select category...</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
@@ -241,14 +241,14 @@ export function WorkOrdersPage() {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-amber-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-amber-500/50 focus:outline-none"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setShowCreate(false)}
-              className="px-4 py-2 text-sm text-text-secondary hover:text-white"
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
             >
               Cancel
             </button>
@@ -283,13 +283,13 @@ export function WorkOrdersPage() {
 
             return (
               <Link key={wo.id} to={`/work-orders/${wo.id}`}>
-                <SpotlightCard className="p-4 hover:bg-white/[0.04] transition-colors">
+                <SpotlightCard className="p-4 hover:bg-black/[0.04] transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-medium truncate">{wo.title}</h3>
+                        <h3 className="text-text-primary font-medium truncate">{wo.title}</h3>
                         {isOverdue && (
-                          <span className="flex items-center gap-1 text-xs text-red-400">
+                          <span className="flex items-center gap-1 text-xs text-qo-risk">
                             <AlertTriangle className="w-3 h-3" />
                             Overdue
                           </span>
@@ -305,7 +305,7 @@ export function WorkOrdersPage() {
                           </span>
                         )}
                         {wo.due_date && (
-                          <span className={clsx(isOverdue && 'text-red-400')}>
+                          <span className={clsx(isOverdue && 'text-qo-risk')}>
                             Due: {wo.due_date}
                           </span>
                         )}

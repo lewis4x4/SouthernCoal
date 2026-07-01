@@ -84,7 +84,7 @@ export function RainEventAlertsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="inline-flex rounded-lg bg-gradient-to-br from-teal-600 to-teal-500 p-2.5">
-            <CloudRain className="h-6 w-6 text-white" />
+            <CloudRain className="h-6 w-6 text-text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">Rain Event Alerts</h1>
@@ -97,7 +97,7 @@ export function RainEventAlertsPage() {
           {canDeclare && (
             <button
               onClick={() => setShowDeclareDialog(true)}
-              className="flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500"
+              className="flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-sky-500"
             >
               <Plus className="h-4 w-4" />
               Declare Event
@@ -106,7 +106,7 @@ export function RainEventAlertsPage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.04] disabled:opacity-40"
+            className="flex items-center gap-2 rounded-lg border border-black/[0.08] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.04] disabled:opacity-40"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -127,7 +127,7 @@ export function RainEventAlertsPage() {
 
       {/* Empty state fallback when not loading and no events */}
       {!loading && events.length === 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-12 text-center backdrop-blur-xl">
+        <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-12 text-center ">
           <CloudRain className="mx-auto mb-3 h-10 w-10 text-text-muted" />
           <h3 className="mb-1 text-base font-medium text-text-secondary">No Rain Events Recorded</h3>
           <p className="text-sm text-text-muted">

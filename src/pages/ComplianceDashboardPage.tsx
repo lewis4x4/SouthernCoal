@@ -18,17 +18,17 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 const KPI_STATUS_COLORS = {
-  green: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
-  yellow: 'text-amber-400 bg-amber-500/20 border-amber-500/30',
-  red: 'text-red-400 bg-red-500/20 border-red-500/30',
-  unknown: 'text-gray-400 bg-gray-500/20 border-gray-500/30',
+  green: 'text-qo-sage-text bg-qo-sage/10 border-qo-sage/30',
+  yellow: 'text-qo-ochre-text bg-qo-ochre/10 border-qo-ochre/30',
+  red: 'text-qo-risk bg-qo-risk/10 border-qo-risk/30',
+  unknown: 'text-text-muted bg-black/[0.04] border-black/[0.08]',
 };
 
 const KPI_STATUS_DOT = {
-  green: 'bg-emerald-400',
-  yellow: 'bg-amber-400',
-  red: 'bg-red-400',
-  unknown: 'bg-gray-400',
+  green: 'bg-qo-sage',
+  yellow: 'bg-qo-ochre',
+  red: 'bg-qo-risk',
+  unknown: 'bg-text-muted',
 };
 
 const TREND_DAYS_OPTIONS = [30, 60, 90] as const;
@@ -56,10 +56,10 @@ export function ComplianceDashboardPage() {
 
   // Score gauge color
   const scoreColor = useMemo(() => {
-    if (!latestSnapshot) return 'text-gray-400';
-    if (latestSnapshot.compliance_score >= 90) return 'text-emerald-400';
-    if (latestSnapshot.compliance_score >= 80) return 'text-amber-400';
-    return 'text-red-400';
+    if (!latestSnapshot) return 'text-text-muted';
+    if (latestSnapshot.compliance_score >= 90) return 'text-qo-sage-text';
+    if (latestSnapshot.compliance_score >= 80) return 'text-qo-ochre-text';
+    return 'text-qo-risk';
   }, [latestSnapshot]);
 
   // Trend direction
@@ -116,7 +116,7 @@ export function ComplianceDashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin h-8 w-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-2 border-qo-accent border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -126,11 +126,11 @@ export function ComplianceDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-cyan-500/20">
-            <BarChart3 className="w-6 h-6 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-qo-accent/20">
+            <BarChart3 className="w-6 h-6 text-qo-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Compliance Dashboard</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Compliance Dashboard</h1>
             <p className="text-sm text-text-secondary">
               {latestSnapshot
                 ? `Snapshot: ${latestSnapshot.snapshot_date}`
@@ -142,7 +142,7 @@ export function ComplianceDashboardPage() {
           <button
             onClick={handleExport}
             disabled={!latestSnapshot}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary disabled:opacity-40"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary disabled:opacity-40"
           >
             <Download className="w-4 h-4" />
             Export
@@ -150,7 +150,7 @@ export function ComplianceDashboardPage() {
           <button
             onClick={() => generateSnapshot()}
             disabled={generating}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30 disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-qo-accent/20 text-qo-accent border border-qo-accent/30 rounded-lg hover:bg-qo-accent/30 disabled:opacity-40"
           >
             <RefreshCw className={clsx('w-4 h-4', generating && 'animate-spin')} />
             {generating ? 'Generating...' : 'Generate Snapshot'}
@@ -161,14 +161,14 @@ export function ComplianceDashboardPage() {
       {!latestSnapshot ? (
         <SpotlightCard className="p-12 text-center">
           <Gauge className="w-10 h-10 text-text-secondary mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-white mb-2">No Compliance Data Yet</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-2">No Compliance Data Yet</h3>
           <p className="text-text-secondary mb-4">
             Generate your first compliance snapshot to see KPIs and trends.
           </p>
           <button
             onClick={() => generateSnapshot()}
             disabled={generating}
-            className="px-4 py-2 text-sm font-medium bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30"
+            className="px-4 py-2 text-sm font-medium bg-qo-accent/20 text-qo-accent border border-qo-accent/30 rounded-lg hover:bg-qo-accent/30"
           >
             Generate Now
           </button>
@@ -186,7 +186,7 @@ export function ComplianceDashboardPage() {
               {trendDirection && (
                 <div className={clsx(
                   'flex items-center gap-1 text-xs mt-2',
-                  trendDirection === 'up' ? 'text-emerald-400' : 'text-red-400',
+                  trendDirection === 'up' ? 'text-qo-sage-text' : 'text-qo-risk',
                 )}>
                   {trendDirection === 'up' ? (
                     <TrendingUp className="w-3 h-3" />
@@ -205,52 +205,52 @@ export function ComplianceDashboardPage() {
                   label: 'Sampling Compliance',
                   value: `${latestSnapshot.sampling_compliance_pct}%`,
                   icon: Activity,
-                  color: latestSnapshot.sampling_compliance_pct >= 95 ? 'text-emerald-400' : latestSnapshot.sampling_compliance_pct >= 85 ? 'text-amber-400' : 'text-red-400',
+                  color: latestSnapshot.sampling_compliance_pct >= 95 ? 'text-qo-sage-text' : latestSnapshot.sampling_compliance_pct >= 85 ? 'text-qo-ochre-text' : 'text-qo-risk',
                 },
                 {
                   label: 'Exceedance Rate',
                   value: `${latestSnapshot.exceedance_rate_pct}%`,
                   icon: AlertTriangle,
-                  color: latestSnapshot.exceedance_rate_pct <= 2 ? 'text-emerald-400' : latestSnapshot.exceedance_rate_pct <= 5 ? 'text-amber-400' : 'text-red-400',
+                  color: latestSnapshot.exceedance_rate_pct <= 2 ? 'text-qo-sage-text' : latestSnapshot.exceedance_rate_pct <= 5 ? 'text-qo-ochre-text' : 'text-qo-risk',
                 },
                 {
                   label: 'Open Violations',
                   value: latestSnapshot.open_violations.toString(),
                   icon: ShieldAlert,
-                  color: latestSnapshot.open_violations === 0 ? 'text-emerald-400' : latestSnapshot.open_violations <= 3 ? 'text-amber-400' : 'text-red-400',
+                  color: latestSnapshot.open_violations === 0 ? 'text-qo-sage-text' : latestSnapshot.open_violations <= 3 ? 'text-qo-ochre-text' : 'text-qo-risk',
                 },
                 {
                   label: 'DMR Rate',
                   value: `${latestSnapshot.dmr_submission_rate_pct}%`,
                   icon: CheckCircle2,
-                  color: latestSnapshot.dmr_submission_rate_pct >= 100 ? 'text-emerald-400' : latestSnapshot.dmr_submission_rate_pct >= 90 ? 'text-amber-400' : 'text-red-400',
+                  color: latestSnapshot.dmr_submission_rate_pct >= 100 ? 'text-qo-sage-text' : latestSnapshot.dmr_submission_rate_pct >= 90 ? 'text-qo-ochre-text' : 'text-qo-risk',
                 },
                 {
                   label: 'Open CAs',
                   value: latestSnapshot.open_corrective_actions.toString(),
                   sub: `${latestSnapshot.overdue_corrective_actions} overdue`,
                   icon: ClipboardList,
-                  color: latestSnapshot.overdue_corrective_actions === 0 ? 'text-emerald-400' : 'text-amber-400',
+                  color: latestSnapshot.overdue_corrective_actions === 0 ? 'text-qo-sage-text' : 'text-qo-ochre-text',
                 },
                 {
                   label: 'Open Work Orders',
                   value: latestSnapshot.open_work_orders.toString(),
                   sub: `${latestSnapshot.overdue_work_orders} overdue`,
                   icon: ClipboardList,
-                  color: latestSnapshot.overdue_work_orders === 0 ? 'text-emerald-400' : 'text-amber-400',
+                  color: latestSnapshot.overdue_work_orders === 0 ? 'text-qo-sage-text' : 'text-qo-ochre-text',
                 },
                 {
                   label: 'Active Permits',
                   value: latestSnapshot.active_permits.toString(),
                   sub: `${latestSnapshot.active_outfalls} outfalls`,
                   icon: Activity,
-                  color: 'text-cyan-400',
+                  color: 'text-qo-accent',
                 },
                 {
                   label: 'Total Penalties',
                   value: `$${latestSnapshot.total_penalties.toLocaleString()}`,
                   icon: AlertTriangle,
-                  color: latestSnapshot.total_penalties > 0 ? 'text-red-400' : 'text-emerald-400',
+                  color: latestSnapshot.total_penalties > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                 },
               ].map(({ label, value, sub, icon: Icon, color }) => (
                 <SpotlightCard key={label} className="p-3">
@@ -306,8 +306,8 @@ export function ComplianceDashboardPage() {
                     className={clsx(
                       'px-2 py-1 text-xs rounded',
                       trendDays === d
-                        ? 'bg-cyan-500/20 text-cyan-300'
-                        : 'text-text-secondary hover:text-white',
+                        ? 'bg-qo-accent/20 text-qo-accent'
+                        : 'text-text-secondary hover:text-text-primary',
                     )}
                   >
                     {d}d
@@ -357,7 +357,7 @@ export function ComplianceDashboardPage() {
           {stateBreakdown.length > 0 && (
             <SpotlightCard className="p-4">
               <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-4 h-4 text-cyan-400" />
+                <MapPin className="w-4 h-4 text-qo-accent" />
                 <h3 className="text-sm font-medium text-text-secondary">State Breakdown</h3>
               </div>
               <div className="overflow-x-auto">
@@ -374,19 +374,19 @@ export function ComplianceDashboardPage() {
                   <tbody>
                     {stateBreakdown.map((s) => (
                       <tr key={s.state} className="border-b border-white/[0.03]">
-                        <td className="py-2 pr-4 text-white font-medium">{s.state}</td>
-                        <td className="py-2 pr-4 text-right text-white">{s.permits}</td>
-                        <td className="py-2 pr-4 text-right text-white">{s.outfalls}</td>
+                        <td className="py-2 pr-4 text-text-primary font-medium">{s.state}</td>
+                        <td className="py-2 pr-4 text-right text-text-primary">{s.permits}</td>
+                        <td className="py-2 pr-4 text-right text-text-primary">{s.outfalls}</td>
                         <td className="py-2 pr-4 text-right">
                           <span className={clsx(
-                            s.exceedances > 0 ? 'text-red-400' : 'text-emerald-400',
+                            s.exceedances > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                           )}>
                             {s.exceedances}
                           </span>
                         </td>
                         <td className="py-2 text-right">
                           <span className={clsx(
-                            s.violations > 0 ? 'text-red-400' : 'text-emerald-400',
+                            s.violations > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                           )}>
                             {s.violations}
                           </span>
@@ -405,28 +405,28 @@ export function ComplianceDashboardPage() {
               <h3 className="text-sm font-medium text-text-secondary mb-3">Overdue Items</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">Corrective Actions</span>
+                  <span className="text-sm text-text-primary">Corrective Actions</span>
                   <span className={clsx(
                     'text-sm font-bold',
-                    latestSnapshot.overdue_corrective_actions > 0 ? 'text-red-400' : 'text-emerald-400',
+                    latestSnapshot.overdue_corrective_actions > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                   )}>
                     {latestSnapshot.overdue_corrective_actions}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">Work Orders</span>
+                  <span className="text-sm text-text-primary">Work Orders</span>
                   <span className={clsx(
                     'text-sm font-bold',
-                    latestSnapshot.overdue_work_orders > 0 ? 'text-red-400' : 'text-emerald-400',
+                    latestSnapshot.overdue_work_orders > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                   )}>
                     {latestSnapshot.overdue_work_orders}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">Critical Violations</span>
+                  <span className="text-sm text-text-primary">Critical Violations</span>
                   <span className={clsx(
                     'text-sm font-bold',
-                    latestSnapshot.critical_violations > 0 ? 'text-red-400' : 'text-emerald-400',
+                    latestSnapshot.critical_violations > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
                   )}>
                     {latestSnapshot.critical_violations}
                   </span>
@@ -438,20 +438,20 @@ export function ComplianceDashboardPage() {
               <h3 className="text-sm font-medium text-text-secondary mb-3">Sampling & Reporting</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">Samples Due (30d)</span>
-                  <span className="text-sm font-bold text-white">{latestSnapshot.sampling_events_due}</span>
+                  <span className="text-sm text-text-primary">Samples Due (30d)</span>
+                  <span className="text-sm font-bold text-text-primary">{latestSnapshot.sampling_events_due}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">Samples Completed</span>
-                  <span className="text-sm font-bold text-emerald-400">{latestSnapshot.sampling_events_completed}</span>
+                  <span className="text-sm text-text-primary">Samples Completed</span>
+                  <span className="text-sm font-bold text-qo-sage-text">{latestSnapshot.sampling_events_completed}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">DMRs Due (Quarter)</span>
-                  <span className="text-sm font-bold text-white">{latestSnapshot.dmr_submissions_due}</span>
+                  <span className="text-sm text-text-primary">DMRs Due (Quarter)</span>
+                  <span className="text-sm font-bold text-text-primary">{latestSnapshot.dmr_submissions_due}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-white">DMRs Submitted</span>
-                  <span className="text-sm font-bold text-emerald-400">{latestSnapshot.dmr_submissions_completed}</span>
+                  <span className="text-sm text-text-primary">DMRs Submitted</span>
+                  <span className="text-sm font-bold text-qo-sage-text">{latestSnapshot.dmr_submissions_completed}</span>
                 </div>
               </div>
             </SpotlightCard>

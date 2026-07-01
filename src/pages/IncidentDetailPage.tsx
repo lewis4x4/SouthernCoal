@@ -202,8 +202,8 @@ export function IncidentDetailPage() {
             ? 'border-red-500/30 bg-red-500/[0.05] animate-pulse'
             : 'border-amber-500/20 bg-amber-500/[0.03]',
         )}>
-          <Clock size={18} className={isExpired ? 'text-red-400' : 'text-amber-400'} />
-          <span className={cn('text-sm font-mono font-bold', isExpired ? 'text-red-400' : 'text-amber-400')}>
+          <Clock size={18} className={isExpired ? 'text-qo-risk' : 'text-qo-ochre-text'} />
+          <span className={cn('text-sm font-mono font-bold', isExpired ? 'text-qo-risk' : 'text-qo-ochre-text')}>
             {countdown}
           </span>
           <span className="text-xs text-text-muted ml-2">
@@ -217,7 +217,7 @@ export function IncidentDetailPage() {
         {/* Left: details + description */}
         <div className="lg:col-span-2 space-y-4">
           {incident.description && (
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Description</h3>
               <p className="text-sm text-text-secondary whitespace-pre-wrap">{incident.description}</p>
             </div>
@@ -225,7 +225,7 @@ export function IncidentDetailPage() {
 
           {incident.resolution_notes && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-2">Resolution</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-qo-sage-text mb-2">Resolution</h3>
               <p className="text-sm text-text-secondary whitespace-pre-wrap">{incident.resolution_notes}</p>
             </div>
           )}
@@ -264,13 +264,13 @@ export function IncidentDetailPage() {
           )}
 
           {showResolve && (
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 space-y-3">
               <textarea
                 value={resolveNotes}
                 onChange={(e) => setResolveNotes(e.target.value)}
                 placeholder="Resolution notes (required)"
                 rows={3}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
               />
               <div className="flex gap-2">
                 <button
@@ -291,8 +291,8 @@ export function IncidentDetailPage() {
           )}
 
           {/* Event timeline */}
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02]">
-            <div className="border-b border-white/[0.06] px-4 py-3">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested">
+            <div className="border-b border-black/[0.06] px-4 py-3">
               <h3 className="text-sm font-semibold text-text-primary">
                 Timeline
                 <span className="ml-2 text-xs font-normal text-text-muted">{events.length} events</span>
@@ -326,7 +326,7 @@ export function IncidentDetailPage() {
 
         {/* Right: escalation chain tracker */}
         <div className="space-y-4">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
             <div className="flex items-center gap-2 mb-3">
               <Shield size={14} className="text-text-muted" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -343,21 +343,21 @@ export function IncidentDetailPage() {
                     {idx < chainSteps.length - 1 && (
                       <div className={cn(
                         'absolute left-[11px] top-6 h-full w-0.5',
-                        isPast ? 'bg-emerald-500/30' : 'bg-white/[0.08]',
+                        isPast ? 'bg-emerald-500/30' : 'bg-black/[0.06]',
                       )} />
                     )}
                     {/* Step dot */}
                     <div className={cn(
                       'relative z-10 mt-0.5 h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center',
                       isCurrentStep
-                        ? 'border-cyan-400 bg-cyan-500/20'
+                        ? 'border-qo-accent bg-qo-accent/20'
                         : isPast
                           ? 'border-emerald-400 bg-emerald-500/20'
-                          : 'border-white/[0.15] bg-white/[0.03]',
+                          : 'border-white/[0.15] bg-qo-nested',
                     )}>
                       <span className={cn(
                         'text-[9px] font-bold',
-                        isCurrentStep ? 'text-cyan-300' : isPast ? 'text-emerald-400' : 'text-text-muted',
+                        isCurrentStep ? 'text-qo-accent' : isPast ? 'text-qo-sage-text' : 'text-text-muted',
                       )}>
                         {step.step_number}
                       </span>
@@ -366,7 +366,7 @@ export function IncidentDetailPage() {
                     <div>
                       <p className={cn(
                         'text-xs font-medium',
-                        isCurrentStep ? 'text-cyan-300' : isPast ? 'text-emerald-400' : 'text-text-muted',
+                        isCurrentStep ? 'text-qo-accent' : isPast ? 'text-qo-sage-text' : 'text-text-muted',
                       )}>
                         {step.owner_name}
                       </p>
@@ -380,7 +380,7 @@ export function IncidentDetailPage() {
           </div>
 
           {/* Metadata */}
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-2">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Details</h3>
             <div className="text-xs text-text-muted space-y-1">
               <p>Reported: {new Date(incident.reported_at).toLocaleString()}</p>
@@ -393,13 +393,13 @@ export function IncidentDetailPage() {
               <p>Classification: {incident.classification_level.replace('_', ' ')}</p>
               {incident.auto_ca_triggered && incident.corrective_action_id && (
                 <p>
-                  <Link to={`/corrective-actions/${incident.corrective_action_id}`} className="text-cyan-400 hover:underline">
+                  <Link to={`/corrective-actions/${incident.corrective_action_id}`} className="text-qo-accent hover:underline">
                     View Corrective Action →
                   </Link>
                 </p>
               )}
               {incident.auto_ca_triggered && !incident.corrective_action_id && (
-                <p className="text-amber-400">Auto-CA pending</p>
+                <p className="text-qo-ochre-text">Auto-CA pending</p>
               )}
             </div>
           </div>

@@ -73,10 +73,10 @@ export function RainEventAlertCard() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-xl">
+      <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-6 ">
         <div className="animate-pulse space-y-3">
-          <div className="h-5 w-40 rounded bg-white/[0.06]" />
-          <div className="h-8 w-20 rounded bg-white/[0.06]" />
+          <div className="h-5 w-40 rounded bg-black/[0.04]" />
+          <div className="h-8 w-20 rounded bg-black/[0.04]" />
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export function RainEventAlertCard() {
   return (
     <Link
       to="/weather/alerts"
-      className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl transition-all hover:border-white/[0.12]"
+      className="group relative overflow-hidden rounded-2xl border border-black/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6  transition-all hover:border-black/[0.12]"
     >
       {/* Urgency glow for pending alerts */}
       {hasPendingAlerts && (
@@ -98,12 +98,12 @@ export function RainEventAlertCard() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="inline-flex rounded-lg bg-gradient-to-br from-sky-600 to-sky-500 p-2">
-              <CloudRain className="h-5 w-5 text-white" />
+              <CloudRain className="h-5 w-5 text-text-primary" />
             </div>
             <h3 className="text-sm font-semibold text-text-primary">Rain Events</h3>
           </div>
           {hasPendingAlerts && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-qo-ochre-text">
               <AlertTriangle className="h-3 w-3" />
               {counts.pending} pending
             </span>
@@ -112,11 +112,11 @@ export function RainEventAlertCard() {
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <p className="text-2xl font-bold text-amber-400">{counts.pending}</p>
+            <p className="text-2xl font-bold text-qo-ochre-text">{counts.pending}</p>
             <p className="text-xs text-text-muted">Alerts</p>
           </div>
           <div>
-            <p className="flex items-center gap-1 text-2xl font-bold text-emerald-400">
+            <p className="flex items-center gap-1 text-2xl font-bold text-qo-sage-text">
               <CheckCircle className="h-4 w-4" />
               {counts.activated}
             </p>
@@ -132,7 +132,7 @@ export function RainEventAlertCard() {
         </div>
 
         {hasPendingAlerts && (
-          <p className="mt-3 text-xs font-medium text-amber-400/80">
+          <p className="mt-3 text-xs font-medium text-qo-ochre-text/80">
             Action required — review pending rain event alerts
           </p>
         )}

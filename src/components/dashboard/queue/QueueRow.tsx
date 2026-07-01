@@ -101,7 +101,7 @@ export function QueueRow({ entry, can }: QueueRowProps) {
       onClick={() => setExpandedRow(isExpanded ? null : entry.id)}
       className={cn(
         'flex items-center gap-3 px-5 h-14 cursor-pointer transition-colors border-b border-white/[0.03]',
-        isExpanded ? 'bg-white/[0.03]' : 'hover:bg-white/[0.02]',
+        isExpanded ? 'bg-qo-nested' : 'hover:bg-qo-nested',
       )}
     >
       {/* Expand indicator */}

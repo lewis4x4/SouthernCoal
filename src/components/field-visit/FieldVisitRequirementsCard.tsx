@@ -17,16 +17,16 @@ export function FieldVisitRequirementsCard({
   model,
 }: FieldVisitRequirementsCardProps) {
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <div className="flex items-center gap-2">
-        <ClipboardList className="h-4 w-4 text-cyan-300" aria-hidden />
+        <ClipboardList className="h-4 w-4 text-qo-accent" aria-hidden />
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
           What This Stop Requires
         </h3>
       </div>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-2">
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
             Scheduled sample requirements
           </div>
@@ -37,7 +37,7 @@ export function FieldVisitRequirementsCard({
               </div>
             ) : (
               stopRequirements.map((requirement) => (
-                <div key={requirement.calendar_id} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-3">
+                <div key={requirement.calendar_id} className="rounded-lg border border-white/[0.05] bg-qo-nested px-3 py-3">
                   <div className="text-sm font-medium text-text-primary">{requirement.parameter_label}</div>
                   <div className="mt-1 text-xs text-text-secondary">
                     {requirement.sample_type ?? 'Sample'}{requirement.default_unit ? ` · ${requirement.default_unit}` : ''}
@@ -48,7 +48,7 @@ export function FieldVisitRequirementsCard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
             Required field measurements
           </div>
@@ -59,7 +59,7 @@ export function FieldVisitRequirementsCard({
               </div>
             ) : (
               requiredMeasurements.map((measurement) => (
-                <div key={measurement.key} className="rounded-lg border border-cyan-500/20 bg-cyan-500/[0.06] px-3 py-3">
+                <div key={measurement.key} className="rounded-lg border border-qo-accent/20 bg-qo-accent/[0.06] px-3 py-3">
                   <div className="text-sm font-medium text-text-primary">
                     {measurement.display_label}
                     {measurement.default_unit ? ` · ${measurement.default_unit}` : ''}
@@ -75,7 +75,7 @@ export function FieldVisitRequirementsCard({
       </div>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-2">
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
             Bottle / kit expectations
           </div>
@@ -86,7 +86,7 @@ export function FieldVisitRequirementsCard({
               </div>
             ) : (
               model.bottleExpectations.map((expectation) => (
-                <div key={expectation} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-3 text-sm text-text-primary">
+                <div key={expectation} className="rounded-lg border border-white/[0.05] bg-qo-nested px-3 py-3 text-sm text-text-primary">
                   {expectation}
                 </div>
               ))
@@ -94,13 +94,13 @@ export function FieldVisitRequirementsCard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
             Evidence expectations
           </div>
           <div className="mt-3 space-y-2">
             {model.requiredEvidence.map((item) => (
-              <div key={item.id} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-3">
+              <div key={item.id} className="rounded-lg border border-white/[0.05] bg-qo-nested px-3 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-text-primary">{item.label}</div>
                   {item.requiredNow ? (

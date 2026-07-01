@@ -34,7 +34,7 @@ function StepIcon({ status, index }: { status: FieldVisitStepStatus; index: numb
   }
 
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-cyan-400/35 bg-cyan-500/15 text-xs font-semibold text-cyan-100">
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-qo-accent/35 bg-qo-accent/15 text-xs font-semibold text-qo-accent">
       {index + 1}
     </span>
   );
@@ -47,7 +47,7 @@ export function FieldVisitStepper({
 }: FieldVisitStepperProps) {
   return (
     <nav
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3"
+      className="rounded-2xl border border-black/[0.08] bg-qo-nested p-3"
       aria-label="Field visit workflow steps"
     >
       <ol className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
@@ -62,10 +62,10 @@ export function FieldVisitStepper({
                 className={cn(
                   'flex h-full w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
                   isActive
-                    ? 'border-cyan-400/35 bg-cyan-500/12'
+                    ? 'border-qo-accent/35 bg-qo-accent/12'
                     : step.status === 'complete'
                       ? 'border-emerald-500/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.08]'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]',
+                      : 'border-black/[0.06] bg-qo-nested hover:bg-black/[0.04]',
                 )}
               >
                 <StepIcon status={step.status} index={index} />
@@ -73,7 +73,7 @@ export function FieldVisitStepper({
                   <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
                     Step {index + 1}
                     {step.recommended ? (
-                      <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[9px] tracking-[0.24em] text-cyan-100">
+                      <span className="rounded-full border border-qo-accent/30 bg-qo-accent/10 px-2 py-0.5 text-[9px] tracking-[0.24em] text-qo-accent">
                         Next
                       </span>
                     ) : null}
@@ -82,7 +82,7 @@ export function FieldVisitStepper({
                   <span className="mt-1 block text-xs leading-5 text-text-secondary">{step.description}</span>
                 </span>
                 {isActive ? (
-                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-cyan-200" aria-hidden />
+                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-qo-accent" aria-hidden />
                 ) : null}
               </button>
             </li>

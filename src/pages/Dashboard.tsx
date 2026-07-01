@@ -127,7 +127,7 @@ function ReadOnlyDashboard() {
         subtitle="System health overview"
       />
       <OperationalStatusCard />
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+      <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-8 text-center">
         <p className="text-sm text-text-secondary">
           You have read-only access. Contact your administrator for additional permissions.
         </p>
@@ -144,12 +144,12 @@ export function Dashboard() {
       <div className="mx-auto max-w-[1920px] space-y-6">
         <div className="animate-pulse space-y-6">
           <div className="space-y-2">
-            <div className="h-8 w-64 rounded bg-white/[0.06]" />
-            <div className="h-4 w-96 rounded bg-white/[0.04]" />
+            <div className="h-8 w-64 rounded bg-black/[0.04]" />
+            <div className="h-4 w-96 rounded bg-black/[0.03]" />
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 rounded-xl bg-white/[0.04]" />
+              <div key={i} className="h-48 rounded-xl bg-black/[0.03]" />
             ))}
           </div>
         </div>

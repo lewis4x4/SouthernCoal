@@ -13,7 +13,7 @@ function toneClasses(tone: FieldVisitUrgencyFlag['tone']) {
     case 'warning':
       return 'border-amber-500/25 bg-amber-500/10 text-amber-100';
     default:
-      return 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100';
+      return 'border-qo-accent/20 bg-qo-accent/10 text-qo-accent';
   }
 }
 

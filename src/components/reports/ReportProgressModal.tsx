@@ -35,8 +35,8 @@ export function ReportProgressModal({
   }, [onClose, isInProgress]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-crystal-base/95 backdrop-blur-xl p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-md rounded-2xl border border-black/[0.08] bg-crystal-base/95  p-8 shadow-2xl">
         {/* Close (disabled while in progress) */}
         <button
           onClick={onClose}
@@ -44,7 +44,7 @@ export function ReportProgressModal({
           className={`absolute top-4 right-4 rounded-lg p-1.5 transition-colors ${
             isInProgress
               ? 'text-text-muted/30 cursor-not-allowed'
-              : 'text-text-muted hover:bg-white/[0.06] hover:text-text-primary'
+              : 'text-text-muted hover:bg-black/[0.05] hover:text-text-primary'
           }`}
         >
           <X className="h-4 w-4" />
@@ -65,7 +65,7 @@ export function ReportProgressModal({
             </div>
           ) : (
             <div className="h-16 w-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <AlertCircle className="h-8 w-8 text-red-400" />
+              <AlertCircle className="h-8 w-8 text-qo-risk" />
             </div>
           )}
 
@@ -83,7 +83,7 @@ export function ReportProgressModal({
           {/* Data Quality Flags */}
           {status === 'complete' && flagCount > 0 && (
             <div className="w-full rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-medium">
+              <div className="flex items-center gap-2 text-qo-ochre-text text-xs font-medium">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {flagCount} data quality flag{flagCount !== 1 ? 's' : ''}
               </div>
@@ -96,7 +96,7 @@ export function ReportProgressModal({
           {/* Error */}
           {status === 'failed' && errorMessage && (
             <div className="w-full rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-left">
-              <p className="text-xs text-red-400">{errorMessage}</p>
+              <p className="text-xs text-qo-risk">{errorMessage}</p>
             </div>
           )}
 
@@ -116,10 +116,10 @@ export function ReportProgressModal({
               disabled={isInProgress}
               className={`flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                 isInProgress
-                  ? 'flex-1 bg-white/[0.02] text-text-muted/50 border border-white/[0.04] cursor-not-allowed'
+                  ? 'flex-1 bg-qo-nested text-text-muted/50 border border-black/[0.05] cursor-not-allowed'
                   : status === 'complete' && downloadUrl
-                    ? 'bg-white/[0.04] text-text-muted hover:bg-white/[0.06] border border-white/[0.06]'
-                    : 'flex-1 bg-white/[0.04] text-text-secondary hover:bg-white/[0.06] border border-white/[0.06]'
+                    ? 'bg-black/[0.03] text-text-muted hover:bg-black/[0.05] border border-black/[0.06]'
+                    : 'flex-1 bg-black/[0.03] text-text-secondary hover:bg-black/[0.05] border border-black/[0.06]'
               }`}
             >
               {isInProgress ? 'Generating...' : 'Close'}

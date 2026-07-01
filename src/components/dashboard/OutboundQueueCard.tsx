@@ -10,8 +10,8 @@ export function OutboundQueueCard() {
     return (
       <SpotlightCard className="p-6">
         <div className="animate-pulse space-y-3">
-          <div className="h-5 w-32 rounded bg-white/[0.06]" />
-          <div className="h-16 rounded-lg bg-white/[0.04]" />
+          <div className="h-5 w-32 rounded bg-black/[0.04]" />
+          <div className="h-16 rounded-lg bg-black/[0.03]" />
         </div>
       </SpotlightCard>
     );
@@ -26,18 +26,18 @@ export function OutboundQueueCard() {
     <SpotlightCard className="p-6">
       <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-secondary">
         {hasPending ? (
-          <WifiOff className="h-4 w-4 text-amber-400" />
+          <WifiOff className="h-4 w-4 text-qo-ochre-text" />
         ) : (
-          <Wifi className="h-4 w-4 text-emerald-400" />
+          <Wifi className="h-4 w-4 text-qo-sage-text" />
         )}
         Sync Status
       </h3>
 
-      <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested p-4">
         <div>
           <p className={cn(
             'font-mono text-2xl font-bold',
-            hasPending ? 'text-amber-400' : 'text-emerald-400',
+            hasPending ? 'text-qo-ochre-text' : 'text-qo-sage-text',
           )}>
             {outboundPendingCount}
           </p>

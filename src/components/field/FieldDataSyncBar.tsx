@@ -148,7 +148,7 @@ export function FieldDataSyncBar({
             <button
               type="button"
               onClick={onDismissQueueFlushDiagnostic}
-              className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-white/[0.1]"
+              className="shrink-0 rounded-lg border border-black/[0.12] bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-white/[0.1]"
             >
               Dismiss
             </button>
@@ -192,7 +192,7 @@ export function FieldDataSyncBar({
               <button
                 type="button"
                 onClick={onDismissEvidenceFailures}
-                className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
+                className="rounded-lg border border-black/[0.12] bg-black/[0.04] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.1]"
               >
                 Dismiss
               </button>
@@ -202,7 +202,7 @@ export function FieldDataSyncBar({
       ) : null}
 
       <div
-        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm"
         aria-busy={busy}
       >
       <div className="flex flex-wrap items-center gap-3 text-text-secondary">
@@ -237,7 +237,7 @@ export function FieldDataSyncBar({
         aria-label="Refresh field data from server"
         aria-busy={busy}
         onClick={() => void handleRefresh()}
-        className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-black/[0.06] disabled:opacity-50"
       >
         <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${busy ? 'animate-spin' : ''}`} aria-hidden />
         Refresh

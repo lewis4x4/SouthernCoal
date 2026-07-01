@@ -21,18 +21,18 @@ import {
 // Badge Colors
 // ---------------------------------------------------------------------------
 const PRIORITY_COLORS: Record<CAPriority, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+  critical: 'bg-red-500/10 text-qo-risk border-red-500/20',
   high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  medium: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
 
 const STATUS_COLORS: Record<CAStatus, string> = {
-  open: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  in_progress: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  open: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
+  in_progress: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
   completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   verified: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  closed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  closed: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 // ---------------------------------------------------------------------------
@@ -81,14 +81,14 @@ export function CorrectiveActionList({ actions, loading }: Props) {
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
               filters.status === s
                 ? STATUS_COLORS[s]
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15]'
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15]'
             )}
           >
             {CA_STATUS_LABELS[s]}
           </button>
         ))}
 
-        <div className="h-4 border-l border-white/[0.08] mx-1" />
+        <div className="h-4 border-l border-black/[0.08] mx-1" />
 
         <span className="text-xs text-text-muted mr-1">Priority:</span>
         {CA_PRIORITIES.map((p) => (
@@ -99,14 +99,14 @@ export function CorrectiveActionList({ actions, loading }: Props) {
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
               filters.priority === p
                 ? PRIORITY_COLORS[p]
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15]'
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15]'
             )}
           >
             {CA_PRIORITY_LABELS[p]}
           </button>
         ))}
 
-        <div className="h-4 border-l border-white/[0.08] mx-1" />
+        <div className="h-4 border-l border-black/[0.08] mx-1" />
 
         <button
           onClick={() =>
@@ -115,8 +115,8 @@ export function CorrectiveActionList({ actions, loading }: Props) {
           className={cn(
             'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors flex items-center gap-1',
             filters.overdue_only
-              ? 'bg-red-500/10 text-red-400 border-red-500/20'
-              : 'border-white/[0.08] text-text-muted hover:border-white/[0.15]'
+              ? 'bg-red-500/10 text-qo-risk border-red-500/20'
+              : 'border-black/[0.08] text-text-muted hover:border-white/[0.15]'
           )}
         >
           <AlertTriangle className="h-3 w-3" />
@@ -125,10 +125,10 @@ export function CorrectiveActionList({ actions, loading }: Props) {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+      <div className="rounded-xl border border-black/[0.06] bg-qo-nested  overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.06] text-left text-[11px] text-text-muted uppercase tracking-wider">
+            <tr className="border-b border-black/[0.06] text-left text-[11px] text-text-muted uppercase tracking-wider">
               <th className="px-4 py-3 font-medium">CA #</th>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Source</th>
@@ -164,7 +164,7 @@ export function CorrectiveActionList({ actions, loading }: Props) {
                     key={ca.id}
                     onClick={() => navigate(`/corrective-actions/${ca.id}`)}
                     className={cn(
-                      'border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] cursor-pointer',
+                      'border-b border-black/[0.05] transition-colors hover:bg-qo-nested cursor-pointer',
                       overdue && 'bg-red-500/[0.03] border-l-2 border-l-red-500/40'
                     )}
                   >
@@ -211,7 +211,7 @@ export function CorrectiveActionList({ actions, loading }: Props) {
                       {ca.due_date ? (
                         <span
                           className={cn(
-                            overdue ? 'text-red-400' : 'text-text-secondary'
+                            overdue ? 'text-qo-risk' : 'text-text-secondary'
                           )}
                         >
                           {ca.due_date}
@@ -222,12 +222,12 @@ export function CorrectiveActionList({ actions, loading }: Props) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       {overdue ? (
-                        <span className="text-red-400 text-sm font-medium flex items-center justify-end gap-1">
+                        <span className="text-qo-risk text-sm font-medium flex items-center justify-end gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           {daysOverdueCount}d overdue
                         </span>
                       ) : ca.status === 'closed' ? (
-                        <span className="text-emerald-400 text-sm flex items-center justify-end gap-1">
+                        <span className="text-qo-sage-text text-sm flex items-center justify-end gap-1">
                           <CheckCircle className="h-3 w-3" />
                           {daysOpen}d
                         </span>

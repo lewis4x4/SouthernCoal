@@ -145,8 +145,8 @@ export function EvidenceCaptureUpload({
   if (uploadedPath) {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-        <FileCheck className="h-4 w-4 text-emerald-400" />
-        <span className="text-xs text-emerald-400">Evidence uploaded</span>
+        <FileCheck className="h-4 w-4 text-qo-sage-text" />
+        <span className="text-xs text-qo-sage-text">Evidence uploaded</span>
         <button
           type="button"
           onClick={() => {
@@ -179,7 +179,7 @@ export function EvidenceCaptureUpload({
         'flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all',
         isDragging
           ? 'border-blue-400/40 bg-blue-500/5'
-          : 'border-white/[0.1] bg-white/[0.01] hover:border-white/[0.15] hover:bg-white/[0.03]',
+          : 'border-white/[0.1] bg-white hover:border-white/[0.15] hover:bg-qo-nested',
         (uploading || disabled) && 'pointer-events-none opacity-60',
       )}
     >

@@ -4,31 +4,59 @@
 
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   body {
     min-height: 100vh;
-    background: linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%);
+    background: #eae7e0;
+    color: #211f1c;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
-  /* SVG noise overlay — Living Crystal texture */
-  #root::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: url('/noise.svg');
-    background-repeat: repeat;
-    opacity: 0.02;
-    mix-blend-mode: overlay;
+  ::selection {
+    background: rgba(181, 84, 59, 0.18);
+    color: #211f1c;
   }
 
   #root {
     position: relative;
     z-index: 1;
     min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.13);
+    border-radius: 8px;
+    border: 3px solid #eae7e0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.22);
+  }
+}
+
+@layer components {
+  .qo-card {
+    @apply rounded-qo border border-black/[0.08] bg-qo-card;
+  }
+
+  .qo-card-nested {
+    @apply rounded-qo-sm border border-black/[0.08] bg-qo-nested;
+  }
+
+  .qo-input {
+    @apply rounded-qo-sm border border-black/[0.08] bg-white px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-qo-accent/40;
   }
 }
 

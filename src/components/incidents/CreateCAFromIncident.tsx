@@ -64,7 +64,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
     return (
       <button
         onClick={() => navigate(`/corrective-actions/${incident.corrective_action_id}`)}
-        className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+        className="flex items-center gap-1.5 rounded-lg bg-qo-accent/10 border border-qo-accent/20 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/20 transition-colors"
       >
         <ExternalLink size={14} />
         View Linked CA
@@ -76,7 +76,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
     return (
       <button
         onClick={() => setShowForm(true)}
-        className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+        className="flex items-center gap-1.5 rounded-lg bg-qo-accent/10 border border-qo-accent/20 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/20 transition-colors"
       >
         <ClipboardCheck size={14} />
         Create Corrective Action
@@ -85,7 +85,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
   }
 
   return (
-    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.03] p-4 space-y-3">
+    <div className="rounded-xl border border-qo-accent/20 bg-qo-accent/[0.03] p-4 space-y-3">
       <h4 className="text-sm font-semibold text-text-primary">Create Corrective Action</h4>
       <p className="text-xs text-text-muted">
         A CA will be created linked to this incident. Leave fields blank to use defaults from the incident.
@@ -100,7 +100,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={`Incident: ${incident.title}`}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+          className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
         />
       </div>
 
@@ -111,7 +111,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+          className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
           aria-label="CA priority"
         >
           <option value="">Use incident severity ({incident.severity})</option>
@@ -126,7 +126,7 @@ export function CreateCAFromIncident({ incident, onCreated }: CreateCAFromIncide
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="flex items-center gap-1.5 rounded-lg bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-qo-accent/15 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/25 disabled:opacity-50 transition-colors"
         >
           {creating ? 'Creating...' : 'Create CA'}
         </button>

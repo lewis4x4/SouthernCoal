@@ -13,7 +13,7 @@ export function SearchModeToggle() {
   const setSearchMode = useSearchStore((s) => s.setSearchMode);
 
   return (
-    <div className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] p-0.5 backdrop-blur-sm">
+    <div className="inline-flex items-center rounded-full border border-black/[0.08] bg-qo-nested p-0.5 ">
       {MODES.map(({ key, label, icon: Icon }) => (
         <button
           key={key}

@@ -50,7 +50,7 @@ export function GlassBadge({ variant, children, className }: GlassBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border backdrop-blur-sm transition-all duration-300',
+        'inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border  transition-all duration-300',
         VARIANT_STYLES[variant],
         className,
       )}

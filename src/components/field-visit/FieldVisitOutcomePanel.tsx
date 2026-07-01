@@ -34,10 +34,10 @@ export function FieldVisitOutcomePanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2.5">
-            <Icon className="h-5 w-5 text-cyan-200" aria-hidden />
+          <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-2.5">
+            <Icon className="h-5 w-5 text-qo-accent" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">Outcome details</p>

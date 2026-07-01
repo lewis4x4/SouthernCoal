@@ -21,8 +21,8 @@ function ChannelToggle({
       className={cn(
         'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors',
         enabled
-          ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
-          : 'bg-white/[0.02] border-white/[0.08] text-text-muted hover:bg-white/[0.05]',
+          ? 'bg-qo-accent/15 border-qo-accent/30 text-qo-accent'
+          : 'bg-qo-nested border-black/[0.08] text-text-muted hover:bg-black/[0.04]',
       )}
       title={`${enabled ? 'Disable' : 'Enable'} ${label}`}
       aria-label={`${enabled ? 'Disable' : 'Enable'} ${label}`}
@@ -77,7 +77,7 @@ export function NotificationPreferencesPage() {
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="inline-flex rounded-xl bg-amber-500/10 p-2.5">
-          <Bell className="h-6 w-6 text-amber-400" />
+          <Bell className="h-6 w-6 text-qo-ochre-text" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -90,7 +90,7 @@ export function NotificationPreferencesPage() {
       </div>
 
       {/* Channel legend */}
-      <div className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+      <div className="flex items-center gap-4 rounded-xl border border-black/[0.08] bg-qo-nested p-4">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
           <Bell size={14} /> In-App
         </div>
@@ -104,8 +104,8 @@ export function NotificationPreferencesPage() {
 
       {/* Preference groups */}
       {groups.map((group) => (
-        <div key={group.label} className="rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-          <div className="border-b border-white/[0.06] px-5 py-3">
+        <div key={group.label} className="rounded-2xl border border-black/[0.08] bg-qo-nested">
+          <div className="border-b border-black/[0.06] px-5 py-3">
             <h3 className="text-sm font-semibold text-text-primary">{group.label}</h3>
           </div>
           <div className="divide-y divide-white/[0.04]">

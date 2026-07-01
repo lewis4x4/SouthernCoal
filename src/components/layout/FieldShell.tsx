@@ -59,12 +59,12 @@ export function FieldShell({ children }: FieldShellProps) {
   })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="min-h-screen bg-background text-text-primary">
-      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-crystal-surface/95 backdrop-blur-xl">
+    <div className="min-h-screen bg-qo-canvas text-text-primary">
+      <header className="sticky top-0 z-50 border-b border-black/[0.08] bg-white">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-5">
           <Link
             to="/field/route"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-bold text-white"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[9px] bg-qo-accent font-mono text-sm font-bold text-[#F4EFE6]"
             aria-label="Open field home"
           >
             SC
@@ -79,11 +79,11 @@ export function FieldShell({ children }: FieldShellProps) {
             className={cn(
               'inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium',
               online
-                ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
-                : 'border-amber-500/25 bg-amber-500/10 text-amber-100',
+                ? 'border-qo-sage/30 bg-qo-sage/10 text-qo-sage-text'
+                : 'border-qo-ochre/30 bg-qo-ochre/10 text-qo-ochre-text',
             )}
           >
-            <span className={cn('h-2.5 w-2.5 rounded-full', online ? 'bg-emerald-300' : 'bg-amber-300')} />
+            <span className={cn('h-2.5 w-2.5 rounded-full', online ? 'bg-qo-sage' : 'bg-qo-ochre')} />
             {online ? 'Online' : 'Offline'}
           </div>
 
@@ -96,10 +96,10 @@ export function FieldShell({ children }: FieldShellProps) {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    'inline-flex min-h-11 items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition-colors',
+                    'inline-flex min-h-11 items-center gap-2 rounded-qo-sm px-3 py-2 text-sm font-medium transition-colors',
                     active
-                      ? 'bg-cyan-500/15 text-cyan-100'
-                      : 'bg-white/[0.03] text-text-secondary hover:bg-white/[0.06] hover:text-text-primary',
+                      ? 'bg-qo-accent/10 text-qo-accent'
+                      : 'bg-qo-nested text-text-secondary hover:bg-black/[0.04] hover:text-text-primary',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -115,9 +115,8 @@ export function FieldShell({ children }: FieldShellProps) {
         {children}
       </main>
 
-      {/* Mobile: primary field tabs + entry to full app nav */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-crystal-surface/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-black/[0.08] bg-white pb-[env(safe-area-inset-bottom,0px)] md:hidden"
         aria-label="Field mobile navigation"
       >
         <div className="mx-auto flex max-w-6xl">
@@ -130,10 +129,10 @@ export function FieldShell({ children }: FieldShellProps) {
                 to={item.href}
                 className={cn(
                   'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold transition-colors',
-                  active ? 'text-cyan-200' : 'text-text-muted',
+                  active ? 'text-qo-accent' : 'text-text-muted',
                 )}
               >
-                <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-cyan-300' : 'text-text-secondary')} />
+                <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-qo-accent' : 'text-text-secondary')} />
                 <span className="truncate">{item.shortLabel}</span>
               </Link>
             );
@@ -143,11 +142,11 @@ export function FieldShell({ children }: FieldShellProps) {
             onClick={() => setMoreOpen(true)}
             className={cn(
               'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold transition-colors',
-              moreOpen ? 'text-cyan-200' : 'text-text-muted',
+              moreOpen ? 'text-qo-accent' : 'text-text-muted',
             )}
             aria-label="Open main app menu"
           >
-            <LayoutGrid className={cn('h-5 w-5 shrink-0', moreOpen ? 'text-cyan-300' : 'text-text-secondary')} />
+            <LayoutGrid className={cn('h-5 w-5 shrink-0', moreOpen ? 'text-qo-accent' : 'text-text-secondary')} />
             <span>More</span>
           </button>
         </div>
@@ -157,20 +156,20 @@ export function FieldShell({ children }: FieldShellProps) {
         <div className="fixed inset-0 z-[60] md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/55"
+            className="absolute inset-0 bg-black/40"
             onClick={() => setMoreOpen(false)}
             aria-label="Close main app menu"
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[min(85vh,32rem)] rounded-t-3xl border border-white/[0.08] border-b-0 bg-crystal-surface/98 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <div className="absolute inset-x-0 bottom-0 max-h-[min(85vh,32rem)] rounded-t-3xl border border-black/[0.08] border-b-0 bg-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)]">
+            <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
               <div>
-                <div className="text-base font-semibold text-text-primary">SCC Monitor</div>
+                <div className="text-base font-semibold text-text-primary">Site Command</div>
                 <div className="text-xs text-text-muted">All pages for your role</div>
               </div>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-text-secondary"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-qo-sm border border-black/[0.08] bg-qo-nested text-text-secondary"
                 aria-label="Close main app menu"
               >
                 <X className="h-5 w-5" />
@@ -195,16 +194,16 @@ export function FieldShell({ children }: FieldShellProps) {
                           to={item.href}
                           onClick={() => setMoreOpen(false)}
                           className={cn(
-                            'flex min-h-12 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors',
+                            'flex min-h-12 items-center gap-3 rounded-qo-sm px-4 py-3 text-sm font-medium transition-colors',
                             isActive
-                              ? group.activeColor
-                              : cn('bg-white/[0.03] text-text-secondary hover:bg-white/[0.06] hover:text-text-primary'),
+                              ? 'bg-qo-accent/10 text-qo-accent'
+                              : 'bg-qo-nested text-text-secondary hover:bg-black/[0.04] hover:text-text-primary',
                           )}
                         >
                           <Icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.label}</span>
                           {item.href === '/compliance/failure-to-sample' && ftsBadge ? (
-                            <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-400">
+                            <span className="inline-flex items-center rounded-full border border-qo-risk/30 bg-qo-risk/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-qo-risk">
                               {ftsBadge}
                             </span>
                           ) : null}
@@ -225,7 +224,7 @@ export function FieldShell({ children }: FieldShellProps) {
                   setMoreOpen(false);
                   void signOut();
                 }}
-                className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                className="flex min-h-12 w-full items-center justify-center rounded-qo-sm border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.04] hover:text-text-primary"
               >
                 Sign out
               </button>

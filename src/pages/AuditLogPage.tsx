@@ -18,22 +18,22 @@ const ACTION_COLORS: Record<string, string> = {
   bulk_process: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_process_permits: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_process_lab_data: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  bulk_retry: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  role_change: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  user_deactivated: 'bg-red-500/10 text-red-400 border-red-500/20',
-  user_reactivated: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  correction_requested: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  correction_approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  correction_rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+  bulk_retry: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  role_change: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
+  user_deactivated: 'bg-red-500/10 text-qo-risk border-red-500/20',
+  user_reactivated: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  correction_requested: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  correction_approved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  correction_rejected: 'bg-red-500/10 text-qo-risk border-red-500/20',
   roadmap_status_change: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  obligation_generation: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  obligation_generation: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
   // Field / WV route (client audit)
-  field_sync_manual_refresh: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  field_visit_completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  field_visit_completion_queued: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  field_outbound_queue_flushed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  field_outbound_queue_blocked: 'bg-red-500/10 text-red-400 border-red-500/20',
-  field_outbound_conflict_hold: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  field_sync_manual_refresh: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
+  field_visit_completed: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  field_visit_completion_queued: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  field_outbound_queue_flushed: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  field_outbound_queue_blocked: 'bg-red-500/10 text-qo-risk border-red-500/20',
+  field_outbound_conflict_hold: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
 };
 
 /** Short labels for dense table cells and filter dropdowns (raw action still the filter value). */
@@ -46,7 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
   field_outbound_conflict_hold: 'Field: conflict hold',
 };
 
-const DEFAULT_ACTION_COLOR = 'bg-white/5 text-text-secondary border-white/10';
+const DEFAULT_ACTION_COLOR = 'bg-qo-nested text-text-secondary border-black/[0.08]';
 
 function formatActionLabel(action: string) {
   return ACTION_LABELS[action] ?? action;
@@ -197,7 +197,7 @@ export function AuditLogPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+          className="flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
         >
           <Download size={12} />
           Export CSV
@@ -205,25 +205,25 @@ export function AuditLogPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-black/[0.06] bg-qo-nested px-5 py-3">
         <input
           type="date"
           value={filters.dateFrom ?? ''}
           onChange={(e) => setFilters(f => ({ ...f, dateFrom: e.target.value || null }))}
-          className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
           placeholder="From"
         />
         <input
           type="date"
           value={filters.dateTo ?? ''}
           onChange={(e) => setFilters(f => ({ ...f, dateTo: e.target.value || null }))}
-          className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
           placeholder="To"
         />
         <select
           value={filters.userId ?? ''}
           onChange={(e) => setFilters(f => ({ ...f, userId: e.target.value || null }))}
-          className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
         >
           <option value="">All Users</option>
           {Array.from(userMap.entries()).map(([id, name]) => (
@@ -233,7 +233,7 @@ export function AuditLogPage() {
         <select
           value={filters.module ?? ''}
           onChange={(e) => setFilters(f => ({ ...f, module: e.target.value || null }))}
-          className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
         >
           <option value="">All Modules</option>
           {modules.map(m => <option key={m} value={m}>{m}</option>)}
@@ -241,7 +241,7 @@ export function AuditLogPage() {
         <select
           value={filters.action ?? ''}
           onChange={(e) => setFilters(f => ({ ...f, action: e.target.value || null }))}
-          className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-1.5 text-sm text-text-secondary outline-none"
         >
           <option value="">All Actions</option>
           {actions.map(a => <option key={a} value={a}>{formatActionLabel(a)}</option>)}
@@ -262,9 +262,9 @@ export function AuditLogPage() {
       ) : null}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+      <div className="overflow-hidden rounded-xl border border-black/[0.06]">
         {/* Header Row */}
-        <div className="grid grid-cols-[180px_150px_160px_120px_120px_1fr] gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs font-medium uppercase text-text-muted">
+        <div className="grid grid-cols-[180px_150px_160px_120px_120px_1fr] gap-3 border-b border-black/[0.06] bg-qo-nested px-4 py-3 text-xs font-medium uppercase text-text-muted">
           <div>Timestamp</div>
           <div>User</div>
           <div>Action</div>
@@ -281,7 +281,7 @@ export function AuditLogPage() {
         >
           {loading && entries.length === 0 ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
             </div>
           ) : entries.length === 0 ? (
             <div className="py-12 text-center text-sm text-text-muted">
@@ -306,7 +306,7 @@ export function AuditLogPage() {
                   >
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                      className="grid w-full grid-cols-[180px_150px_160px_120px_120px_1fr] items-center gap-3 border-b border-white/[0.04] px-4 py-3 text-left text-sm transition-colors hover:bg-white/[0.03]"
+                      className="grid w-full grid-cols-[180px_150px_160px_120px_120px_1fr] items-center gap-3 border-b border-black/[0.05] px-4 py-3 text-left text-sm transition-colors hover:bg-qo-nested"
                     >
                       <div className="font-mono text-xs text-text-muted">
                         {new Date(entry.created_at).toLocaleString()}
@@ -353,7 +353,7 @@ export function AuditLogPage() {
 
           {loading && entries.length > 0 && (
             <div className="flex items-center justify-center py-4">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
             </div>
           )}
         </div>
@@ -386,7 +386,7 @@ function ExpandedDetail({
   }
 
   return (
-    <div className="border-b border-white/[0.06] bg-white/[0.02] px-6 py-4">
+    <div className="border-b border-black/[0.06] bg-qo-nested px-6 py-4">
       <div className="grid gap-6 text-sm lg:grid-cols-2">
         {/* Metadata */}
         <div className="space-y-3">
@@ -443,7 +443,7 @@ function ExpandedDetail({
               <div className="mb-2 text-xs font-medium uppercase text-text-muted">Changes</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="mb-1 text-[10px] font-medium text-red-400/60">Before</div>
+                  <div className="mb-1 text-[10px] font-medium text-qo-risk/60">Before</div>
                   <div className="rounded-lg border border-red-500/10 bg-red-500/5 p-2 font-mono text-[11px] text-text-secondary">
                     {hasOldValues
                       ? Object.entries(entry.old_values!).map(([k, v]) => (
@@ -454,7 +454,7 @@ function ExpandedDetail({
                   </div>
                 </div>
                 <div>
-                  <div className="mb-1 text-[10px] font-medium text-emerald-400/60">After</div>
+                  <div className="mb-1 text-[10px] font-medium text-qo-sage-text/60">After</div>
                   <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/5 p-2 font-mono text-[11px] text-text-secondary">
                     {hasNewValues
                       ? Object.entries(entry.new_values!).map(([k, v]) => (

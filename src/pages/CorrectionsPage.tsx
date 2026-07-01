@@ -29,10 +29,10 @@ export function CorrectionsPage() {
   const filtered = corrections.filter(c => filter === 'all' || c.status === filter);
 
   const statusColors: Record<string, string> = {
-    draft: 'bg-white/5 text-text-muted border-white/10',
-    pending_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+    draft: 'bg-qo-nested text-text-muted border-black/[0.08]',
+    pending_review: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+    approved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+    rejected: 'bg-red-500/10 text-qo-risk border-red-500/20',
   };
 
   return (
@@ -41,7 +41,7 @@ export function CorrectionsPage() {
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="inline-flex rounded-xl bg-amber-500/10 p-2.5">
-            <FileEdit className="h-5 w-5 text-amber-400" />
+            <FileEdit className="h-5 w-5 text-qo-ochre-text" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -55,7 +55,7 @@ export function CorrectionsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3">
+      <div className="flex items-center gap-1 rounded-xl border border-black/[0.06] bg-qo-nested px-5 py-3">
         {(['pending_review', 'approved', 'rejected', 'all'] as const).map(f => (
           <button
             key={f}
@@ -63,13 +63,13 @@ export function CorrectionsPage() {
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
               filter === f
-                ? 'bg-white/10 text-white shadow-lg shadow-white/5'
-                : 'text-text-muted hover:bg-white/[0.05] hover:text-text-secondary',
+                ? 'bg-black/[0.06] text-text-primary shadow-lg shadow-white/5'
+                : 'text-text-muted hover:bg-black/[0.04] hover:text-text-secondary',
             )}
           >
             {f === 'all' ? 'All' : STATUS_LABELS[f]}
             {f === 'pending_review' && (
-              <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
+              <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-qo-ochre-text">
                 {corrections.filter(c => c.status === 'pending_review').length}
               </span>
             )}
@@ -81,10 +81,10 @@ export function CorrectionsPage() {
       <div className="space-y-3">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center text-sm text-text-muted">
+          <div className="rounded-xl border border-black/[0.06] bg-qo-nested py-12 text-center text-sm text-text-muted">
             {filter === 'pending_review'
               ? 'No corrections pending review.'
               : 'No corrections match the current filter.'}
@@ -96,7 +96,7 @@ export function CorrectionsPage() {
             return (
               <div
                 key={correction.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
+                className="rounded-xl border border-black/[0.06] bg-qo-nested p-5"
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
@@ -107,7 +107,7 @@ export function CorrectionsPage() {
                       )}>
                         {STATUS_LABELS[correction.status]}
                       </span>
-                      <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                      <span className="rounded border border-black/[0.08] bg-qo-nested px-2 py-0.5 text-[10px] font-medium text-text-secondary">
                         {ENTITY_TYPE_LABELS[correction.entity_type]}
                       </span>
                     </div>
@@ -118,13 +118,13 @@ export function CorrectionsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="mb-1 text-[10px] font-medium text-red-400/60">Original</div>
+                        <div className="mb-1 text-[10px] font-medium text-qo-risk/60">Original</div>
                         <div className="rounded-lg border border-red-500/10 bg-red-500/5 p-2 font-mono text-xs text-text-secondary">
                           {JSON.stringify(correction.original_value)}
                         </div>
                       </div>
                       <div>
-                        <div className="mb-1 text-[10px] font-medium text-emerald-400/60">Proposed</div>
+                        <div className="mb-1 text-[10px] font-medium text-qo-sage-text/60">Proposed</div>
                         <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/5 p-2 font-mono text-xs text-text-secondary">
                           {JSON.stringify(correction.proposed_value)}
                         </div>
@@ -150,7 +150,7 @@ export function CorrectionsPage() {
                     </div>
 
                     {correction.review_comment && (
-                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-text-secondary">
+                      <div className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2 text-xs text-text-secondary">
                         Review comment: {correction.review_comment}
                       </div>
                     )}
@@ -160,7 +160,7 @@ export function CorrectionsPage() {
                   {correction.status === 'pending_review' && (
                     <div className="ml-4 shrink-0 space-y-2">
                       {isSelf ? (
-                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[10px] text-amber-400">
+                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[10px] text-qo-ochre-text">
                           You cannot review<br />your own request.
                         </div>
                       ) : (
@@ -169,13 +169,13 @@ export function CorrectionsPage() {
                             value={reviewComment[correction.id] ?? ''}
                             onChange={e => setReviewComment(prev => ({ ...prev, [correction.id]: e.target.value }))}
                             placeholder="Comment (required for rejection)"
-                            className="w-48 rounded-lg border border-white/[0.08] bg-crystal-surface px-2.5 py-1.5 text-xs text-text-secondary outline-none placeholder:text-text-muted"
+                            className="w-48 rounded-lg border border-black/[0.08] bg-crystal-surface px-2.5 py-1.5 text-xs text-text-secondary outline-none placeholder:text-text-muted"
                             rows={2}
                           />
                           <div className="flex gap-2">
                             <button
                               onClick={() => reviewCorrection(correction.id, 'approved', reviewComment[correction.id])}
-                              className="flex items-center gap-1 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                              className="flex items-center gap-1 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-qo-sage-text transition-colors hover:bg-emerald-500/20"
                             >
                               <Check size={12} /> Approve
                             </button>
@@ -187,7 +187,7 @@ export function CorrectionsPage() {
                                 }
                                 reviewCorrection(correction.id, 'rejected', reviewComment[correction.id]);
                               }}
-                              className="flex items-center gap-1 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
+                              className="flex items-center gap-1 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-qo-risk transition-colors hover:bg-red-500/20"
                             >
                               <X size={12} /> Reject
                             </button>

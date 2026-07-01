@@ -25,10 +25,10 @@ import type { DmrSubmissionWithPermit, DmrValidationResult } from '@/hooks/useDm
 // ─── Constants ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<DmrSubmissionStatus, { label: string; bg: string; text: string; border: string }> = {
   draft:              { label: 'Draft',       bg: 'bg-slate-500/10',   text: 'text-slate-400',   border: 'border-slate-500/20' },
-  pending_submission: { label: 'Pending',     bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20' },
+  pending_submission: { label: 'Pending',     bg: 'bg-amber-500/10',   text: 'text-qo-ochre-text',   border: 'border-amber-500/20' },
   submitted:          { label: 'Submitted',   bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/20' },
-  accepted:           { label: 'Accepted',    bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-  rejected:           { label: 'Rejected',    bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
+  accepted:           { label: 'Accepted',    bg: 'bg-emerald-500/10', text: 'text-qo-sage-text', border: 'border-emerald-500/20' },
+  rejected:           { label: 'Rejected',    bg: 'bg-red-500/10',     text: 'text-qo-risk',     border: 'border-red-500/20' },
   amended:            { label: 'Amended',     bg: 'bg-purple-500/10',  text: 'text-purple-400',  border: 'border-purple-500/20' },
 };
 
@@ -248,7 +248,7 @@ export function DmrDetailPage() {
               {submission.permit_number ?? 'Unknown Permit'}
               {submission.federal_npdes_id &&
               submission.federal_npdes_id !== submission.permit_number?.toUpperCase() ? (
-                <span className="ml-2 font-mono text-base font-normal text-cyan-400">
+                <span className="ml-2 font-mono text-base font-normal text-qo-accent">
                   → {submission.federal_npdes_id}
                 </span>
               ) : null}
@@ -293,7 +293,7 @@ export function DmrDetailPage() {
           )}
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] px-3 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-black/[0.04] border border-black/[0.08] px-3 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
           >
             <Download size={14} />
             Export CSV
@@ -314,7 +314,7 @@ export function DmrDetailPage() {
                 value={confirmNumber}
                 onChange={(e) => setConfirmNumber(e.target.value)}
                 placeholder="Confirmation #"
-                className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-emerald-400/30 w-40"
+                className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-emerald-400/30 w-40"
               />
               <button
                 onClick={handleMarkSubmitted}
@@ -343,7 +343,7 @@ export function DmrDetailPage() {
             This will mark the DMR as pending submission. You&apos;ll need to upload it to the state system ({submission.submission_type}) and enter the confirmation number.
           </p>
           {missingCount > 0 && (
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-qo-ochre-text">
               ⚠ {missingCount} line items still have no measured value or NODI code
             </p>
           )}
@@ -366,7 +366,7 @@ export function DmrDetailPage() {
               type="checkbox"
               checked={submission.no_discharge}
               onChange={handleNoDischargeToggle}
-              className="rounded border-white/[0.2] bg-white/[0.05] text-blue-400 focus:ring-blue-400/30"
+              className="rounded border-white/[0.2] bg-black/[0.03] text-blue-400 focus:ring-blue-400/30"
             />
             <span className="text-sm text-text-secondary">No Discharge this period</span>
           </label>
@@ -384,19 +384,19 @@ export function DmrDetailPage() {
         )}>
           <div className="flex items-center gap-2">
             {validation.valid ? (
-              <CheckCircle2 size={16} className="text-emerald-400" />
+              <CheckCircle2 size={16} className="text-qo-sage-text" />
             ) : (
-              <AlertTriangle size={16} className="text-red-400" />
+              <AlertTriangle size={16} className="text-qo-risk" />
             )}
-            <span className={cn('text-sm font-medium', validation.valid ? 'text-emerald-400' : 'text-red-400')}>
+            <span className={cn('text-sm font-medium', validation.valid ? 'text-qo-sage-text' : 'text-qo-risk')}>
               {validation.valid ? 'Ready for submission' : 'Validation errors found'}
             </span>
           </div>
           {validation.errors.map((err, i) => (
-            <p key={i} className="text-xs text-red-400 ml-6">• {err.message}</p>
+            <p key={i} className="text-xs text-qo-risk ml-6">• {err.message}</p>
           ))}
           {validation.warnings.map((warn, i) => (
-            <p key={i} className="text-xs text-amber-400 ml-6">⚠ {warn.message}</p>
+            <p key={i} className="text-xs text-qo-ochre-text ml-6">⚠ {warn.message}</p>
           ))}
           <div className="text-xs text-text-muted ml-6">
             {validation.total_items} items · {validation.populated} populated · {validation.missing} missing · {validation.exceedances} exceedances
@@ -408,8 +408,8 @@ export function DmrDetailPage() {
       {lineItems.length > 0 && (
         <div className="flex gap-6 text-sm text-text-muted">
           <span>{lineItems.length} line items</span>
-          {exceedanceCount > 0 && <span className="text-red-400">{exceedanceCount} exceedances</span>}
-          {missingCount > 0 && <span className="text-amber-400">{missingCount} missing values</span>}
+          {exceedanceCount > 0 && <span className="text-qo-risk">{exceedanceCount} exceedances</span>}
+          {missingCount > 0 && <span className="text-qo-ochre-text">{missingCount} missing values</span>}
           <span>{outfallGroups.size} outfalls</span>
         </div>
       )}
@@ -421,7 +421,7 @@ export function DmrDetailPage() {
           <p className="text-xs text-text-muted mt-1">NODI Code: C (No Discharge)</p>
         </div>
       ) : lineItems.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-8 text-center">
+        <div className="rounded-xl border border-black/[0.06] bg-white p-8 text-center">
           <FileText size={32} className="mx-auto text-text-muted mb-3" />
           <p className="text-sm text-text-muted">No line items yet</p>
           <p className="text-xs text-text-muted mt-1">Click &quot;Auto-Populate&quot; to fill from lab data, or add manually</p>
@@ -430,7 +430,7 @@ export function DmrDetailPage() {
         <div className="space-y-4">
           {Array.from(outfallGroups.entries()).map(([outfallId, items]) => (
             <SpotlightCard key={outfallId} className="overflow-hidden">
-              <div className="px-4 py-3 border-b border-white/[0.06]">
+              <div className="px-4 py-3 border-b border-black/[0.06]">
                 <h3 className="text-sm font-semibold text-text-primary">
                   Outfall {outfallId}
                   <span className="ml-2 text-xs font-normal text-text-muted">{items.length} parameters</span>
@@ -439,7 +439,7 @@ export function DmrDetailPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/[0.04]">
+                    <tr className="border-b border-black/[0.05]">
                       <th className="px-3 py-2 text-left text-text-muted font-medium">Parameter</th>
                       <th className="px-3 py-2 text-left text-text-muted font-medium">STORET</th>
                       <th className="px-3 py-2 text-left text-text-muted font-medium">Stat Base</th>
@@ -455,7 +455,7 @@ export function DmrDetailPage() {
                       <tr
                         key={item.id}
                         className={cn(
-                          'hover:bg-white/[0.02]',
+                          'hover:bg-qo-nested',
                           item.is_exceedance && 'bg-red-500/[0.03]',
                         )}
                       >
@@ -483,13 +483,13 @@ export function DmrDetailPage() {
                               }}
                               className={cn(
                                 'w-24 rounded border px-2 py-0.5 text-right font-mono outline-none',
-                                'border-white/[0.08] bg-white/[0.03] text-text-primary focus:border-blue-400/30',
-                                item.is_exceedance && 'border-red-500/30 text-red-400',
+                                'border-black/[0.08] bg-qo-nested text-text-primary focus:border-blue-400/30',
+                                item.is_exceedance && 'border-red-500/30 text-qo-risk',
                               )}
                               aria-label={`Measured value for ${item.parameter?.name ?? 'parameter'}`}
                             />
                           ) : (
-                            <span className={cn('font-mono', item.is_exceedance && 'text-red-400 font-bold')}>
+                            <span className={cn('font-mono', item.is_exceedance && 'text-qo-risk font-bold')}>
                               {item.measured_value != null ? `${item.measured_value} ${item.measured_unit ?? ''}` : '—'}
                             </span>
                           )}
@@ -499,7 +499,7 @@ export function DmrDetailPage() {
                             <select
                               value={item.nodi_code ?? ''}
                               onChange={(e) => handleLineItemUpdate(item.id, 'nodi_code', e.target.value || null)}
-                              className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-text-primary outline-none focus:border-blue-400/30"
+                              className="rounded border border-black/[0.08] bg-qo-nested px-1 py-0.5 text-text-primary outline-none focus:border-blue-400/30"
                               aria-label={`NODI code for ${item.parameter?.name ?? 'parameter'}`}
                             >
                               <option value="">—</option>
@@ -518,16 +518,16 @@ export function DmrDetailPage() {
                         </td>
                         <td className="px-3 py-2">
                           {item.is_exceedance ? (
-                            <span className="inline-flex items-center gap-1 text-red-400 font-semibold">
+                            <span className="inline-flex items-center gap-1 text-qo-risk font-semibold">
                               <AlertTriangle size={12} />
                               {item.exceedance_pct != null ? `+${item.exceedance_pct}%` : 'EXCEED'}
                             </span>
                           ) : item.measured_value != null ? (
-                            <span className="text-emerald-400">✓</span>
+                            <span className="text-qo-sage-text">✓</span>
                           ) : item.nodi_code ? (
                             <span className="text-blue-400 font-mono">{item.nodi_code}</span>
                           ) : (
-                            <span className="text-amber-400">Missing</span>
+                            <span className="text-qo-ochre-text">Missing</span>
                           )}
                         </td>
                       </tr>
@@ -542,7 +542,7 @@ export function DmrDetailPage() {
 
       {/* Submission metadata */}
       {submission.submitted_at && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 text-xs text-text-muted space-y-1">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 text-xs text-text-muted space-y-1">
           <p>Submitted: {new Date(submission.submitted_at).toLocaleString()}</p>
           {submission.submission_confirmation && (
             <p>Confirmation: <span className="text-blue-400 font-mono">{submission.submission_confirmation}</span></p>

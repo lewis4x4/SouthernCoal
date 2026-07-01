@@ -11,17 +11,17 @@ import type { WorkflowStep, CAStatus, CAPriority } from '@/types/corrective-acti
 // ─── Color maps ────────────────────────────────────────────────────────
 const STATUS_BAR_COLORS: Record<CAStatus, string> = {
   open: 'bg-cyan-400',
-  in_progress: 'bg-amber-400',
+  in_progress: 'bg-qo-ochre',
   completed: 'bg-purple-400',
   verified: 'bg-blue-400',
-  closed: 'bg-emerald-400',
+  closed: 'bg-qo-sage',
 };
 
 const PRIORITY_BAR_COLORS: Record<CAPriority, string> = {
-  critical: 'bg-red-400',
+  critical: 'bg-qo-risk',
   high: 'bg-orange-400',
-  medium: 'bg-amber-400',
-  low: 'bg-emerald-400',
+  medium: 'bg-qo-ochre',
+  low: 'bg-qo-sage',
 };
 
 export function CAAnalyticsPage() {
@@ -81,8 +81,8 @@ export function CAAnalyticsPage() {
             <ArrowLeft size={12} />
             Back
           </Link>
-          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-            <BarChart3 className="h-6 w-6 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-qo-accent/10 border border-qo-accent/20">
+            <BarChart3 className="h-6 w-6 text-qo-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">CA Analytics</h1>
@@ -93,7 +93,7 @@ export function CAAnalyticsPage() {
         </div>
         <button
           onClick={handleExport}
-          className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
+          className="rounded-lg bg-black/[0.04] border border-black/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
         >
           Export CSV
         </button>
@@ -103,11 +103,11 @@ export function CAAnalyticsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SpotlightCard className="p-4" spotlightColor="rgba(6, 182, 212, 0.08)">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-              <Clock className="h-4 w-4 text-cyan-400" />
+            <div className="p-2 rounded-lg bg-qo-accent/10 border border-qo-accent/20">
+              <Clock className="h-4 w-4 text-qo-accent" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-cyan-400">{metrics.open}</div>
+              <div className="text-2xl font-semibold text-qo-accent">{metrics.open}</div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">Open</div>
             </div>
           </div>
@@ -116,10 +116,10 @@ export function CAAnalyticsPage() {
         <SpotlightCard className="p-4" spotlightColor="rgba(239, 68, 68, 0.08)">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <AlertTriangle className="h-4 w-4 text-qo-risk" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-red-400">{metrics.overdue}</div>
+              <div className="text-2xl font-semibold text-qo-risk">{metrics.overdue}</div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">Overdue</div>
             </div>
           </div>
@@ -140,10 +140,10 @@ export function CAAnalyticsPage() {
         <SpotlightCard className="p-4" spotlightColor="rgba(16, 185, 129, 0.08)">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-qo-sage-text" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-emerald-400">{metrics.onTimeClosureRate}%</div>
+              <div className="text-2xl font-semibold text-qo-sage-text">{metrics.onTimeClosureRate}%</div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">On Time</div>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function CAAnalyticsPage() {
       {/* Two column layout */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         {/* Monthly Trend */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Monthly Trend (12 months)</h3>
           <div className="space-y-1.5">
             {monthlyTrend.map((t) => (
@@ -166,27 +166,27 @@ export function CAAnalyticsPage() {
                     title={`${t.opened} opened`}
                   />
                   <div
-                    className="h-3 rounded bg-emerald-400/60"
+                    className="h-3 rounded bg-qo-sage/60"
                     style={{ width: `${(t.closed / maxTrend) * 100}%`, minWidth: t.closed > 0 ? '4px' : '0' }}
                     title={`${t.closed} closed`}
                   />
                 </div>
                 <span className="w-12 text-right text-text-muted">
-                  <span className="text-cyan-400">{t.opened}</span>
+                  <span className="text-qo-accent">{t.opened}</span>
                   /
-                  <span className="text-emerald-400">{t.closed}</span>
+                  <span className="text-qo-sage-text">{t.closed}</span>
                 </span>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded bg-cyan-400/60" /> Opened</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded bg-emerald-400/60" /> Closed</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded bg-qo-sage/60" /> Closed</span>
           </div>
         </div>
 
         {/* Source Breakdown */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Source Breakdown</h3>
           {sourceBreakdown.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">No data</p>
@@ -197,7 +197,7 @@ export function CAAnalyticsPage() {
                   <span className="w-32 text-xs text-text-muted truncate">
                     {SOURCE_TYPE_LABELS[s.source_type] ?? s.source_type}
                   </span>
-                  <div className="flex-1 bg-white/[0.04] rounded-full h-4 overflow-hidden">
+                  <div className="flex-1 bg-black/[0.03] rounded-full h-4 overflow-hidden">
                     <div
                       className="h-full bg-cyan-400/40 rounded-full"
                       style={{ width: `${(s.count / (sourceBreakdown[0]?.count ?? 1)) * 100}%` }}
@@ -211,13 +211,13 @@ export function CAAnalyticsPage() {
         </div>
 
         {/* Status Distribution */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Status Distribution</h3>
           <div className="space-y-2">
             {(Object.entries(statusDistribution) as [CAStatus, number][]).map(([status, count]) => (
               <div key={status} className="flex items-center gap-3">
                 <span className="w-24 text-xs text-text-muted">{CA_STATUS_LABELS[status]}</span>
-                <div className="flex-1 bg-white/[0.04] rounded-full h-4 overflow-hidden">
+                <div className="flex-1 bg-black/[0.03] rounded-full h-4 overflow-hidden">
                   <div
                     className={cn('h-full rounded-full', STATUS_BAR_COLORS[status])}
                     style={{ width: `${(count / maxStatus) * 100}%` }}
@@ -230,13 +230,13 @@ export function CAAnalyticsPage() {
         </div>
 
         {/* Priority Distribution (open only) */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Open by Priority</h3>
           <div className="space-y-2">
             {(Object.entries(priorityDistribution) as [CAPriority, number][]).map(([prio, count]) => (
               <div key={prio} className="flex items-center gap-3">
                 <span className="w-20 text-xs text-text-muted">{CA_PRIORITY_LABELS[prio]}</span>
-                <div className="flex-1 bg-white/[0.04] rounded-full h-4 overflow-hidden">
+                <div className="flex-1 bg-black/[0.03] rounded-full h-4 overflow-hidden">
                   <div
                     className={cn('h-full rounded-full', PRIORITY_BAR_COLORS[prio])}
                     style={{ width: `${(count / maxPriority) * 100}%` }}
@@ -249,7 +249,7 @@ export function CAAnalyticsPage() {
         </div>
 
         {/* Workflow Step Bottleneck */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Workflow Bottleneck (Open CAs)</h3>
           {stepBottleneck.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">No open CAs</p>
@@ -260,9 +260,9 @@ export function CAAnalyticsPage() {
                   <span className="w-28 text-xs text-text-muted truncate">
                     {WORKFLOW_STEP_SHORT_LABELS[s.step as WorkflowStep] ?? s.step}
                   </span>
-                  <div className="flex-1 bg-white/[0.04] rounded-full h-4 overflow-hidden">
+                  <div className="flex-1 bg-black/[0.03] rounded-full h-4 overflow-hidden">
                     <div
-                      className="h-full bg-amber-400/40 rounded-full"
+                      className="h-full bg-qo-ochre/40 rounded-full"
                       style={{ width: `${(s.count / (stepBottleneck[0]?.count ?? 1)) * 100}%` }}
                     />
                   </div>
@@ -277,20 +277,20 @@ export function CAAnalyticsPage() {
         </div>
 
         {/* Overdue by Assignee */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Users size={14} className="text-red-400" />
+            <Users size={14} className="text-qo-risk" />
             <h3 className="text-sm font-semibold text-text-primary">Overdue by Assignee</h3>
           </div>
           {overdueByAssignee.length === 0 ? (
-            <p className="text-xs text-emerald-400 py-4 text-center">No overdue assignments</p>
+            <p className="text-xs text-qo-sage-text py-4 text-center">No overdue assignments</p>
           ) : (
             <div className="divide-y divide-white/[0.04]">
               {overdueByAssignee.map((a) => (
                 <div key={a.assignee_id} className="flex items-center justify-between py-2">
                   <span className="text-xs text-text-secondary">{a.assignee_name}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-red-400">{a.overdue_count} overdue</span>
+                    <span className="text-xs font-mono text-qo-risk">{a.overdue_count} overdue</span>
                     <span className="text-xs text-text-muted">/ {a.total_assigned} total</span>
                   </div>
                 </div>
@@ -301,19 +301,19 @@ export function CAAnalyticsPage() {
       </div>
 
       {/* 30-day summary */}
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+      <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
         <h3 className="text-sm font-semibold text-text-primary mb-2">Last 30 Days</h3>
         <div className="flex gap-8 text-sm">
           <span className="text-text-muted">
-            Opened: <span className="text-cyan-400 font-mono">{metrics.openedLast30}</span>
+            Opened: <span className="text-qo-accent font-mono">{metrics.openedLast30}</span>
           </span>
           <span className="text-text-muted">
-            Closed: <span className="text-emerald-400 font-mono">{metrics.closedLast30}</span>
+            Closed: <span className="text-qo-sage-text font-mono">{metrics.closedLast30}</span>
           </span>
           <span className="text-text-muted">
             Net: <span className={cn(
               'font-mono',
-              metrics.openedLast30 > metrics.closedLast30 ? 'text-red-400' : 'text-emerald-400',
+              metrics.openedLast30 > metrics.closedLast30 ? 'text-qo-risk' : 'text-qo-sage-text',
             )}>
               {metrics.openedLast30 - metrics.closedLast30 > 0 ? '+' : ''}
               {metrics.openedLast30 - metrics.closedLast30}

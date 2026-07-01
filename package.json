@@ -18,6 +18,8 @@
     "report:npdes-gaps": "node scripts/report-npdes-gaps.mjs"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@supabase/supabase-js": "^2.49.1",
     "@tanstack/react-virtual": "^3.13.6",
     "clsx": "^2.1.1",

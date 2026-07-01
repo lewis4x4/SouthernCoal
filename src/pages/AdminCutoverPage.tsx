@@ -84,7 +84,7 @@ export function AdminCutoverPage() {
 
           <SpotlightCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <DatabaseZap className="h-5 w-5 text-cyan-300" />
+              <DatabaseZap className="h-5 w-5 text-qo-accent" />
               <h2 className="text-lg font-semibold text-text-primary">Create Draft Batch</h2>
             </div>
             <label className="block space-y-1">
@@ -92,7 +92,7 @@ export function AdminCutoverPage() {
               <input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary"
               />
             </label>
             <label className="block space-y-1">
@@ -101,7 +101,7 @@ export function AdminCutoverPage() {
                 type="datetime-local"
                 value={effectiveAt}
                 onChange={(event) => setEffectiveAt(event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary"
               />
             </label>
             <label className="block space-y-1">
@@ -110,13 +110,13 @@ export function AdminCutoverPage() {
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary"
               />
             </label>
             <button
               onClick={() => void createBatch({ label, effectiveAt: new Date(effectiveAt).toISOString(), notes })}
               disabled={working || !label.trim() || !effectiveAt}
-              className="inline-flex items-center gap-2 rounded-lg bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-200 border border-cyan-500/30 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-qo-accent/20 px-4 py-2 text-sm font-medium text-qo-accent border border-qo-accent/30 disabled:opacity-50"
             >
               <CalendarDays className="h-4 w-4" />
               Create Draft
@@ -137,8 +137,8 @@ export function AdminCutoverPage() {
                     onClick={() => setSelectedBatchId(batch.id)}
                     className={`w-full rounded-xl border px-3 py-3 text-left ${
                       batch.id === selectedBatchId
-                        ? 'border-cyan-500/40 bg-cyan-500/10'
-                        : 'border-white/10 bg-white/[0.02]'
+                        ? 'border-qo-accent/40 bg-qo-accent/10'
+                        : 'border-black/[0.08] bg-qo-nested'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -166,8 +166,8 @@ export function AdminCutoverPage() {
               </div>
               {selectedBatch && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary">
-                    <FileUp className="h-4 w-4 text-cyan-300" />
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary">
+                    <FileUp className="h-4 w-4 text-qo-accent" />
                     Upload Matrix
                     <input
                       type="file"
@@ -185,7 +185,7 @@ export function AdminCutoverPage() {
                   <button
                     onClick={() => selectedBatchId && void previewBatch(selectedBatchId)}
                     disabled={working || !selectedBatchId}
-                    className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary disabled:opacity-50"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Preview
@@ -233,11 +233,11 @@ export function AdminCutoverPage() {
               </SpotlightCard>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
               <div className="text-xs uppercase tracking-widest text-text-secondary">Live After Preview</div>
               <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries((previewSummary?.live_after_preview as Record<string, unknown> | undefined) ?? {}).map(([tableName, count]) => (
-                  <div key={tableName} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
+                  <div key={tableName} className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm">
                     <div className="text-text-secondary">{tableName}</div>
                     <div className="mt-1 font-semibold text-emerald-200">{String(count)}</div>
                   </div>
@@ -245,13 +245,13 @@ export function AdminCutoverPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs uppercase tracking-widest text-text-secondary">Archive Preview</div>
                 <button
                   onClick={() => void downloadStarterMatrix()}
                   disabled={working}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" />
                   Export Starter Matrix
@@ -259,7 +259,7 @@ export function AdminCutoverPage() {
               </div>
               <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries((previewSummary?.archive_preview as Record<string, unknown> | undefined) ?? {}).map(([tableName, count]) => (
-                  <div key={tableName} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
+                  <div key={tableName} className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm">
                     <div className="text-text-secondary">{tableName}</div>
                     <div className="mt-1 font-semibold text-text-primary">{String(count)}</div>
                   </div>
@@ -277,7 +277,7 @@ export function AdminCutoverPage() {
                 <div className="text-sm text-text-secondary">
                   Showing the first {Math.min(rows.length, 500)} resolved rows for the selected batch.
                 </div>
-                <div className="max-h-[480px] overflow-auto rounded-xl border border-white/10">
+                <div className="max-h-[480px] overflow-auto rounded-xl border border-black/[0.08]">
                   <table className="min-w-full text-sm">
                     <thead className="sticky top-0 bg-slate-950/95">
                       <tr className="text-left text-text-secondary">

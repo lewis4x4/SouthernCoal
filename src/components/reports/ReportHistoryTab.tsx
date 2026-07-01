@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle; text: string; color: string }> = {
   complete: { icon: CheckCircle, text: 'Complete', color: 'text-green-400' },
   generating: { icon: Loader2, text: 'Generating', color: 'text-blue-400' },
-  pending: { icon: Clock, text: 'Pending', color: 'text-amber-400' },
-  failed: { icon: XCircle, text: 'Failed', color: 'text-red-400' },
+  pending: { icon: Clock, text: 'Pending', color: 'text-qo-ochre-text' },
+  failed: { icon: XCircle, text: 'Failed', color: 'text-qo-risk' },
 };
 
 function formatBytes(bytes: number | null): string {
@@ -66,7 +66,7 @@ export function ReportHistoryTab() {
         </p>
         <button
           onClick={refetch}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-text-muted hover:bg-white/[0.04] hover:text-text-secondary transition-colors"
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
         >
           <RefreshCw className="h-3 w-3" />
           Refresh
@@ -74,7 +74,7 @@ export function ReportHistoryTab() {
       </div>
 
       {reports.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
+        <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-12 text-center">
           <Clock className="h-8 w-8 text-text-muted mx-auto mb-3" />
           <p className="text-sm text-text-muted">No reports generated yet</p>
           <p className="text-xs text-text-muted mt-1">
@@ -84,7 +84,7 @@ export function ReportHistoryTab() {
       ) : (
         <div className="space-y-2">
           {reports.map((report) => {
-            const defaultCfg = { icon: Clock, text: 'Pending', color: 'text-amber-400' };
+            const defaultCfg = { icon: Clock, text: 'Pending', color: 'text-qo-ochre-text' };
             const cfg = STATUS_CONFIG[report.status] ?? defaultCfg;
             const StatusIcon = cfg.icon;
             const flagCount = report.data_quality_flags
@@ -94,7 +94,7 @@ export function ReportHistoryTab() {
             return (
               <div
                 key={report.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-white/[0.10] transition-colors"
+                className="rounded-xl border border-black/[0.06] bg-qo-nested p-4 hover:border-white/[0.10] transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
@@ -122,7 +122,7 @@ export function ReportHistoryTab() {
                         <span>{formatBytes(report.file_size_bytes)}</span>
                         <span className="uppercase font-mono">{report.format}</span>
                         {flagCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-amber-400">
+                          <span className="flex items-center gap-0.5 text-qo-ochre-text">
                             <AlertTriangle className="h-2.5 w-2.5" />
                             {flagCount} flag{flagCount !== 1 ? 's' : ''}
                           </span>
@@ -142,7 +142,7 @@ export function ReportHistoryTab() {
                   )}
 
                   {report.status === 'failed' && report.error_message && (
-                    <span className="shrink-0 max-w-[200px] text-[10px] text-red-400 truncate">
+                    <span className="shrink-0 max-w-[200px] text-[10px] text-qo-risk truncate">
                       {report.error_message}
                     </span>
                   )}

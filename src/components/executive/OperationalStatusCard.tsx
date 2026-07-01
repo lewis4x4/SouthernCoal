@@ -203,13 +203,13 @@ export function OperationalStatusCard() {
   ];
 
   const statusColors: Record<string, string> = {
-    good: 'text-emerald-400',
+    good: 'text-qo-sage-text',
     warning: 'text-yellow-400',
-    critical: 'text-red-400',
+    critical: 'text-qo-risk',
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl">
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 ">
       <div className="mb-6">
         <h3 className="text-sm font-medium text-text-secondary">Operational Status</h3>
         <p className="mt-0.5 text-xs text-text-muted">System-wide compliance metrics</p>
@@ -220,7 +220,7 @@ export function OperationalStatusCard() {
           ? Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[72px] animate-pulse rounded-lg border border-white/[0.04] bg-white/[0.02]"
+                className="h-[72px] animate-pulse rounded-lg border border-black/[0.05] bg-qo-nested"
               />
             ))
           : stats.map((stat) => {
@@ -230,9 +230,9 @@ export function OperationalStatusCard() {
               return (
                 <div
                   key={stat.label}
-                  className="flex items-center gap-4 rounded-lg border border-white/[0.04] bg-white/[0.03] p-4 transition-all hover:bg-white/[0.06]"
+                  className="flex items-center gap-4 rounded-lg border border-black/[0.05] bg-qo-nested p-4 transition-all hover:bg-black/[0.05]"
                 >
-                  <div className={cn('rounded-lg bg-white/[0.05] p-2.5', color)}>
+                  <div className={cn('rounded-lg bg-black/[0.03] p-2.5', color)}>
                     <Icon className="h-5 w-5" />
                   </div>
 

@@ -52,7 +52,7 @@ export function FieldSameOutfallDayWarning({
                       <Link
                         key={v.id}
                         to={`/field/visits/${v.id}`}
-                        className="text-cyan-200/90 underline decoration-cyan-500/40 underline-offset-2 hover:text-cyan-100"
+                        className="text-qo-accent/90 underline decoration-cyan-500/40 underline-offset-2 hover:text-qo-accent"
                       >
                         {v.visit_status.replace('_', ' ')} — {v.assigned_to_name}
                       </Link>

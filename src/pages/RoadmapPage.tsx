@@ -47,13 +47,13 @@ function ViewTab({
         'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
         active
           ? 'bg-blue-500/20 text-blue-400'
-          : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]'
+          : 'text-text-muted hover:text-text-secondary hover:bg-black/[0.04]'
       )}
     >
       <Icon size={16} />
       {label}
       {badge && (
-        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-text-primary text-xs font-bold">
           {badge}
         </span>
       )}
@@ -79,7 +79,7 @@ function FilterBar({
   sections: string[]; section: string; setSection: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-black/[0.06] bg-qo-nested px-5 py-3">
       <FilterSelect
         label="Phase"
         value={String(phase)}
@@ -144,7 +144,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="rounded-lg border border-white/[0.08] bg-crystal-surface px-2.5 py-1.5 text-base text-text-secondary outline-none"
+        className="rounded-lg border border-black/[0.08] bg-crystal-surface px-2.5 py-1.5 text-base text-text-secondary outline-none"
       >
         {options.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -168,13 +168,13 @@ function StatsBar({ tasks }: { tasks: RoadmapTask[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       <StatCard label="Total Tasks" value={total} />
-      <StatCard label="Complete" value={complete} color="text-emerald-400" />
+      <StatCard label="Complete" value={complete} color="text-qo-sage-text" />
       <StatCard label="In Progress" value={inProgress} color="text-blue-400" />
-      <StatCard label="Blocked" value={blocked} color="text-amber-400" />
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <StatCard label="Blocked" value={blocked} color="text-qo-ochre-text" />
+      <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-4">
         <div className="text-sm font-medium uppercase text-text-muted">Progress</div>
         <div className="mt-1 text-2xl font-bold text-text-primary">{pct}%</div>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.04]">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
             style={{ width: `${pct}%` }}
@@ -187,7 +187,7 @@ function StatsBar({ tasks }: { tasks: RoadmapTask[] }) {
 
 function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-4">
       <div className="text-sm font-medium uppercase text-text-muted">{label}</div>
       <div className={cn('mt-1 text-2xl font-bold', color ?? 'text-text-primary')}>{value}</div>
     </div>
@@ -225,10 +225,10 @@ function PhaseAccordion({
   const phasePct = actionable > 0 ? Math.round((complete / actionable) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
+    <div className="rounded-xl border border-black/[0.06] bg-qo-nested">
       <button
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
+        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-qo-nested"
       >
         {expanded ? (
           <ChevronDown className="h-5 w-5 shrink-0 text-text-muted" />
@@ -245,7 +245,7 @@ function PhaseAccordion({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-base font-medium text-text-secondary">{phasePct}%</span>
-          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-black/[0.04]">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all"
               style={{ width: `${phasePct}%` }}
@@ -263,7 +263,7 @@ function PhaseAccordion({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.04] px-5 pb-3 pt-2">
+            <div className="border-t border-black/[0.05] px-5 pb-3 pt-2">
               {sections.map(([sectionName, sectionTasks]) => (
                 <div key={sectionName} className="mt-2">
                   <div className="mb-1.5 text-sm font-medium uppercase tracking-wider text-text-muted">
@@ -309,7 +309,7 @@ function TaskRow({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-4 rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04]"
+      className="flex w-full items-center gap-4 rounded-lg px-3 py-3 text-left transition-colors hover:bg-black/[0.04]"
     >
       {/* Task ID */}
       <span className="w-16 shrink-0 font-mono text-sm font-bold text-text-secondary">
@@ -325,14 +325,14 @@ function TaskRow({
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Dependency indicator */}
         {hasBlockingDeps && (
-          <span className="text-amber-400" title="Has incomplete dependencies">
+          <span className="text-qo-ochre-text" title="Has incomplete dependencies">
             <Link2 size={12} />
           </span>
         )}
 
         {/* v3 NEW badge */}
         {task.is_new_v3 && (
-          <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+          <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-qo-sage-text">
             <Sparkles size={12} /> NEW
           </span>
         )}
@@ -386,22 +386,22 @@ function TaskDetailDrawer({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-white/[0.06] bg-crystal-surface shadow-2xl"
+      className="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-black/[0.06] bg-crystal-surface shadow-2xl"
     >
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-white/[0.06] px-5 py-4">
+      <div className="flex items-start justify-between border-b border-black/[0.06] px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="font-mono text-base font-bold text-text-primary">{task.task_id}</span>
             {task.is_new_v3 && (
-              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-qo-sage-text">
                 <Sparkles size={12} /> v3 NEW
               </span>
             )}
           </div>
           <div className="mt-1 text-sm text-text-muted">{PHASE_LABELS[task.phase]}</div>
         </div>
-        <button onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-white/[0.05]">
+        <button onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-black/[0.04]">
           <X size={18} />
         </button>
       </div>
@@ -437,7 +437,7 @@ function TaskDetailDrawer({
           <select
             value={task.status}
             onChange={e => onStatusChange(task.task_id, task.id, e.target.value as RoadmapStatus, task.status)}
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-2.5 text-base text-text-secondary outline-none"
+            className="mt-1 w-full rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-2.5 text-base text-text-secondary outline-none"
           >
             <option value="not_started">Not Started</option>
             <option value="in_progress">In Progress</option>
@@ -455,7 +455,7 @@ function TaskDetailDrawer({
             </div>
             <div className="mt-1 space-y-1">
               {deps.map(dep => (
-                <div key={dep.id} className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                <div key={dep.id} className="flex items-center gap-2 rounded-lg bg-qo-nested px-3 py-2">
                   <span className="font-mono text-sm font-bold text-text-secondary">{dep.task_id}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{dep.task_description}</span>
                   <span className={cn(
@@ -500,7 +500,7 @@ function TaskDetailDrawer({
             }}
             placeholder="Add notes..."
             rows={3}
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-base text-text-secondary outline-none placeholder:text-text-muted"
+            className="mt-1 w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-base text-text-secondary outline-none placeholder:text-text-muted"
           />
         </div>
 
@@ -531,7 +531,7 @@ function TaskDetailDrawer({
         </div>
 
         {/* Timestamps */}
-        <div className="border-t border-white/[0.04] pt-3 text-sm text-text-muted">
+        <div className="border-t border-black/[0.05] pt-3 text-sm text-text-muted">
           <div>Created: {new Date(task.created_at).toLocaleString()}</div>
           <div>Updated: {new Date(task.updated_at).toLocaleString()}</div>
           {task.completed_at && (
@@ -614,8 +614,8 @@ export function RoadmapPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-xl bg-cyan-500/10 p-3">
-            <Map className="h-6 w-6 text-cyan-400" />
+          <div className="inline-flex rounded-xl bg-qo-accent/10 p-3">
+            <Map className="h-6 w-6 text-qo-accent" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-text-primary">
@@ -628,7 +628,7 @@ export function RoadmapPage() {
         </div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-black/[0.08] bg-qo-nested p-1">
           <ViewTab
             active={activeView === 'tasks'}
             onClick={() => setActiveView('tasks')}
@@ -668,10 +668,10 @@ export function RoadmapPage() {
           {/* Phase Accordions */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
             </div>
           ) : phases.length === 0 ? (
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center text-sm text-text-muted">
+            <div className="rounded-xl border border-black/[0.06] bg-qo-nested py-12 text-center text-sm text-text-muted">
               No tasks match the current filters.
             </div>
           ) : (
@@ -694,7 +694,7 @@ export function RoadmapPage() {
 
       {activeView === 'handoff' && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-6">
             <HandoffInputPanel />
           </div>
           <HandoffHistoryPanel />
@@ -704,7 +704,7 @@ export function RoadmapPage() {
       {activeView === 'whats_next' && (
         <>
           <PhaseProgressSnapshot />
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-6">
             <WhatsNextQueue />
           </div>
         </>

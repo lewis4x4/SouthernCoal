@@ -112,10 +112,10 @@ export function Admin() {
             return (
               <div
                 key={card.label}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.01] p-6 opacity-50"
+                className="rounded-2xl border border-black/[0.06] bg-white p-6 opacity-50"
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-white/[0.05] p-2">
+                  <div className="rounded-lg bg-black/[0.03] p-2">
                     <Icon className="h-5 w-5 text-text-muted" />
                   </div>
                   <div>
@@ -132,10 +132,10 @@ export function Admin() {
             <Link key={card.label} to={card.href}>
               <SpotlightCard
                 spotlightColor={card.color}
-                className="h-full p-6 transition-all hover:border-white/[0.12]"
+                className="h-full p-6 transition-all hover:border-black/[0.12]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-white/[0.05] p-2">
+                  <div className="rounded-lg bg-black/[0.03] p-2">
                     <Icon className="h-5 w-5 text-text-secondary" />
                   </div>
                   <h3 className="text-sm font-semibold text-text-primary">{card.label}</h3>

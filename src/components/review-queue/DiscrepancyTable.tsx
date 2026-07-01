@@ -10,18 +10,18 @@ import { useReviewQueueStore } from '@/stores/reviewQueue';
 import type { DiscrepancyRow, DiscrepancySeverity, DiscrepancyStatus, DiscrepancyType } from '@/stores/reviewQueue';
 
 const SEVERITY_COLORS: Record<DiscrepancySeverity, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+  critical: 'bg-red-500/10 text-qo-risk border-red-500/20',
   high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  medium: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
 
 const STATUS_COLORS: Record<DiscrepancyStatus, string> = {
-  pending: 'bg-white/[0.05] text-text-secondary border-white/[0.08]',
-  reviewed: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  dismissed: 'bg-white/[0.03] text-text-muted border-white/[0.06]',
+  pending: 'bg-black/[0.03] text-text-secondary border-black/[0.08]',
+  reviewed: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
+  dismissed: 'bg-qo-nested text-text-muted border-black/[0.06]',
   escalated: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  resolved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 const TYPE_LABELS: Record<DiscrepancyType, string> = {
@@ -98,13 +98,13 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
               filters.severity === s
                 ? SEVERITY_COLORS[s]
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
             )}
           >
             {s}
           </button>
         ))}
-        <div className="h-4 border-l border-white/[0.08]" />
+        <div className="h-4 border-l border-black/[0.08]" />
         {STATUS_OPTIONS.map((s) => (
           <button
             key={s}
@@ -113,13 +113,13 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
               filters.status === s
                 ? STATUS_COLORS[s]
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
             )}
           >
             {s}
           </button>
         ))}
-        <div className="h-4 border-l border-white/[0.08]" />
+        <div className="h-4 border-l border-black/[0.08]" />
         {SOURCE_OPTIONS.map((s) => (
           <button
             key={s}
@@ -127,14 +127,14 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
             className={cn(
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase transition-colors',
               filters.source === s
-                ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
+                ? 'bg-qo-accent/10 text-qo-accent border-qo-accent/20'
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
             )}
           >
             {s}
           </button>
         ))}
-        <div className="h-4 border-l border-white/[0.08]" />
+        <div className="h-4 border-l border-black/[0.08]" />
         {TYPE_OPTIONS.map((t) => (
           <button
             key={t}
@@ -142,8 +142,8 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
             className={cn(
               'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
               filters.type === t
-                ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
+                ? 'bg-qo-accent/10 text-qo-accent border-qo-accent/20'
+                : 'border-black/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
             )}
           >
             {TYPE_LABELS[t]}
@@ -152,7 +152,7 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
       </div>
 
       {/* Table — virtualized body for large discrepancy lists */}
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
+      <div className="overflow-x-auto rounded-xl border border-black/[0.08]">
         <div
           ref={scrollRef}
           className="max-h-[min(70vh,640px)] overflow-auto"
@@ -170,7 +170,7 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
               <col className="w-[18%]" />
               <col className="w-[10%]" />
             </colgroup>
-            <thead className="sticky top-0 z-[1] border-b border-white/[0.06] bg-crystal-surface/95 backdrop-blur-md">
+            <thead className="sticky top-0 z-[1] border-b border-black/[0.06] bg-white backdrop-blur-md">
               <tr>
                 <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
                   Permit / Mine
@@ -227,7 +227,7 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
                     }}
                     tabIndex={0}
                     role="row"
-                    className="cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] focus:bg-white/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/30"
+                    className="cursor-pointer border-b border-black/[0.05] transition-colors hover:bg-qo-nested focus:bg-qo-nested focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/30"
                   >
                     <td className="px-4 py-3 font-mono text-xs text-text-primary truncate" title={row.npdes_id || row.mine_id || undefined}>
                       {row.npdes_id || row.mine_id || '—'}
@@ -286,7 +286,7 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
                             e.stopPropagation();
                             onQuickReview(row.id);
                           }}
-                          className="inline-flex items-center gap-1 rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-[10px] font-medium text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-40"
+                          className="inline-flex items-center gap-1 rounded-md border border-qo-accent/20 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent hover:bg-qo-accent/20 disabled:opacity-40"
                         >
                           <CheckCircle size={12} />
                           Review

@@ -30,7 +30,7 @@ function StatCard({
   loading,
 }: StatCardProps) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColor = trend === 'up' ? 'text-red-400' : trend === 'down' ? 'text-green-400' : 'text-gray-400';
+  const trendColor = trend === 'up' ? 'text-qo-risk' : trend === 'down' ? 'text-green-400' : 'text-text-muted';
 
   return (
     <SpotlightCard className="p-6">
@@ -38,13 +38,13 @@ function StatCard({
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>
           {loading ? (
-            <div className="h-8 w-16 bg-white/10 animate-pulse rounded mt-1" />
+            <div className="h-8 w-16 bg-black/[0.06] animate-pulse rounded mt-1" />
           ) : (
             <p className="text-3xl font-bold mt-1">{value}</p>
           )}
           {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
         </div>
-        <div className={clsx('p-2 rounded-lg bg-white/5', iconColor)}>
+        <div className={clsx('p-2 rounded-lg bg-qo-nested', iconColor)}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -67,7 +67,7 @@ export function SummaryCards({ stats, loading }: SummaryCardsProps) {
         value={stats?.openExceedances ?? 0}
         subtitle={stats?.acknowledgedExceedances ? `${stats.acknowledgedExceedances} acknowledged` : undefined}
         icon={AlertTriangle}
-        iconColor="text-red-400"
+        iconColor="text-qo-risk"
         trend={stats?.exceedanceTrend}
         trendValue={stats?.exceedanceTrendPct}
         loading={loading}
@@ -128,7 +128,7 @@ export function SeverityBreakdown({ stats, loading }: SeverityBreakdownProps) {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-8 bg-white/10 animate-pulse rounded" />
+            <div key={i} className="h-8 bg-black/[0.06] animate-pulse rounded" />
           ))}
         </div>
       ) : (
@@ -143,7 +143,7 @@ export function SeverityBreakdown({ stats, loading }: SeverityBreakdownProps) {
                   <span className="text-sm text-muted-foreground">{label}</span>
                   <span className="text-sm font-mono">{count}</span>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-2 bg-black/[0.06] rounded-full overflow-hidden">
                   <div
                     className={clsx('h-full rounded-full transition-all duration-500', color)}
                     style={{ width: `${percentage}%` }}

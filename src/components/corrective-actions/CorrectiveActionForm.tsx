@@ -175,7 +175,7 @@ export function CorrectiveActionForm({
 
       {/* Save button */}
       {canEdit && step !== 'closure' && (
-        <div className="flex justify-end pt-4 border-t border-white/[0.06]">
+        <div className="flex justify-end pt-4 border-t border-black/[0.06]">
           <GlassButton
             variant="primary"
             onClick={handleSave}
@@ -218,9 +218,9 @@ function FormInput({
   const id = useId();
   const baseClasses = cn(
     'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-    'bg-white/[0.02] border-white/[0.08]',
+    'bg-qo-nested border-black/[0.08]',
     'text-text-primary placeholder:text-text-muted',
-    'focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20',
+    'focus:outline-none focus:border-qo-accent/40 focus:ring-1 focus:ring-cyan-500/20',
     readOnly && 'opacity-60 cursor-not-allowed'
   );
 
@@ -228,7 +228,7 @@ function FormInput({
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-xs font-medium text-text-secondary">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-qo-risk ml-1">*</span>}
       </label>
       {type === 'textarea' ? (
         <textarea
@@ -277,7 +277,7 @@ function FormSelect({
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-xs font-medium text-text-secondary">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-qo-risk ml-1">*</span>}
       </label>
       <select
         id={id}
@@ -286,9 +286,9 @@ function FormSelect({
         disabled={readOnly}
         className={cn(
           'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-          'bg-white/[0.02] border-white/[0.08]',
+          'bg-qo-nested border-black/[0.08]',
           'text-text-primary',
-          'focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20',
+          'focus:outline-none focus:border-qo-accent/40 focus:ring-1 focus:ring-cyan-500/20',
           readOnly && 'opacity-60 cursor-not-allowed'
         )}
       >
@@ -567,7 +567,7 @@ function ClosureForm({ action, readOnly }: ClosureFormProps) {
       <div className="text-sm font-medium text-text-secondary mb-3">
         Section 8: Closure Signatures
       </div>
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
+      <div className="rounded-lg border border-black/[0.06] bg-qo-nested p-4 space-y-4">
         <SignatureBlock
           label="Responsible Person"
           signedBy={action.responsible_person_name}
@@ -610,10 +610,10 @@ function SignatureBlock({
       <div>
         <div className="text-sm font-medium text-text-primary">
           {label}
-          {required && <span className="text-red-400 ml-1">*</span>}
+          {required && <span className="text-qo-risk ml-1">*</span>}
         </div>
         {isSigned ? (
-          <div className="text-xs text-emerald-400">
+          <div className="text-xs text-qo-sage-text">
             Signed by {signedBy} on{' '}
             {new Date(signedAt).toLocaleDateString('en-US', {
               month: 'short',
@@ -638,7 +638,7 @@ function SignatureBlock({
         <span
           className={cn(
             'w-2 h-2 rounded-full',
-            isSigned ? 'bg-emerald-400' : 'bg-amber-400'
+            isSigned ? 'bg-qo-sage' : 'bg-qo-ochre'
           )}
         />
       </div>

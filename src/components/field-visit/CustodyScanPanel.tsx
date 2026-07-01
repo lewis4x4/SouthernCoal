@@ -161,7 +161,7 @@ export function CustodyScanPanel({
   }, [onCaptureMethodChange, onScanDetected, scannerOpen, scannerSupported]);
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
@@ -172,7 +172,7 @@ export function CustodyScanPanel({
           </p>
         </div>
         {containerId.trim() ? (
-          <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-text-secondary">
+          <div className="rounded-full border border-black/[0.08] bg-qo-nested px-3 py-1 text-xs font-medium text-text-secondary">
             {captureMethod === 'scan' ? 'Scanned' : 'Manual'}
           </div>
         ) : null}
@@ -183,7 +183,7 @@ export function CustodyScanPanel({
           type="button"
           onClick={() => setScannerOpen((current) => !current)}
           disabled={disabled}
-          className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/15 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25 active:bg-cyan-500/30 disabled:opacity-60"
+          className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-qo-accent/25 bg-qo-accent/15 text-base font-semibold text-qo-accent transition-colors hover:bg-qo-accent/25 active:bg-qo-accent/30 disabled:opacity-60"
         >
           <ScanLine className="h-5 w-5" aria-hidden />
           {scannerOpen ? 'Stop scanner' : 'Scan container'}
@@ -194,13 +194,13 @@ export function CustodyScanPanel({
       </div>
 
       {scannerOpen ? (
-        <div className="mt-4 rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+        <div className="mt-4 rounded-2xl border border-black/[0.08] bg-black/20 p-4">
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            className="aspect-video w-full rounded-xl border border-white/[0.08] bg-black object-cover"
+            className="aspect-video w-full rounded-xl border border-black/[0.08] bg-black object-cover"
           />
           <p className="mt-3 text-sm text-text-secondary">{scannerStatus}</p>
           {scannerError ? (
@@ -223,7 +223,7 @@ export function CustodyScanPanel({
           }}
           disabled={disabled}
           placeholder="Manual entry when scan is unavailable"
-          className="w-full min-h-12 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-base text-text-primary outline-none"
+          className="w-full min-h-12 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 text-base text-text-primary outline-none"
         />
       </label>
 
@@ -259,10 +259,10 @@ export function CustodyScanPanel({
           'mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border text-base font-medium transition-colors disabled:opacity-60',
           preservativeConfirmed
             ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
-            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]',
+            : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]',
         )}
       >
-        <CheckCircle2 className={cn('h-5 w-5', preservativeConfirmed ? 'text-emerald-400' : 'text-text-muted/40')} aria-hidden />
+        <CheckCircle2 className={cn('h-5 w-5', preservativeConfirmed ? 'text-qo-sage-text' : 'text-text-muted/40')} aria-hidden />
         {preservativeConfirmed ? 'Container verified — matches sample plan' : 'Tap to confirm container matches sample plan'}
       </button>
 
@@ -270,7 +270,7 @@ export function CustodyScanPanel({
         type="button"
         onClick={onSave}
         disabled={saving || disabled}
-        className="mt-3 min-h-12 w-full rounded-2xl bg-white/[0.08] text-base font-medium text-text-primary transition-colors hover:bg-white/[0.12] active:bg-white/[0.16] disabled:opacity-60"
+        className="mt-3 min-h-12 w-full rounded-2xl bg-black/[0.06] text-base font-medium text-text-primary transition-colors hover:bg-black/[0.08] active:bg-white/[0.16] disabled:opacity-60"
       >
         Save container
       </button>

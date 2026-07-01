@@ -4,8 +4,8 @@
   "description": "Offline-capable field and compliance operations for SCC.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050816",
-  "theme_color": "#050816",
+  "background_color": "#EAE7E0",
+  "theme_color": "#EAE7E0",
   "icons": [
     {
       "src": "/app-icon.svg",

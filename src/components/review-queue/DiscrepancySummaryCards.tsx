@@ -16,7 +16,7 @@ const CARDS = [
     label: 'Critical',
     icon: AlertTriangle,
     spotlightColor: 'rgba(239, 68, 68, 0.08)',
-    valueColor: 'text-red-400',
+    valueColor: 'text-qo-risk',
   },
   {
     key: 'high' as const,
@@ -30,7 +30,7 @@ const CARDS = [
     label: 'Medium',
     icon: Info,
     spotlightColor: 'rgba(234, 179, 8, 0.08)',
-    valueColor: 'text-amber-400',
+    valueColor: 'text-qo-ochre-text',
   },
   {
     key: 'low' as const,
@@ -65,7 +65,7 @@ export function DiscrepancySummaryCards({
                   {label}
                 </p>
                 {loading ? (
-                  <div className="mt-1 h-8 w-16 animate-pulse rounded bg-white/[0.06]" />
+                  <div className="mt-1 h-8 w-16 animate-pulse rounded bg-black/[0.04]" />
                 ) : (
                   <AnimatedCounter
                     value={counts[key]}

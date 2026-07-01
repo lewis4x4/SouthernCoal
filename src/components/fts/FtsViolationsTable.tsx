@@ -108,9 +108,9 @@ export function FtsViolationsTable({ violations }: Props) {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested ">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06]">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-text-primary">
             Violations{' '}
@@ -128,7 +128,7 @@ export function FtsViolationsTable({ violations }: Props) {
               aria-label="Search by DNR number"
               value={dnrSearch}
               onChange={(e) => setDnrSearch(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-white/20 w-40"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested pl-8 pr-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-black/[0.12] w-40"
             />
           </div>
           <GlassButton variant="ghost" onClick={exportCsv}>
@@ -139,7 +139,7 @@ export function FtsViolationsTable({ violations }: Props) {
       </div>
 
       {/* State tabs */}
-      <div className="flex gap-1 px-5 py-2 border-b border-white/[0.06]">
+      <div className="flex gap-1 px-5 py-2 border-b border-black/[0.06]">
         {STATE_TABS.map((tab) => (
           <button
             key={tab}
@@ -147,8 +147,8 @@ export function FtsViolationsTable({ violations }: Props) {
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
               activeTab === tab
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                : 'text-text-muted hover:bg-white/[0.05] hover:text-text-secondary border border-transparent',
+                ? 'bg-qo-accent/15 text-qo-accent border border-qo-accent/30'
+                : 'text-text-muted hover:bg-black/[0.04] hover:text-text-secondary border border-transparent',
             )}
           >
             {STATE_LABELS[tab] ?? tab}
@@ -157,7 +157,7 @@ export function FtsViolationsTable({ violations }: Props) {
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-5 py-2 border-b border-white/[0.06] text-[10px] uppercase tracking-widest text-text-muted font-medium">
+      <div className="flex items-center gap-2 px-5 py-2 border-b border-black/[0.06] text-[10px] uppercase tracking-widest text-text-muted font-medium">
         <button className="w-16" onClick={() => toggleSort('monitoring_month')}>
           Month <SortIcon field="monitoring_month" />
         </button>
@@ -190,7 +190,7 @@ export function FtsViolationsTable({ violations }: Props) {
             return (
               <div
                 key={v.id}
-                className="flex items-center gap-2 px-5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-5 hover:bg-qo-nested transition-colors cursor-pointer"
                 onClick={() => setSelectedViolation(v)}
                 style={{
                   position: 'absolute',
@@ -215,7 +215,7 @@ export function FtsViolationsTable({ violations }: Props) {
                       'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border',
                       v.penalty_category === 1
                         ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                        : 'bg-red-500/10 border-red-500/20 text-red-400',
+                        : 'bg-red-500/10 border-red-500/20 text-qo-risk',
                     )}
                   >
                     Cat {v.penalty_category} · {formatDollars(v.penalty_amount)}

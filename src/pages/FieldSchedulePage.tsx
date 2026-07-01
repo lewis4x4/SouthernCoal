@@ -60,10 +60,10 @@ function dispatchTone(status: SamplingDispatchStatus | SamplingRouteBatchStatus 
     case 'exception':
       return 'text-red-300 border-red-500/20 bg-red-500/10';
     case 'dispatched':
-      return 'text-cyan-300 border-cyan-500/20 bg-cyan-500/10';
+      return 'text-qo-accent border-qo-accent/20 bg-qo-accent/10';
     case 'skipped':
     case 'cancelled':
-      return 'text-slate-300 border-white/[0.08] bg-white/[0.06]';
+      return 'text-slate-300 border-black/[0.08] bg-black/[0.04]';
     case 'pending':
     default:
       return 'text-violet-300 border-violet-500/20 bg-violet-500/10';
@@ -673,7 +673,7 @@ export function FieldSchedulePage() {
         </SpotlightCard>
         <SpotlightCard className="p-5">
           <div className="text-xs uppercase tracking-wider text-text-muted">Ready to route</div>
-          <div className="mt-2 text-3xl font-semibold text-cyan-300">{queueStats.ready}</div>
+          <div className="mt-2 text-3xl font-semibold text-qo-accent">{queueStats.ready}</div>
           <div className="mt-2 text-sm text-text-secondary">entries staged with no active field visit</div>
         </SpotlightCard>
         <SpotlightCard className="p-5">
@@ -709,7 +709,7 @@ export function FieldSchedulePage() {
                   type="month"
                   value={selectedMonth}
                   onChange={(event) => setSelectedMonth(event.target.value)}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 />
                 <button
                   onClick={handleGenerateMonth}
@@ -726,7 +726,7 @@ export function FieldSchedulePage() {
           <div className="grid gap-6 xl:grid-cols-2">
             <SpotlightCard className="p-6">
               <div className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-cyan-300" />
+                <ClipboardList className="h-4 w-4 text-qo-accent" />
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                   Schedule Builder
                 </h2>
@@ -741,7 +741,7 @@ export function FieldSchedulePage() {
                       setSchedulePermitId(event.target.value);
                       setScheduleOutfallId('');
                     }}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   >
                     <option value="">Select permit</option>
                     {permits.map((permit) => (
@@ -755,7 +755,7 @@ export function FieldSchedulePage() {
                   <select
                     value={scheduleOutfallId}
                     onChange={(event) => setScheduleOutfallId(event.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   >
                     <option value="">Select outfall</option>
                     {scheduleOutfalls.map((outfall) => (
@@ -769,7 +769,7 @@ export function FieldSchedulePage() {
                   <select
                     value={scheduleParameterId}
                     onChange={(event) => setScheduleParameterId(event.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   >
                     <option value="">Select parameter</option>
                     {parameters.map((parameter: ParameterOption) => (
@@ -784,7 +784,7 @@ export function FieldSchedulePage() {
                     <select
                       value={frequencyCode}
                       onChange={(event) => setFrequencyCode(event.target.value as SamplingFrequencyCode)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                     >
                       {GENERATOR_FREQUENCIES.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
@@ -798,7 +798,7 @@ export function FieldSchedulePage() {
                       value={scheduleRouteZone}
                       onChange={(event) => setScheduleRouteZone(event.target.value)}
                       placeholder="North / Central / West"
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                     />
                   </label>
                 </div>
@@ -809,7 +809,7 @@ export function FieldSchedulePage() {
                     <select
                       value={scheduleAssignedTo}
                       onChange={(event) => setScheduleAssignedTo(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                     >
                       <option value="">Unassigned</option>
                       {users.filter((user) => user.is_active).map((user) => (
@@ -824,7 +824,7 @@ export function FieldSchedulePage() {
                       type="date"
                       value={scheduleAnchorDate}
                       onChange={(event) => setScheduleAnchorDate(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                     />
                   </label>
                 </div>
@@ -835,7 +835,7 @@ export function FieldSchedulePage() {
                     <select
                       value={preferredDayOfWeek}
                       onChange={(event) => setPreferredDayOfWeek(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                     >
                       <option value="1">Monday</option>
                       <option value="2">Tuesday</option>
@@ -856,7 +856,7 @@ export function FieldSchedulePage() {
                         max="31"
                         value={preferredDayOfMonth}
                         onChange={(event) => setPreferredDayOfMonth(event.target.value)}
-                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                        className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                       />
                     </label>
                     <label className="space-y-2">
@@ -868,7 +868,7 @@ export function FieldSchedulePage() {
                         value={secondaryDayOfMonth}
                         onChange={(event) => setSecondaryDayOfMonth(event.target.value)}
                         disabled={frequencyCode !== 'semi_monthly'}
-                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30 disabled:opacity-50"
+                        className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30 disabled:opacity-50"
                       />
                     </label>
                     <label className="space-y-2">
@@ -880,7 +880,7 @@ export function FieldSchedulePage() {
                         value={minDaysBetween}
                         onChange={(event) => setMinDaysBetween(event.target.value)}
                         disabled={frequencyCode !== 'semi_monthly'}
-                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30 disabled:opacity-50"
+                        className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30 disabled:opacity-50"
                       />
                     </label>
                   </div>
@@ -893,14 +893,14 @@ export function FieldSchedulePage() {
                     onChange={(event) => setScheduleInstructions(event.target.value)}
                     rows={3}
                     placeholder="Bottle prep, route hazards, known access constraints."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   />
                 </label>
 
                 <button
                   onClick={handleCreateSchedule}
                   disabled={mutating}
-                  className="rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
+                  className="rounded-xl bg-qo-accent/15 px-4 py-2.5 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/25 disabled:opacity-60"
                 >
                   Save sampling schedule
                 </button>
@@ -922,7 +922,7 @@ export function FieldSchedulePage() {
                     <select
                       value={manualEntryType}
                       onChange={(event) => setManualEntryType(event.target.value as 'manual' | 'rain_event')}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                     >
                       {MANUAL_ENTRY_TYPES.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
@@ -936,7 +936,7 @@ export function FieldSchedulePage() {
                       type="date"
                       value={manualDate}
                       onChange={(event) => setManualDate(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                     />
                   </label>
                 </div>
@@ -949,7 +949,7 @@ export function FieldSchedulePage() {
                       setManualPermitId(event.target.value);
                       setManualOutfallId('');
                     }}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   >
                     <option value="">Select permit</option>
                     {permits.map((permit) => (
@@ -963,7 +963,7 @@ export function FieldSchedulePage() {
                   <select
                     value={manualOutfallId}
                     onChange={(event) => setManualOutfallId(event.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   >
                     <option value="">Select outfall</option>
                     {manualOutfalls.map((outfall) => (
@@ -977,7 +977,7 @@ export function FieldSchedulePage() {
                   <select
                     value={manualParameterId}
                     onChange={(event) => setManualParameterId(event.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   >
                     <option value="">Select parameter</option>
                     {parameters.map((parameter) => (
@@ -993,7 +993,7 @@ export function FieldSchedulePage() {
                       value={manualRouteZone}
                       onChange={(event) => setManualRouteZone(event.target.value)}
                       placeholder="Optional route zone"
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                     />
                   </label>
                   <label className="space-y-2">
@@ -1001,7 +1001,7 @@ export function FieldSchedulePage() {
                     <select
                       value={manualAssignedTo}
                       onChange={(event) => setManualAssignedTo(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                     >
                       <option value="">Unassigned</option>
                       {users.filter((user) => user.is_active).map((user) => (
@@ -1018,7 +1018,7 @@ export function FieldSchedulePage() {
                     onChange={(event) => setManualReason(event.target.value)}
                     rows={3}
                     placeholder="Why this entry exists outside the generated base calendar."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   />
                 </label>
 
@@ -1046,7 +1046,7 @@ export function FieldSchedulePage() {
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as 'all' | SamplingDispatchStatus)}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 >
                   <option value="all">All statuses</option>
                   <option value="ready">Ready</option>
@@ -1060,7 +1060,7 @@ export function FieldSchedulePage() {
                 <select
                   value={zoneFilter}
                   onChange={(event) => setZoneFilter(event.target.value)}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 >
                   <option value="all">All zones</option>
                   {availableZones.map((zone) => (
@@ -1071,7 +1071,7 @@ export function FieldSchedulePage() {
                 <select
                   value={groupMode}
                   onChange={(event) => setGroupMode(event.target.value as 'day' | 'route')}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 >
                   <option value="day">Group by day</option>
                   <option value="route">Group by route</option>
@@ -1081,7 +1081,7 @@ export function FieldSchedulePage() {
                   onClick={() => refreshCalendar().catch((error) => {
                     toast.error(error instanceof Error ? error.message : 'Failed to refresh sampling calendar');
                   })}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-secondary transition-colors hover:border-white/[0.12] hover:text-text-primary"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-secondary transition-colors hover:border-black/[0.12] hover:text-text-primary"
                 >
                   Refresh
                 </button>
@@ -1091,7 +1091,7 @@ export function FieldSchedulePage() {
             <div className="mt-5 space-y-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-24 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+                  <div key={index} className="h-24 animate-pulse rounded-2xl border border-black/[0.06] bg-qo-nested" />
                 ))
               ) : groupedCalendar.length === 0 ? (
                 <p className="text-sm text-text-muted">No sampling calendar entries exist for {selectedMonth}.</p>
@@ -1125,7 +1125,7 @@ export function FieldSchedulePage() {
                         className={`w-full rounded-2xl border p-4 text-left transition-colors ${
                           item.id === selectedCalendarId
                             ? 'border-violet-400/40 bg-violet-500/10'
-                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                            : 'border-black/[0.06] bg-qo-nested hover:border-black/[0.12]'
                         }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1176,7 +1176,7 @@ export function FieldSchedulePage() {
                   type="date"
                   value={routeDate}
                   onChange={(event) => setRouteDate(event.target.value)}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 />
               </label>
 
@@ -1186,7 +1186,7 @@ export function FieldSchedulePage() {
                   value={routeZone}
                   onChange={(event) => setRouteZone(event.target.value)}
                   placeholder="North / Central / West"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 />
               </label>
 
@@ -1195,7 +1195,7 @@ export function FieldSchedulePage() {
                 <select
                   value={routeAssignedTo}
                   onChange={(event) => setRouteAssignedTo(event.target.value)}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 >
                   <option value="">Select assignee</option>
                   {users.filter((user) => user.is_active).map((user) => (
@@ -1211,7 +1211,7 @@ export function FieldSchedulePage() {
                   onChange={(event) => setRouteNotes(event.target.value)}
                   rows={3}
                   placeholder="Daily route context, staging notes, known access constraints."
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-violet-400/30"
+                  className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-violet-400/30"
                 />
               </label>
 
@@ -1227,7 +1227,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <TimerReset className="h-4 w-4 text-cyan-300" />
+              <TimerReset className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Route Review
               </h2>
@@ -1247,8 +1247,8 @@ export function FieldSchedulePage() {
                     }}
                     className={`w-full rounded-2xl border p-4 text-left transition-colors ${
                       batch.id === selectedRouteBatchId
-                        ? 'border-cyan-400/40 bg-cyan-500/10'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                        ? 'border-qo-accent/40 bg-qo-accent/10'
+                        : 'border-black/[0.06] bg-qo-nested hover:border-black/[0.12]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -1282,7 +1282,7 @@ export function FieldSchedulePage() {
 
             {selectedRouteBatch && routePreview ? (
               <div className="mt-5 space-y-4 text-sm">
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                   <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Drive-time signal</div>
                   <p className="mt-2 text-text-secondary">
                     Straight-line segments with a road factor (~45 mph effective). Not turn-by-turn.
@@ -1306,7 +1306,7 @@ export function FieldSchedulePage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                   <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Stop order review</div>
                   <p className={`mt-2 ${stopOrderPriorityReview.ok ? 'text-emerald-300' : 'text-amber-300'}`}>
                     {stopOrderPriorityReview.ok
@@ -1321,7 +1321,7 @@ export function FieldSchedulePage() {
                 </div>
 
                 {routeZoneDayBalance && (
-                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                     <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Zone / day balance</div>
                     <p className="mt-2 text-text-secondary">
                       {formatDate(selectedRouteBatch.route_date)}: {routeZoneDayBalance.sameDayReadyTotal} ready item
@@ -1350,7 +1350,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-cyan-300" />
+              <Send className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Dispatch Route Batch
               </h2>
@@ -1358,7 +1358,7 @@ export function FieldSchedulePage() {
 
             {selectedRouteBatch ? (
               <div className="mt-5 space-y-4">
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                   <div className="text-sm font-semibold text-text-primary">
                     {formatDate(selectedRouteBatch.route_date)} / {selectedRouteBatch.route_zone}
                   </div>
@@ -1374,21 +1374,21 @@ export function FieldSchedulePage() {
                     onChange={(event) => setRouteDispatchNotes(event.target.value)}
                     rows={3}
                     placeholder="Optional notes applied to all field visits created from this route."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   />
                 </label>
 
                 <button
                   onClick={handleDispatchRouteBatch}
                   disabled={mutating || selectedRouteBatch.route_status === 'completed'}
-                  className="w-full rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
+                  className="w-full rounded-xl bg-qo-accent/15 px-4 py-2.5 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/25 disabled:opacity-60"
                 >
                   Dispatch full route batch
                 </button>
 
                 <div className="space-y-3">
                   {selectedRouteStops.map((stop) => (
-                    <div key={stop.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div key={stop.id} className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-text-primary">
@@ -1406,7 +1406,7 @@ export function FieldSchedulePage() {
                       </div>
 
                       {stop.current_field_visit_id && (
-                        <Link to={`/field/visits/${stop.current_field_visit_id}`} className="mt-3 inline-flex text-sm text-cyan-300 hover:text-cyan-200">
+                        <Link to={`/field/visits/${stop.current_field_visit_id}`} className="mt-3 inline-flex text-sm text-qo-accent hover:text-qo-accent">
                           Open linked field visit
                         </Link>
                       )}
@@ -1421,7 +1421,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-cyan-300" />
+              <Send className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Dispatch Selected Work
               </h2>
@@ -1429,7 +1429,7 @@ export function FieldSchedulePage() {
 
             {selectedCalendar ? (
               <div className="mt-5 space-y-4">
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                   <div className="text-sm font-semibold text-text-primary">
                     {selectedCalendar.permit_number} / {selectedCalendar.outfall_number}
                   </div>
@@ -1443,7 +1443,7 @@ export function FieldSchedulePage() {
                   <select
                     value={dispatchAssignedTo}
                     onChange={(event) => setDispatchAssignedTo(event.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   >
                     <option value="">Select assignee</option>
                     {users.filter((user) => user.is_active).map((user) => (
@@ -1459,14 +1459,14 @@ export function FieldSchedulePage() {
                     onChange={(event) => setDispatchNotes(event.target.value)}
                     rows={4}
                     placeholder="Operational notes, bottle prep, route hazards, or timing instructions."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                   />
                 </label>
 
                 <button
                   onClick={handleDispatchSelected}
                   disabled={mutating || selectedCalendar.dispatch_status === 'completed' || selectedCalendar.dispatch_status === 'in_progress'}
-                  className="w-full rounded-xl bg-cyan-500/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:opacity-60"
+                  className="w-full rounded-xl bg-qo-accent/15 px-4 py-2.5 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/25 disabled:opacity-60"
                 >
                   Dispatch single calendar item
                 </button>
@@ -1474,7 +1474,7 @@ export function FieldSchedulePage() {
                 {selectedCalendar.current_field_visit_id && (
                   <Link
                     to={`/field/visits/${selectedCalendar.current_field_visit_id}`}
-                    className="inline-flex text-sm text-cyan-300 hover:text-cyan-200"
+                    className="inline-flex text-sm text-qo-accent hover:text-qo-accent"
                   >
                     Open linked field visit
                   </Link>
@@ -1500,7 +1500,7 @@ export function FieldSchedulePage() {
                   <select
                     value={adjustmentType}
                     onChange={(event) => setAdjustmentType(event.target.value as 'skip' | 'reschedule' | 'makeup')}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   >
                     {ADJUSTMENT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -1515,7 +1515,7 @@ export function FieldSchedulePage() {
                       type="date"
                       value={adjustmentDate}
                       onChange={(event) => setAdjustmentDate(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                      className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none focus:border-amber-400/30"
                     />
                   </label>
                 )}
@@ -1527,7 +1527,7 @@ export function FieldSchedulePage() {
                     onChange={(event) => setAdjustmentReason(event.target.value)}
                     rows={4}
                     placeholder="Why this work is being skipped, moved, or converted into a makeup sample."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none focus:border-amber-400/30"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none focus:border-amber-400/30"
                   />
                 </label>
 
@@ -1557,7 +1557,7 @@ export function FieldSchedulePage() {
                 <p className="text-sm text-text-muted">No active sampling schedules exist yet.</p>
               ) : (
                 scheduleItems.slice(0, 8).map((schedule) => (
-                  <div key={schedule.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div key={schedule.id} className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                     <div className="text-sm font-semibold text-text-primary">
                       {schedule.permit_number} / {schedule.outfall_number} / {schedule.parameter_name}
                     </div>

@@ -139,11 +139,11 @@ export function HandoffDropZone({
   if (selectedFile) {
     const FileIcon = getFileIcon(selectedFile.type);
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10">
-              <FileIcon className="h-5 w-5 text-cyan-400" />
+            <div className="p-2 rounded-lg bg-qo-accent/10">
+              <FileIcon className="h-5 w-5 text-qo-accent" />
             </div>
             <div>
               <p className="text-sm font-medium text-text-primary truncate max-w-[200px]">
@@ -156,7 +156,7 @@ export function HandoffDropZone({
           </div>
           <button
             onClick={handleClear}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-black/[0.04] transition-colors"
             aria-label="Remove file"
           >
             <X className="h-4 w-4" />
@@ -172,8 +172,8 @@ export function HandoffDropZone({
         className={clsx(
           'relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer',
           isDragging
-            ? 'border-cyan-400 bg-cyan-400/10'
-            : 'border-white/10 hover:border-white/20 hover:bg-white/[0.02]',
+            ? 'border-qo-accent bg-cyan-400/10'
+            : 'border-black/[0.08] hover:border-black/[0.12] hover:bg-qo-nested',
           disabled && 'opacity-50 cursor-not-allowed',
           error && 'border-red-500/50'
         )}
@@ -198,19 +198,19 @@ export function HandoffDropZone({
           <div
             className={clsx(
               'p-3 rounded-xl mb-3 transition-colors',
-              isDragging ? 'bg-cyan-400/20' : 'bg-white/[0.04]'
+              isDragging ? 'bg-cyan-400/20' : 'bg-black/[0.03]'
             )}
           >
             <Upload
               className={clsx(
                 'h-8 w-8 transition-colors',
-                isDragging ? 'text-cyan-400' : 'text-white/40'
+                isDragging ? 'text-qo-accent' : 'text-text-primary/40'
               )}
             />
           </div>
           <p className="text-sm text-text-secondary mb-1">
             Drag & drop a file here, or{' '}
-            <span className="text-cyan-400 hover:underline">browse</span>
+            <span className="text-qo-accent hover:underline">browse</span>
           </p>
           <p className="text-xs text-text-muted">
             PNG, JPEG, PDF, Excel, CSV, Markdown up to 25MB
@@ -219,7 +219,7 @@ export function HandoffDropZone({
       </div>
 
       {error && (
-        <p className="text-xs text-red-400 flex items-center gap-1">
+        <p className="text-xs text-qo-risk flex items-center gap-1">
           <X className="h-3 w-3" />
           {error}
         </p>

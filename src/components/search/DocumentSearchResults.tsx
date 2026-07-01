@@ -23,7 +23,7 @@ export function DocumentSearchResults({ response, onRetry }: DocumentSearchResul
 
       {/* Synthesized answer */}
       {answer && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-sm">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-5 ">
           <div className="prose prose-invert prose-sm max-w-none">
             <div className="whitespace-pre-wrap text-sm leading-relaxed text-text-primary">
               {answer}
@@ -45,7 +45,7 @@ export function DocumentSearchResults({ response, onRetry }: DocumentSearchResul
           {onRetry && (
             <button
               onClick={onRetry}
-              className="mt-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/[0.06]"
+              className="mt-2 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-black/[0.05]"
             >
               Try again
             </button>
@@ -66,8 +66,8 @@ export function DocumentSearchResults({ response, onRetry }: DocumentSearchResul
       )}
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-2 rounded-lg border border-amber-400/10 bg-amber-400/[0.03] px-3 py-2">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/60" />
+      <div className="flex items-start gap-2 rounded-lg border border-amber-400/10 bg-qo-ochre/[0.03] px-3 py-2">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-qo-ochre-text/60" />
         <p className="text-[11px] leading-relaxed text-text-muted">
           {disclaimer}
         </p>

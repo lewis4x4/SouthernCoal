@@ -3,7 +3,7 @@ export const SEARCH_DISCLAIMER_TEXT =
 
 export function SearchDisclaimer() {
   return (
-    <p className="mt-4 text-[11px] italic leading-relaxed text-white/30">
+    <p className="mt-4 text-[11px] italic leading-relaxed text-text-primary/30">
       {SEARCH_DISCLAIMER_TEXT}
     </p>
   );

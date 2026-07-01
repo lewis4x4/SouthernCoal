@@ -32,7 +32,7 @@ export function registerAppServiceWorker() {
         },
         classNames: {
           title: '!text-slate-50 !font-semibold !tracking-[0.01em]',
-          description: '!text-cyan-50/90',
+          description: '!text-qo-accent/90',
           actionButton:
             '!bg-cyan-300 !text-slate-950 !font-semibold !border !border-cyan-100/40 hover:!bg-cyan-200',
         },

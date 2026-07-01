@@ -87,7 +87,7 @@ export function PrecipitationDataPage() {
         <div className="flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-teal-400" />
           <div>
-            <h1 className="text-2xl font-semibold text-white">Precipitation Data</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">Precipitation Data</h1>
             <p className="text-sm text-text-muted mt-0.5">
               Precipitation readings, station data, and rainfall history
             </p>
@@ -100,8 +100,8 @@ export function PrecipitationDataPage() {
           disabled={filteredReadings.length === 0}
           className={cn(
             'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-            'bg-white/[0.04] border border-white/[0.06] text-text-secondary',
-            'hover:bg-white/[0.08] hover:text-text-primary',
+            'bg-black/[0.03] border border-black/[0.06] text-text-secondary',
+            'hover:bg-black/[0.06] hover:text-text-primary',
             'disabled:opacity-40 disabled:cursor-not-allowed',
           )}
         >
@@ -123,7 +123,7 @@ export function PrecipitationDataPage() {
             onChange={(e) => setSelectedStationId(e.target.value)}
             className={cn(
               'rounded-lg px-3 py-1.5 text-sm text-text-primary',
-              'bg-white/[0.04] border border-white/[0.06]',
+              'bg-black/[0.03] border border-black/[0.06]',
               'focus:outline-none focus:ring-1 focus:ring-sky-500/40',
             )}
           >
@@ -137,7 +137,7 @@ export function PrecipitationDataPage() {
         </div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-1 rounded-xl bg-white/[0.02] border border-white/[0.06] p-1">
+        <div className="flex items-center gap-1 rounded-xl bg-qo-nested border border-black/[0.06] p-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -147,8 +147,8 @@ export function PrecipitationDataPage() {
                 className={cn(
                   'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                   activeTab === tab.value
-                    ? 'bg-white/[0.08] text-text-primary'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]',
+                    ? 'bg-black/[0.06] text-text-primary'
+                    : 'text-text-muted hover:text-text-secondary hover:bg-black/[0.04]',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -160,7 +160,7 @@ export function PrecipitationDataPage() {
       </div>
 
       {/* Content Card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-6">
+      <div className="rounded-2xl border border-black/[0.06] bg-qo-nested  p-6">
         {loading ? (
           <div className="flex items-center justify-center h-64 text-text-muted text-sm">
             <div className="flex items-center gap-2">

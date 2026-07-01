@@ -32,9 +32,9 @@ export function SmartStaging() {
   const readyCount = files.filter((f) => f.validationErrors.length === 0).length;
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06]">
         <h3 className="text-sm font-semibold text-text-primary">
           Staging Area
           <span className="ml-2 text-xs font-normal text-text-secondary">
@@ -58,7 +58,7 @@ export function SmartStaging() {
                 { module: 'upload_dashboard', tableName: 'upload_staging' },
               );
             }}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] border border-white/[0.06] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg text-text-muted hover:text-text-secondary hover:bg-black/[0.04] border border-black/[0.06] transition-colors"
           >
             <Trash2 size={12} className="inline mr-1" />
             Clear All
@@ -70,7 +70,7 @@ export function SmartStaging() {
               'px-4 py-1.5 text-xs font-semibold rounded-lg border transition-all',
               readyCount > 0 && can('upload')
                 ? 'bg-status-queued/20 text-status-queued border-status-queued/20 hover:bg-status-queued/30'
-                : 'opacity-50 cursor-not-allowed bg-white/[0.03] text-text-muted border-white/[0.06]',
+                : 'opacity-50 cursor-not-allowed bg-qo-nested text-text-muted border-black/[0.06]',
             )}
             title={!can('upload') ? 'Requires upload permission' : undefined}
           >
@@ -150,7 +150,7 @@ export function SmartStaging() {
                 aria-label="Document category"
                 title={can('upload') ? 'Select document category' : 'Permission required to change category'}
                 className={cn(
-                  'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
+                  'px-2 py-1 rounded-md bg-[#0d1117] border border-black/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoCategory ? 'text-text-ai-guess' : 'text-text-primary',
                   !can('upload') && 'opacity-60 cursor-not-allowed',
                 )}
@@ -177,7 +177,7 @@ export function SmartStaging() {
                 aria-label="State"
                 title={can('upload') ? 'Select state' : 'Permission required to change state'}
                 className={cn(
-                  'px-2 py-1 rounded-md bg-[#0d1117] border border-white/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
+                  'px-2 py-1 rounded-md bg-[#0d1117] border border-black/[0.08] text-xs focus:outline-none focus:border-status-queued/50',
                   isAutoState ? 'text-text-ai-guess' : 'text-text-primary',
                   !can('upload') && 'opacity-60 cursor-not-allowed',
                 )}

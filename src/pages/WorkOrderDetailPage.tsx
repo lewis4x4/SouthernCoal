@@ -29,10 +29,10 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
 const STATUS_COLORS: Record<WorkOrderStatus, string> = {
   open: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   assigned: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  in_progress: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  in_progress: 'bg-qo-accent/20 text-qo-accent border-qo-accent/30',
   completed: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
   verified: 'bg-green-500/20 text-green-300 border-green-500/30',
-  cancelled: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  cancelled: 'bg-gray-500/20 text-text-muted border-gray-500/30',
 };
 
 const NEXT_STATUS: Partial<Record<WorkOrderStatus, WorkOrderStatus[]>> = {
@@ -123,7 +123,7 @@ export function WorkOrderDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-text-secondary">Work order not found</p>
-        <Link to="/work-orders" className="text-amber-400 hover:underline mt-2 inline-block">
+        <Link to="/work-orders" className="text-qo-ochre-text hover:underline mt-2 inline-block">
           Back to Work Orders
         </Link>
       </div>
@@ -138,13 +138,13 @@ export function WorkOrderDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           to="/work-orders"
-          className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+          className="p-2 rounded-lg bg-qo-nested border border-black/[0.08] hover:bg-black/[0.06]"
         >
           <ArrowLeft className="w-4 h-4 text-text-secondary" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{wo.title}</h1>
+            <h1 className="text-2xl font-bold text-text-primary">{wo.title}</h1>
             {isHeld && (
               <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-medium">
                 <Shield className="w-3 h-3" />
@@ -152,7 +152,7 @@ export function WorkOrderDetailPage() {
               </span>
             )}
             {isOverdue && (
-              <span className="flex items-center gap-1 text-sm text-red-400">
+              <span className="flex items-center gap-1 text-sm text-qo-risk">
                 <AlertTriangle className="w-4 h-4" />
                 Overdue
               </span>
@@ -165,7 +165,7 @@ export function WorkOrderDetailPage() {
             <span className="capitalize">{wo.priority} priority</span>
             {wo.category && <span>{wo.category.replace(/_/g, ' ')}</span>}
             {wo.source_type !== 'manual' && (
-              <span className="text-xs bg-white/5 px-2 py-0.5 rounded">
+              <span className="text-xs bg-qo-nested px-2 py-0.5 rounded">
                 Source: {wo.source_type.replace(/_/g, ' ')}
               </span>
             )}
@@ -180,7 +180,7 @@ export function WorkOrderDetailPage() {
           {wo.description && (
             <SpotlightCard className="p-4">
               <h3 className="text-sm font-medium text-text-secondary mb-2">Description</h3>
-              <p className="text-white whitespace-pre-wrap">{wo.description}</p>
+              <p className="text-text-primary whitespace-pre-wrap">{wo.description}</p>
             </SpotlightCard>
           )}
 
@@ -192,7 +192,7 @@ export function WorkOrderDetailPage() {
                 <input
                   value={statusNotes}
                   onChange={(e) => setStatusNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
                   placeholder="Status change notes (optional)..."
                 />
                 <div className="flex flex-wrap gap-2">
@@ -238,7 +238,7 @@ export function WorkOrderDetailPage() {
               <input
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
+                className="flex-1 px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-amber-500/50 focus:outline-none"
                 placeholder="Add a note..."
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAddNote();
@@ -247,7 +247,7 @@ export function WorkOrderDetailPage() {
               <button
                 onClick={handleAddNote}
                 disabled={!noteText.trim()}
-                className="px-4 py-2 text-sm font-medium bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white disabled:opacity-40"
+                className="px-4 py-2 text-sm font-medium bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-primary disabled:opacity-40"
               >
                 Add
               </button>
@@ -265,12 +265,12 @@ export function WorkOrderDetailPage() {
                   const Icon = EVENT_ICONS[ev.event_type] ?? Clock;
                   return (
                     <div key={ev.id} className="flex items-start gap-3">
-                      <div className="p-1.5 rounded bg-white/5 mt-0.5">
+                      <div className="p-1.5 rounded bg-qo-nested mt-0.5">
                         <Icon className="w-3.5 h-3.5 text-text-secondary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-white capitalize">
+                          <span className="text-sm text-text-primary capitalize">
                             {ev.event_type.replace(/_/g, ' ')}
                           </span>
                           {ev.old_value && ev.new_value && (
@@ -303,43 +303,43 @@ export function WorkOrderDetailPage() {
               {wo.site_name && (
                 <>
                   <dt className="text-text-secondary">Site</dt>
-                  <dd className="text-white">{wo.site_name}</dd>
+                  <dd className="text-text-primary">{wo.site_name}</dd>
                 </>
               )}
               {wo.outfall_display && (
                 <>
                   <dt className="text-text-secondary">Outfall</dt>
-                  <dd className="text-white">{wo.outfall_display}</dd>
+                  <dd className="text-text-primary">{wo.outfall_display}</dd>
                 </>
               )}
               {wo.assigned_to_name && (
                 <>
                   <dt className="text-text-secondary">Assigned To</dt>
-                  <dd className="text-white">{wo.assigned_to_name}</dd>
+                  <dd className="text-text-primary">{wo.assigned_to_name}</dd>
                 </>
               )}
               {wo.due_date && (
                 <>
                   <dt className="text-text-secondary">Due Date</dt>
-                  <dd className={clsx('text-white', isOverdue && 'text-red-400')}>{wo.due_date}</dd>
+                  <dd className={clsx('text-text-primary', isOverdue && 'text-qo-risk')}>{wo.due_date}</dd>
                 </>
               )}
               {wo.sla_hours && (
                 <>
                   <dt className="text-text-secondary">SLA</dt>
-                  <dd className="text-white">{wo.sla_hours}h</dd>
+                  <dd className="text-text-primary">{wo.sla_hours}h</dd>
                 </>
               )}
               {wo.completed_at && (
                 <>
                   <dt className="text-text-secondary">Completed</dt>
-                  <dd className="text-white">{new Date(wo.completed_at).toLocaleDateString()}</dd>
+                  <dd className="text-text-primary">{new Date(wo.completed_at).toLocaleDateString()}</dd>
                 </>
               )}
               {wo.verified_at && (
                 <>
                   <dt className="text-text-secondary">Verified</dt>
-                  <dd className="text-white">{new Date(wo.verified_at).toLocaleDateString()}</dd>
+                  <dd className="text-text-primary">{new Date(wo.verified_at).toLocaleDateString()}</dd>
                 </>
               )}
               {wo.is_recurring && (
@@ -349,7 +349,7 @@ export function WorkOrderDetailPage() {
                 </>
               )}
               <dt className="text-text-secondary">Created</dt>
-              <dd className="text-white">{new Date(wo.created_at).toLocaleDateString()}</dd>
+              <dd className="text-text-primary">{new Date(wo.created_at).toLocaleDateString()}</dd>
             </dl>
           </SpotlightCard>
 
@@ -367,7 +367,7 @@ export function WorkOrderDetailPage() {
                   value={holdReason}
                   onChange={(e) => setHoldReason(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
                   placeholder="Reason for legal hold..."
                 />
                 <div className="flex gap-2">
@@ -380,7 +380,7 @@ export function WorkOrderDetailPage() {
                   </button>
                   <button
                     onClick={() => setShowHoldForm(false)}
-                    className="px-3 py-1.5 text-xs text-text-secondary hover:text-white"
+                    className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
                   >
                     Cancel
                   </button>

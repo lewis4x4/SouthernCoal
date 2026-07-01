@@ -12,10 +12,10 @@ import type { DmrSubmissionType, DmrSubmissionStatus } from '@/types/database';
 // ─── Status display ──────────────────────────────────────────────────
 const STATUS_CONFIG: Record<DmrSubmissionStatus, { label: string; bg: string; text: string; border: string }> = {
   draft:              { label: 'Draft',       bg: 'bg-slate-500/10',   text: 'text-slate-400',   border: 'border-slate-500/20' },
-  pending_submission: { label: 'Pending',     bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20' },
+  pending_submission: { label: 'Pending',     bg: 'bg-amber-500/10',   text: 'text-qo-ochre-text',   border: 'border-amber-500/20' },
   submitted:          { label: 'Submitted',   bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/20' },
-  accepted:           { label: 'Accepted',    bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-  rejected:           { label: 'Rejected',    bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
+  accepted:           { label: 'Accepted',    bg: 'bg-emerald-500/10', text: 'text-qo-sage-text', border: 'border-emerald-500/20' },
+  rejected:           { label: 'Rejected',    bg: 'bg-red-500/10',     text: 'text-qo-risk',     border: 'border-red-500/20' },
   amended:            { label: 'Amended',     bg: 'bg-purple-500/10',  text: 'text-purple-400',  border: 'border-purple-500/20' },
 };
 
@@ -171,7 +171,7 @@ export function DmrSubmissionsPage() {
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
+            className="rounded-lg bg-black/[0.04] border border-black/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
           >
             Export CSV
           </button>
@@ -219,7 +219,7 @@ export function DmrSubmissionsPage() {
               <select
                 value={newPermitId}
                 onChange={(e) => setNewPermitId(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
                 aria-label="Select permit"
                 disabled={loadingPermits}
               >
@@ -241,7 +241,7 @@ export function DmrSubmissionsPage() {
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as DmrSubmissionType)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
                 aria-label="Submission type"
               >
                 {Object.entries(TYPE_LABELS).map(([key, label]) => (
@@ -256,7 +256,7 @@ export function DmrSubmissionsPage() {
                 type="date"
                 value={newPeriodStart}
                 onChange={(e) => setNewPeriodStart(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
               />
             </div>
 
@@ -266,7 +266,7 @@ export function DmrSubmissionsPage() {
                 type="date"
                 value={newPeriodEnd}
                 onChange={(e) => setNewPeriodEnd(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-blue-400/30"
               />
             </div>
           </div>
@@ -295,7 +295,7 @@ export function DmrSubmissionsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as DmrSubmissionStatus | '')}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-text-primary outline-none focus:border-blue-400/30"
+          className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-sm text-text-primary outline-none focus:border-blue-400/30"
           aria-label="Filter by status"
         >
           <option value="">All</option>
@@ -307,20 +307,20 @@ export function DmrSubmissionsPage() {
 
       {/* Submissions list */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-8 text-center">
+        <div className="rounded-xl border border-black/[0.06] bg-white p-8 text-center">
           <FileText size={32} className="mx-auto text-text-muted mb-3" />
           <p className="text-sm text-text-muted">No DMR submissions{statusFilter ? ` with status "${STATUS_CONFIG[statusFilter]?.label}"` : ''}</p>
           <p className="text-xs text-text-muted mt-1">Create a new submission to get started</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.04]">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested divide-y divide-white/[0.04]">
           {filtered.map((sub) => {
             const cfg = STATUS_CONFIG[sub.status];
             return (
               <button
                 key={sub.id}
                 onClick={() => navigate(`/dmr/${sub.id}`)}
-                className="w-full flex items-center gap-4 px-4 py-3 hover:bg-white/[0.03] transition-colors text-left"
+                className="w-full flex items-center gap-4 px-4 py-3 hover:bg-qo-nested transition-colors text-left"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -328,7 +328,7 @@ export function DmrSubmissionsPage() {
                       {sub.permit_number ?? 'Unknown Permit'}
                       {sub.federal_npdes_id &&
                       sub.federal_npdes_id !== sub.permit_number?.toUpperCase() ? (
-                        <span className="font-mono text-cyan-400/90 font-normal">
+                        <span className="font-mono text-qo-accent/90 font-normal">
                           {' '}
                           → {sub.federal_npdes_id}
                         </span>

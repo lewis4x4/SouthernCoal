@@ -97,16 +97,16 @@ export function NotificationDrawer({
       ref={drawerRef}
       role="dialog"
       aria-label="Notifications"
-      className="fixed left-16 top-0 z-[60] flex h-screen w-[min(320px,calc(100vw-64px))] flex-col border-r border-white/[0.08] bg-crystal-surface/98 backdrop-blur-xl shadow-2xl"
+      className="fixed left-16 top-0 z-[60] flex h-screen w-[min(320px,calc(100vw-64px))] flex-col border-r border-black/[0.08] bg-white  shadow-2xl"
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary">Notifications</h2>
         <div className="flex items-center gap-2">
           {unread.length > 0 && (
             <button
               onClick={onMarkAllRead}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-text-muted hover:bg-white/[0.05] hover:text-text-secondary transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
               title="Mark all as read"
             >
               <CheckCheck size={12} />
@@ -115,7 +115,7 @@ export function NotificationDrawer({
           )}
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.05] hover:text-text-secondary transition-colors"
+            className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
             aria-label="Close notifications"
           >
             <X size={16} />
@@ -139,8 +139,8 @@ export function NotificationDrawer({
                 <div
                   key={notification.id}
                   className={cn(
-                    'group relative px-4 py-3 transition-colors hover:bg-white/[0.02] cursor-pointer',
-                    isUnread && 'bg-white/[0.01]',
+                    'group relative px-4 py-3 transition-colors hover:bg-qo-nested cursor-pointer',
+                    isUnread && 'bg-white',
                   )}
                   onClick={() => handleNotificationClick(notification)}
                 >
@@ -194,7 +194,7 @@ export function NotificationDrawer({
                         e.stopPropagation();
                         onDismiss(notification.id);
                       }}
-                      className="shrink-0 rounded p-1 text-text-muted opacity-0 group-hover:opacity-100 hover:bg-white/[0.05] hover:text-text-secondary transition-all"
+                      className="shrink-0 rounded p-1 text-text-muted opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-text-secondary transition-all"
                       aria-label="Dismiss notification"
                     >
                       <X size={12} />

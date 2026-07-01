@@ -19,15 +19,15 @@ type Tab = 'integrity' | 'retention' | 'health';
 
 const STATUS_ICON: Record<string, { icon: typeof CheckCircle2; color: string }> = {
   passed: { icon: CheckCircle2, color: 'text-green-400' },
-  warnings: { icon: AlertTriangle, color: 'text-amber-400' },
-  failed: { icon: XCircle, color: 'text-red-400' },
-  running: { icon: Activity, color: 'text-cyan-400' },
+  warnings: { icon: AlertTriangle, color: 'text-qo-ochre-text' },
+  failed: { icon: XCircle, color: 'text-qo-risk' },
+  running: { icon: Activity, color: 'text-qo-accent' },
 };
 
 const CHECK_STATUS_COLOR: Record<IntegrityCheckResult['status'], string> = {
   pass: 'text-green-400',
-  warn: 'text-amber-400',
-  fail: 'text-red-400',
+  warn: 'text-qo-ochre-text',
+  fail: 'text-qo-risk',
 };
 
 export function SystemHealthPage() {
@@ -94,7 +94,7 @@ export function SystemHealthPage() {
           <p className="text-sm text-text-secondary mt-1">Data integrity checks, retention policies, and system monitoring</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary">
+          <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary">
             Export CSV
           </button>
           {tab === 'integrity' && (
@@ -111,7 +111,7 @@ export function SystemHealthPage() {
             <button
               onClick={captureHealthSnapshot}
               disabled={capturingSnapshot}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-500/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30 text-cyan-200 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-qo-accent/20 border border-qo-accent/30 rounded-lg hover:bg-qo-accent/30 text-qo-accent disabled:opacity-50"
             >
               <Radio className="w-3.5 h-3.5" />
               {capturingSnapshot ? 'Capturing…' : 'Capture Snapshot'}
@@ -164,7 +164,7 @@ export function SystemHealthPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SpotlightCard className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-4 h-4 text-cyan-400" />
+            <Shield className="w-4 h-4 text-qo-accent" />
             <span className="text-xs text-text-secondary">Last Check</span>
           </div>
           {latestCheck ? (
@@ -189,12 +189,12 @@ export function SystemHealthPage() {
         </SpotlightCard>
         <SpotlightCard className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Archive className="w-4 h-4 text-amber-400" />
+            <Archive className="w-4 h-4 text-qo-ochre-text" />
             <span className="text-xs text-text-secondary">Retention Policies</span>
           </div>
           <p className="text-xl font-bold text-text-primary">{enforcedPolicies.length}</p>
           {totalOutsidePolicy > 0 && (
-            <p className="text-[10px] text-amber-400">{totalOutsidePolicy} records outside policy</p>
+            <p className="text-[10px] text-qo-ochre-text">{totalOutsidePolicy} records outside policy</p>
           )}
           {totalOnHold > 0 && (
             <p className="text-[10px] text-fuchsia-300">{totalOnHold} records under legal hold</p>
@@ -212,7 +212,7 @@ export function SystemHealthPage() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+      <div className="flex gap-1 bg-qo-nested rounded-lg p-1">
         {([
           { key: 'integrity' as Tab, label: 'Data Integrity' },
           { key: 'retention' as Tab, label: 'Retention Policies' },
@@ -222,7 +222,7 @@ export function SystemHealthPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-              tab === t.key ? 'bg-white/10 text-text-primary' : 'text-text-secondary hover:text-text-primary'
+              tab === t.key ? 'bg-black/[0.06] text-text-primary' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             {t.label}
@@ -267,7 +267,7 @@ export function SystemHealthPage() {
                     {policy.is_enforced ? (
                       <span className="px-1.5 py-0.5 text-[10px] bg-green-500/20 text-green-300 rounded">ENFORCED</span>
                     ) : (
-                      <span className="px-1.5 py-0.5 text-[10px] bg-white/5 text-text-secondary rounded">NOT ENFORCED</span>
+                      <span className="px-1.5 py-0.5 text-[10px] bg-qo-nested text-text-secondary rounded">NOT ENFORCED</span>
                     )}
                   </div>
                   <p className="text-xs text-text-secondary mt-0.5">
@@ -279,7 +279,7 @@ export function SystemHealthPage() {
                       <span className="text-green-400">{policy.records_within_policy ?? 0}</span> within policy
                     </span>
                     {(policy.records_outside_policy ?? 0) > 0 && (
-                      <span className="text-xs text-amber-400">
+                      <span className="text-xs text-qo-ochre-text">
                         {policy.records_outside_policy} outside policy
                       </span>
                     )}
@@ -297,7 +297,7 @@ export function SystemHealthPage() {
                 </div>
                 <button
                   onClick={() => updateRetentionPolicy(policy.id, { is_enforced: !policy.is_enforced })}
-                  className={`px-2 py-1 text-xs rounded ${policy.is_enforced ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
+                  className={`px-2 py-1 text-xs rounded ${policy.is_enforced ? 'text-qo-ochre-text hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
                 >
                   {policy.is_enforced ? 'Disable' : 'Enable'}
                 </button>
@@ -330,7 +330,7 @@ export function SystemHealthPage() {
                   {h.storage_usage_mb != null && <span>Storage: {h.storage_usage_mb} MB</span>}
                   {h.active_users_24h != null && <span>Users: {h.active_users_24h}</span>}
                   {h.error_count_24h != null && (
-                    <span className={h.error_count_24h > 0 ? 'text-red-400' : ''}>
+                    <span className={h.error_count_24h > 0 ? 'text-qo-risk' : ''}>
                       Errors: {h.error_count_24h}
                     </span>
                   )}
@@ -383,8 +383,8 @@ function IntegrityCheckCard({
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-green-400">{check.checks_passed} pass</span>
-            {check.checks_warned > 0 && <span className="text-amber-400">{check.checks_warned} warn</span>}
-            {check.checks_failed > 0 && <span className="text-red-400">{check.checks_failed} fail</span>}
+            {check.checks_warned > 0 && <span className="text-qo-ochre-text">{check.checks_warned} warn</span>}
+            {check.checks_failed > 0 && <span className="text-qo-risk">{check.checks_failed} fail</span>}
           </div>
         </div>
       </button>

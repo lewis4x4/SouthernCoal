@@ -77,7 +77,7 @@ export function EquipmentAdminPage() {
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1.5 rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl bg-qo-accent/15 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/25 transition-colors"
         >
           <Plus size={16} />
           Add Equipment
@@ -87,7 +87,7 @@ export function EquipmentAdminPage() {
       {/* Calibration due alert */}
       {overdueMaintenance.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.03] px-4 py-3">
-          <AlertTriangle size={18} className="text-red-400 shrink-0" />
+          <AlertTriangle size={18} className="text-qo-risk shrink-0" />
           <span className="text-sm text-text-secondary">
             <strong className="text-red-300">{overdueMaintenance.length}</strong> field gear item
             {overdueMaintenance.length !== 1 ? 's' : ''} overdue for maintenance
@@ -97,7 +97,7 @@ export function EquipmentAdminPage() {
 
       {calibrationsDue.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] px-4 py-3">
-          <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+          <AlertTriangle size={18} className="text-qo-ochre-text shrink-0" />
           <span className="text-sm text-text-secondary">
             <strong className="text-amber-300">{calibrationsDue.length}</strong> equipment item{calibrationsDue.length !== 1 ? 's' : ''} due for calibration within 14 days
           </span>
@@ -114,12 +114,12 @@ export function EquipmentAdminPage() {
               placeholder="Equipment name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as EquipmentType)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
             >
               {EQUIPMENT_TYPES.map((t) => (
                 <option key={t} value={t}>{EQUIPMENT_TYPE_LABELS[t]}</option>
@@ -130,21 +130,21 @@ export function EquipmentAdminPage() {
               placeholder="Serial number"
               value={newSerial}
               onChange={(e) => setNewSerial(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
             <input
               type="text"
               placeholder="Model"
               value={newModel}
               onChange={(e) => setNewModel(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
             <input
               type="text"
               placeholder="Manufacturer"
               value={newManufacturer}
               onChange={(e) => setNewManufacturer(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
           </div>
           <div className="flex items-center gap-6">
@@ -153,7 +153,7 @@ export function EquipmentAdminPage() {
                 type="checkbox"
                 checked={newRequiresCal}
                 onChange={(e) => setNewRequiresCal(e.target.checked)}
-                className="rounded border-white/20"
+                className="rounded border-black/[0.12]"
               />
               Requires calibration
             </label>
@@ -165,7 +165,7 @@ export function EquipmentAdminPage() {
                   placeholder="days"
                   value={newCalInterval}
                   onChange={(e) => setNewCalInterval(e.target.value)}
-                  className="w-20 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+                  className="w-20 rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-sm text-text-primary outline-none focus:border-qo-accent/30"
                 />
                 days
               </label>
@@ -190,7 +190,7 @@ export function EquipmentAdminPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06] pb-0">
+      <div className="flex gap-1 border-b border-black/[0.06] pb-0">
         {(['inventory', 'calibration', 'maintenance'] as const).map((tab) => (
           <button
             key={tab}
@@ -198,7 +198,7 @@ export function EquipmentAdminPage() {
             className={cn(
               'rounded-t-lg px-4 py-2 text-sm font-medium transition-colors border-b-2',
               activeTab === tab
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-qo-accent text-qo-accent'
                 : 'border-transparent text-text-muted hover:text-text-secondary',
             )}
           >
@@ -206,12 +206,12 @@ export function EquipmentAdminPage() {
             {tab === 'calibration' && 'Calibration Due'}
             {tab === 'maintenance' && 'Overdue Gear'}
             {tab === 'calibration' && calibrationsDue.length > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-qo-ochre-text">
                 {calibrationsDue.length}
               </span>
             )}
             {tab === 'maintenance' && maintenanceDue.length > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+              <span className="ml-2 inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-qo-risk">
                 {maintenanceDue.length}
               </span>
             )}
@@ -223,7 +223,7 @@ export function EquipmentAdminPage() {
       {activeTab === 'inventory' && (
         <div className="space-y-2">
           {equipment.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-12 text-center text-sm text-text-muted">
+            <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-12 text-center text-sm text-text-muted">
               No equipment registered yet.
             </div>
           ) : (
@@ -232,12 +232,12 @@ export function EquipmentAdminPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">{item.name}</span>
-                      <span className="rounded-full bg-white/[0.05] border border-white/[0.1] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-text-muted">
+                      <span className="rounded-full bg-black/[0.03] border border-white/[0.1] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-text-muted">
                         {EQUIPMENT_TYPE_LABELS[item.equipment_type]}
                       </span>
                     </div>
@@ -245,7 +245,7 @@ export function EquipmentAdminPage() {
                       {item.serial_number && <span>S/N: {item.serial_number}</span>}
                       {item.model && <span>{item.model}</span>}
                       {item.requires_calibration && (
-                        <span className="flex items-center gap-1 text-amber-400">
+                        <span className="flex items-center gap-1 text-qo-ochre-text">
                           <AlertTriangle size={10} /> Cal. required
                         </span>
                       )}
@@ -287,7 +287,7 @@ export function EquipmentAdminPage() {
                 >
                   <AlertTriangle
                     size={16}
-                    className={isOverdue ? 'text-red-400' : 'text-amber-400'}
+                    className={isOverdue ? 'text-qo-risk' : 'text-qo-ochre-text'}
                   />
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium text-text-primary">
@@ -302,7 +302,7 @@ export function EquipmentAdminPage() {
                   <div className="text-right">
                     <span className={cn(
                       'text-sm font-bold',
-                      isOverdue ? 'text-red-400' : 'text-amber-400',
+                      isOverdue ? 'text-qo-risk' : 'text-qo-ochre-text',
                     )}>
                       {item.days_until_due !== null
                         ? isOverdue
@@ -346,7 +346,7 @@ export function EquipmentAdminPage() {
                 >
                   <AlertTriangle
                     size={16}
-                    className={isOverdue ? 'text-red-400' : 'text-amber-400'}
+                    className={isOverdue ? 'text-qo-risk' : 'text-qo-ochre-text'}
                   />
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium text-text-primary">
@@ -364,7 +364,7 @@ export function EquipmentAdminPage() {
                     <span
                       className={cn(
                         'text-sm font-bold',
-                        isOverdue ? 'text-red-400' : 'text-amber-400',
+                        isOverdue ? 'text-qo-risk' : 'text-qo-ochre-text',
                       )}
                     >
                       {item.days_until_due !== null

@@ -183,7 +183,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
 
       {/* Summary text (all types) */}
       {data.summary && (
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
           <p className="text-xs text-text-secondary">{data.summary}</p>
         </div>
@@ -198,7 +198,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/[0.06] text-text-muted">
+                <tr className="border-b border-black/[0.06] text-text-muted">
                   <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
                   <th className="text-left py-1.5 pr-3 font-medium">Outfall</th>
                   <th className="text-left py-1.5 pr-3 font-medium">Value</th>
@@ -246,7 +246,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         data.permit_number &&
         data.state &&
         can('process') && (
-          <div className="mt-4 pt-3 border-t border-white/[0.06]">
+          <div className="mt-4 pt-3 border-t border-black/[0.06]">
             <button
               onClick={async () => {
                 const result = await generateDMRSchedule({
@@ -284,7 +284,7 @@ function TypeSpecificDetails({ data, docType }: { data: ExtractedData; docType: 
         <div className="grid grid-cols-2 gap-3">
           {data.mod_number && <SummaryItem label="Mod #" value={data.mod_number} />}
           {data.description && (
-            <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] col-span-2">
+            <div className="p-2.5 rounded-lg bg-qo-nested border border-black/[0.05] col-span-2">
               <p className="text-[10px] text-text-muted uppercase tracking-wider">What Changed</p>
               <p className="text-xs text-text-secondary mt-0.5">{data.description}</p>
             </div>
@@ -402,21 +402,21 @@ function NetDmrExtractionPanel({
       </div>
 
       {data.permit_numbers.length > 0 && (
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Permits</p>
           <p className="text-xs text-text-secondary font-mono">{data.permit_numbers.join(', ')}</p>
         </div>
       )}
 
       {data.summary && (
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
           <p className="text-xs text-text-secondary">{data.summary}</p>
         </div>
       )}
 
       {entry.status === 'parsed' && can('process') && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
             type="button"
             onClick={() => importNetDmr(entry.id)}
@@ -449,14 +449,14 @@ function NetDmrExtractionPanel({
       )}
 
       {entry.status === 'imported' && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-2">
+        <div className="mt-4 pt-3 border-t border-black/[0.06] space-y-2">
           <div className="flex items-center gap-2 text-xs text-green-300">
             <CheckCircle2 size={14} />
             <span>DMR data successfully imported to domain tables</span>
           </div>
           <p className="text-[10px] text-text-muted">
             Open{' '}
-            <Link to="/dmr" className="text-cyan-400 hover:text-cyan-300">
+            <Link to="/dmr" className="text-qo-accent hover:text-qo-accent">
               DMR Submissions
             </Link>{' '}
             to review draft submissions created from this import.
@@ -584,7 +584,7 @@ function LabDataExtractionPanel({
 
       {/* Permit numbers */}
       {data.permit_numbers.length > 0 && (
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
             Permit Numbers
           </p>
@@ -596,7 +596,7 @@ function LabDataExtractionPanel({
 
       {/* Summary text */}
       {data.summary && (
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
           <p className="text-xs text-text-secondary">{data.summary}</p>
         </div>
@@ -611,7 +611,7 @@ function LabDataExtractionPanel({
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/[0.06] text-text-muted">
+                <tr className="border-b border-black/[0.06] text-text-muted">
                   <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
                   <th className="text-right py-1.5 pr-3 font-medium">Samples</th>
                   <th className="text-right py-1.5 pr-3 font-medium">Below Detection</th>
@@ -630,7 +630,7 @@ function LabDataExtractionPanel({
                     <td className="py-1.5 pr-3 text-right font-mono">{param.sample_count}</td>
                     <td className="py-1.5 pr-3 text-right font-mono">
                       {param.below_detection_count > 0 ? (
-                        <span className="text-amber-400">{param.below_detection_count}</span>
+                        <span className="text-qo-ochre-text">{param.below_detection_count}</span>
                       ) : (
                         '0'
                       )}
@@ -721,7 +721,7 @@ function LabDataExtractionPanel({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-text-muted">
+                  <tr className="border-b border-black/[0.06] text-text-muted">
                     <th className="text-left py-1.5 pr-3 font-medium">Row</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Outfall</th>
@@ -760,7 +760,7 @@ function LabDataExtractionPanel({
 
       {/* Approve & Import — moves parsed data to domain tables */}
       {entry.status === 'parsed' && can('process') && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
             type="button"
             onClick={() => importLabData(entry.id)}
@@ -789,7 +789,7 @@ function LabDataExtractionPanel({
 
       {/* Already imported indicator */}
       {entry.status === 'imported' && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <div className="flex items-center gap-2 text-xs text-green-300">
             <CheckCircle2 size={14} />
             <span>Data successfully imported to domain tables</span>
@@ -802,7 +802,7 @@ function LabDataExtractionPanel({
 
 function SummaryItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+    <div className="p-2.5 rounded-lg bg-qo-nested border border-black/[0.05]">
       <p className="text-[10px] text-text-muted uppercase tracking-wider">{label}</p>
       <p className="text-sm font-mono font-semibold text-text-primary mt-0.5">
         {value}

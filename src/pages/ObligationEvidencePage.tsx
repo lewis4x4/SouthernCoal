@@ -35,11 +35,11 @@ const VERIFICATION_ICONS: Record<EvidenceVerificationStatus, typeof Clock> = {
 };
 
 const VERIFICATION_COLORS: Record<EvidenceVerificationStatus, string> = {
-  unverified: 'text-gray-400',
-  verified: 'text-emerald-400',
-  expired: 'text-red-400',
-  insufficient: 'text-amber-400',
-  disputed: 'text-red-400',
+  unverified: 'text-text-muted',
+  verified: 'text-qo-sage-text',
+  expired: 'text-qo-risk',
+  insufficient: 'text-qo-ochre-text',
+  disputed: 'text-qo-risk',
 };
 
 const EVIDENCE_TYPE_LABELS: Record<EvidenceType, string> = {
@@ -134,7 +134,7 @@ export function ObligationEvidencePage() {
             <Scale className="w-6 h-6 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Obligation Evidence</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Obligation Evidence</h1>
             <p className="text-sm text-text-secondary">
               Map consent decree obligations to supporting evidence
             </p>
@@ -145,17 +145,17 @@ export function ObligationEvidencePage() {
       {/* Coverage Summary */}
       <div className="grid grid-cols-3 gap-4">
         <SpotlightCard className="p-4 text-center">
-          <div className="text-2xl font-bold text-white">{obligations.length}</div>
+          <div className="text-2xl font-bold text-text-primary">{obligations.length}</div>
           <div className="text-xs text-text-secondary">Total Obligations</div>
         </SpotlightCard>
         <SpotlightCard className="p-4 text-center">
-          <div className="text-2xl font-bold text-emerald-400">{coveredCount}</div>
+          <div className="text-2xl font-bold text-qo-sage-text">{coveredCount}</div>
           <div className="text-xs text-text-secondary">Verified Evidence</div>
         </SpotlightCard>
         <SpotlightCard className="p-4 text-center">
           <div className={clsx(
             'text-2xl font-bold',
-            totalActive - coveredCount > 0 ? 'text-amber-400' : 'text-emerald-400',
+            totalActive - coveredCount > 0 ? 'text-qo-ochre-text' : 'text-qo-sage-text',
           )}>
             {totalActive - coveredCount}
           </div>
@@ -177,8 +177,8 @@ export function ObligationEvidencePage() {
             className={clsx(
               'px-3 py-1 text-xs rounded-lg border transition-colors',
               statusFilter === key
-                ? 'bg-white/10 border-white/20 text-white'
-                : 'border-transparent text-text-secondary hover:text-white',
+                ? 'bg-black/[0.06] border-black/[0.12] text-text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary',
             )}
           >
             {label}
@@ -204,24 +204,24 @@ export function ObligationEvidencePage() {
                 className={clsx(
                   'w-full text-left p-3 rounded-lg border transition-colors',
                   selectedObligation === ob.id
-                    ? 'bg-white/10 border-white/20'
-                    : 'bg-white/[0.02] border-white/5 hover:bg-white/5',
+                    ? 'bg-black/[0.06] border-black/[0.12]'
+                    : 'bg-qo-nested border-white/5 hover:bg-qo-nested',
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono text-violet-400">{ob.paragraph_number}</span>
-                      <span className="text-sm text-white truncate">{ob.title}</span>
+                      <span className="text-sm text-text-primary truncate">{ob.title}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
                     {ob.hasVerified ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-qo-sage-text" />
                     ) : ob.hasAny ? (
-                      <Clock className="w-4 h-4 text-amber-400" />
+                      <Clock className="w-4 h-4 text-qo-ochre-text" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <AlertTriangle className="w-4 h-4 text-qo-risk" />
                     )}
                     <span className="text-xs text-text-secondary">{ob.evidence.length}</span>
                   </div>
@@ -235,7 +235,7 @@ export function ObligationEvidencePage() {
             {selectedObligation ? (
               <SpotlightCard className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-white">
+                  <h3 className="text-sm font-medium text-text-primary">
                     Evidence for §{obligationsWithCoverage.find((o) => o.id === selectedObligation)?.paragraph_number}
                   </h3>
                   <button
@@ -248,17 +248,17 @@ export function ObligationEvidencePage() {
                 </div>
 
                 {showAddForm && (
-                  <div className="p-3 bg-white/[0.02] rounded-lg border border-white/5 space-y-2">
+                  <div className="p-3 bg-qo-nested rounded-lg border border-white/5 space-y-2">
                     <input
                       value={evTitle}
                       onChange={(e) => setEvTitle(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder:text-text-secondary focus:outline-none"
+                      className="w-full px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
                       placeholder="Evidence title *"
                     />
                     <select
                       value={evType}
                       onChange={(e) => setEvType(e.target.value as EvidenceType)}
-                      className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none"
+                      className="w-full px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary focus:outline-none"
                     >
                       {Object.entries(EVIDENCE_TYPE_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
@@ -268,7 +268,7 @@ export function ObligationEvidencePage() {
                       value={evDescription}
                       onChange={(e) => setEvDescription(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder:text-text-secondary focus:outline-none resize-none"
+                      className="w-full px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary placeholder:text-text-secondary focus:outline-none resize-none"
                       placeholder="Description..."
                     />
                     <div className="flex justify-end gap-2">
@@ -291,13 +291,13 @@ export function ObligationEvidencePage() {
                     {selectedObEvidence.map((ev) => {
                       const VIcon = VERIFICATION_ICONS[ev.verification_status];
                       return (
-                        <div key={ev.id} className="p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                        <div key={ev.id} className="p-3 bg-qo-nested rounded-lg border border-white/5">
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
                               <VIcon className={clsx('w-4 h-4', VERIFICATION_COLORS[ev.verification_status])} />
-                              <span className="text-sm text-white">{ev.title}</span>
+                              <span className="text-sm text-text-primary">{ev.title}</span>
                             </div>
-                            <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary">
+                            <span className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary">
                               {EVIDENCE_TYPE_LABELS[ev.evidence_type]}
                             </span>
                           </div>
@@ -312,8 +312,8 @@ export function ObligationEvidencePage() {
                                 className={clsx(
                                   'px-2 py-0.5 text-xs rounded capitalize',
                                   ev.verification_status === s
-                                    ? 'bg-white/10 text-white'
-                                    : 'text-text-secondary hover:text-white',
+                                    ? 'bg-black/[0.06] text-text-primary'
+                                    : 'text-text-secondary hover:text-text-primary',
                                 )}
                               >
                                 {s}
@@ -323,7 +323,7 @@ export function ObligationEvidencePage() {
                           {ev.expiry_date && (
                             <div className={clsx(
                               'text-xs mt-1',
-                              new Date(ev.expiry_date) < new Date() ? 'text-red-400' : 'text-text-secondary',
+                              new Date(ev.expiry_date) < new Date() ? 'text-qo-risk' : 'text-text-secondary',
                             )}>
                               Expires: {ev.expiry_date}
                             </div>

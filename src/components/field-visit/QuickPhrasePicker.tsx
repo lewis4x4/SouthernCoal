@@ -28,7 +28,7 @@ export function QuickPhrasePicker({
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-4 py-4">
+    <div className="rounded-2xl border border-black/[0.06] bg-black/10 px-4 py-4">
       <div className="text-sm font-medium text-text-muted">{title}</div>
       <p className="mt-1 text-sm text-text-secondary">{description}</p>
       <div className="mt-3 space-y-2">
@@ -43,13 +43,13 @@ export function QuickPhrasePicker({
               className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors disabled:opacity-60 ${
                 used
                   ? 'border-emerald-500/20 bg-emerald-500/[0.06]'
-                  : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] active:bg-white/[0.08]'
+                  : 'border-white/[0.05] bg-qo-nested hover:bg-black/[0.04] active:bg-black/[0.06]'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-text-primary">{template.label}</span>
                 {used ? (
-                  <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+                  <Check className="h-4 w-4 shrink-0 text-qo-sage-text" aria-hidden />
                 ) : (
                   <span className="shrink-0 text-xs text-text-muted">Tap to add</span>
                 )}

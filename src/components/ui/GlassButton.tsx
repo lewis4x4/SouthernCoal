@@ -10,19 +10,16 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_STYLES: Record<Variant, string> = {
   primary:
-    'bg-status-queued/15 text-status-queued border-status-queued/20 hover:bg-status-queued/25',
+    'bg-qo-accent text-white border-qo-accent hover:bg-qo-accent-hover',
   danger:
-    'bg-status-failed/15 text-status-failed border-status-failed/20 hover:bg-status-failed/25',
+    'bg-qo-risk/10 text-qo-risk border-qo-risk/30 hover:bg-qo-risk/15',
   success:
-    'bg-status-imported/15 text-status-imported border-status-imported/20 hover:bg-status-imported/25',
+    'bg-qo-sage/10 text-qo-sage-text border-qo-sage/30 hover:bg-qo-sage/15',
   ghost:
-    'bg-white/[0.03] text-text-secondary border-white/[0.08] hover:bg-white/[0.06] hover:text-text-primary',
+    'bg-white text-text-secondary border-black/[0.12] hover:bg-black/[0.04] hover:text-text-primary',
 };
 
-/**
- * Glassmorphism button with backdrop blur.
- * Variants: primary (blue), danger (red), success (emerald), ghost.
- */
+/** Quiet Operator button — flat, no glass blur. */
 export function GlassButton({
   variant = 'primary',
   loading,
@@ -38,9 +35,9 @@ export function GlassButton({
     <button
       disabled={isDisabled}
       className={cn(
-        'px-4 py-2 text-xs font-semibold rounded-xl border backdrop-blur-sm transition-all',
+        'rounded-qo-sm border px-4 py-2 text-xs font-semibold transition-colors',
         isDisabled
-          ? 'opacity-50 cursor-not-allowed bg-white/[0.03] text-text-muted border-white/[0.06]'
+          ? 'cursor-not-allowed border-black/[0.08] bg-qo-nested text-text-muted opacity-50'
           : VARIANT_STYLES[variant],
         className,
       )}
@@ -50,7 +47,7 @@ export function GlassButton({
       {loading ? (
         <span className="inline-flex items-center gap-1.5">
           <svg
-            className="animate-spin h-3 w-3"
+            className="h-3 w-3 animate-spin"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

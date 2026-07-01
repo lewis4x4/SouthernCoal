@@ -61,14 +61,14 @@ export function ProfileCertificationsPage() {
         <div className="flex items-center gap-2">
           {blockingFailing.length > 0 ? (
             <>
-              <ShieldX size={20} className="text-red-400" />
+              <ShieldX size={20} className="text-qo-risk" />
               <span className="text-sm font-medium text-red-300">
                 {blockingFailing.length} required training{blockingFailing.length !== 1 ? 's' : ''} incomplete — dispatch may be blocked
               </span>
             </>
           ) : (
             <>
-              <ShieldCheck size={20} className="text-emerald-400" />
+              <ShieldCheck size={20} className="text-qo-sage-text" />
               <span className="text-sm font-medium text-emerald-300">
                 All required training is current
               </span>
@@ -80,7 +80,7 @@ export function ProfileCertificationsPage() {
         {expiringSoon.length > 0 && (
           <div className="mt-3 space-y-1.5">
             {expiringSoon.map((r) => (
-              <div key={r.requirement_id} className="flex items-center gap-2 text-xs text-amber-400">
+              <div key={r.requirement_id} className="flex items-center gap-2 text-xs text-qo-ochre-text">
                 <Clock size={12} />
                 <span>
                   <strong>{r.training_name}</strong> expires in {r.days_until_expiry} days
@@ -94,22 +94,22 @@ export function ProfileCertificationsPage() {
 
       {/* Required training status */}
       {readiness.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-          <div className="border-b border-white/[0.06] px-5 py-3">
+        <div className="rounded-2xl border border-black/[0.08] bg-qo-nested">
+          <div className="border-b border-black/[0.06] px-5 py-3">
             <h3 className="text-sm font-semibold text-text-primary">Required Training</h3>
           </div>
           <div className="divide-y divide-white/[0.04]">
             {readiness.map((r) => (
               <div key={r.requirement_id} className="flex items-center gap-3 px-5 py-3">
                 {r.is_met ? (
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <CheckCircle2 size={16} className="text-qo-sage-text shrink-0" />
                 ) : (
-                  <ShieldX size={16} className="text-red-400 shrink-0" />
+                  <ShieldX size={16} className="text-qo-risk shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
                   <span className="text-sm text-text-primary">{r.training_name}</span>
                   {r.is_blocking && !r.is_met && (
-                    <span className="ml-2 inline-flex rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-red-400">
+                    <span className="ml-2 inline-flex rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-qo-risk">
                       Blocking
                     </span>
                   )}
@@ -120,16 +120,16 @@ export function ProfileCertificationsPage() {
                       <span className={cn(
                         'text-xs',
                         r.days_until_expiry !== null && r.days_until_expiry <= 30
-                          ? 'text-amber-400'
+                          ? 'text-qo-ochre-text'
                           : 'text-text-muted',
                       )}>
                         Expires {new Date(r.expires_at).toLocaleDateString()}
                       </span>
                     ) : (
-                      <span className="text-xs text-emerald-400">No expiration</span>
+                      <span className="text-xs text-qo-sage-text">No expiration</span>
                     )
                   ) : (
-                    <span className="text-xs text-red-400">Not completed</span>
+                    <span className="text-xs text-qo-risk">Not completed</span>
                   )}
                 </div>
               </div>
@@ -139,8 +139,8 @@ export function ProfileCertificationsPage() {
       )}
 
       {/* My completions */}
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-        <div className="border-b border-white/[0.06] px-5 py-3">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested">
+        <div className="border-b border-black/[0.06] px-5 py-3">
           <h3 className="text-sm font-semibold text-text-primary">
             Completion History
             <span className="ml-2 text-xs font-normal text-text-muted">

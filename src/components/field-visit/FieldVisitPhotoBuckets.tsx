@@ -48,13 +48,13 @@ export function FieldVisitPhotoBuckets({
               className={cn(
                 'min-h-12 rounded-2xl border px-4 text-sm font-medium transition-colors',
                 selected
-                  ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
-                  : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05] active:bg-white/[0.08]',
+                  ? 'border-qo-accent/35 bg-qo-accent/15 text-qo-accent'
+                  : 'border-black/[0.06] bg-qo-nested text-text-secondary hover:bg-black/[0.04] active:bg-black/[0.06]',
               )}
             >
               {bucket.label}
               {count > 0 ? <span className="ml-1.5 text-text-muted">({count})</span> : null}
-              {required ? <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-400" /> : null}
+              {required ? <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-qo-ochre" /> : null}
             </button>
           );
         })}

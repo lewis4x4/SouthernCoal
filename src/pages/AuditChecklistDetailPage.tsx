@@ -25,11 +25,11 @@ const ITEM_STATUS_ICONS: Record<ChecklistItemStatus, typeof Circle> = {
 };
 
 const ITEM_STATUS_COLORS: Record<ChecklistItemStatus, string> = {
-  pending: 'text-gray-400',
-  in_progress: 'text-cyan-400',
-  complete: 'text-emerald-400',
-  na: 'text-gray-500',
-  blocked: 'text-red-400',
+  pending: 'text-text-muted',
+  in_progress: 'text-qo-accent',
+  complete: 'text-qo-sage-text',
+  na: 'text-text-muted',
+  blocked: 'text-qo-risk',
 };
 
 const NEXT_ITEM_STATUS: ChecklistItemStatus[] = ['pending', 'in_progress', 'complete', 'na', 'blocked'];
@@ -149,12 +149,12 @@ export function AuditChecklistDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           to="/audit/checklists"
-          className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+          className="p-2 rounded-lg bg-qo-nested border border-black/[0.08] hover:bg-black/[0.06]"
         >
           <ArrowLeft className="w-4 h-4 text-text-secondary" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{checklist.title}</h1>
+          <h1 className="text-2xl font-bold text-text-primary">{checklist.title}</h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
             <span>{checklist.audit_type.replace(/_/g, ' ')}</span>
             {checklist.target_date && <span>Target: {checklist.target_date}</span>}
@@ -164,7 +164,7 @@ export function AuditChecklistDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary"
           >
             <Download className="w-4 h-4" />
             Export
@@ -186,13 +186,13 @@ export function AuditChecklistDetailPage() {
       <SpotlightCard className="p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-text-secondary">Progress</span>
-          <span className="text-sm font-bold text-white">{progress}%</span>
+          <span className="text-sm font-bold text-text-primary">{progress}%</span>
         </div>
-        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-black/[0.06] rounded-full overflow-hidden">
           <div
             className={clsx(
               'h-full rounded-full transition-all',
-              progress === 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-cyan-500' : 'bg-amber-500',
+              progress === 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-qo-accent' : 'bg-amber-500',
             )}
             style={{ width: `${progress}%` }}
           />
@@ -208,7 +208,7 @@ export function AuditChecklistDetailPage() {
               const StatusIcon = ITEM_STATUS_ICONS[item.status];
               return (
                 <div key={item.id} className="group">
-                  <div className="flex items-start gap-3 py-2 px-2 rounded hover:bg-white/[0.02]">
+                  <div className="flex items-start gap-3 py-2 px-2 rounded hover:bg-qo-nested">
                     <button
                       onClick={() => handleStatusToggle(item)}
                       className="mt-0.5 flex-shrink-0"
@@ -219,7 +219,7 @@ export function AuditChecklistDetailPage() {
                     <div className="flex-1 min-w-0">
                       <span className={clsx(
                         'text-sm',
-                        item.status === 'complete' ? 'text-text-secondary line-through' : 'text-white',
+                        item.status === 'complete' ? 'text-text-secondary line-through' : 'text-text-primary',
                       )}>
                         {item.item_text}
                       </span>
@@ -234,7 +234,7 @@ export function AuditChecklistDetailPage() {
                           <input
                             value={evidenceNotes}
                             onChange={(e) => setEvidenceNotes(e.target.value)}
-                            className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none"
+                            className="flex-1 px-2 py-1 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary focus:outline-none"
                             placeholder="Evidence notes..."
                             autoFocus
                           />
@@ -265,7 +265,7 @@ export function AuditChecklistDetailPage() {
                       </button>
                       <button
                         onClick={() => { deleteItem(item.id); loadItems(); }}
-                        className="px-2 py-0.5 text-xs text-text-secondary hover:text-red-400"
+                        className="px-2 py-0.5 text-xs text-text-secondary hover:text-qo-risk"
                       >
                         Delete
                       </button>
@@ -285,13 +285,13 @@ export function AuditChecklistDetailPage() {
             <input
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              className="w-32 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none"
+              className="w-32 px-2 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary focus:outline-none"
               placeholder="Category"
             />
             <input
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
-              className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none"
+              className="flex-1 px-2 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary focus:outline-none"
               placeholder="Checklist item..."
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(); }}
               autoFocus

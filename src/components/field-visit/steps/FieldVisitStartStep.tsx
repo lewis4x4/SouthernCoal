@@ -53,9 +53,9 @@ export function FieldVisitStartStep({
 
         <p className="mt-5 text-sm text-text-muted">Are you at the following outfall?</p>
 
-        <div className="mt-4 w-full max-w-sm space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-4 text-left">
+        <div className="mt-4 w-full max-w-sm space-y-3 rounded-2xl border border-black/[0.08] bg-qo-nested px-5 py-4 text-left">
           <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+            <MapPin className="h-5 w-5 shrink-0 text-qo-accent" aria-hidden />
             <div>
               <p className="text-base font-semibold text-text-primary">{outfallNumber}</p>
               <p className="text-sm text-text-secondary">{permitNumber}</p>
@@ -84,7 +84,7 @@ export function FieldVisitStartStep({
           type="button"
           onClick={onConfirm}
           disabled={visitLocked || !hasCoords || saving}
-          className="mt-8 min-h-14 w-full max-w-sm rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40 disabled:opacity-60"
+          className="mt-8 min-h-14 w-full max-w-sm rounded-2xl bg-qo-accent/20 text-base font-semibold text-qo-accent transition-colors hover:bg-qo-accent/30 active:bg-qo-accent/40 disabled:opacity-60"
         >
           {saving ? 'Starting…' : 'Continue'}
         </button>
@@ -92,7 +92,7 @@ export function FieldVisitStartStep({
         <button
           type="button"
           onClick={onDecline}
-          className="mt-3 min-h-12 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] text-base font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+          className="mt-3 min-h-12 w-full max-w-sm rounded-2xl border border-black/[0.08] bg-qo-nested text-base font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
         >
           No, go back
         </button>
@@ -102,8 +102,8 @@ export function FieldVisitStartStep({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-        <MapPin className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden />
+      <div className="flex items-center gap-3 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3">
+        <MapPin className="h-4 w-4 shrink-0 text-qo-accent" aria-hidden />
         <span className="text-sm text-text-primary">
           {outfallNumber} — {hasCoords ? `${outfallLatitude!.toFixed(5)}, ${outfallLongitude!.toFixed(5)}` : 'No coordinates'}
         </span>
@@ -112,20 +112,20 @@ export function FieldVisitStartStep({
       {scheduledParameter}
       {scheduleInstructions}
 
-      <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+      <div className="flex items-center gap-2.5 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3">
         {weatherLoading ? (
           <>
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-300" aria-hidden />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-qo-accent" aria-hidden />
             <span className="text-sm text-text-muted">Loading weather…</span>
           </>
         ) : weatherError ? (
           <>
-            <CloudOff className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+            <CloudOff className="h-4 w-4 shrink-0 text-qo-ochre-text" aria-hidden />
             <span className="text-sm text-amber-200/80">Weather queued — will load when back online</span>
           </>
         ) : weatherSummary ? (
           <>
-            <Cloud className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden />
+            <Cloud className="h-4 w-4 shrink-0 text-qo-accent" aria-hidden />
             <span className="text-sm text-text-primary">{weatherSummary}</span>
           </>
         ) : null}
@@ -139,7 +139,7 @@ export function FieldVisitStartStep({
           disabled={visitLocked}
           rows={2}
           placeholder="e.g. Light rain, muddy access road, moderate flow"
-          className="w-full resize-none rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none disabled:opacity-60"
+          className="w-full resize-none rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none disabled:opacity-60"
         />
       </label>
     </div>

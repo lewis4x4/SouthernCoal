@@ -92,14 +92,14 @@ export function DocumentCompletenessPage() {
             <FileCheck className="w-6 h-6 text-teal-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Document Completeness</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Document Completeness</h1>
             <p className="text-sm text-text-secondary">Per-permit document coverage tracking</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary"
           >
             <Download className="w-4 h-4" />
             Export
@@ -145,23 +145,23 @@ export function DocumentCompletenessPage() {
                     key={r.permit_id}
                     onClick={() => setSelectedPermit(r.permit_id === selectedPermit ? null : r.permit_id)}
                     className={clsx(
-                      'border-b border-white/[0.03] cursor-pointer hover:bg-white/[0.02]',
-                      selectedPermit === r.permit_id && 'bg-white/[0.04]',
+                      'border-b border-white/[0.03] cursor-pointer hover:bg-qo-nested',
+                      selectedPermit === r.permit_id && 'bg-black/[0.03]',
                     )}
                   >
-                    <td className="py-2 pr-4 text-white font-medium">{r.permit_number}</td>
+                    <td className="py-2 pr-4 text-text-primary font-medium">{r.permit_number}</td>
                     <td className="py-2 pr-4 text-text-secondary">{r.site_name}</td>
-                    <td className="py-2 pr-4 text-right text-white">{r.total_required}</td>
-                    <td className="py-2 pr-4 text-right text-white">{r.on_file}</td>
-                    <td className="py-2 pr-4 text-right text-emerald-400">{r.current_docs}</td>
+                    <td className="py-2 pr-4 text-right text-text-primary">{r.total_required}</td>
+                    <td className="py-2 pr-4 text-right text-text-primary">{r.on_file}</td>
+                    <td className="py-2 pr-4 text-right text-qo-sage-text">{r.current_docs}</td>
                     <td className="py-2 pr-4 text-right">
-                      <span className={clsx(r.expired_docs > 0 ? 'text-red-400' : 'text-emerald-400')}>
+                      <span className={clsx(r.expired_docs > 0 ? 'text-qo-risk' : 'text-qo-sage-text')}>
                         {r.expired_docs}
                       </span>
                     </td>
                     <td className="py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="w-16 h-1.5 bg-black/[0.06] rounded-full overflow-hidden">
                           <div
                             className={clsx(
                               'h-full rounded-full',
@@ -172,7 +172,7 @@ export function DocumentCompletenessPage() {
                         </div>
                         <span className={clsx(
                           'text-xs font-medium',
-                          r.completeness_pct >= 90 ? 'text-emerald-400' : r.completeness_pct >= 60 ? 'text-amber-400' : 'text-red-400',
+                          r.completeness_pct >= 90 ? 'text-qo-sage-text' : r.completeness_pct >= 60 ? 'text-qo-ochre-text' : 'text-qo-risk',
                         )}>
                           {r.completeness_pct}%
                         </span>
@@ -198,12 +198,12 @@ export function DocumentCompletenessPage() {
                   return (
                     <div
                       key={docType}
-                      className="flex items-center justify-between py-2 px-2 rounded hover:bg-white/[0.02]"
+                      className="flex items-center justify-between py-2 px-2 rounded hover:bg-qo-nested"
                     >
-                      <span className="text-sm text-white">{DOCUMENT_TYPE_LABELS[docType]}</span>
+                      <span className="text-sm text-text-primary">{DOCUMENT_TYPE_LABELS[docType]}</span>
                       <div className="flex items-center gap-3">
                         {isExpired && (
-                          <AlertTriangle className="w-4 h-4 text-red-400" />
+                          <AlertTriangle className="w-4 h-4 text-qo-risk" />
                         )}
                         <button
                           onClick={() => handleToggleOnFile(selectedPermit, docType, doc)}
@@ -211,11 +211,11 @@ export function DocumentCompletenessPage() {
                           title="On file"
                         >
                           {doc?.is_on_file ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <CheckCircle2 className="w-4 h-4 text-qo-sage-text" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-gray-500" />
+                            <XCircle className="w-4 h-4 text-text-muted" />
                           )}
-                          <span className={doc?.is_on_file ? 'text-emerald-400' : 'text-gray-500'}>
+                          <span className={doc?.is_on_file ? 'text-qo-sage-text' : 'text-text-muted'}>
                             On File
                           </span>
                         </button>
@@ -229,11 +229,11 @@ export function DocumentCompletenessPage() {
                           disabled={!doc?.is_on_file}
                         >
                           {doc?.is_current ? (
-                            <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                            <CheckCircle2 className="w-4 h-4 text-qo-accent" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-gray-500" />
+                            <XCircle className="w-4 h-4 text-text-muted" />
                           )}
-                          <span className={doc?.is_current ? 'text-cyan-400' : 'text-gray-500'}>
+                          <span className={doc?.is_current ? 'text-qo-accent' : 'text-text-muted'}>
                             Current
                           </span>
                         </button>

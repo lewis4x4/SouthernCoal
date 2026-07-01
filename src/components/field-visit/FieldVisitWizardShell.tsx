@@ -26,9 +26,9 @@ function actionClasses(variant: WizardAction['variant']) {
     case 'warning':
       return 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/30 active:bg-amber-500/35';
     case 'default':
-      return 'bg-white/[0.06] text-text-primary hover:bg-white/[0.1] active:bg-white/[0.14]';
+      return 'bg-black/[0.04] text-text-primary hover:bg-white/[0.1] active:bg-white/[0.14]';
     default:
-      return 'bg-cyan-500/20 text-cyan-100 hover:bg-cyan-500/30 active:bg-cyan-500/35';
+      return 'bg-qo-accent/20 text-qo-accent hover:bg-qo-accent/30 active:bg-qo-accent/35';
   }
 }
 
@@ -47,7 +47,7 @@ export function FieldVisitWizardShell({
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       {/* Field bar: back, progress dots, status */}
-      <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-crystal-surface/95 backdrop-blur-xl">
+      <div className="sticky top-0 z-40 border-b border-black/[0.06] bg-white ">
         <div className="flex h-11 items-center gap-3 px-3">
           {fieldBar}
           <div className="flex-1">{progress}</div>
@@ -64,7 +64,7 @@ export function FieldVisitWizardShell({
       {/* Action bar — pinned at bottom */}
       {hasActions ? (
         <div
-          className="border-t border-white/[0.08] bg-crystal-surface/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-3 backdrop-blur-xl"
+          className="border-t border-black/[0.08] bg-white px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-3 "
           role="region"
           aria-label="Wizard step actions"
         >
@@ -74,7 +74,7 @@ export function FieldVisitWizardShell({
                 type="button"
                 onClick={backAction.onClick}
                 disabled={backAction.disabled}
-                className="min-h-[52px] rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 text-base font-medium text-text-secondary transition-colors hover:bg-white/[0.06] active:bg-white/[0.1] disabled:opacity-60"
+                className="min-h-[52px] rounded-2xl border border-black/[0.08] bg-qo-nested px-5 text-base font-medium text-text-secondary transition-colors hover:bg-black/[0.05] active:bg-white/[0.1] disabled:opacity-60"
               >
                 {backAction.label}
               </button>

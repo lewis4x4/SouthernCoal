@@ -38,7 +38,7 @@ const STATUS_COLORS: Record<ViolationStatus, string> = {
   under_investigation: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   reported: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  closed: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  closed: 'bg-gray-500/20 text-text-muted border-gray-500/30',
 };
 
 const TYPE_LABELS: Record<ViolationType, string> = {
@@ -214,7 +214,7 @@ export function ComplianceViolationDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-text-secondary">Violation not found</p>
-        <Link to="/compliance/violations" className="text-red-400 hover:underline mt-2 inline-block">
+        <Link to="/compliance/violations" className="text-qo-risk hover:underline mt-2 inline-block">
           Back to Violations
         </Link>
       </div>
@@ -229,13 +229,13 @@ export function ComplianceViolationDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           to="/compliance/violations"
-          className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+          className="p-2 rounded-lg bg-qo-nested border border-black/[0.08] hover:bg-black/[0.06]"
         >
           <ArrowLeft className="w-4 h-4 text-text-secondary" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-text-primary">
               {TYPE_LABELS[violation.violation_type]}
             </h1>
             {isHeld && (
@@ -265,7 +265,7 @@ export function ComplianceViolationDetailPage() {
             {violation.description && (
               <div>
                 <h3 className="text-sm font-medium text-text-secondary mb-1">Description</h3>
-                <p className="text-white whitespace-pre-wrap">{violation.description}</p>
+                <p className="text-text-primary whitespace-pre-wrap">{violation.description}</p>
               </div>
             )}
             {violation.exceedance_pct && (
@@ -279,7 +279,7 @@ export function ComplianceViolationDetailPage() {
             {violation.root_cause && (
               <div>
                 <h3 className="text-sm font-medium text-text-secondary mb-1">Root Cause</h3>
-                <p className="text-white text-sm">{violation.root_cause}</p>
+                <p className="text-text-primary text-sm">{violation.root_cause}</p>
                 {violation.root_cause_category && (
                   <span className="text-xs text-text-secondary capitalize mt-1 inline-block">
                     Category: {violation.root_cause_category.replace(/_/g, ' ')}
@@ -297,7 +297,7 @@ export function ComplianceViolationDetailPage() {
                 <input
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none"
                   placeholder="Resolution notes..."
                 />
                 <div className="flex flex-wrap gap-2">
@@ -332,12 +332,12 @@ export function ComplianceViolationDetailPage() {
           <SpotlightCard className="p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-medium text-white">Notices of Violation ({novs.length})</h3>
+                <FileText className="w-4 h-4 text-qo-ochre-text" />
+                <h3 className="text-sm font-medium text-text-primary">Notices of Violation ({novs.length})</h3>
               </div>
               <button
                 onClick={() => setShowNOVForm(!showNOVForm)}
-                className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300"
+                className="flex items-center gap-1 text-xs text-qo-ochre-text hover:text-amber-300"
               >
                 <Plus className="w-3 h-3" />
                 Add NOV
@@ -345,38 +345,38 @@ export function ComplianceViolationDetailPage() {
             </div>
 
             {showNOVForm && (
-              <div className="mb-4 p-3 bg-white/[0.02] rounded-lg border border-white/5 space-y-3">
+              <div className="mb-4 p-3 bg-qo-nested rounded-lg border border-white/5 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     value={novNumber}
                     onChange={(e) => setNovNumber(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none"
                     placeholder="NOV Number"
                   />
                   <input
                     value={novAgency}
                     onChange={(e) => setNovAgency(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none"
                     placeholder="Issuing Agency *"
                   />
                   <input
                     type="date"
                     value={novIssuedDate}
                     onChange={(e) => setNovIssuedDate(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm focus:outline-none"
                   />
                   <input
                     type="date"
                     value={novResponseDue}
                     onChange={(e) => setNovResponseDue(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm focus:outline-none"
                     placeholder="Response Due"
                   />
                   <input
                     value={novPenalty}
                     onChange={(e) => setNovPenalty(e.target.value)}
                     type="number"
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none"
                     placeholder="Proposed Penalty ($)"
                   />
                 </div>
@@ -384,11 +384,11 @@ export function ComplianceViolationDetailPage() {
                   value={novDescription}
                   onChange={(e) => setNovDescription(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none resize-none"
                   placeholder="Alleged violations..."
                 />
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => setShowNOVForm(false)} className="text-xs text-text-secondary hover:text-white px-3 py-1.5">Cancel</button>
+                  <button onClick={() => setShowNOVForm(false)} className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5">Cancel</button>
                   <button
                     onClick={handleCreateNOV}
                     disabled={!novAgency.trim() || !novIssuedDate}
@@ -410,26 +410,26 @@ export function ComplianceViolationDetailPage() {
                     new Date(nov.response_due_date) < new Date() &&
                     !['submitted', 'accepted'].includes(nov.response_status);
                   return (
-                    <div key={nov.id} className="p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                    <div key={nov.id} className="p-3 bg-qo-nested rounded-lg border border-white/5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-sm text-white font-medium">
+                          <span className="text-sm text-text-primary font-medium">
                             {nov.nov_number ?? 'NOV'} — {nov.issuing_agency}
                           </span>
                           <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
                             <span>Issued: {nov.issued_date}</span>
                             {nov.response_due_date && (
-                              <span className={clsx(isResponseOverdue && 'text-red-400')}>
+                              <span className={clsx(isResponseOverdue && 'text-qo-risk')}>
                                 {isResponseOverdue && <AlertTriangle className="w-3 h-3 inline mr-1" />}
                                 Response due: {nov.response_due_date}
                               </span>
                             )}
                             {nov.proposed_penalty && (
-                              <span className="text-amber-400">${nov.proposed_penalty.toLocaleString()}</span>
+                              <span className="text-qo-ochre-text">${nov.proposed_penalty.toLocaleString()}</span>
                             )}
                           </div>
                         </div>
-                        <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary capitalize">
+                        <span className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary capitalize">
                           {RESPONSE_STATUS_LABELS[nov.response_status]}
                         </span>
                       </div>
@@ -444,12 +444,12 @@ export function ComplianceViolationDetailPage() {
           <SpotlightCard className="p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Gavel className="w-4 h-4 text-red-400" />
-                <h3 className="text-sm font-medium text-white">Enforcement Actions ({enforcements.length})</h3>
+                <Gavel className="w-4 h-4 text-qo-risk" />
+                <h3 className="text-sm font-medium text-text-primary">Enforcement Actions ({enforcements.length})</h3>
               </div>
               <button
                 onClick={() => setShowEnforcementForm(!showEnforcementForm)}
-                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
+                className="flex items-center gap-1 text-xs text-qo-risk hover:text-red-300"
               >
                 <Plus className="w-3 h-3" />
                 Add Action
@@ -457,12 +457,12 @@ export function ComplianceViolationDetailPage() {
             </div>
 
             {showEnforcementForm && (
-              <div className="mb-4 p-3 bg-white/[0.02] rounded-lg border border-white/5 space-y-3">
+              <div className="mb-4 p-3 bg-qo-nested rounded-lg border border-white/5 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <select
                     value={enfType}
                     onChange={(e) => setEnfType(e.target.value as EnforcementActionType)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm focus:outline-none"
                   >
                     {Object.entries(ENFORCEMENT_TYPE_LABELS).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
@@ -471,20 +471,20 @@ export function ComplianceViolationDetailPage() {
                   <input
                     value={enfAgency}
                     onChange={(e) => setEnfAgency(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none"
                     placeholder="Issuing Agency *"
                   />
                   <input
                     type="date"
                     value={enfIssuedDate}
                     onChange={(e) => setEnfIssuedDate(e.target.value)}
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm focus:outline-none"
                   />
                   <input
                     value={enfPenalty}
                     onChange={(e) => setEnfPenalty(e.target.value)}
                     type="number"
-                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none"
+                    className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none"
                     placeholder="Penalty Amount ($)"
                   />
                 </div>
@@ -492,11 +492,11 @@ export function ComplianceViolationDetailPage() {
                   value={enfDescription}
                   onChange={(e) => setEnfDescription(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:outline-none resize-none"
                   placeholder="Action requirements..."
                 />
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => setShowEnforcementForm(false)} className="text-xs text-text-secondary hover:text-white px-3 py-1.5">Cancel</button>
+                  <button onClick={() => setShowEnforcementForm(false)} className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5">Cancel</button>
                   <button
                     onClick={handleCreateEnforcement}
                     disabled={!enfAgency.trim() || !enfIssuedDate}
@@ -513,21 +513,21 @@ export function ComplianceViolationDetailPage() {
             ) : (
               <div className="space-y-2">
                 {enforcements.map((ea) => (
-                  <div key={ea.id} className="p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                  <div key={ea.id} className="p-3 bg-qo-nested rounded-lg border border-white/5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-sm text-white font-medium">
+                        <span className="text-sm text-text-primary font-medium">
                           {ENFORCEMENT_TYPE_LABELS[ea.action_type]} — {ea.issuing_agency}
                         </span>
                         <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
                           <span>Issued: {ea.issued_date}</span>
                           {ea.compliance_deadline && <span>Deadline: {ea.compliance_deadline}</span>}
                           {ea.penalty_amount && (
-                            <span className="text-red-400">${ea.penalty_amount.toLocaleString()}</span>
+                            <span className="text-qo-risk">${ea.penalty_amount.toLocaleString()}</span>
                           )}
                         </div>
                       </div>
-                      <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-secondary capitalize">
+                      <span className="text-xs px-2 py-0.5 rounded bg-qo-nested text-text-secondary capitalize">
                         {ea.status}
                       </span>
                     </div>
@@ -542,11 +542,11 @@ export function ComplianceViolationDetailPage() {
             <SpotlightCard className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <History className="w-4 h-4 text-purple-400" />
-                <h3 className="text-sm font-medium text-white">Override History ({overrides.length})</h3>
+                <h3 className="text-sm font-medium text-text-primary">Override History ({overrides.length})</h3>
               </div>
               <div className="space-y-2">
                 {overrides.map((o) => (
-                  <div key={o.id} className="p-3 bg-white/[0.02] rounded-lg border border-white/5 text-sm">
+                  <div key={o.id} className="p-3 bg-qo-nested rounded-lg border border-white/5 text-sm">
                     <div className="flex items-center gap-2">
                       <span className="text-text-secondary">{o.field_name}:</span>
                       <span className="text-red-300 line-through">{o.original_value}</span>
@@ -557,7 +557,7 @@ export function ComplianceViolationDetailPage() {
                     <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
                       <span>{new Date(o.created_at).toLocaleDateString()}</span>
                       {o.approved_at && (
-                        <span className="flex items-center gap-1 text-emerald-400">
+                        <span className="flex items-center gap-1 text-qo-sage-text">
                           <CheckCircle2 className="w-3 h-3" />
                           Approved
                         </span>
@@ -579,31 +579,31 @@ export function ComplianceViolationDetailPage() {
               {violation.site_name && (
                 <>
                   <dt className="text-text-secondary">Site</dt>
-                  <dd className="text-white">{violation.site_name}</dd>
+                  <dd className="text-text-primary">{violation.site_name}</dd>
                 </>
               )}
               {violation.permit_number && (
                 <>
                   <dt className="text-text-secondary">Permit</dt>
-                  <dd className="text-white">{violation.permit_number}</dd>
+                  <dd className="text-text-primary">{violation.permit_number}</dd>
                 </>
               )}
               {violation.parameter_name && (
                 <>
                   <dt className="text-text-secondary">Parameter</dt>
-                  <dd className="text-white">{violation.parameter_name}</dd>
+                  <dd className="text-text-primary">{violation.parameter_name}</dd>
                 </>
               )}
               {violation.regulatory_agency && (
                 <>
                   <dt className="text-text-secondary">Agency</dt>
-                  <dd className="text-white">{violation.regulatory_agency}</dd>
+                  <dd className="text-text-primary">{violation.regulatory_agency}</dd>
                 </>
               )}
               {violation.state_code && (
                 <>
                   <dt className="text-text-secondary">State</dt>
-                  <dd className="text-white">{violation.state_code}</dd>
+                  <dd className="text-text-primary">{violation.state_code}</dd>
                 </>
               )}
               {(violation.actual_penalty ?? violation.estimated_penalty) && (
@@ -618,13 +618,13 @@ export function ComplianceViolationDetailPage() {
               {violation.decree_paragraphs && violation.decree_paragraphs.length > 0 && (
                 <>
                   <dt className="text-text-secondary">Decree Paragraphs</dt>
-                  <dd className="text-white">{violation.decree_paragraphs.join(', ')}</dd>
+                  <dd className="text-text-primary">{violation.decree_paragraphs.join(', ')}</dd>
                 </>
               )}
               <dt className="text-text-secondary">Discovered</dt>
-              <dd className="text-white">{violation.discovery_date ?? violation.violation_date}</dd>
+              <dd className="text-text-primary">{violation.discovery_date ?? violation.violation_date}</dd>
               <dt className="text-text-secondary">Created</dt>
-              <dd className="text-white">{new Date(violation.created_at).toLocaleDateString()}</dd>
+              <dd className="text-text-primary">{new Date(violation.created_at).toLocaleDateString()}</dd>
             </dl>
           </SpotlightCard>
 
@@ -634,14 +634,14 @@ export function ComplianceViolationDetailPage() {
             <div className="space-y-2 text-sm">
               {violation.exceedance_id && (
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-qo-risk" />
                   <span className="text-text-secondary">Exceedance linked</span>
                 </div>
               )}
               {violation.incident_id && (
                 <Link
                   to={`/incidents/${violation.incident_id}`}
-                  className="flex items-center gap-2 text-cyan-400 hover:underline"
+                  className="flex items-center gap-2 text-qo-accent hover:underline"
                 >
                   <ShieldAlert className="w-3.5 h-3.5" />
                   View Incident
@@ -650,7 +650,7 @@ export function ComplianceViolationDetailPage() {
               {violation.corrective_action_id && (
                 <Link
                   to={`/corrective-actions/${violation.corrective_action_id}`}
-                  className="flex items-center gap-2 text-cyan-400 hover:underline"
+                  className="flex items-center gap-2 text-qo-accent hover:underline"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   View Corrective Action
@@ -678,7 +678,7 @@ export function ComplianceViolationDetailPage() {
                   value={holdReason}
                   onChange={(e) => setHoldReason(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
                   placeholder="Reason for legal hold..."
                 />
                 <div className="flex gap-2">
@@ -689,7 +689,7 @@ export function ComplianceViolationDetailPage() {
                   >
                     Place Hold
                   </button>
-                  <button onClick={() => setShowHoldForm(false)} className="px-3 py-1.5 text-xs text-text-secondary hover:text-white">
+                  <button onClick={() => setShowHoldForm(false)} className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary">
                     Cancel
                   </button>
                 </div>
@@ -710,19 +710,19 @@ export function ComplianceViolationDetailPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-text-secondary">NOVs</span>
-                <span className="text-white">{novs.length}</span>
+                <span className="text-text-primary">{novs.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-secondary">Enforcement Actions</span>
-                <span className="text-white">{enforcements.length}</span>
+                <span className="text-text-primary">{enforcements.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-secondary">Overrides</span>
-                <span className="text-white">{overrides.length}</span>
+                <span className="text-text-primary">{overrides.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-secondary">Days Open</span>
-                <span className="text-white">
+                <span className="text-text-primary">
                   {Math.floor(
                     (new Date().getTime() - new Date(violation.violation_date).getTime()) / (1000 * 60 * 60 * 24),
                   )}

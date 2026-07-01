@@ -83,10 +83,10 @@ interface TaskMatchRowProps {
 
 function TaskMatchRow({ match, index, handoffId, isApplied, onApply }: TaskMatchRowProps) {
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-qo-nested border border-white/[0.05]">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-cyan-400">{match.task_number}</span>
+          <span className="text-sm font-medium text-qo-accent">{match.task_number}</span>
           <span className="text-sm text-text-primary truncate">{match.task_title}</span>
         </div>
         {match.proposed_status && (
@@ -100,10 +100,10 @@ function TaskMatchRow({ match, index, handoffId, isApplied, onApply }: TaskMatch
           className={clsx(
             'text-xs font-medium',
             match.match_confidence >= 0.8
-              ? 'text-emerald-400'
+              ? 'text-qo-sage-text'
               : match.match_confidence >= 0.5
-                ? 'text-amber-400'
-                : 'text-red-400'
+                ? 'text-qo-ochre-text'
+                : 'text-qo-risk'
           )}
         >
           {formatConfidence(match.match_confidence)}
@@ -111,13 +111,13 @@ function TaskMatchRow({ match, index, handoffId, isApplied, onApply }: TaskMatch
         {!isApplied && match.requires_review && (
           <button
             onClick={() => onApply(handoffId, index)}
-            className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+            className="text-xs text-qo-accent hover:text-qo-accent transition-colors"
           >
             Apply
           </button>
         )}
         {isApplied && (
-          <Check className="h-4 w-4 text-emerald-400" />
+          <Check className="h-4 w-4 text-qo-sage-text" />
         )}
       </div>
     </div>
@@ -157,14 +157,14 @@ function HistoryCard({ record, onApplyAll, onReject, onApplySingle }: HistoryCar
   }, [record.id, onReject]);
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-black/[0.08] bg-qo-nested overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-qo-nested transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-white/[0.05]">
+          <div className="p-2 rounded-lg bg-black/[0.03]">
             <FileIcon className="h-5 w-5 text-text-muted" />
           </div>
           <div className="text-left">
@@ -196,7 +196,7 @@ function HistoryCard({ record, onApplyAll, onReject, onApplySingle }: HistoryCar
           {record.extracted_text && (
             <div className="pt-4">
               <p className="text-xs font-medium text-text-muted mb-2">Extracted Text</p>
-              <p className="text-sm text-text-secondary line-clamp-3 font-mono bg-white/[0.02] p-2 rounded">
+              <p className="text-sm text-text-secondary line-clamp-3 font-mono bg-qo-nested p-2 rounded">
                 {record.extracted_text.slice(0, 300)}
                 {record.extracted_text.length > 300 && '...'}
               </p>

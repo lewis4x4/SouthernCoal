@@ -50,7 +50,7 @@ export function AdminReportsPage() {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center gap-3 text-red-400">
+        <div className="flex items-center gap-3 text-qo-risk">
           <Shield className="h-5 w-5" />
           <span className="text-sm font-medium">Admin access required.</span>
         </div>
@@ -68,8 +68,8 @@ export function AdminReportsPage() {
   };
 
   const PRIORITY_COLORS: Record<string, string> = {
-    CRITICAL: 'bg-red-500/15 text-red-400 border-red-500/20',
-    HIGH: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+    CRITICAL: 'bg-red-500/15 text-qo-risk border-red-500/20',
+    HIGH: 'bg-amber-500/15 text-qo-ochre-text border-amber-500/20',
     MEDIUM: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
   };
 
@@ -79,12 +79,12 @@ export function AdminReportsPage() {
       <div className="flex items-start gap-4">
         <Link
           to="/admin"
-          className="mt-1 rounded-lg p-1.5 text-text-muted hover:bg-white/[0.05] hover:text-text-secondary transition-colors"
+          className="mt-1 rounded-lg p-1.5 text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="inline-flex rounded-xl bg-amber-500/10 p-2.5">
-          <FileText className="h-6 w-6 text-amber-400" />
+          <FileText className="h-6 w-6 text-qo-ochre-text" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -97,7 +97,7 @@ export function AdminReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-white/[0.03] p-1 border border-white/[0.06]">
+      <div className="flex gap-1 rounded-xl bg-qo-nested p-1 border border-black/[0.06]">
         {[
           { key: 'reports' as Tab, label: 'Reports', icon: FileText, count: reports.length },
           { key: 'history' as Tab, label: 'Generation History', icon: History },
@@ -108,14 +108,14 @@ export function AdminReportsPage() {
             onClick={() => { setTab(key); setSelectedReport(null); setPanel(null); }}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
               tab === key
-                ? 'bg-white/[0.08] text-text-primary'
-                : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]'
+                ? 'bg-black/[0.06] text-text-primary'
+                : 'text-text-muted hover:text-text-secondary hover:bg-qo-nested'
             }`}
           >
             <Icon className="h-3.5 w-3.5" />
             {label}
             {count !== undefined && (
-              <span className="ml-1 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px]">
+              <span className="ml-1 rounded-full bg-black/[0.04] px-1.5 py-0.5 text-[10px]">
                 {count}
               </span>
             )}
@@ -131,10 +131,10 @@ export function AdminReportsPage() {
             {[
               { label: 'Total Reports', value: reports.length, color: 'text-blue-400' },
               { label: 'Unlocked', value: reports.filter((r) => !r.is_locked).length, color: 'text-green-400' },
-              { label: 'Locked', value: reports.filter((r) => r.is_locked).length, color: 'text-amber-400' },
-              { label: 'Critical Priority', value: reports.filter((r) => r.priority === 'CRITICAL').length, color: 'text-red-400' },
+              { label: 'Locked', value: reports.filter((r) => r.is_locked).length, color: 'text-qo-ochre-text' },
+              { label: 'Critical Priority', value: reports.filter((r) => r.priority === 'CRITICAL').length, color: 'text-qo-risk' },
             ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <div key={label} className="rounded-xl border border-black/[0.06] bg-qo-nested p-3">
                 <p className="text-[10px] uppercase tracking-wider text-text-muted">{label}</p>
                 <p className={`mt-1 text-xl font-bold ${color}`}>{value}</p>
               </div>
@@ -188,21 +188,21 @@ export function AdminReportsPage() {
                           <div className="flex items-center gap-1.5 shrink-0 ml-4">
                             <button
                               onClick={() => { setSelectedReport(report); setPanel('permissions'); }}
-                              className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-blue-400 transition-colors"
+                              className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-blue-400 transition-colors"
                               title="Manage Permissions"
                             >
                               <Shield className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => { setSelectedReport(report); setPanel('schedule'); }}
-                              className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-amber-400 transition-colors"
+                              className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-qo-ochre-text transition-colors"
                               title="Manage Schedule"
                             >
                               <Clock className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => { setSelectedReport(report); setPanel('recipients'); }}
-                              className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-green-400 transition-colors"
+                              className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-green-400 transition-colors"
                               title="Manage Recipients"
                             >
                               <Users className="h-3.5 w-3.5" />
@@ -224,7 +224,7 @@ export function AdminReportsPage() {
 
       {/* Side Panel */}
       {selectedReport && panel && (
-        <div className="fixed inset-y-0 right-0 z-50 w-[480px] border-l border-white/[0.08] bg-crystal-base/95 backdrop-blur-xl shadow-2xl overflow-y-auto">
+        <div className="fixed inset-y-0 right-0 z-50 w-[480px] border-l border-black/[0.08] bg-crystal-base/95  shadow-2xl overflow-y-auto">
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -237,7 +237,7 @@ export function AdminReportsPage() {
               </div>
               <button
                 onClick={() => { setSelectedReport(null); setPanel(null); }}
-                className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-text-primary transition-colors"
+                className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-text-primary transition-colors"
               >
                 &times;
               </button>

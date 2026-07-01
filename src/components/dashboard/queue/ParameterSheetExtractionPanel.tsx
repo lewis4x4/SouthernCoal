@@ -100,7 +100,7 @@ export function ParameterSheetExtractionPanel({
       {hasUnmatchedParams && (
         <div className="p-3 rounded-lg bg-amber-500/[0.06] border border-amber-500/20">
           <div className="flex items-start gap-2">
-            <AlertTriangle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+            <AlertTriangle size={14} className="text-qo-ochre-text mt-0.5 shrink-0" />
             <div>
               <p className="text-xs font-medium text-amber-300">
                 {unmatchedCount} Unmatched Parameter{unmatchedCount > 1 ? 's' : ''}
@@ -117,7 +117,7 @@ export function ParameterSheetExtractionPanel({
 
       {/* Skipped tabs notice */}
       {data.skipped_tabs.length > 0 && (
-        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <div className="p-2.5 rounded-lg bg-qo-nested border border-black/[0.05]">
           <p className="text-[10px] text-text-muted uppercase tracking-wider">
             Skipped Tabs ({data.skipped_tabs.length})
           </p>
@@ -179,7 +179,7 @@ export function ParameterSheetExtractionPanel({
 
       {/* Approve & Import — moves parsed data to domain tables */}
       {entry.status === 'parsed' && can('process') && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
             type="button"
             onClick={() => importPermitLimits(entry.id)}
@@ -213,7 +213,7 @@ export function ParameterSheetExtractionPanel({
 
       {/* Already imported indicator */}
       {entry.status === 'imported' && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <div className="flex items-center gap-2 text-xs text-green-300">
             <CheckCircle2 size={14} />
             <span>Permit limits successfully imported to domain tables</span>
@@ -247,11 +247,11 @@ function PermitSection({
   const previewLimits = permit.limits.slice(0, 10);
 
   return (
-    <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] overflow-hidden">
+    <div className="rounded-lg bg-qo-nested border border-black/[0.05] overflow-hidden">
       {/* Permit header — clickable to expand */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/[0.02] transition-colors text-left"
+        className="w-full flex items-center justify-between p-3 hover:bg-qo-nested transition-colors text-left"
       >
         <div className="flex items-center gap-3">
           {isExpanded ? (
@@ -278,7 +278,7 @@ function PermitSection({
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="border-t border-white/[0.04] p-3 space-y-3">
+        <div className="border-t border-black/[0.05] p-3 space-y-3">
           {/* Address if available */}
           {permit.address && (
             <p className="text-[10px] text-text-muted">{permit.address}</p>
@@ -292,7 +292,7 @@ function PermitSection({
                 className={`px-2 py-0.5 rounded text-[10px] font-mono ${
                   outfall.is_active
                     ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                    : 'bg-gray-500/10 text-text-muted border border-gray-500/20'
                 }`}
               >
                 {outfall.outfall_number}
@@ -306,7 +306,7 @@ function PermitSection({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-text-muted">
+                  <tr className="border-b border-black/[0.06] text-text-muted">
                     <th className="text-left py-1.5 pr-3 font-medium">Outfall</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
                     <th className="text-right py-1.5 pr-3 font-medium">Min</th>
@@ -362,11 +362,11 @@ function LimitRow({ limit, onDispute, canVerify }: LimitRowProps) {
     <tr className="border-b border-white/[0.03] text-text-secondary">
       <td className="py-1.5 pr-3 font-mono">{limit.outfall_number}</td>
       <td className="py-1.5 pr-3">
-        <span className={isUnmatched ? 'text-amber-400' : ''}>
+        <span className={isUnmatched ? 'text-qo-ochre-text' : ''}>
           {parameterDisplay}
         </span>
         {isUnmatched && (
-          <span className="ml-1 text-[9px] text-amber-400/70">(unmatched)</span>
+          <span className="ml-1 text-[9px] text-qo-ochre-text/70">(unmatched)</span>
         )}
       </td>
       <td className="py-1.5 pr-3 text-right font-mono">
@@ -409,7 +409,7 @@ function LimitRow({ limit, onDispute, canVerify }: LimitRowProps) {
 
 function SummaryItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+    <div className="p-2.5 rounded-lg bg-qo-nested border border-black/[0.05]">
       <p className="text-[10px] text-text-muted uppercase tracking-wider">{label}</p>
       <p className="text-sm font-mono font-semibold text-text-primary mt-0.5">
         {value}

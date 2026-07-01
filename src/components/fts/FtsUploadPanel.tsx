@@ -96,8 +96,8 @@ export function FtsUploadPanel({ uploads }: Props) {
         className={cn(
           'rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all',
           dragOver
-            ? 'border-cyan-400/50 bg-cyan-500/5'
-            : 'border-white/[0.12] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.03]',
+            ? 'border-qo-accent/50 bg-qo-accent/5'
+            : 'border-black/[0.12] bg-qo-nested hover:border-black/[0.12] hover:bg-qo-nested',
         )}
       >
         <input
@@ -120,9 +120,9 @@ export function FtsUploadPanel({ uploads }: Props) {
 
       {/* Confirm dialog */}
       {pendingFile && (
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+        <div className="rounded-xl border border-qo-accent/20 bg-qo-accent/5 p-4">
           <div className="flex items-start gap-3">
-            <FileSpreadsheet size={20} className="text-cyan-400 shrink-0 mt-0.5" />
+            <FileSpreadsheet size={20} className="text-qo-accent shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-text-primary truncate">{pendingFile.file.name}</p>
               <p className="text-xs text-text-muted mt-0.5">
@@ -145,14 +145,14 @@ export function FtsUploadPanel({ uploads }: Props) {
 
       {/* Upload progress */}
       {uploading && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-3">
           <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <Loader2 size={14} className="animate-spin text-cyan-400" />
+            <Loader2 size={14} className="animate-spin text-qo-accent" />
             Uploading & parsing...
           </div>
-          <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="mt-2 h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
             <div
-              className="h-full rounded-full bg-cyan-500 transition-all duration-300"
+              className="h-full rounded-full bg-qo-accent transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -162,14 +162,14 @@ export function FtsUploadPanel({ uploads }: Props) {
       {/* Error */}
       {error && !uploading && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 flex items-start gap-2">
-          <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+          <AlertCircle size={14} className="text-qo-risk shrink-0 mt-0.5" />
           <p className="text-xs text-red-300">{error}</p>
         </div>
       )}
 
       {/* Upload history */}
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested ">
+        <div className="px-4 py-3 border-b border-black/[0.06]">
           <h4 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
             Upload History
           </h4>
@@ -188,7 +188,7 @@ export function FtsUploadPanel({ uploads }: Props) {
                     {u.total_penalties != null && ` · ${formatDollars(u.total_penalties)}`}
                   </p>
                   {u.parse_error && (
-                    <p className="text-[10px] text-red-400 mt-0.5 truncate">{u.parse_error}</p>
+                    <p className="text-[10px] text-qo-risk mt-0.5 truncate">{u.parse_error}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -196,7 +196,7 @@ export function FtsUploadPanel({ uploads }: Props) {
                   {u.parse_status === 'failed' && (
                     <button
                       onClick={() => reparse(u.id)}
-                      className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.05] hover:text-text-secondary transition-colors"
+                      className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
                       title="Retry"
                     >
                       <RefreshCw size={14} />

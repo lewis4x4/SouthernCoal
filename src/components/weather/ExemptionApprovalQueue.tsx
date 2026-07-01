@@ -21,9 +21,9 @@ interface ExemptionApprovalQueueProps {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', icon: Clock },
-  approved: { label: 'Approved', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', icon: CheckCircle },
-  denied: { label: 'Denied', color: 'bg-red-500/15 text-red-400 border-red-500/20', icon: XCircle },
+  pending: { label: 'Pending', color: 'bg-amber-500/15 text-qo-ochre-text border-amber-500/20', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-emerald-500/15 text-qo-sage-text border-emerald-500/20', icon: CheckCircle },
+  denied: { label: 'Denied', color: 'bg-red-500/15 text-qo-risk border-red-500/20', icon: XCircle },
 } as const;
 
 export function ExemptionApprovalQueue({
@@ -80,12 +80,12 @@ export function ExemptionApprovalQueue({
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-white/[0.04]" />
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-black/[0.03]" />
           ))}
         </div>
       ) : exemptions.length === 0 ? (
         /* Empty state */
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+        <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-8 text-center">
           <Shield className="mx-auto mb-3 h-8 w-8 text-text-muted/50" />
           <p className="text-sm text-text-muted">No pending exemption claims</p>
         </div>
@@ -102,7 +102,7 @@ export function ExemptionApprovalQueue({
             return (
               <div
                 key={item.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+                className="rounded-xl border border-black/[0.06] bg-qo-nested p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
@@ -134,7 +134,7 @@ export function ExemptionApprovalQueue({
                     <div className="flex shrink-0 items-center gap-2">
                       {isOwnClaim ? (
                         <span
-                          className="rounded-lg border border-white/[0.06] px-3 py-1.5 text-xs text-text-muted"
+                          className="rounded-lg border border-black/[0.06] px-3 py-1.5 text-xs text-text-muted"
                           title="Cannot approve your own exemption"
                         >
                           Cannot approve your own exemption
@@ -144,7 +144,7 @@ export function ExemptionApprovalQueue({
                           <button
                             onClick={() => handleApprove(item.id)}
                             disabled={isProcessing}
-                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             {isProcessing ? 'Processing...' : 'Approve'}
                           </button>
@@ -154,7 +154,7 @@ export function ExemptionApprovalQueue({
                               setDenyReason('');
                             }}
                             disabled={isProcessing}
-                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Deny
                           </button>
@@ -166,16 +166,16 @@ export function ExemptionApprovalQueue({
 
                 {/* Inline deny reason input */}
                 {isDenying && (
-                  <div className="mt-3 border-t border-white/[0.06] pt-3">
+                  <div className="mt-3 border-t border-black/[0.06] pt-3">
                     <label className="mb-1.5 block text-xs font-medium text-text-secondary">
-                      Reason for denial <span className="text-red-400">*</span>
+                      Reason for denial <span className="text-qo-risk">*</span>
                     </label>
                     <textarea
                       value={denyReason}
                       onChange={(e) => setDenyReason(e.target.value)}
                       rows={2}
                       placeholder="Provide reason for denying this exemption claim..."
-                      className="mb-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
+                      className="mb-2 w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
                     />
                     <div className="flex justify-end gap-2">
                       <button
@@ -183,14 +183,14 @@ export function ExemptionApprovalQueue({
                           setDenyingId(null);
                           setDenyReason('');
                         }}
-                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/[0.04]"
+                        className="rounded-lg border border-black/[0.08] px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-black/[0.04]"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => handleDenySubmit(item.id)}
                         disabled={!denyReason.trim() || isProcessing}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {isProcessing ? 'Denying...' : 'Confirm Denial'}
                       </button>

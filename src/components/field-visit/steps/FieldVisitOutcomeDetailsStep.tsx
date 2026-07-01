@@ -31,7 +31,7 @@ export function FieldVisitOutcomeDetailsStep({
       />
 
       {helperSections.length > 0 ? (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+        <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-4 sm:p-5">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
             Need help with this stop?
           </div>
@@ -43,7 +43,7 @@ export function FieldVisitOutcomeDetailsStep({
             {helperSections.map((section) => {
               const isOpen = openHelperId === section.id;
               return (
-                <div key={section.id} className="rounded-xl border border-white/[0.06] bg-black/10">
+                <div key={section.id} className="rounded-xl border border-black/[0.06] bg-black/10">
                   <button
                     type="button"
                     onClick={() => setOpenHelperId(isOpen ? null : section.id)}
@@ -57,7 +57,7 @@ export function FieldVisitOutcomeDetailsStep({
                       <ChevronDown className="h-4 w-4 text-text-muted" aria-hidden />
                     )}
                   </button>
-                  {isOpen ? <div className="border-t border-white/[0.06] px-4 py-4">{section.content}</div> : null}
+                  {isOpen ? <div className="border-t border-black/[0.06] px-4 py-4">{section.content}</div> : null}
                 </div>
               );
             })}

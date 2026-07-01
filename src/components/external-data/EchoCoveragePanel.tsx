@@ -25,8 +25,8 @@ function ComplianceBadge({ status }: { status: string | null }) {
       className={cn(
         'inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium',
         isSNC
-          ? 'bg-red-500/10 text-red-400 border-red-500/20'
-          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+          ? 'bg-red-500/10 text-qo-risk border-red-500/20'
+          : 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
       )}
     >
       {status}
@@ -37,11 +37,11 @@ function ComplianceBadge({ status }: { status: string | null }) {
 function StateCoverageCard({ coverage }: { coverage: StateCoverage }) {
   const stateConfig = STATES.find((s) => s.code === coverage.state_code);
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold text-text-primary">{coverage.state_code}</span>
         {coverage.snc_count > 0 && (
-          <span className="rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
+          <span className="rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-qo-risk">
             {coverage.snc_count} SNC
           </span>
         )}
@@ -170,8 +170,8 @@ export function EchoCoveragePanel() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <AlertTriangle className="h-8 w-8 text-red-400" />
-        <p className="text-sm text-red-400">{error}</p>
+        <AlertTriangle className="h-8 w-8 text-qo-risk" />
+        <p className="text-sm text-qo-risk">{error}</p>
       </div>
     );
   }
@@ -210,28 +210,28 @@ export function EchoCoveragePanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Database size={16} className="text-cyan-400" />
+            <Database size={16} className="text-qo-accent" />
             <span className="text-xs text-text-muted">Facilities</span>
           </div>
           <p className="text-2xl font-bold text-text-primary">{facilities.length}</p>
         </SpotlightCard>
         <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Database size={16} className="text-cyan-400" />
+            <Database size={16} className="text-qo-accent" />
             <span className="text-xs text-text-muted">DMR Records</span>
           </div>
           <p className="text-2xl font-bold text-text-primary">{totalDmrs.toLocaleString()}</p>
         </SpotlightCard>
         <SpotlightCard spotlightColor="rgba(239, 68, 68, 0.06)" className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Shield size={16} className="text-red-400" />
+            <Shield size={16} className="text-qo-risk" />
             <span className="text-xs text-text-muted">SNC Facilities</span>
           </div>
-          <p className={cn('text-2xl font-bold', totalSNC > 0 ? 'text-red-400' : 'text-emerald-400')}>{totalSNC}</p>
+          <p className={cn('text-2xl font-bold', totalSNC > 0 ? 'text-qo-risk' : 'text-qo-sage-text')}>{totalSNC}</p>
         </SpotlightCard>
         <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Database size={16} className="text-cyan-400" />
+            <Database size={16} className="text-qo-accent" />
             <span className="text-xs text-text-muted">States</span>
           </div>
           <p className="text-2xl font-bold text-text-primary">{stateCoverage.length}</p>
@@ -243,17 +243,17 @@ export function EchoCoveragePanel() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SpotlightCard spotlightColor="rgba(16, 185, 129, 0.06)" className="p-4">
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Registry mapped</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1">{overrides.length}</p>
+            <p className="text-2xl font-bold text-qo-sage-text mt-1">{overrides.length}</p>
             <p className="text-xs text-text-muted mt-1">ECHO overrides + permit metadata</p>
           </SpotlightCard>
           <SpotlightCard spotlightColor="rgba(245, 158, 11, 0.06)" className="p-4">
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Mapping gaps</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1">{registryMappingGaps.length}</p>
+            <p className="text-2xl font-bold text-qo-ochre-text mt-1">{registryMappingGaps.length}</p>
             <p className="text-xs text-text-muted mt-1">See cleanup backlog below</p>
           </SpotlightCard>
           <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">ECHO facilities</p>
-            <p className="text-2xl font-bold text-cyan-400 mt-1">{facilities.length}</p>
+            <p className="text-2xl font-bold text-qo-accent mt-1">{facilities.length}</p>
             <p className="text-xs text-text-muted mt-1">EPA sync in external_echo_facilities</p>
           </SpotlightCard>
         </div>
@@ -263,7 +263,7 @@ export function EchoCoveragePanel() {
           <button
             type="button"
             onClick={exportMappingSnapshot}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors"
           >
             <Download size={12} />
             Export mapping snapshot (CSV)
@@ -282,15 +282,15 @@ export function EchoCoveragePanel() {
       </div>
 
       {/* Facility Table */}
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
         {/* Table header with filter */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
           <h3 className="text-sm font-semibold text-text-primary">All Facilities</h3>
           <div className="flex items-center gap-2">
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-text-secondary focus:outline-none focus:border-cyan-500/50"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs text-text-secondary focus:outline-none focus:border-qo-accent/50"
             >
               <option value="all">All States</option>
               {STATES.map((s) => (
@@ -305,7 +305,7 @@ export function EchoCoveragePanel() {
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-text-muted border-b border-white/[0.06]">
+              <tr className="text-text-muted border-b border-black/[0.06]">
                 <th
                   onClick={() => handleSort('npdes_id')}
                   className="text-left py-2 px-3 font-medium cursor-pointer hover:text-text-secondary transition-colors"
@@ -361,10 +361,10 @@ export function EchoCoveragePanel() {
 
       {/* Registry permits still missing federal mapping (bulk import cleanup queue) */}
       {registryMappingGaps.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] backdrop-blur-xl overflow-hidden">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04]  overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-amber-500/15">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-amber-400" />
+              <AlertTriangle size={14} className="text-qo-ochre-text" />
               <h3 className="text-sm font-semibold text-text-primary">Registry Mapping Gaps</h3>
             </div>
             <span className="text-xs text-amber-300/90 font-medium">
@@ -388,10 +388,10 @@ export function EchoCoveragePanel() {
 
       {/* NPDES ID Overrides — for permits that can't be matched by ECHO (e.g., VA DMLR IDs) */}
       {can('bulk_process') && (unmatchedPermits.length > 0 || overrides.length > 0) && (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+        <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
             <div className="flex items-center gap-2">
-              <Link2 size={14} className="text-amber-400" />
+              <Link2 size={14} className="text-qo-ochre-text" />
               <h3 className="text-sm font-semibold text-text-primary">NPDES ID Overrides</h3>
             </div>
             <span className="text-xs text-text-muted">
@@ -402,7 +402,7 @@ export function EchoCoveragePanel() {
 
           {/* Existing overrides */}
           {overrides.length > 0 && (
-            <div className="px-4 py-3 border-b border-white/[0.06]">
+            <div className="px-4 py-3 border-b border-black/[0.06]">
               <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">Active Mappings</p>
               <div className="space-y-1.5">
                 {overrides.map((ov) => (
@@ -467,12 +467,12 @@ function OverrideRow({
       <span className="font-mono text-text-secondary w-24">{ov.state_code}</span>
       <span className="font-mono text-text-primary w-32">{ov.source_permit_id}</span>
       <span className="text-text-muted">&rarr;</span>
-      <span className="font-mono text-cyan-400 w-32">{ov.npdes_id}</span>
+      <span className="font-mono text-qo-accent w-32">{ov.npdes_id}</span>
       {ov.notes && <span className="text-text-muted truncate max-w-[200px]">{ov.notes}</span>}
       {canDelete && (
         <button
           onClick={handleDelete}
-          className="ml-auto p-1 rounded hover:bg-red-500/10 text-text-muted hover:text-red-400 transition-colors"
+          className="ml-auto p-1 rounded hover:bg-red-500/10 text-text-muted hover:text-qo-risk transition-colors"
           title="Remove override"
         >
           <Trash2 size={12} />
@@ -517,12 +517,12 @@ function UnmatchedPermitRow({
         value={npdesId}
         onChange={(e) => setNpdesId(e.target.value)}
         placeholder="Federal NPDES ID"
-        className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-cyan-500/50 w-36"
+        className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 w-36"
       />
       <button
         onClick={handleSave}
         disabled={saving || !npdesId.trim()}
-        className="flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+        className="flex items-center gap-1 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
       >
         <Save size={10} />
         Save
@@ -541,10 +541,10 @@ function FacilityRow({
   showRegistryColumn: boolean;
 }) {
   return (
-    <tr className="border-t border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+    <tr className="border-t border-white/[0.03] hover:bg-qo-nested transition-colors">
       <td className="py-2.5 px-3 font-mono font-medium text-text-primary">{f.npdes_id}</td>
       {showRegistryColumn ? (
-        <td className="py-2.5 px-3 font-mono text-cyan-400/90">
+        <td className="py-2.5 px-3 font-mono text-qo-accent/90">
           {registryPermit ?? '—'}
         </td>
       ) : null}

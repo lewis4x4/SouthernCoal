@@ -216,8 +216,8 @@ export function AccessControlPage() {
       {/* Access Review Warning */}
       {accessReview.isOverdue && !accessReview.isReviewing && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-3">
-          <AlertTriangle className="h-4 w-4 text-amber-400" />
-          <span className="text-sm text-amber-400">
+          <AlertTriangle className="h-4 w-4 text-qo-ochre-text" />
+          <span className="text-sm text-qo-ochre-text">
             {accessReview.daysSinceLastReview === null
               ? 'No access review on record.'
               : `Last access review: ${accessReview.daysSinceLastReview} days ago.`}
@@ -231,7 +231,7 @@ export function AccessControlPage() {
                 role: ROLE_LABELS[u.role_name] ?? u.role_name,
               }))
             )}
-            className="ml-auto rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+            className="ml-auto rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-qo-ochre-text transition-colors hover:bg-amber-500/20"
           >
             Start Review
           </button>
@@ -246,7 +246,7 @@ export function AccessControlPage() {
             <div className="flex gap-2">
               <button
                 onClick={accessReview.cancelReview}
-                className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-text-muted hover:bg-white/[0.05]"
+                className="rounded-lg border border-black/[0.08] px-3 py-1.5 text-xs text-text-muted hover:bg-black/[0.04]"
               >
                 Cancel
               </button>
@@ -267,7 +267,7 @@ export function AccessControlPage() {
           </div>
           <div className="space-y-2">
             {accessReview.reviewItems.map(item => (
-              <div key={item.userId} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+              <div key={item.userId} className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-4 py-2.5">
                 <div className="text-sm">
                   <span className="text-text-primary">{item.userName}</span>
                   <span className="ml-2 text-xs text-text-muted">({item.role})</span>
@@ -278,8 +278,8 @@ export function AccessControlPage() {
                     className={cn(
                       'flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                       item.confirmed === true
-                        ? 'bg-emerald-500/15 text-emerald-400'
-                        : 'text-text-muted hover:bg-white/[0.05]',
+                        ? 'bg-emerald-500/15 text-qo-sage-text'
+                        : 'text-text-muted hover:bg-black/[0.04]',
                     )}
                   >
                     <CheckCircle size={12} /> Confirm
@@ -289,8 +289,8 @@ export function AccessControlPage() {
                     className={cn(
                       'flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                       item.confirmed === false
-                        ? 'bg-red-500/15 text-red-400'
-                        : 'text-text-muted hover:bg-white/[0.05]',
+                        ? 'bg-red-500/15 text-qo-risk'
+                        : 'text-text-muted hover:bg-black/[0.04]',
                     )}
                   >
                     <XCircle size={12} /> Revoke
@@ -303,8 +303,8 @@ export function AccessControlPage() {
       )}
 
       {/* User Management Table */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06]">
-        <div className="grid grid-cols-[1fr_200px_120px_100px_120px] gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs font-medium uppercase text-text-muted">
+      <div className="overflow-hidden rounded-xl border border-black/[0.06]">
+        <div className="grid grid-cols-[1fr_200px_120px_100px_120px] gap-3 border-b border-black/[0.06] bg-qo-nested px-4 py-3 text-xs font-medium uppercase text-text-muted">
           <div>User</div>
           <div>Email</div>
           <div>Role</div>
@@ -314,13 +314,13 @@ export function AccessControlPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
           </div>
         ) : users.length === 0 ? (
           <div className="py-12 text-center text-sm text-text-muted">No users found.</div>
         ) : (
           users.map((u) => (
-            <div key={u.id} className="border-b border-white/[0.04]">
+            <div key={u.id} className="border-b border-black/[0.05]">
               <div className="grid grid-cols-[1fr_200px_120px_100px_120px] items-center gap-3 px-4 py-3 text-sm">
                 <div className="text-text-primary">
                   {displayName(u)}
@@ -338,14 +338,14 @@ export function AccessControlPage() {
                         setPendingRole(newRole);
                         setConfirmAction({ type: 'role', userId: u.id });
                       }}
-                      className="rounded border border-white/[0.12] bg-crystal-surface px-1.5 py-0.5 text-xs text-text-secondary outline-none"
+                      className="rounded border border-black/[0.12] bg-crystal-surface px-1.5 py-0.5 text-xs text-text-secondary outline-none"
                     >
                       {ROLES.map(r => (
                         <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
                       ))}
                     </select>
                   ) : (
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                    <span className="rounded-full border border-black/[0.08] bg-qo-nested px-2 py-0.5 text-[10px] font-medium text-text-secondary">
                       {ROLE_LABELS[u.role_name] ?? u.role_name}
                     </span>
                   )}
@@ -354,8 +354,8 @@ export function AccessControlPage() {
                   <span className={cn(
                     'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                     u.is_active
-                      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                      : 'border-red-500/20 bg-red-500/10 text-red-400',
+                      ? 'border-emerald-500/20 bg-emerald-500/10 text-qo-sage-text'
+                      : 'border-red-500/20 bg-red-500/10 text-qo-risk',
                   )}>
                     {u.is_active ? 'Active' : 'Inactive'}
                   </span>
@@ -372,7 +372,7 @@ export function AccessControlPage() {
                     <>
                       <button
                         onClick={() => { setEditingUserId(u.id); setPendingRole(u.role_name); }}
-                        className="rounded p-1 text-text-muted transition-colors hover:bg-white/[0.05] hover:text-text-secondary"
+                        className="rounded p-1 text-text-muted transition-colors hover:bg-black/[0.04] hover:text-text-secondary"
                         title="Edit role"
                       >
                         <RefreshCw size={14} />
@@ -384,8 +384,8 @@ export function AccessControlPage() {
                             userId: u.id,
                           })}
                           className={cn(
-                            'rounded p-1 transition-colors hover:bg-white/[0.05]',
-                            u.is_active ? 'text-red-400/60 hover:text-red-400' : 'text-emerald-400/60 hover:text-emerald-400',
+                            'rounded p-1 transition-colors hover:bg-black/[0.04]',
+                            u.is_active ? 'text-qo-risk/60 hover:text-qo-risk' : 'text-qo-sage-text/60 hover:text-qo-sage-text',
                           )}
                           title={u.is_active ? 'Deactivate' : 'Reactivate'}
                         >
@@ -399,7 +399,7 @@ export function AccessControlPage() {
 
               {/* Confirmation Banner */}
               {confirmAction?.userId === u.id && (
-                <div className="flex items-center gap-3 border-t border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs">
+                <div className="flex items-center gap-3 border-t border-black/[0.06] bg-qo-nested px-4 py-2.5 text-xs">
                   <span className="text-text-secondary">
                     {confirmAction.type === 'role' && pendingRole
                       ? `Change ${displayName(u)} from ${ROLE_LABELS[u.role_name]} to ${ROLE_LABELS[pendingRole]}?`
@@ -417,7 +417,7 @@ export function AccessControlPage() {
                         toggleActive(u);
                       }
                     }}
-                    className="rounded-lg bg-white/[0.08] px-3 py-1 text-xs font-medium text-text-primary hover:bg-white/[0.12]"
+                    className="rounded-lg bg-black/[0.06] px-3 py-1 text-xs font-medium text-text-primary hover:bg-black/[0.08]"
                   >
                     Confirm
                   </button>
@@ -436,17 +436,17 @@ export function AccessControlPage() {
 
       {/* RBAC Verification Panel */}
       {rlsSummary.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+        <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-5">
           <h3 className="mb-3 text-sm font-semibold text-text-primary">RLS Policy Verification</h3>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {rlsSummary.map(row => (
-              <div key={row.tbl_name} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+              <div key={row.tbl_name} className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2">
                 <span className="font-mono text-xs text-text-secondary">{row.tbl_name}</span>
                 <span className={cn(
                   'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                   row.policy_count > 0
-                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                    : 'border-red-500/20 bg-red-500/10 text-red-400',
+                    ? 'border-emerald-500/20 bg-emerald-500/10 text-qo-sage-text'
+                    : 'border-red-500/20 bg-red-500/10 text-qo-risk',
                 )}>
                   {row.policy_count > 0 ? `${row.policy_count} policies` : 'Unprotected'}
                 </span>

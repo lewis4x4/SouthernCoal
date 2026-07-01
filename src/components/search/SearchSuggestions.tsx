@@ -105,7 +105,7 @@ export function SearchSuggestions({ userRole, onSelect, searchMode = 'data' }: S
           <button
             key={q}
             onClick={() => onSelect(q)}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             {q}
           </button>

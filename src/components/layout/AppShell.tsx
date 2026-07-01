@@ -10,10 +10,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  // Sync with sidebar pinned state for proper margin
   const [isPinned, setIsPinned] = useState(() => readStoredBoolean('sidebar-pinned'));
 
-  // Listen for sidebar pin changes
   useEffect(() => {
     const handlePinChange = (e: Event) => {
       const customEvent = e as CustomEvent<boolean>;
@@ -25,14 +23,13 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-qo-canvas">
       <Sidebar />
 
-      {/* Main content — ml accounts for sidebar width */}
       <div
         className={cn(
           'flex min-h-screen flex-1 flex-col transition-[margin] duration-300',
-          isPinned ? 'ml-56' : 'ml-16'
+          isPinned ? 'ml-56' : 'ml-16',
         )}
       >
         <main className="flex-1 px-6 py-6">{children}</main>

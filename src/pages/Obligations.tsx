@@ -89,10 +89,10 @@ export function Obligations() {
   };
 
   const tierBadgeStyles: Record<string, string> = {
-    current: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    current: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
     tier1: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     tier2: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    tier3: 'bg-red-500/10 text-red-400 border-red-500/20',
+    tier3: 'bg-red-500/10 text-qo-risk border-red-500/20',
   };
 
   /** Per-type daily rate label for expanded details */
@@ -118,7 +118,7 @@ export function Obligations() {
             Paragraph-by-paragraph tracking — Case 7:16-cv-00462-GEC
           </p>
         </div>
-        <div className="rounded-lg bg-white/[0.05] p-2.5">
+        <div className="rounded-lg bg-black/[0.03] p-2.5">
           <ClipboardList className="h-6 w-6 text-purple-400" />
         </div>
       </div>
@@ -126,7 +126,7 @@ export function Obligations() {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatBadge label="Total Obligations" value={summary.total} color="text-text-primary" />
-        <StatBadge label="Overdue" value={summary.overdue} color="text-red-400" />
+        <StatBadge label="Overdue" value={summary.overdue} color="text-qo-risk" />
         <StatBadge label="Due This Week" value={summary.dueThisWeek} color="text-yellow-400" />
         <StatBadge
           label="Accrued Penalties"
@@ -167,9 +167,9 @@ export function Obligations() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+      <div className="overflow-hidden rounded-xl border border-black/[0.06]">
         {/* Header Row */}
-        <div className="grid grid-cols-[80px_1fr_120px_120px_100px_100px_120px] gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs font-medium uppercase text-text-muted">
+        <div className="grid grid-cols-[80px_1fr_120px_120px_100px_100px_120px] gap-3 border-b border-black/[0.06] bg-qo-nested px-4 py-3 text-xs font-medium uppercase text-text-muted">
           <div>CD &para;</div>
           <div>Obligation</div>
           <div>Type</div>
@@ -182,7 +182,7 @@ export function Obligations() {
         {/* Body */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-text-muted">
@@ -198,7 +198,7 @@ export function Obligations() {
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : o.id)}
                   className={cn(
-                    'grid w-full grid-cols-[80px_1fr_120px_120px_100px_100px_120px] items-center gap-3 border-b border-white/[0.04] px-4 py-3 text-left text-sm transition-colors hover:bg-white/[0.03]',
+                    'grid w-full grid-cols-[80px_1fr_120px_120px_100px_100px_120px] items-center gap-3 border-b border-black/[0.05] px-4 py-3 text-left text-sm transition-colors hover:bg-qo-nested',
                     tierRowStyles[styleKey],
                   )}
                 >
@@ -215,10 +215,10 @@ export function Obligations() {
                       className={cn(
                         'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                         o.status === 'completed'
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-qo-sage-text'
                           : o.status === 'overdue'
-                            ? 'border-red-500/20 bg-red-500/10 text-red-400'
-                            : 'border-white/10 bg-white/5 text-text-secondary',
+                            ? 'border-red-500/20 bg-red-500/10 text-qo-risk'
+                            : 'border-black/[0.08] bg-qo-nested text-text-secondary',
                       )}
                     >
                       {o.status}
@@ -227,7 +227,7 @@ export function Obligations() {
                   <div
                     className={cn(
                       'text-xs font-medium',
-                      o.days_at_risk > 0 ? 'text-red-400' : 'text-text-muted',
+                      o.days_at_risk > 0 ? 'text-qo-risk' : 'text-text-muted',
                     )}
                   >
                     {o.days_at_risk > 0 ? o.days_at_risk : '—'}
@@ -253,7 +253,7 @@ export function Obligations() {
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="border-b border-white/[0.06] bg-white/[0.02] px-6 py-4">
+                  <div className="border-b border-black/[0.06] bg-qo-nested px-6 py-4">
                     <div className="grid grid-cols-2 gap-6 text-sm lg:grid-cols-3">
                       <div>
                         <div className="mb-1 text-xs font-medium uppercase text-text-muted">
@@ -309,7 +309,7 @@ function StatBadge({
   color: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-4">
       <div className="text-xs text-text-muted">{label}</div>
       <div className={cn('mt-1 text-2xl font-bold', color)}>{value}</div>
     </div>
@@ -332,7 +332,7 @@ function FilterSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label={label}
-      className="rounded-lg border border-white/[0.08] bg-crystal-surface px-3 py-2 text-sm text-text-secondary outline-none transition-colors hover:border-white/[0.12] focus:border-white/[0.16]"
+      className="rounded-lg border border-black/[0.08] bg-crystal-surface px-3 py-2 text-sm text-text-secondary outline-none transition-colors hover:border-black/[0.12] focus:border-white/[0.16]"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>

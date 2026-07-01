@@ -195,23 +195,23 @@ export function FinancialRiskCard() {
   const hasObligationRisk = obligations.total > 0;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl">
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 ">
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium text-text-secondary">Financial Risk</h3>
           <p className="mt-0.5 text-xs text-text-muted">Consent Decree Penalties</p>
         </div>
-        <div className="rounded-lg bg-white/[0.05] p-2">
-          <DollarSign className="h-5 w-5 text-red-400" />
+        <div className="rounded-lg bg-black/[0.03] p-2">
+          <DollarSign className="h-5 w-5 text-qo-risk" />
         </div>
       </div>
 
       {loading ? (
         <div className="space-y-3">
-          <div className="h-12 animate-pulse rounded-lg bg-white/[0.04]" />
-          <div className="h-8 animate-pulse rounded-lg bg-white/[0.04]" />
-          <div className="h-24 animate-pulse rounded-lg bg-white/[0.04]" />
+          <div className="h-12 animate-pulse rounded-lg bg-black/[0.03]" />
+          <div className="h-8 animate-pulse rounded-lg bg-black/[0.03]" />
+          <div className="h-24 animate-pulse rounded-lg bg-black/[0.03]" />
         </div>
       ) : ftsKpis ? (
         <div className="space-y-5">
@@ -229,8 +229,8 @@ export function FinancialRiskCard() {
                   className={cn(
                     'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                     ftsKpis.momChange.percentage > 0
-                      ? 'bg-red-500/10 text-red-400'
-                      : 'bg-emerald-500/10 text-emerald-400',
+                      ? 'bg-red-500/10 text-qo-risk'
+                      : 'bg-emerald-500/10 text-qo-sage-text',
                   )}
                 >
                   {ftsKpis.momChange.percentage > 0 ? (
@@ -245,7 +245,7 @@ export function FinancialRiskCard() {
           </div>
 
           {/* Current Quarter */}
-          <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+          <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-muted">
                 Q{ftsKpis.currentQ} {ftsKpis.effectiveYear}
@@ -267,7 +267,7 @@ export function FinancialRiskCard() {
                   <span className="text-text-secondary">{s.state}</span>
                   <span className="font-mono text-text-primary">{formatDollars(s.amount)}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-white/[0.06]">
+                <div className="h-1.5 rounded-full bg-black/[0.04]">
                   <div
                     className={cn('h-full rounded-full transition-all', STATE_BAR_COLORS[s.state] ?? 'bg-white/30')}
                     style={{ width: `${Math.max(s.percentage, 1)}%` }}
@@ -294,7 +294,7 @@ export function FinancialRiskCard() {
           {/* Link to FTS Page */}
           <Link
             to="/compliance/failure-to-sample"
-            className="flex items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             View Full Penalty Breakdown
             <ChevronRight size={14} />
@@ -330,7 +330,7 @@ function TierRow({
   const colors = {
     yellow: 'border-yellow-500/20 bg-yellow-950/10 text-yellow-400',
     orange: 'border-orange-500/20 bg-orange-950/10 text-orange-400',
-    red: 'border-red-500/20 bg-red-950/10 text-red-400',
+    red: 'border-red-500/20 bg-red-950/10 text-qo-risk',
   };
 
   return (

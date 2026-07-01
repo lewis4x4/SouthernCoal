@@ -34,20 +34,20 @@ export function ReportHubTab() {
     return (
       <div className="space-y-12 animate-pulse mt-6 pb-12">
         <div className="space-y-4">
-          <div className="h-5 w-32 rounded bg-white/[0.04] mb-4" />
+          <div className="h-5 w-32 rounded bg-black/[0.03] mb-4" />
           <div className="grid gap-4 lg:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
-              <SpotlightCard key={i} className="h-32 bg-white/[0.02]" spotlightColor="transparent">
+              <SpotlightCard key={i} className="h-32 bg-qo-nested" spotlightColor="transparent">
                 <div />
               </SpotlightCard>
             ))}
           </div>
         </div>
         <div className="space-y-4">
-          <div className="h-5 w-40 rounded bg-white/[0.04] mb-4" />
+          <div className="h-5 w-40 rounded bg-black/[0.03] mb-4" />
           <div className="grid gap-4 lg:grid-cols-2">
             {[1, 2].map((i) => (
-              <SpotlightCard key={i} className="h-32 bg-white/[0.02]" spotlightColor="transparent">
+              <SpotlightCard key={i} className="h-32 bg-qo-nested" spotlightColor="transparent">
                 <div />
               </SpotlightCard>
             ))}
@@ -68,11 +68,11 @@ export function ReportHubTab() {
 
         return (
           <div key={tier} className="mb-12">
-            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-white/[0.04] bg-gradient-to-r from-transparent via-white/[0.02] to-transparent bg-[length:200%_1px] bg-no-repeat bg-bottom">
+            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-black/[0.05] bg-gradient-to-r from-transparent via-white/[0.02] to-transparent bg-[length:200%_1px] bg-no-repeat bg-bottom">
               <h2 className="text-sm font-semibold text-text-secondary tracking-wide">
                 Tier {tier}: {TIER_LABELS[tier]}
               </h2>
-              <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[10px] text-text-muted">
+              <span className="rounded-full bg-black/[0.03] px-2 py-0.5 text-[10px] text-text-muted">
                 {tierReports.length}
               </span>
             </div>

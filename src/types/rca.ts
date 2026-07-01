@@ -38,16 +38,16 @@ export const RCA_CATEGORY_LABELS: Record<RCACategory, string> = {
 };
 
 export const RCA_CATEGORY_COLORS: Record<RCACategory, { bg: string; text: string; border: string }> = {
-  equipment_failure:      { bg: 'bg-red-500/10',    text: 'text-red-400',    border: 'border-red-500/20' },
+  equipment_failure:      { bg: 'bg-red-500/10',    text: 'text-qo-risk',    border: 'border-red-500/20' },
   human_error:            { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20' },
-  procedure_gap:          { bg: 'bg-amber-500/10',  text: 'text-amber-400',  border: 'border-amber-500/20' },
+  procedure_gap:          { bg: 'bg-amber-500/10',  text: 'text-qo-ochre-text',  border: 'border-amber-500/20' },
   weather_event:          { bg: 'bg-sky-500/10',    text: 'text-sky-400',    border: 'border-sky-500/20' },
   design_deficiency:      { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
   material_failure:       { bg: 'bg-rose-500/10',   text: 'text-rose-400',   border: 'border-rose-500/20' },
   training_gap:           { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20' },
   communication_failure:  { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' },
   external_factor:        { bg: 'bg-slate-500/10',  text: 'text-slate-400',  border: 'border-slate-500/20' },
-  monitoring_gap:         { bg: 'bg-cyan-500/10',   text: 'text-cyan-400',   border: 'border-cyan-500/20' },
+  monitoring_gap:         { bg: 'bg-qo-accent/10',   text: 'text-qo-accent',   border: 'border-qo-accent/20' },
   maintenance_lapse:      { bg: 'bg-teal-500/10',   text: 'text-teal-400',   border: 'border-teal-500/20' },
   regulatory_change:      { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/20' },
 };
@@ -59,10 +59,10 @@ export const RECURRENCE_RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as c
 export type RecurrenceRisk = (typeof RECURRENCE_RISK_LEVELS)[number];
 
 export const RECURRENCE_RISK_COLORS: Record<RecurrenceRisk, { bg: string; text: string; border: string }> = {
-  low:      { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-  medium:   { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20' },
+  low:      { bg: 'bg-emerald-500/10', text: 'text-qo-sage-text', border: 'border-emerald-500/20' },
+  medium:   { bg: 'bg-amber-500/10',   text: 'text-qo-ochre-text',   border: 'border-amber-500/20' },
   high:     { bg: 'bg-orange-500/10',  text: 'text-orange-400',  border: 'border-orange-500/20' },
-  critical: { bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
+  critical: { bg: 'bg-red-500/10',     text: 'text-qo-risk',     border: 'border-red-500/20' },
 };
 
 // ---------------------------------------------------------------------------

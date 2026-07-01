@@ -23,9 +23,9 @@ export function UploadQueueSummaryCard() {
 
   const BLOCKS = [
     { label: 'Queued', value: stats.queued, icon: Clock, color: 'text-blue-400' },
-    { label: 'Processing', value: stats.processing, icon: Loader2, color: 'text-amber-400' },
-    { label: 'Parsed', value: stats.parsed, icon: CheckCircle2, color: 'text-emerald-400' },
-    { label: 'Failed', value: stats.failed, icon: AlertCircle, color: 'text-red-400' },
+    { label: 'Processing', value: stats.processing, icon: Loader2, color: 'text-qo-ochre-text' },
+    { label: 'Parsed', value: stats.parsed, icon: CheckCircle2, color: 'text-qo-sage-text' },
+    { label: 'Failed', value: stats.failed, icon: AlertCircle, color: 'text-qo-risk' },
   ];
 
   return (
@@ -35,14 +35,14 @@ export function UploadQueueSummaryCard() {
           <Upload className="h-4 w-4 text-blue-400" />
           My Uploads
         </h3>
-        <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-text-muted">
+        <span className="rounded-full border border-black/[0.08] bg-qo-nested px-2 py-0.5 text-[10px] font-medium text-text-muted">
           {stats.total} files
         </span>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         {BLOCKS.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <div key={label} className="rounded-lg border border-black/[0.06] bg-qo-nested p-3">
             <div className="flex items-center gap-2">
               <Icon className={cn('h-4 w-4', color)} />
               <span className="text-[10px] text-text-muted">{label}</span>

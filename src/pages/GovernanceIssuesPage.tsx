@@ -144,7 +144,7 @@ export function GovernanceIssuesPage() {
                   'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                   inboxFilter === tab.id
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                    : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]',
+                    : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]',
                 )}
               >
                 {tab.label}
@@ -169,10 +169,10 @@ export function GovernanceIssuesPage() {
           <div className="space-y-3">
             {loading ? (
               Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-24 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.02]" />
+                <div key={index} className="h-24 animate-pulse rounded-xl border border-black/[0.06] bg-qo-nested" />
               ))
             ) : issues.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-6 text-sm text-text-muted">
+              <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-6 text-sm text-text-muted">
                 No governance issues are currently queued.
               </div>
             ) : (
@@ -189,7 +189,7 @@ export function GovernanceIssuesPage() {
                     className={`w-full rounded-xl border px-4 py-4 text-left transition-colors ${
                       issue.id === selectedId
                         ? 'border-amber-500/30 bg-amber-500/10'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+                        : 'border-black/[0.06] bg-qo-nested hover:bg-black/[0.04]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -199,7 +199,7 @@ export function GovernanceIssuesPage() {
                           {issue.issue_type.replace('_', ' ')} · Step {issue.current_step}
                         </div>
                       </div>
-                      <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary">
+                      <span className="rounded-full border border-black/[0.08] bg-black/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary">
                         {issue.current_status.replace('_', ' ')}
                       </span>
                     </div>
@@ -234,19 +234,19 @@ export function GovernanceIssuesPage() {
                 </div>
                 <Link
                   to={selectedIssue.field_visit_id ? `/field/visits/${selectedIssue.field_visit_id}` : '/field/dispatch'}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
                 >
                   Open source visit
                 </Link>
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                   <div className="text-text-muted">Current owner</div>
                   <div className="mt-1 font-medium text-text-primary">{selectedIssue.current_owner_name}</div>
                   <div className="mt-1 text-xs text-text-muted">{selectedIssue.current_owner_role}</div>
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                   <div className="text-text-muted">Decree references</div>
                   <div className="mt-1 font-medium text-text-primary">
                     {selectedIssue.decree_paragraphs.length > 0 ? selectedIssue.decree_paragraphs.join(', ') : '—'}
@@ -255,15 +255,15 @@ export function GovernanceIssuesPage() {
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-3">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                   <div className="text-text-muted">Raised</div>
                   <div className="mt-1 font-medium text-text-primary">{formatDeadline(selectedIssue.raised_at)}</div>
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                   <div className="text-text-muted">Response deadline</div>
                   <div className="mt-1 font-medium text-text-primary">{formatDeadline(selectedIssue.response_deadline)}</div>
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                   <div className="text-text-muted">Notice / written deadlines</div>
                   <div className="mt-1 font-medium text-text-primary">
                     {formatDeadline(selectedIssue.notice_deadline)} / {formatDeadline(selectedIssue.written_deadline)}
@@ -278,7 +278,7 @@ export function GovernanceIssuesPage() {
                     value={status}
                     onChange={(e) => setStatus(e.target.value as GovernanceIssueStatus)}
                     disabled={!canEdit}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none"
                   >
                     {STATUS_OPTIONS.map((value) => (
                       <option key={value} value={value}>
@@ -294,7 +294,7 @@ export function GovernanceIssuesPage() {
                     value={finalDisposition}
                     onChange={(e) => setFinalDisposition(e.target.value)}
                     disabled={!canEdit}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                    className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none"
                   />
                 </label>
               </div>
@@ -306,12 +306,12 @@ export function GovernanceIssuesPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
                   disabled={!canEdit}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+                  className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
                 />
               </label>
 
               {!canEdit && (
-                <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+                <div className="mt-4 rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm text-text-secondary">
                   This queue is visible for oversight. Governance updates are limited to designated operators.
                 </div>
               )}
@@ -330,7 +330,7 @@ export function GovernanceIssuesPage() {
                 </h3>
                 <div className="mt-3 space-y-3">
                   {(events[selectedIssue.id] ?? []).map((event) => (
-                    <div key={event.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm">
+                    <div key={event.id} className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-3 text-sm">
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-medium text-text-primary">{event.event_type.replace('_', ' ')}</div>
                         <div className="text-xs text-text-muted">{new Date(event.created_at).toLocaleString()}</div>

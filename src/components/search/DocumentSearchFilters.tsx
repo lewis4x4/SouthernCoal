@@ -24,8 +24,8 @@ function Chip({
       className={cn(
         'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors',
         active
-          ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-400'
-          : 'border-white/[0.08] bg-white/[0.03] text-text-muted hover:bg-white/[0.06] hover:text-text-secondary',
+          ? 'border-qo-accent/30 bg-cyan-400/10 text-qo-accent'
+          : 'border-black/[0.08] bg-qo-nested text-text-muted hover:bg-black/[0.05] hover:text-text-secondary',
       )}
     >
       {label}
@@ -140,15 +140,15 @@ export function DocumentSearchFilters() {
             }}
             onFocus={() => permitSuggestions.length > 0 && setShowSuggestions(true)}
             placeholder="e.g. KY0012345"
-            className="w-36 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-text-primary placeholder:text-text-muted focus:border-cyan-400/30 focus:outline-none focus:ring-1 focus:ring-cyan-400/20"
+            className="w-36 rounded-lg border border-black/[0.08] bg-qo-nested px-2.5 py-1 text-[11px] text-text-primary placeholder:text-text-muted focus:border-qo-accent/30 focus:outline-none focus:ring-1 focus:ring-cyan-400/20"
           />
           {showSuggestions && permitSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-white/[0.08] bg-crystal-surface/95 py-1 shadow-xl backdrop-blur-xl">
+            <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-black/[0.08] bg-white py-1 shadow-xl ">
               {permitSuggestions.map((p) => (
                 <button
                   key={p}
                   onClick={() => selectPermit(p)}
-                  className="flex w-full px-3 py-1.5 text-left text-[11px] text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                  className="flex w-full px-3 py-1.5 text-left text-[11px] text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
                 >
                   {p}
                 </button>

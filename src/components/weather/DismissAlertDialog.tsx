@@ -47,8 +47,8 @@ export function DismissAlertDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
@@ -59,7 +59,7 @@ export function DismissAlertDialog({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -67,7 +67,7 @@ export function DismissAlertDialog({
 
         {/* Conservative default warning */}
         <div className="mb-5 flex gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
+          <AlertTriangle className="h-5 w-5 shrink-0 text-qo-ochre-text" />
           <p className="text-sm text-amber-300">
             When in doubt, sample. The cost of an unnecessary sample is trivial compared to a missed
             event under the Consent Decree.
@@ -77,12 +77,12 @@ export function DismissAlertDialog({
         {/* Reason Code */}
         <div className="mb-4">
           <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-            Reason for dismissal <span className="text-red-400">*</span>
+            Reason for dismissal <span className="text-qo-risk">*</span>
           </label>
           <select
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value as DismissReasonCode)}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
+            className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
           >
             <option value="">Select a reason...</option>
             {DISMISS_REASON_OPTIONS.map((opt) => (
@@ -96,7 +96,7 @@ export function DismissAlertDialog({
         {/* Justification */}
         <div className="mb-4">
           <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-            Justification <span className="text-red-400">*</span>
+            Justification <span className="text-qo-risk">*</span>
             <span className="ml-2 text-xs text-text-muted">
               ({trimmedJustification.length}/{MIN_JUSTIFICATION_LENGTH} min characters)
             </span>
@@ -109,11 +109,11 @@ export function DismissAlertDialog({
             className={`w-full rounded-lg border px-3 py-2.5 text-sm text-text-primary outline-none transition-colors ${
               trimmedJustification.length > 0 && trimmedJustification.length < MIN_JUSTIFICATION_LENGTH
                 ? 'border-red-500/50 bg-red-500/5'
-                : 'border-white/[0.08] bg-white/[0.04] focus:border-sky-500/50'
+                : 'border-black/[0.08] bg-black/[0.03] focus:border-sky-500/50'
             }`}
           />
           {trimmedJustification.length > 0 && trimmedJustification.length < MIN_JUSTIFICATION_LENGTH && (
-            <p className="mt-1 text-xs text-red-400">
+            <p className="mt-1 text-xs text-qo-risk">
               {MIN_JUSTIFICATION_LENGTH - trimmedJustification.length} more characters required
             </p>
           )}
@@ -121,21 +121,21 @@ export function DismissAlertDialog({
 
         {/* Error */}
         {error && (
-          <p className="mb-4 text-sm text-red-400">{error}</p>
+          <p className="mb-4 text-sm text-qo-risk">{error}</p>
         )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.04]"
+            className="rounded-lg border border-black/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-black/[0.04]"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? 'Dismissing...' : 'Dismiss Alert'}
           </button>

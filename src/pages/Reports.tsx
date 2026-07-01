@@ -18,7 +18,7 @@ export function Reports() {
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="inline-flex rounded-xl bg-emerald-500/10 p-2.5">
-          <FileText className="h-6 w-6 text-emerald-400" />
+          <FileText className="h-6 w-6 text-qo-sage-text" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -55,7 +55,7 @@ export function Reports() {
         >
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-amber-500/10 p-2">
-              <Lock className="h-4 w-4 text-amber-400" />
+              <Lock className="h-4 w-4 text-qo-ochre-text" />
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-text-muted">Locked</p>
@@ -78,7 +78,7 @@ export function Reports() {
               <p className="text-[10px] uppercase tracking-wider text-text-muted">Your Access</p>
               <p className="text-3xl font-light tracking-tight bg-gradient-to-br from-white to-white/50 bg-clip-text text-transparent">
                 {accessible.length}
-                <span className="text-lg font-normal text-white/30 ml-1">/{definitions.length}</span>
+                <span className="text-lg font-normal text-text-primary/30 ml-1">/{definitions.length}</span>
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export function Reports() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-white/[0.03] p-1 border border-white/[0.06]">
+      <div className="flex gap-1 rounded-xl bg-qo-nested p-1 border border-black/[0.06]">
         {[
           { key: 'hub' as Tab, label: 'Report Hub', icon: LayoutGrid },
           { key: 'builder' as Tab, label: 'My Templates', icon: Layers },
@@ -97,8 +97,8 @@ export function Reports() {
             key={key}
             onClick={() => setTab(key)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${tab === key
-              ? 'bg-white/[0.08] text-text-primary'
-              : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]'
+              ? 'bg-black/[0.06] text-text-primary'
+              : 'text-text-muted hover:text-text-secondary hover:bg-qo-nested'
               }`}
           >
             <Icon className="h-3.5 w-3.5" />

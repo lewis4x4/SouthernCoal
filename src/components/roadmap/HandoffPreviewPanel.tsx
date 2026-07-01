@@ -17,9 +17,9 @@ import { STATUS_COLORS, STATUS_LABELS } from '@/types/roadmap';
 import type { ExtractionConfidence } from '@/types/handoff';
 
 const CONFIDENCE_COLORS: Record<ExtractionConfidence, string> = {
-  high: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  low: 'bg-white/5 text-text-muted border-white/10',
+  high: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  medium: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  low: 'bg-qo-nested text-text-muted border-black/[0.08]',
 };
 
 const CONFIDENCE_LABELS: Record<ExtractionConfidence, string> = {
@@ -104,7 +104,7 @@ export function HandoffPreviewPanel() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/50  z-50"
         onClick={handleDiscard}
       />
       <motion.div
@@ -112,18 +112,18 @@ export function HandoffPreviewPanel() {
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-crystal-surface border-l border-white/[0.08] z-50 overflow-hidden flex flex-col"
+        className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-crystal-surface border-l border-black/[0.08] z-50 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.08]">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Review Extraction</h2>
             <p className="text-sm text-text-muted mt-0.5">{summary}</p>
           </div>
           <button
             onClick={handleDiscard}
-            className="p-2 rounded-lg hover:bg-white/[0.04] transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="p-2 rounded-lg hover:bg-black/[0.04] transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500/50"
             aria-label="Close preview panel"
           >
             <X size={18} className="text-text-muted" />
@@ -167,7 +167,7 @@ export function HandoffPreviewPanel() {
                       rounded-lg border transition-all
                       ${isSelected
                         ? 'border-blue-500/30 bg-blue-500/5'
-                        : 'border-white/[0.08] bg-white/[0.02]'
+                        : 'border-black/[0.08] bg-qo-nested'
                       }
                     `}
                   >
@@ -192,12 +192,12 @@ export function HandoffPreviewPanel() {
                           w-5 h-5 rounded border flex items-center justify-center
                           ${isSelected
                             ? 'bg-blue-500 border-blue-500'
-                            : 'border-white/20 hover:border-white/40'
+                            : 'border-black/[0.12] hover:border-white/40'
                           }
                         `}
                         aria-hidden="true"
                       >
-                        {isSelected && <Check size={12} className="text-white" />}
+                        {isSelected && <Check size={12} className="text-text-primary" />}
                       </div>
 
                       {/* Task ID */}
@@ -231,7 +231,7 @@ export function HandoffPreviewPanel() {
                           e.stopPropagation();
                           setExpandedIndex(isExpanded ? null : index);
                         }}
-                        className="p-1 hover:bg-white/[0.04] rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                        className="p-1 hover:bg-black/[0.04] rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                         aria-expanded={isExpanded}
                         aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
                       >
@@ -252,13 +252,13 @@ export function HandoffPreviewPanel() {
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-4 pb-4 pt-0 space-y-3 border-t border-white/[0.06] mt-2">
+                          <div className="px-4 pb-4 pt-0 space-y-3 border-t border-black/[0.06] mt-2">
                             {update.extracted_answer && (
                               <div>
                                 <label className="text-xs text-text-muted block mb-1">
                                   Extracted Answer
                                 </label>
-                                <p className="text-sm text-text-secondary bg-white/[0.02] rounded px-3 py-2">
+                                <p className="text-sm text-text-secondary bg-qo-nested rounded px-3 py-2">
                                   {update.extracted_answer}
                                 </p>
                               </div>
@@ -282,7 +282,7 @@ export function HandoffPreviewPanel() {
                                   {update.unblocks.map((id) => (
                                     <span
                                       key={id}
-                                      className="font-mono text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded"
+                                      className="font-mono text-xs px-1.5 py-0.5 bg-emerald-500/10 text-qo-sage-text rounded"
                                     >
                                       {id}
                                     </span>
@@ -313,7 +313,7 @@ export function HandoffPreviewPanel() {
                     key={i}
                     className="flex items-start gap-3 px-4 py-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
                   >
-                    <AlertTriangle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                    <AlertTriangle size={14} className="text-qo-ochre-text mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-text-secondary">{q.question}</p>
                   </div>
                 ))}
@@ -323,7 +323,7 @@ export function HandoffPreviewPanel() {
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-white/[0.08] flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-black/[0.08] flex items-center justify-between">
           <button
             onClick={handleDiscard}
             className="text-sm text-text-muted hover:text-text-secondary"

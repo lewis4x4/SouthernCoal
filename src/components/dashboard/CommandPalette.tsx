@@ -71,17 +71,17 @@ export function CommandPalette() {
     <div className="fixed inset-0 z-[9998]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 "
         onClick={() => setOpen(false)}
       />
 
       {/* Dialog */}
       <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg">
         <Command
-          className="rounded-2xl border border-white/[0.12] bg-crystal-surface/95 backdrop-blur-xl shadow-2xl overflow-hidden"
+          className="rounded-2xl border border-black/[0.12] bg-white  shadow-2xl overflow-hidden"
           label="Command palette"
         >
-          <div className="flex items-center gap-2 px-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2 px-4 border-b border-black/[0.06]">
             <Search size={16} className="text-text-muted" />
             <Command.Input
               placeholder="Type a command..."
@@ -105,7 +105,7 @@ export function CommandPalette() {
                       setFilters({ stateCode: s.code }),
                     )
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Filter size={12} />
                   Filter by {s.code} — {s.name}
@@ -120,7 +120,7 @@ export function CommandPalette() {
                       setFilters({ category: c.dbKey }),
                     )
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Filter size={12} />
                   Filter by {c.label}
@@ -133,7 +133,7 @@ export function CommandPalette() {
                     setFilters({ status: 'all', stateCode: 'all', category: 'all' }),
                   )
                 }
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
               >
                 <Filter size={12} />
                 Clear all filters
@@ -147,7 +147,7 @@ export function CommandPalette() {
                 onSelect={() =>
                   runAction('navigate_search', () => navigate('/search'))
                 }
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
               >
                 <Search size={12} />
                 Search compliance data
@@ -160,7 +160,7 @@ export function CommandPalette() {
                       setOpen(false);
                     })
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Upload size={12} />
                   Upload files (drag & drop anywhere)
@@ -172,7 +172,7 @@ export function CommandPalette() {
                   onSelect={() =>
                     runAction('bulk_process_permits', () => processAllPermitPdfs())
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Play size={12} />
                   Process all queued permit PDFs
@@ -186,7 +186,7 @@ export function CommandPalette() {
                       processAllParameterSheets(),
                     )
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Play size={12} />
                   Process all parameter sheets
@@ -198,7 +198,7 @@ export function CommandPalette() {
                   onSelect={() =>
                     runAction('bulk_process_lab_data', () => processAllQueuedLabData())
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Play size={12} />
                   Process all queued lab data
@@ -210,7 +210,7 @@ export function CommandPalette() {
                   onSelect={() =>
                     runAction('bulk_process_dmrs', () => processAllQueuedDmrs())
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Play size={12} />
                   Process all queued DMR exports
@@ -236,7 +236,7 @@ export function CommandPalette() {
                       }
                     })
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <RefreshCw size={12} />
                   Retry all failed
@@ -250,7 +250,7 @@ export function CommandPalette() {
                       document.dispatchEvent(new CustomEvent('export-matrix-csv'));
                     })
                   }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
                 >
                   <Download size={12} />
                   Export matrix as CSV
@@ -261,7 +261,7 @@ export function CommandPalette() {
                 onSelect={() =>
                   runAction('staging_clear_all', () => clearAll())
                 }
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
               >
                 <Trash2 size={12} />
                 Clear staging area
@@ -269,9 +269,9 @@ export function CommandPalette() {
             </Command.Group>
           </Command.List>
 
-          <div className="px-4 py-2 border-t border-white/[0.06] text-[10px] text-text-muted flex items-center justify-between">
+          <div className="px-4 py-2 border-t border-black/[0.06] text-[10px] text-text-muted flex items-center justify-between">
             <span>Navigate with ↑↓ · Select with ↵ · Close with Esc</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] font-mono">
+            <kbd className="px-1.5 py-0.5 rounded bg-black/[0.04] border border-black/[0.08] font-mono">
               ⌘K
             </kbd>
           </div>

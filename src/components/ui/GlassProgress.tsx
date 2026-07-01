@@ -16,7 +16,7 @@ export function GlassProgress({ value, className }: GlassProgressProps) {
   return (
     <div
       className={cn(
-        'h-2 rounded-full bg-white/5 overflow-hidden',
+        'h-2 rounded-full bg-qo-nested overflow-hidden',
         className,
       )}
     >

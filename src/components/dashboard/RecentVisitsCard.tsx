@@ -7,9 +7,9 @@ import { cn } from '@/lib/cn';
 import type { FieldVisitOutcome } from '@/types/field';
 
 const OUTCOME_CONFIG: Record<FieldVisitOutcome, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  sample_collected: { label: 'Sampled', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle2 },
+  sample_collected: { label: 'Sampled', color: 'text-qo-sage-text bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle2 },
   no_discharge: { label: 'No Discharge', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: Droplets },
-  access_issue: { label: 'Access Issue', color: 'text-red-400 bg-red-500/10 border-red-500/20', icon: AlertTriangle },
+  access_issue: { label: 'Access Issue', color: 'text-qo-risk bg-red-500/10 border-red-500/20', icon: AlertTriangle },
 };
 
 export function RecentVisitsCard() {
@@ -28,9 +28,9 @@ export function RecentVisitsCard() {
     return (
       <SpotlightCard className="p-6">
         <div className="animate-pulse space-y-3">
-          <div className="h-5 w-36 rounded bg-white/[0.06]" />
+          <div className="h-5 w-36 rounded bg-black/[0.04]" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 rounded-lg bg-white/[0.04]" />
+            <div key={i} className="h-12 rounded-lg bg-black/[0.03]" />
           ))}
         </div>
       </SpotlightCard>
@@ -40,7 +40,7 @@ export function RecentVisitsCard() {
   return (
     <SpotlightCard className="p-6">
       <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-secondary">
-        <ClipboardCheck className="h-4 w-4 text-cyan-400" />
+        <ClipboardCheck className="h-4 w-4 text-qo-accent" />
         Recent Visits
       </h3>
 
@@ -59,7 +59,7 @@ export function RecentVisitsCard() {
               <Link
                 key={v.id}
                 to={`/field/visits/${v.id}`}
-                className="flex items-center justify-between rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2.5 transition-colors hover:bg-white/[0.05]"
+                className="flex items-center justify-between rounded-lg border border-black/[0.05] bg-qo-nested px-3 py-2.5 transition-colors hover:bg-black/[0.04]"
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-xs text-text-muted">

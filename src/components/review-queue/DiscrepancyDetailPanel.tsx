@@ -9,9 +9,9 @@ import { formatDiscrepancyReviewerLabel, selfReviewDisplayNameFromProfile } from
 import type { DiscrepancyRow, DiscrepancySeverity } from '@/stores/reviewQueue';
 
 const SEVERITY_BADGE: Record<DiscrepancySeverity, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+  critical: 'bg-red-500/10 text-qo-risk border-red-500/20',
   high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  medium: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
 
@@ -71,9 +71,9 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-white/[0.08] bg-crystal-surface/95 backdrop-blur-2xl shadow-2xl overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-black/[0.08] bg-white  shadow-2xl overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-crystal-surface/80 backdrop-blur-xl px-6 py-4">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/[0.06] bg-white80  px-6 py-4">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-text-primary">Discrepancy Detail</h3>
           <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', SEVERITY_BADGE[d.severity])}>
@@ -82,7 +82,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
+          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary"
         >
           <X size={16} />
         </button>
@@ -109,7 +109,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
 
         {/* Comparison */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">Internal</p>
             <p className="text-sm text-text-primary font-mono">
               {d.internal_value || <span className="text-text-muted italic">No data</span>}
@@ -120,7 +120,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
               </p>
             )}
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+          <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4">
             <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">External ({d.source.toUpperCase()})</p>
             <p className="text-sm text-text-primary font-mono">
               {d.external_value || <span className="text-text-muted italic">No data</span>}
@@ -139,7 +139,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
             readOnly={!canTriage}
             title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
             rows={3}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-qo-accent/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
             placeholder="Add review notes..."
           />
         </div>
@@ -155,7 +155,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
               onChange={(e) => setDismissReason(e.target.value)}
               disabled={!canTriage}
               title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary focus:border-qo-accent/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">Select reason...</option>
               {DISMISS_REASONS.map((r) => (
@@ -172,7 +172,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
                 readOnly={!canTriage}
                 title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
                 placeholder="Describe reason..."
-                className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyan-500/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
+                className="mt-2 w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-qo-accent/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 read-only:cursor-not-allowed read-only:opacity-60"
               />
             )}
           </div>
@@ -187,7 +187,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
                 onClick={() => handleAction('reviewed')}
                 disabled={busy || !canTriage}
                 title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
-                className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-qo-accent/10 border border-qo-accent/20 px-4 py-2 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
               >
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
                 Mark Reviewed
@@ -222,7 +222,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
                 || (showDismiss && dismissReason === 'Other' && !customDismissText.trim())
               }
               title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
-              className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg bg-black/[0.03] border border-black/[0.08] px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-black/[0.05] disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
               Dismiss
@@ -233,7 +233,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
               onClick={() => handleAction('resolved')}
               disabled={busy || !canTriage}
               title={!canTriage ? NO_VERIFY_TRIAGE_TITLE : undefined}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-sm font-medium text-qo-sage-text transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
               Resolve
@@ -243,7 +243,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
 
         {/* Previous review info */}
         {(d.reviewed_at || d.reviewed_by) && (
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-1">
+          <div className="rounded-lg border border-black/[0.06] bg-qo-nested p-3 space-y-1">
             {d.reviewed_at && (
               <p className="text-[10px] text-text-muted">
                 Reviewed {new Date(d.reviewed_at).toLocaleString()}

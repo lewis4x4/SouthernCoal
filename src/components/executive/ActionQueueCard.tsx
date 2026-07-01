@@ -73,7 +73,7 @@ export function ActionQueueCard() {
   }, []);
 
   const priorityStyles: Record<string, string> = {
-    critical: 'border-red-500/20 bg-red-500/[0.06] text-red-400',
+    critical: 'border-red-500/20 bg-red-500/[0.06] text-qo-risk',
     urgent: 'border-orange-500/20 bg-orange-500/[0.06] text-orange-400',
     upcoming: 'border-yellow-500/20 bg-yellow-500/[0.06] text-yellow-400',
   };
@@ -82,7 +82,7 @@ export function ActionQueueCard() {
   const urgentCount = actions.filter((a) => a.priority === 'urgent').length;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl">
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 ">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -95,7 +95,7 @@ export function ActionQueueCard() {
                 : `${criticalCount} critical, ${urgentCount} urgent`}
           </p>
         </div>
-        <div className="rounded-lg bg-white/[0.05] p-2">
+        <div className="rounded-lg bg-black/[0.03] p-2">
           <Clock className="h-5 w-5 text-orange-400" />
         </div>
       </div>
@@ -106,12 +106,12 @@ export function ActionQueueCard() {
           ? Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[80px] animate-pulse rounded-lg border border-white/[0.04] bg-white/[0.02]"
+                className="h-[80px] animate-pulse rounded-lg border border-black/[0.05] bg-qo-nested"
               />
             ))
           : actions.length === 0
             ? (
-                <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-6 text-center text-sm text-text-muted">
+                <div className="rounded-lg border border-black/[0.05] bg-qo-nested p-6 text-center text-sm text-text-muted">
                   No overdue or upcoming obligations found.
                 </div>
               )
@@ -127,7 +127,7 @@ export function ActionQueueCard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                        <span className="rounded bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-bold uppercase">
                           {action.obligationType}
                         </span>
                         <span className="text-xs font-medium">{action.description}</span>
@@ -152,7 +152,7 @@ export function ActionQueueCard() {
       {/* View All */}
       <Link
         to="/obligations"
-        className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/[0.06]"
+        className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-black/[0.05]"
       >
         View All Obligations
         <ChevronRight className="h-4 w-4" />

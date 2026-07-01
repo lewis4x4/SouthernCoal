@@ -13,15 +13,15 @@ function StatusMatch({ internal, external }: { internal?: string | null; externa
   if (!internal || !external) return null;
   const match = internal.toLowerCase().trim() === external.toLowerCase().trim();
   return match ? (
-    <CheckCircle size={14} className="text-emerald-400" />
+    <CheckCircle size={14} className="text-qo-sage-text" />
   ) : (
-    <XCircle size={14} className="text-red-400" />
+    <XCircle size={14} className="text-qo-risk" />
   );
 }
 
 function Field({ label, value, extra }: { label: string; value: string | null; extra?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between py-2 border-b border-white/[0.04] last:border-0">
+    <div className="flex items-start justify-between py-2 border-b border-black/[0.05] last:border-0">
       <span className="text-xs text-text-muted">{label}</span>
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-text-primary font-mono">{value || '—'}</span>
@@ -39,8 +39,8 @@ function ComplianceBadge({ status }: { status: string | null }) {
       className={cn(
         'rounded-full border px-2 py-0.5 text-[10px] font-medium',
         isSNC
-          ? 'bg-red-500/10 text-red-400 border-red-500/20'
-          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+          ? 'bg-red-500/10 text-qo-risk border-red-500/20'
+          : 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
       )}
     >
       {status}
@@ -65,7 +65,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
         <button
           onClick={refetchEcho}
           disabled={echoBusy}
-          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
+          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary disabled:opacity-40"
           title="Refresh ECHO data"
         >
           {echoBusy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -83,7 +83,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
             value={f.permit_status}
             extra={<StatusMatch internal={internalStatus} external={f.permit_status} />}
           />
-          <div className="flex items-start justify-between py-2 border-b border-white/[0.04]">
+          <div className="flex items-start justify-between py-2 border-b border-black/[0.05]">
             <span className="text-xs text-text-muted">Compliance</span>
             <ComplianceBadge status={f.compliance_status} />
           </div>
@@ -101,7 +101,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
           <Field label="Expires" value={f.permit_expiration_date} />
 
           {dmrLoading && !dmr && (
-            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+            <div className="mt-3 pt-3 border-t border-black/[0.06]">
               <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">DMR Data</p>
               <div className="flex items-center justify-center py-3">
                 <Loader2 size={14} className="animate-spin text-text-muted" />
@@ -110,7 +110,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
             </div>
           )}
           {dmr && (
-            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+            <div className="mt-3 pt-3 border-t border-black/[0.06]">
               <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">DMR Data</p>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
@@ -118,7 +118,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
                   <p className="text-[10px] text-text-muted">Records</p>
                 </div>
                 <div>
-                  <p className={cn('text-lg font-semibold', dmr.withViolations > 0 ? 'text-red-400' : 'text-emerald-400')}>
+                  <p className={cn('text-lg font-semibold', dmr.withViolations > 0 ? 'text-qo-risk' : 'text-qo-sage-text')}>
                     {dmr.withViolations}
                   </p>
                   <p className="text-[10px] text-text-muted">Violations</p>
@@ -134,7 +134,7 @@ export function EchoStatusPanel({ npdesId, internalStatus }: Props) {
       )}
 
       {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+      <div className="mt-4 pt-3 border-t border-black/[0.06] flex items-center justify-between">
         {f && (
           <div className="flex items-center gap-1 text-[10px] text-text-muted">
             <Clock size={10} />

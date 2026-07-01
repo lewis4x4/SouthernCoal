@@ -39,7 +39,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500/50"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-qo-nested transition-colors focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500/50"
         aria-expanded={expanded}
         aria-controls={`tier-${tier}-content`}
       >
@@ -65,7 +65,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+            <div className="border-t border-black/[0.06] divide-y divide-white/[0.04]">
               {tasks.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-text-muted">
                   No tasks in this tier
@@ -77,7 +77,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="px-4 py-3 hover:bg-white/[0.02] transition-colors"
+                    className="px-4 py-3 hover:bg-qo-nested transition-colors"
                     onMouseEnter={() => setHoveredTask(task.task_id)}
                     onMouseLeave={() => setHoveredTask(null)}
                   >
@@ -106,10 +106,10 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                           className={`
                             px-3 py-1.5 rounded-lg text-center
                             ${task.score.total >= 15
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              ? 'bg-red-500/20 text-qo-risk border border-red-500/30'
                               : task.score.total >= 10
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : 'bg-white/[0.04] text-text-secondary border border-white/[0.08]'
+                                ? 'bg-amber-500/20 text-qo-ochre-text border border-amber-500/30'
+                                : 'bg-black/[0.03] text-text-secondary border border-black/[0.08]'
                             }
                           `}
                         >
@@ -121,7 +121,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                           <motion.div
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute right-0 top-full mt-2 z-50 w-72 p-3 rounded-lg bg-crystal-surface border border-white/[0.12] shadow-xl"
+                            className="absolute right-0 top-full mt-2 z-50 w-72 p-3 rounded-lg bg-crystal-surface border border-black/[0.12] shadow-xl"
                           >
                             <div className="text-xs space-y-2">
                               <div className="font-medium text-text-primary mb-2">
@@ -145,7 +145,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                                   {task.score.factors.has_external_dependency ? '1' : '0'} × 4 = -{task.score.factors.has_external_dependency ? 4 : 0}
                                 </span>
                               </div>
-                              <div className="border-t border-white/[0.08] pt-2 mt-2">
+                              <div className="border-t border-black/[0.08] pt-2 mt-2">
                                 <code className="text-[10px] text-text-muted font-mono">
                                   {task.score.formula}
                                 </code>
@@ -164,7 +164,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                             Blocked by:{' '}
                             {task.depends_on.map((id, i) => (
                               <span key={id}>
-                                <span className="font-mono text-amber-400">{id}</span>
+                                <span className="font-mono text-qo-ochre-text">{id}</span>
                                 {i < task.depends_on.length - 1 && ', '}
                               </span>
                             ))}
@@ -175,7 +175,7 @@ function TierSection({ tier, tasks, defaultExpanded = false }: TierSectionProps)
                             Unblocks:{' '}
                             {task.blocks.map((id, i) => (
                               <span key={id}>
-                                <span className="font-mono text-emerald-400">{id}</span>
+                                <span className="font-mono text-qo-sage-text">{id}</span>
                                 {i < task.blocks.length - 1 && ', '}
                               </span>
                             ))}
@@ -255,7 +255,7 @@ export function WhatsNextQueue() {
             {topPriority.task_description}
           </p>
           {topPriority.blocks.length > 0 && (
-            <p className="text-xs text-emerald-400 mt-2">
+            <p className="text-xs text-qo-sage-text mt-2">
               Completing this unblocks: {topPriority.blocks.join(', ')}
             </p>
           )}
@@ -301,7 +301,7 @@ export function WhatsNextQueue() {
                 key={task.task_id}
                 className="flex items-center gap-3 px-4 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20"
               >
-                <span className="font-mono text-sm text-emerald-400">
+                <span className="font-mono text-sm text-qo-sage-text">
                   {task.task_id}
                 </span>
                 <span className="text-sm text-text-secondary truncate flex-1">

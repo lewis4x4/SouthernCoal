@@ -135,9 +135,9 @@ export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
 };
 
 export const EQUIPMENT_STATUS_COLORS: Record<EquipmentStatus, { bg: string; border: string; text: string }> = {
-  available: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  assigned: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400' },
-  maintenance: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  available: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-qo-sage-text' },
+  assigned: { bg: 'bg-qo-accent/10', border: 'border-qo-accent/20', text: 'text-qo-accent' },
+  maintenance: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-qo-ochre-text' },
   retired: { bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
-  lost: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
+  lost: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-qo-risk' },
 };

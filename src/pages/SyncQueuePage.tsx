@@ -170,7 +170,7 @@ export function SyncQueuePage() {
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
           <div className="inline-flex rounded-xl bg-amber-500/10 p-2.5">
-            <Wifi className="h-6 w-6 text-amber-400" />
+            <Wifi className="h-6 w-6 text-qo-ochre-text" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -184,7 +184,7 @@ export function SyncQueuePage() {
         <div className="flex gap-2">
           <button
             onClick={refreshQueue}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-text-secondary hover:bg-white/10 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-secondary hover:bg-black/[0.06] transition-colors"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Refresh
@@ -192,7 +192,7 @@ export function SyncQueuePage() {
           <button
             onClick={handleFlush}
             disabled={flushing || queue.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-text-primary hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${flushing ? 'animate-spin' : ''}`} />
             {flushing ? 'Syncing…' : 'Force Sync'}
@@ -208,9 +208,9 @@ export function SyncQueuePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {queue.length > 0 ? (
-              <AlertTriangle className="h-5 w-5 text-amber-400" />
+              <AlertTriangle className="h-5 w-5 text-qo-ochre-text" />
             ) : (
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              <CheckCircle2 className="h-5 w-5 text-qo-sage-text" />
             )}
             <div>
               <p className="text-sm font-semibold text-text-primary">
@@ -228,7 +228,7 @@ export function SyncQueuePage() {
           {queue.length > 0 && (
             <button
               onClick={handleClearAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-qo-risk hover:bg-red-500/20 transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Clear All
@@ -247,7 +247,7 @@ export function SyncQueuePage() {
             </div>
             <button
               onClick={() => handleDismissVisit(visitId)}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-text-muted hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1 rounded-lg border border-black/[0.08] bg-qo-nested px-2.5 py-1 text-[11px] text-text-muted hover:bg-black/[0.06] transition-colors"
             >
               <Trash2 className="h-3 w-3" />
               Dismiss All
@@ -257,10 +257,10 @@ export function SyncQueuePage() {
             {ops.map((op) => (
               <div
                 key={op.id}
-                className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
               >
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-mono text-text-secondary">
+                  <span className="inline-flex rounded-md bg-black/[0.04] px-2 py-0.5 text-[11px] font-mono text-text-secondary">
                     {formatOpKind(op.kind)}
                   </span>
                   <span className="flex items-center gap-1 text-[11px] text-text-muted">
@@ -270,7 +270,7 @@ export function SyncQueuePage() {
                 </div>
                 <button
                   onClick={() => handleDismissOp(op)}
-                  className="rounded p-1 text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="rounded p-1 text-text-muted hover:text-qo-risk hover:bg-red-500/10 transition-colors"
                   title="Dismiss this operation"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -295,25 +295,25 @@ export function SyncQueuePage() {
             {syncLog.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+                className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-4 py-3"
               >
                 <div className="flex items-center gap-3">
                   {entry.ops_failed > 0 || entry.ops_held > 0 ? (
-                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    <AlertTriangle className="h-4 w-4 text-qo-ochre-text" />
                   ) : (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 text-qo-sage-text" />
                   )}
                   <div>
                     <p className="text-sm text-text-primary">
                       {entry.ops_processed} synced
-                      {entry.ops_failed > 0 && <span className="text-red-400 ml-2">{entry.ops_failed} failed</span>}
-                      {entry.ops_held > 0 && <span className="text-amber-400 ml-2">{entry.ops_held} held</span>}
+                      {entry.ops_failed > 0 && <span className="text-qo-risk ml-2">{entry.ops_failed} failed</span>}
+                      {entry.ops_held > 0 && <span className="text-qo-ochre-text ml-2">{entry.ops_held} held</span>}
                     </p>
                     {entry.error_message && (
-                      <p className="text-xs text-red-400/80 mt-0.5 truncate max-w-md">{entry.error_message}</p>
+                      <p className="text-xs text-qo-risk/80 mt-0.5 truncate max-w-md">{entry.error_message}</p>
                     )}
                     {entry.conflict_hold_reason && (
-                      <p className="text-xs text-amber-400/80 mt-0.5">Hold: {entry.conflict_hold_reason}</p>
+                      <p className="text-xs text-qo-ochre-text/80 mt-0.5">Hold: {entry.conflict_hold_reason}</p>
                     )}
                   </div>
                 </div>

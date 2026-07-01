@@ -31,7 +31,7 @@ export function ExceedanceAlertRulesPanel() {
           <h3 className="text-sm font-semibold text-text-primary">Exceedance alert rules</h3>
           <p className="text-xs text-text-muted mt-1">
             Triggered after lab import when permit limits are exceeded. Configure channels in{' '}
-            <Link to="/admin/notifications" className="text-cyan-400 hover:text-cyan-300">
+            <Link to="/admin/notifications" className="text-qo-accent hover:text-qo-accent">
               Notification Preferences
             </Link>
             .
@@ -40,7 +40,7 @@ export function ExceedanceAlertRulesPanel() {
       </div>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-text-muted border-b border-white/[0.06]">
+          <tr className="text-text-muted border-b border-black/[0.06]">
             <th className="text-left py-2 px-4 font-medium">Rule</th>
             <th className="text-left py-2 px-4 font-medium">When</th>
             <th className="text-left py-2 px-4 font-medium">Channels</th>

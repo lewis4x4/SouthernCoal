@@ -17,9 +17,9 @@ const STATE_LABELS: Record<string, string> = {
 
 const STATE_COLORS: Record<string, string> = {
   KY: 'bg-blue-500/15 border-blue-500/30 text-blue-400',
-  WV: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400',
+  WV: 'bg-emerald-500/15 border-emerald-500/30 text-qo-sage-text',
   VA: 'bg-purple-500/15 border-purple-500/30 text-purple-400',
-  TN: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+  TN: 'bg-amber-500/15 border-amber-500/30 text-qo-ochre-text',
   AL: 'bg-orange-500/15 border-orange-500/30 text-orange-400',
 };
 
@@ -116,7 +116,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90]"
+            className="fixed inset-0 bg-black/40  z-[90]"
             onClick={onClose}
           />
 
@@ -126,15 +126,15 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-y-0 right-0 w-full max-w-md z-[91] flex flex-col bg-crystal-surface border-l border-white/[0.08] shadow-2xl"
+            className="fixed inset-y-0 right-0 w-full max-w-md z-[91] flex flex-col bg-crystal-surface border-l border-black/[0.08] shadow-2xl"
           >
             {/* Header — flex-shrink-0 keeps it pinned */}
-            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-crystal-surface">
+            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-black/[0.06] bg-crystal-surface">
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
                     'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border',
-                    STATE_COLORS[violation.state] ?? 'bg-white/10 border-white/20 text-text-secondary',
+                    STATE_COLORS[violation.state] ?? 'bg-black/[0.06] border-black/[0.12] text-text-secondary',
                   )}
                 >
                   {violation.state}
@@ -145,7 +145,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/[0.04] transition-colors"
+                className="p-1.5 rounded-lg hover:bg-black/[0.04] transition-colors"
                 aria-label="Close drawer"
               >
                 <X size={18} className="text-text-muted" />
@@ -163,25 +163,25 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                   </h4>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3">
                     <p className="text-[10px] text-text-muted mb-1">Period</p>
                     <p className="text-sm font-medium text-text-primary font-mono">
                       {MONTH_ABBR[violation.monitoring_month]} {violation.monitoring_year}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3">
                     <p className="text-[10px] text-text-muted mb-1">Quarter</p>
                     <p className="text-sm font-medium text-text-primary">
                       Q{violation.monitoring_quarter} {violation.monitoring_year}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3">
                     <p className="text-[10px] text-text-muted mb-1">State</p>
                     <p className="text-sm font-medium text-text-primary">
                       {STATE_LABELS[violation.state] ?? violation.state}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3">
                     <p className="text-[10px] text-text-muted mb-1">Outfall</p>
                     <p className="text-sm font-medium text-text-primary font-mono">
                       {violation.outfall_number}
@@ -198,14 +198,14 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                     Penalty Details
                   </h4>
                 </div>
-                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                   <div className="flex items-center justify-between mb-3">
                     <span
                       className={cn(
                         'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border',
                         violation.penalty_category === 1
                           ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                          : 'bg-red-500/10 border-red-500/20 text-red-400',
+                          : 'bg-red-500/10 border-red-500/20 text-qo-risk',
                       )}
                     >
                       Category {violation.penalty_category}
@@ -231,7 +231,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                       Notes
                     </h4>
                   </div>
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                     <p className="text-sm text-text-secondary leading-relaxed">
                       {violation.notes}
                     </p>
@@ -251,20 +251,20 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                   </span>
                 </div>
                 {loading ? (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                     <p className="text-xs text-text-muted animate-pulse">Loading history...</p>
                   </div>
                 ) : history.length === 0 ? (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                     <p className="text-xs text-text-muted">No other violations for this outfall</p>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-white/[0.08] overflow-hidden">
+                  <div className="rounded-lg border border-black/[0.08] overflow-hidden">
                     <div className="max-h-64 overflow-y-auto">
                       {history.map((h) => (
                         <div
                           key={h.id}
-                          className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02]"
+                          className="flex items-center justify-between px-4 py-2.5 border-b border-black/[0.05] last:border-b-0 hover:bg-qo-nested"
                         >
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-text-secondary font-mono">
@@ -275,7 +275,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                                 'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold border',
                                 h.penalty_category === 1
                                   ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                                  : 'bg-red-500/10 border-red-500/20 text-red-400',
+                                  : 'bg-red-500/10 border-red-500/20 text-qo-risk',
                               )}
                             >
                               Cat {h.penalty_category}
@@ -288,7 +288,7 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                       ))}
                     </div>
                     {history.length > 6 && (
-                      <div className="px-4 py-1.5 border-t border-white/[0.06] bg-white/[0.02]">
+                      <div className="px-4 py-1.5 border-t border-black/[0.06] bg-qo-nested">
                         <p className="text-[10px] text-text-muted text-center">
                           {history.length} entries — scroll for more
                         </p>
@@ -310,24 +310,24 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                   </span>
                 </div>
                 {loading ? (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                     <p className="text-xs text-text-muted animate-pulse">Loading summary...</p>
                   </div>
                 ) : permitSummary ? (
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3 text-center">
                       <p className="text-lg font-semibold text-text-primary font-mono">
                         {formatDollars(permitSummary.totalPenalties)}
                       </p>
                       <p className="text-[10px] text-text-muted mt-0.5">Total Penalties</p>
                     </div>
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3 text-center">
                       <p className="text-lg font-semibold text-text-primary">
                         {permitSummary.violationCount}
                       </p>
                       <p className="text-[10px] text-text-muted mt-0.5">Violations</p>
                     </div>
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-3 text-center">
                       <p className="text-lg font-semibold text-text-primary">
                         {permitSummary.outfalls}
                       </p>
@@ -337,13 +337,13 @@ export function FtsViolationDetail({ violation, onClose }: Props) {
                       <span className="inline-flex items-center rounded-full bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 text-[10px] font-mono text-yellow-400">
                         Cat 1: {permitSummary.cat1Count}
                       </span>
-                      <span className="inline-flex items-center rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-mono text-red-400">
+                      <span className="inline-flex items-center rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-mono text-qo-risk">
                         Cat 2: {permitSummary.cat2Count}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="rounded-lg border border-black/[0.08] bg-qo-nested p-4">
                     <p className="text-xs text-text-muted">No permit data available</p>
                   </div>
                 )}

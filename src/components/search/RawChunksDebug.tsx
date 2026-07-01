@@ -40,9 +40,9 @@ export function RawChunksDebug({ chunks }: RawChunksDebugProps) {
   const SortIcon = sortDir === 'asc' ? ChevronUp : ChevronDown;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+    <div className="rounded-xl border border-black/[0.06] overflow-hidden">
       <table className="w-full text-left text-xs">
-        <thead className="bg-white/[0.06]">
+        <thead className="bg-black/[0.04]">
           <tr>
             <th className="px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider text-text-muted w-8">
               #
@@ -82,19 +82,19 @@ export function RawChunksDebug({ chunks }: RawChunksDebugProps) {
             const simPct = (chunk.similarity * 100).toFixed(1);
             const simColor =
               chunk.similarity >= 0.9
-                ? 'text-emerald-400'
+                ? 'text-qo-sage-text'
                 : chunk.similarity >= 0.7
                   ? 'text-text-secondary'
-                  : 'text-amber-400';
+                  : 'text-qo-ochre-text';
 
             return (
               <tr
                 key={chunk.id}
                 onClick={() => setExpandedId(isExpanded ? null : chunk.id)}
                 className={cn(
-                  'cursor-pointer border-b border-white/[0.04] transition-colors hover:bg-white/[0.04]',
-                  i % 2 === 1 && 'bg-white/[0.02]',
-                  isExpanded && 'bg-white/[0.04]',
+                  'cursor-pointer border-b border-black/[0.05] transition-colors hover:bg-black/[0.04]',
+                  i % 2 === 1 && 'bg-qo-nested',
+                  isExpanded && 'bg-black/[0.03]',
                 )}
               >
                 <td className="px-3 py-2 font-mono text-text-muted">{i + 1}</td>
@@ -124,7 +124,7 @@ export function RawChunksDebug({ chunks }: RawChunksDebugProps) {
 
       {/* Expanded chunk text */}
       {expandedId && (
-        <div className="border-t border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="border-t border-black/[0.06] bg-qo-nested p-4">
           <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-2">
             Full Chunk Text
           </p>

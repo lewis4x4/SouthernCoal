@@ -54,9 +54,9 @@ export const CLASSIFICATION_LABELS: Record<RecordClassification, string> = {
 
 export const CLASSIFICATION_COLORS: Record<RecordClassification, string> = {
   operational_internal: 'text-text-secondary',
-  public_eligible: 'text-emerald-400',
+  public_eligible: 'text-qo-sage-text',
   regulator_shareable: 'text-blue-400',
-  compliance_sensitive: 'text-amber-400',
+  compliance_sensitive: 'text-qo-ochre-text',
   privileged: 'text-orange-400',
-  restricted: 'text-red-400',
+  restricted: 'text-qo-risk',
 };

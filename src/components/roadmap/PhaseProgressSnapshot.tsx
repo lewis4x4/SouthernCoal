@@ -8,7 +8,7 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   const percent = max > 0 ? (value / max) * 100 : 0;
 
   return (
-    <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+    <div className="h-1.5 w-full bg-black/[0.04] rounded-full overflow-hidden">
       <motion.div
         className={`h-full ${color} rounded-full`}
         initial={{ width: 0 }}
@@ -92,7 +92,7 @@ export function PhaseProgressSnapshot() {
         {[1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
-            className="h-24 rounded-xl border border-white/[0.08] bg-white/[0.02]"
+            className="h-24 rounded-xl border border-black/[0.08] bg-qo-nested"
           />
         ))}
       </div>
@@ -108,9 +108,9 @@ export function PhaseProgressSnapshot() {
           <span className="text-sm text-text-muted ml-2">Complete</span>
         </div>
         <div className="flex gap-4 text-sm">
-          <StatBadge label="Done" value={totals.done} color="text-emerald-400" />
+          <StatBadge label="Done" value={totals.done} color="text-qo-sage-text" />
           <StatBadge label="Partial" value={totals.partial} color="text-blue-400" />
-          <StatBadge label="Blocked" value={totals.blocked} color="text-amber-400" />
+          <StatBadge label="Blocked" value={totals.blocked} color="text-qo-ochre-text" />
           <StatBadge label="Awaiting" value={totals.awaiting_tom} color="text-purple-400" />
         </div>
       </div>
@@ -126,7 +126,7 @@ export function PhaseProgressSnapshot() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3"
+              className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 space-y-3"
             >
               {/* Phase label */}
               <div className="flex items-center justify-between">
@@ -148,13 +148,13 @@ export function PhaseProgressSnapshot() {
               {/* Stats row */}
               <div className="flex flex-wrap gap-x-2 gap-y-1">
                 {phase.done > 0 && (
-                  <span className="text-xs text-emerald-400">{phase.done} done</span>
+                  <span className="text-xs text-qo-sage-text">{phase.done} done</span>
                 )}
                 {phase.partial > 0 && (
                   <span className="text-xs text-blue-400">{phase.partial} partial</span>
                 )}
                 {phase.blocked > 0 && (
-                  <span className="text-xs text-amber-400">{phase.blocked} blocked</span>
+                  <span className="text-xs text-qo-ochre-text">{phase.blocked} blocked</span>
                 )}
                 {phase.awaiting_tom > 0 && (
                   <span className="text-xs text-purple-400">{phase.awaiting_tom} awaiting</span>

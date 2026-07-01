@@ -27,7 +27,7 @@ function deadlineToneClass(tone: ReturnType<typeof describeGovernanceDeadline>['
     case 'soon':
       return 'text-amber-100';
     case 'ok':
-      return 'text-cyan-100';
+      return 'text-qo-accent';
     default:
       return 'text-text-muted';
   }
@@ -112,7 +112,7 @@ export function FieldVisitForceMajeureAssistPanel({
         )}
       </div>
 
-      <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4">
+      <div className="mt-4 rounded-xl border border-black/[0.06] bg-black/10 px-4 py-4">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
           Evidence prompts
         </div>
@@ -127,19 +127,19 @@ export function FieldVisitForceMajeureAssistPanel({
             type="button"
             disabled={disabled}
             onClick={onFocusEvidence}
-            className="min-h-12 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 active:bg-cyan-500/25 disabled:opacity-60"
+            className="min-h-12 rounded-2xl border border-qo-accent/25 bg-qo-accent/10 px-4 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 active:bg-qo-accent/25 disabled:opacity-60"
           >
             Focus site/weather evidence
           </button>
           {selectedEvidenceBucketFocused ? (
-            <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+            <span className="rounded-full border border-qo-accent/25 bg-qo-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-qo-accent">
               Site/weather bucket selected
             </span>
           ) : null}
           {governanceInboxHref ? (
             <a
               href={governanceInboxHref}
-              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.08] active:bg-white/[0.12]"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 text-sm font-medium text-text-primary transition-colors hover:bg-black/[0.06] active:bg-black/[0.08]"
             >
               Open governance inbox
               <ArrowUpRight className="h-4 w-4" aria-hidden />
@@ -149,7 +149,7 @@ export function FieldVisitForceMajeureAssistPanel({
               type="button"
               disabled
               title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
-              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm font-medium text-text-muted opacity-70"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl border border-black/[0.08] bg-qo-nested px-4 text-sm font-medium text-text-muted opacity-70"
             >
               Open governance inbox
               <Lock className="h-3.5 w-3.5" aria-hidden />
@@ -171,7 +171,7 @@ export function FieldVisitForceMajeureAssistPanel({
           rows={4}
           disabled={disabled}
           placeholder="Capture timing, source, and why the condition could affect sampling or decree notice handling."
-          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
+          className="w-full rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3.5 text-base text-text-primary outline-none"
         />
       </label>
 

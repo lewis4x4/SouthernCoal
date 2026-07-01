@@ -26,21 +26,21 @@ export function FtsKpiCards({ kpis }: Props) {
         return (
           <SpotlightCard
             spotlightColor={isHighRisk ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.06)'}
-            className={cn('p-5', isHighRisk ? 'border-red-500/30' : 'border-white/10')}
+            className={cn('p-5', isHighRisk ? 'border-red-500/30' : 'border-black/[0.08]')}
           >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
                   Total YTD
                 </p>
-                <p className={cn('text-2xl font-semibold mt-1 font-mono', isHighRisk ? 'text-red-400' : 'text-white')}>
+                <p className={cn('text-2xl font-semibold mt-1 font-mono', isHighRisk ? 'text-qo-risk' : 'text-text-primary')}>
                   {formatDollars(kpis.totalYtd)}
                 </p>
                 <p className="text-[10px] text-text-muted mt-1">
                   Year to Date · {kpis.ytdYear}
                 </p>
               </div>
-              <DollarSign size={20} className={isHighRisk ? 'text-red-400' : 'text-slate-400'} />
+              <DollarSign size={20} className={isHighRisk ? 'text-qo-risk' : 'text-slate-400'} />
             </div>
           </SpotlightCard>
         );
@@ -60,15 +60,15 @@ export function FtsKpiCards({ kpis }: Props) {
               <div className="flex items-center gap-1.5 mt-1">
                 {kpis.momChange.percentage > 0 ? (
                   <>
-                    <TrendingUp className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-xs text-red-400 font-mono">
+                    <TrendingUp className="w-3.5 h-3.5 text-qo-risk" />
+                    <span className="text-xs text-qo-risk font-mono">
                       +{kpis.momChange.percentage.toFixed(1)}%
                     </span>
                   </>
                 ) : kpis.momChange.percentage < 0 ? (
                   <>
-                    <TrendingDown className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-xs text-emerald-400 font-mono">
+                    <TrendingDown className="w-3.5 h-3.5 text-qo-sage-text" />
+                    <span className="text-xs text-qo-sage-text font-mono">
                       {kpis.momChange.percentage.toFixed(1)}%
                     </span>
                   </>
@@ -125,7 +125,7 @@ export function FtsKpiCards({ kpis }: Props) {
               <span className="inline-flex items-center rounded-full bg-yellow-500/10 border border-yellow-500/20 px-1.5 py-0.5 text-[10px] font-mono text-yellow-400">
                 Cat 1: {kpis.cat1Count}
               </span>
-              <span className="inline-flex items-center rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[10px] font-mono text-red-400">
+              <span className="inline-flex items-center rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[10px] font-mono text-qo-risk">
                 Cat 2: {kpis.cat2Count}
               </span>
             </div>
@@ -155,7 +155,7 @@ export function FtsKpiCards({ kpis }: Props) {
               <p className="text-lg text-text-muted mt-1">—</p>
             )}
           </div>
-          <FileWarning size={20} className="text-cyan-400 shrink-0" />
+          <FileWarning size={20} className="text-qo-accent shrink-0" />
         </div>
       </SpotlightCard>
 
@@ -171,7 +171,7 @@ export function FtsKpiCards({ kpis }: Props) {
             </p>
             <p className="text-[10px] text-text-muted mt-1">Category 2 / Total</p>
           </div>
-          <Repeat size={20} className="text-emerald-400" />
+          <Repeat size={20} className="text-qo-sage-text" />
         </div>
       </SpotlightCard>
     </div>

@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<ViolationStatus, string> = {
   under_investigation: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   reported: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  closed: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  closed: 'bg-gray-500/20 text-text-muted border-gray-500/30',
 };
 
 const SEVERITY_COLORS: Record<ViolationSeverity, string> = {
@@ -129,17 +129,17 @@ export function ComplianceViolationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-red-500/20">
-            <ShieldAlert className="w-6 h-6 text-red-400" />
+            <ShieldAlert className="w-6 h-6 text-qo-risk" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Compliance Violations</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Compliance Violations</h1>
             <p className="text-sm text-text-secondary">Violation database, NOVs, and enforcement actions</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -170,11 +170,11 @@ export function ComplianceViolationsPage() {
             className={clsx(
               'p-3 rounded-lg border text-left transition-all',
               statusFilter === key
-                ? 'bg-white/10 border-white/20'
-                : 'bg-white/[0.02] border-white/5 hover:bg-white/5',
+                ? 'bg-black/[0.06] border-black/[0.12]'
+                : 'bg-qo-nested border-white/5 hover:bg-qo-nested',
             )}
           >
-            <div className="text-xl font-bold text-white">{count}</div>
+            <div className="text-xl font-bold text-text-primary">{count}</div>
             <div className="text-xs text-text-secondary">{label}</div>
           </button>
         ))}
@@ -183,7 +183,7 @@ export function ComplianceViolationsPage() {
       {/* Penalties Banner */}
       {totalPenalties > 0 && (
         <SpotlightCard className="p-4 flex items-center gap-3">
-          <DollarSign className="w-5 h-5 text-amber-400" />
+          <DollarSign className="w-5 h-5 text-qo-ochre-text" />
           <div>
             <span className="text-sm text-text-secondary">Total Penalties (estimated + actual): </span>
             <span className="text-lg font-bold text-amber-300">
@@ -199,7 +199,7 @@ export function ComplianceViolationsPage() {
         <input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none"
+          className="w-full pl-10 pr-4 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary text-sm placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none"
           placeholder="Search violations by site, permit, parameter..."
         />
       </div>
@@ -207,14 +207,14 @@ export function ComplianceViolationsPage() {
       {/* Create Form */}
       {showCreate && (
         <SpotlightCard className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white">Record Violation</h3>
+          <h3 className="text-lg font-semibold text-text-primary">Record Violation</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-text-secondary mb-1">Type *</label>
               <select
                 value={violationType}
                 onChange={(e) => setViolationType(e.target.value as ViolationType)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-red-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-red-500/50 focus:outline-none"
               >
                 {Object.entries(TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -226,7 +226,7 @@ export function ComplianceViolationsPage() {
               <select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as ViolationSeverity)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-red-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-red-500/50 focus:outline-none"
               >
                 <option value="minor">Minor</option>
                 <option value="moderate">Moderate</option>
@@ -240,7 +240,7 @@ export function ComplianceViolationsPage() {
                 type="date"
                 value={violationDate}
                 onChange={(e) => setViolationDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-red-500/50 focus:outline-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary focus:border-red-500/50 focus:outline-none"
               />
             </div>
             <div className="md:col-span-3">
@@ -249,13 +249,13 @@ export function ComplianceViolationsPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
+                className="w-full px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-text-primary placeholder:text-text-secondary focus:border-red-500/50 focus:outline-none resize-none"
                 placeholder="Violation details..."
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-white">
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
               Cancel
             </button>
             <button
@@ -282,13 +282,13 @@ export function ComplianceViolationsPage() {
         <div className="space-y-2">
           {filtered.map((v) => (
             <Link key={v.id} to={`/compliance/violations/${v.id}`}>
-              <SpotlightCard className="p-4 hover:bg-white/[0.04] transition-colors">
+              <SpotlightCard className="p-4 hover:bg-black/[0.04] transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-white font-medium">{TYPE_LABELS[v.violation_type]}</h3>
+                      <h3 className="text-text-primary font-medium">{TYPE_LABELS[v.violation_type]}</h3>
                       {v.exceedance_pct && v.exceedance_pct > 0 && (
-                        <span className="text-xs text-red-400 flex items-center gap-1">
+                        <span className="text-xs text-qo-risk flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           {v.exceedance_pct.toFixed(1)}% over limit
                         </span>
@@ -301,7 +301,7 @@ export function ComplianceViolationsPage() {
                       {v.parameter_name && <span>{v.parameter_name}</span>}
                       {v.regulatory_agency && <span>{v.regulatory_agency}</span>}
                       {(v.actual_penalty ?? v.estimated_penalty) && (
-                        <span className="text-amber-400">
+                        <span className="text-qo-ochre-text">
                           ${(v.actual_penalty ?? v.estimated_penalty ?? 0).toLocaleString()}
                         </span>
                       )}

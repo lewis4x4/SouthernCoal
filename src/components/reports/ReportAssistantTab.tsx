@@ -72,7 +72,7 @@ export function ReportAssistantTab() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe the report you need in plain English..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-11 pr-24 py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:border-purple-500/40 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
+            className="w-full rounded-xl border border-black/[0.08] bg-qo-nested pl-11 pr-24 py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:border-purple-500/40 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
           />
           <button
             onClick={handleSearch}
@@ -103,7 +103,7 @@ export function ReportAssistantTab() {
                   setQuery(eq);
                   analyze(eq);
                 }}
-                className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-text-muted hover:bg-white/[0.04] hover:text-text-secondary transition-colors"
+                className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-1.5 text-xs text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
               >
                 {eq}
               </button>
@@ -116,8 +116,8 @@ export function ReportAssistantTab() {
       {result && (
         <div className="space-y-4">
           {result.suggestions.length === 0 ? (
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-              <AlertTriangle className="h-6 w-6 text-amber-400 mx-auto mb-2" />
+            <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-8 text-center">
+              <AlertTriangle className="h-6 w-6 text-qo-ochre-text mx-auto mb-2" />
               <p className="text-sm text-text-secondary">
                 No matching reports found for your query.
               </p>
@@ -145,7 +145,7 @@ export function ReportAssistantTab() {
                     suggestion.confidence === 'high'
                       ? 'text-green-400 bg-green-500/10 border-green-500/20'
                       : suggestion.confidence === 'medium'
-                        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                        ? 'text-qo-ochre-text bg-amber-500/10 border-amber-500/20'
                         : 'text-slate-400 bg-slate-500/10 border-slate-500/20';
 
                   return (
@@ -182,15 +182,15 @@ export function ReportAssistantTab() {
                               <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
                               View AI Reasoning
                             </summary>
-                            <div className="flex flex-col gap-1.5 pl-3 border-l border-white/[0.08] ml-1 mt-1.5 py-0.5">
+                            <div className="flex flex-col gap-1.5 pl-3 border-l border-black/[0.08] ml-1 mt-1.5 py-0.5">
                               <div className="flex gap-2">
-                                <span className={suggestion.confidence === 'high' ? 'text-emerald-400' : 'text-amber-400'}>
+                                <span className={suggestion.confidence === 'high' ? 'text-qo-sage-text' : 'text-qo-ochre-text'}>
                                   ✓ Pattern match: {suggestion.reason}
                                 </span>
                               </div>
                               {suggestion.inferred_config.states && (
                                 <div className="flex gap-2">
-                                  <span className="text-emerald-400">
+                                  <span className="text-qo-sage-text">
                                     ✓ Entity context: User Region [{suggestion.inferred_config.states.join(', ')}] applied
                                   </span>
                                 </div>
@@ -215,7 +215,7 @@ export function ReportAssistantTab() {
                           }
                           disabled={suggestion.is_locked || generating}
                           className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${suggestion.is_locked
-                            ? 'bg-white/[0.03] text-text-muted cursor-not-allowed'
+                            ? 'bg-qo-nested text-text-muted cursor-not-allowed'
                             : 'bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 active:scale-95'
                             }`}
                         >

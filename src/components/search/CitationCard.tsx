@@ -11,15 +11,15 @@ interface CitationCardProps {
 }
 
 function getSimilarityColor(similarity: number): string {
-  if (similarity >= 0.9) return 'text-emerald-400';
+  if (similarity >= 0.9) return 'text-qo-sage-text';
   if (similarity >= 0.7) return 'text-text-muted';
-  return 'text-amber-400';
+  return 'text-qo-ochre-text';
 }
 
 function getSimilarityBg(similarity: number): string {
-  if (similarity >= 0.9) return 'bg-emerald-400/10 border-emerald-400/20';
-  if (similarity >= 0.7) return 'bg-white/[0.03] border-white/[0.08]';
-  return 'bg-amber-400/10 border-amber-400/20';
+  if (similarity >= 0.9) return 'bg-qo-sage/10 border-emerald-400/20';
+  if (similarity >= 0.7) return 'bg-qo-nested border-black/[0.08]';
+  return 'bg-qo-ochre/10 border-amber-400/20';
 }
 
 export function CitationCard({ chunk, index }: CitationCardProps) {
@@ -67,14 +67,14 @@ export function CitationCard({ chunk, index }: CitationCardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border p-4 transition-all hover:bg-white/[0.02]',
+        'rounded-xl border p-4 transition-all hover:bg-qo-nested',
         getSimilarityBg(chunk.similarity),
       )}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-cyan-400/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-cyan-400">
+          <span className="rounded-md bg-cyan-400/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-qo-accent">
             Source {index + 1}
           </span>
           <span className={cn('text-xs font-mono', getSimilarityColor(chunk.similarity))}>
@@ -91,7 +91,7 @@ export function CitationCard({ chunk, index }: CitationCardProps) {
           <button
             onClick={viewDocument}
             disabled={viewLoading || !chunk.document_id}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
+            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary disabled:opacity-40"
           >
             {viewLoading ? (
               <Loader2 className="h-3 w-3 animate-spin" />

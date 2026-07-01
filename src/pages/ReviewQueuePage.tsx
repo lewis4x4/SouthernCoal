@@ -105,7 +105,7 @@ export function ReviewQueuePage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <ShieldAlert className="h-6 w-6 text-cyan-400" />
+          <ShieldAlert className="h-6 w-6 text-qo-accent" />
           <div>
             <h1 className="text-lg font-semibold text-text-primary">Review Queue</h1>
             <p className="text-xs text-text-muted">
@@ -130,7 +130,7 @@ export function ReviewQueuePage() {
               onClick={() => void handleBulkReviewVisible()}
               disabled={loading}
               title="Mark all pending rows matching current filters as reviewed"
-              className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg border border-qo-accent/20 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
             >
               <CheckCheck size={14} />
               Review visible ({filteredPendingIds.length})
@@ -141,7 +141,7 @@ export function ReviewQueuePage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-text-muted hover:text-text-secondary"
+              className="rounded-lg border border-black/[0.08] px-3 py-2 text-xs text-text-muted hover:text-text-secondary"
             >
               Clear filters
             </button>
@@ -151,7 +151,7 @@ export function ReviewQueuePage() {
             type="button"
             onClick={() => void refetch()}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] disabled:opacity-40"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Refresh
@@ -166,7 +166,7 @@ export function ReviewQueuePage() {
                 ? 'Requires bulk_process permission'
                 : 'Re-run ECHO discrepancy rules against current internal DMR data'
             }
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] disabled:opacity-40"
           >
             {detecting ? <Loader2 size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
             Run Detection
@@ -205,7 +205,7 @@ export function ReviewQueuePage() {
                 ? 'Requires bulk_process permission to run ECHO sync'
                 : 'Sync EPA ECHO data, then auto-run detection'
             }
-            className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg bg-qo-accent/10 border border-qo-accent/20 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
           >
             {syncing.echo ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Sync ECHO
@@ -215,7 +215,7 @@ export function ReviewQueuePage() {
 
       {/* Triage progress */}
       {!loading && (pendingCount > 0 || escalatedCount > 0) && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-text-secondary">
             <span className="font-semibold text-amber-300">{pendingCount} pending</span>
             {escalatedCount > 0 && (
@@ -250,7 +250,7 @@ export function ReviewQueuePage() {
 
       {loading && rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-qo-accent" />
           <span className="ml-3 text-sm text-text-secondary">Loading discrepancies...</span>
         </div>
       ) : (

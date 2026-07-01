@@ -4,11 +4,11 @@ import { GapKindBadge, GapSeverityBadge } from '@/components/sampling-gaps/Sampl
 import type { SamplingGapRecord, SamplingGapReviewStatus } from '@/types/samplingGaps';
 
 const STATUS_COLORS: Record<SamplingGapReviewStatus, string> = {
-  pending: 'bg-white/[0.05] text-text-secondary border-white/[0.08]',
-  acknowledged: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  pending: 'bg-black/[0.03] text-text-secondary border-black/[0.08]',
+  acknowledged: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
   disputed: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   force_majeure: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-  resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  resolved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 interface Props {
@@ -23,13 +23,13 @@ export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Pro
 
   if (filtered.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+      <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-8 text-center">
         <p className="text-sm font-medium text-text-primary">No open gaps detected</p>
         <p className="mt-2 text-xs text-text-muted max-w-md mx-auto">
           The calendar-gap detector runs nightly at 06:00 UTC. Run detection manually once sampling
           schedules are seeded, or after the Sampling Matrix populates the calendar.
         </p>
-        <p className="mt-3 text-[10px] text-amber-400/90 uppercase tracking-wide">
+        <p className="mt-3 text-[10px] text-qo-ochre-text/90 uppercase tracking-wide">
           DRAFT — advisory flags for human review; not verified penalty amounts
         </p>
       </div>
@@ -37,10 +37,10 @@ export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Pro
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+    <div className="overflow-hidden rounded-xl border border-black/[0.08]">
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-xs">
-          <thead className="bg-white/[0.03] text-text-muted uppercase tracking-wide">
+          <thead className="bg-qo-nested text-text-muted uppercase tracking-wide">
             <tr>
               <th className="px-3 py-2 font-medium">Kind</th>
               <th className="px-3 py-2 font-medium">Severity</th>
@@ -59,8 +59,8 @@ export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Pro
                 key={row.id}
                 onClick={() => onSelect(row.id)}
                 className={cn(
-                  'cursor-pointer border-t border-white/[0.06] hover:bg-white/[0.04]',
-                  selectedId === row.id && 'bg-cyan-500/5',
+                  'cursor-pointer border-t border-black/[0.06] hover:bg-black/[0.04]',
+                  selectedId === row.id && 'bg-qo-accent/5',
                 )}
               >
                 <td className="px-3 py-2.5">

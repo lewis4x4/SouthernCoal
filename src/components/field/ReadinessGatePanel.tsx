@@ -44,9 +44,9 @@ export function ReadinessGatePanel({
       <button
         onClick={handleCheck}
         disabled={loading}
-        className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-text-secondary hover:bg-white/[0.05] transition-colors"
+        className="flex items-center gap-2 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-2.5 text-sm text-text-secondary hover:bg-black/[0.04] transition-colors"
       >
-        <ShieldCheck size={16} className="text-cyan-400" />
+        <ShieldCheck size={16} className="text-qo-accent" />
         {loading ? 'Checking readiness…' : 'Check readiness gate'}
       </button>
     );
@@ -67,12 +67,12 @@ export function ReadinessGatePanel({
       <div className="flex items-center gap-2">
         {result.passed ? (
           <>
-            <ShieldCheck size={18} className="text-emerald-400" />
+            <ShieldCheck size={18} className="text-qo-sage-text" />
             <span className="text-sm font-medium text-emerald-300">Readiness gate passed</span>
           </>
         ) : (
           <>
-            <ShieldX size={18} className="text-amber-400" />
+            <ShieldX size={18} className="text-qo-ochre-text" />
             <span className="text-sm font-medium text-amber-300">
               Readiness gate blocked — {result.failingBlocking.length} requirement{result.failingBlocking.length !== 1 ? 's' : ''} failing
             </span>
@@ -88,13 +88,13 @@ export function ReadinessGatePanel({
               key={req.id}
               className="flex items-start gap-2 rounded-lg border border-red-500/15 bg-red-500/[0.03] px-3 py-2"
             >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-400" />
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-qo-risk" />
               <div>
                 <p className="text-xs font-medium text-text-primary">{req.name}</p>
                 {req.description && (
                   <p className="text-[11px] text-text-muted">{req.description}</p>
                 )}
-                <span className="inline-block mt-1 rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-red-400">
+                <span className="inline-block mt-1 rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-qo-risk">
                   Blocking
                 </span>
               </div>
@@ -111,10 +111,10 @@ export function ReadinessGatePanel({
               key={req.id}
               className="flex items-start gap-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.03] px-3 py-2"
             >
-              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-amber-400" />
+              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-qo-ochre-text" />
               <div>
                 <p className="text-xs font-medium text-text-primary">{req.name}</p>
-                <span className="inline-block mt-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-400">
+                <span className="inline-block mt-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-qo-ochre-text">
                   Warning
                 </span>
               </div>
@@ -140,7 +140,7 @@ export function ReadinessGatePanel({
                 onChange={(e) => setOverrideReason(e.target.value)}
                 placeholder="Reason for override (required)…"
                 rows={2}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+                className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
               />
               <div className="flex gap-2">
                 <button

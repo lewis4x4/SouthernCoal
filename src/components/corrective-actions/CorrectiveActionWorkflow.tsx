@@ -61,8 +61,8 @@ export function CorrectiveActionWorkflow({
               disabled={isFuture && action.status !== 'closed'}
               className={cn(
                 'relative flex items-start gap-3 w-full p-2 rounded-lg text-left transition-all',
-                'hover:bg-white/[0.02]',
-                isCurrent && 'bg-cyan-500/[0.05] border border-cyan-500/20',
+                'hover:bg-qo-nested',
+                isCurrent && 'bg-qo-accent/[0.05] border border-qo-accent/20',
                 !isFuture && 'cursor-pointer',
                 isFuture && 'opacity-50 cursor-not-allowed'
               )}
@@ -82,15 +82,15 @@ export function CorrectiveActionWorkflow({
                   <span
                     className={cn(
                       'text-sm font-medium',
-                      isComplete && 'text-emerald-400',
-                      isCurrent && 'text-cyan-400',
+                      isComplete && 'text-qo-sage-text',
+                      isCurrent && 'text-qo-accent',
                       isFuture && 'text-text-muted'
                     )}
                   >
                     {WORKFLOW_STEP_LABELS[step]}
                   </span>
                   {isComplete && (
-                    <span className="text-[10px] text-emerald-400/60 uppercase tracking-wider">
+                    <span className="text-[10px] text-qo-sage-text/60 uppercase tracking-wider">
                       Complete
                     </span>
                   )}
@@ -119,9 +119,9 @@ export function CorrectiveActionWorkflow({
       {/* Due date warning */}
       {isOverdue(action) && (
         <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />
+          <AlertTriangle className="h-4 w-4 text-qo-risk flex-shrink-0" />
           <div className="text-sm">
-            <span className="text-red-400 font-medium">
+            <span className="text-qo-risk font-medium">
               Overdue by {getDaysOverdue(action)} days
             </span>
             <span className="text-text-muted ml-2">
@@ -147,7 +147,7 @@ function StepIcon({ isComplete, isCurrent, hasErrors }: StepIconProps) {
   if (isComplete) {
     return (
       <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+        <CheckCircle2 className="h-4 w-4 text-qo-sage-text" />
       </div>
     );
   }
@@ -159,20 +159,20 @@ function StepIcon({ isComplete, isCurrent, hasErrors }: StepIconProps) {
           'relative w-8 h-8 rounded-full flex items-center justify-center',
           hasErrors
             ? 'bg-amber-500/20 border border-amber-500/30'
-            : 'bg-cyan-500/20 border border-cyan-500/30'
+            : 'bg-qo-accent/20 border border-qo-accent/30'
         )}
       >
         {/* Pulsing dot */}
         <span
           className={cn(
             'absolute w-3 h-3 rounded-full animate-pulse',
-            hasErrors ? 'bg-amber-400' : 'bg-cyan-400'
+            hasErrors ? 'bg-qo-ochre' : 'bg-cyan-400'
           )}
         />
         <span
           className={cn(
             'absolute w-3 h-3 rounded-full animate-ping opacity-30',
-            hasErrors ? 'bg-amber-400' : 'bg-cyan-400'
+            hasErrors ? 'bg-qo-ochre' : 'bg-cyan-400'
           )}
         />
       </div>
@@ -217,13 +217,13 @@ function StepValidation({ action, step }: Omit<StepValidationProps, 'validation'
         return (
           <div key={field} className="flex items-center gap-2 text-xs">
             {isFilled ? (
-              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+              <CheckCircle2 className="h-3 w-3 text-qo-sage-text" />
             ) : (
               <Circle className="h-3 w-3 text-text-muted" />
             )}
             <span
               className={cn(
-                isFilled ? 'text-emerald-400' : 'text-text-muted'
+                isFilled ? 'text-qo-sage-text' : 'text-text-muted'
               )}
             >
               {label}

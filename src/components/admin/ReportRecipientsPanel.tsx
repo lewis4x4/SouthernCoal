@@ -141,7 +141,7 @@ export function ReportRecipientsPanel({ reportDef }: Props) {
           onChange={(e) => setNewEmail(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addRecipient()}
           placeholder="email@example.com"
-          className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-green-500/40"
+          className="flex-1 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-green-500/40"
         />
         <button
           onClick={addRecipient}
@@ -162,19 +162,19 @@ export function ReportRecipientsPanel({ reportDef }: Props) {
               key={r.id}
               className={`flex items-center justify-between rounded-lg px-3 py-2 border transition-all ${
                 r.is_active
-                  ? 'bg-white/[0.02] border-white/[0.06]'
-                  : 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                  ? 'bg-qo-nested border-black/[0.06]'
+                  : 'bg-white border-black/[0.05] opacity-50'
               }`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   onClick={() => toggleActive(r.id, r.is_active)}
                   className={`h-3.5 w-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-all ${
-                    r.is_active ? 'bg-green-500 border-green-500' : 'border-white/20'
+                    r.is_active ? 'bg-green-500 border-green-500' : 'border-black/[0.12]'
                   }`}
                 >
                   {r.is_active && (
-                    <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="h-2 w-2 text-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
@@ -186,7 +186,7 @@ export function ReportRecipientsPanel({ reportDef }: Props) {
               </div>
               <button
                 onClick={() => removeRecipient(r.id, r.email)}
-                className="rounded p-1 text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                className="rounded p-1 text-text-muted hover:text-qo-risk hover:bg-red-500/10 transition-colors shrink-0"
               >
                 <X className="h-3 w-3" />
               </button>

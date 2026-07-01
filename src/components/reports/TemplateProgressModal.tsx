@@ -26,10 +26,10 @@ export function TemplateProgressModal({
     const isAllComplete = jobs.every((j) => j.status === 'complete' || j.status === 'failed');
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0A0A0A] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80  p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-2xl border border-black/[0.08] bg-[#0A0A0A] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/[0.04]">
+                <div className="flex items-center justify-between p-6 border-b border-black/[0.05]">
                     <div>
                         <h2 className="text-lg font-medium text-text-primary">Running Template</h2>
                         <p className="text-sm text-text-muted mt-1">{templateName}</p>
@@ -37,7 +37,7 @@ export function TemplateProgressModal({
                     {isAllComplete && (
                         <button
                             onClick={onClose}
-                            className="rounded-full p-2 text-text-muted hover:bg-white/[0.04] hover:text-text-secondary transition-colors"
+                            className="rounded-full p-2 text-text-muted hover:bg-black/[0.04] hover:text-text-secondary transition-colors"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -54,7 +54,7 @@ export function TemplateProgressModal({
                     </div>
 
                     {/* Global Progress Bar */}
-                    <div className="h-2 w-full bg-white/[0.04] rounded-full overflow-hidden mb-8">
+                    <div className="h-2 w-full bg-black/[0.03] rounded-full overflow-hidden mb-8">
                         <div
                             className="h-full bg-primary transition-all duration-500 ease-out"
                             style={{ width: `${(currentIndex / totalCount) * 100}%` }}
@@ -68,7 +68,7 @@ export function TemplateProgressModal({
                                 key={job.report_key}
                                 className={`p-4 rounded-xl border transition-colors ${job.status === 'generating'
                                     ? 'border-primary/30 bg-primary/5'
-                                    : 'border-white/[0.04] bg-white/[0.02]'
+                                    : 'border-black/[0.05] bg-qo-nested'
                                     }`}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -95,13 +95,13 @@ export function TemplateProgressModal({
                                         )}
                                         {job.status === 'complete' && (
                                             <div className="flex items-center gap-3">
-                                                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                                                <CheckCircle2 className="h-5 w-5 text-qo-sage-text" />
                                                 {job.download_url && (
                                                     <a
                                                         href={job.download_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="p-1.5 rounded-lg bg-white/[0.04] text-text-muted hover:bg-white/[0.08] hover:text-text-primary transition-colors"
+                                                        className="p-1.5 rounded-lg bg-black/[0.03] text-text-muted hover:bg-black/[0.06] hover:text-text-primary transition-colors"
                                                         title="Download Report"
                                                     >
                                                         <Download className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function TemplateProgressModal({
                                             </div>
                                         )}
                                         {job.status === 'failed' && (
-                                            <AlertTriangle className="h-5 w-5 text-red-400" />
+                                            <AlertTriangle className="h-5 w-5 text-qo-risk" />
                                         )}
                                     </div>
                                 </div>
@@ -121,7 +121,7 @@ export function TemplateProgressModal({
 
                 {/* Footer */}
                 {isAllComplete && (
-                    <div className="p-6 border-t border-white/[0.04] bg-white/[0.01]">
+                    <div className="p-6 border-t border-black/[0.05] bg-white">
                         <button
                             onClick={onDownloadAll}
                             className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"

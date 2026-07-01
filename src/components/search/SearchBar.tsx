@@ -57,13 +57,13 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
       <div
         className={cn(
           'flex items-center gap-3 rounded-xl border px-4 py-3 transition-all',
-          'bg-white/[0.03] backdrop-blur-sm',
+          'bg-qo-nested ',
           isLoading
             ? 'animate-pulse border-blue-400/40'
-            : 'border-white/[0.08] focus-within:border-blue-400/40',
+            : 'border-black/[0.08] focus-within:border-blue-400/40',
         )}
       >
-        <Search className="h-5 w-5 shrink-0 text-white/40" />
+        <Search className="h-5 w-5 shrink-0 text-text-primary/40" />
 
         <input
           ref={ref as React.RefObject<HTMLInputElement>}
@@ -77,7 +77,7 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
               : 'Ask anything about your compliance data...'
           }
           disabled={isLoading}
-          className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-white/30 focus:outline-none disabled:opacity-50"
+          className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-primary/30 focus:outline-none disabled:opacity-50"
         />
 
         {value && !isLoading && (
@@ -101,14 +101,14 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
           </button>
         )}
 
-        <kbd className="hidden items-center gap-0.5 rounded border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 font-mono text-[10px] text-text-muted sm:inline-flex">
+        <kbd className="hidden items-center gap-0.5 rounded border border-black/[0.08] bg-qo-nested px-1.5 py-0.5 font-mono text-[10px] text-text-muted sm:inline-flex">
           <span className="text-[11px]">&#8984;</span>K
         </kbd>
       </div>
 
       {/* Recent queries dropdown */}
       {showRecent && recentQueries.length > 0 && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-xl border border-white/[0.08] bg-crystal-surface/95 py-1 shadow-xl backdrop-blur-xl">
+        <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-xl border border-black/[0.08] bg-white py-1 shadow-xl ">
           <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
             Recent searches
           </div>
@@ -116,7 +116,7 @@ export function SearchBar({ onSearch, isLoading, recentQueries, inputRef, search
             <button
               key={q}
               onClick={() => handleSelectRecent(q)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
             >
               <Search className="h-3 w-3 shrink-0 text-text-muted" />
               <span className="truncate">{q}</span>

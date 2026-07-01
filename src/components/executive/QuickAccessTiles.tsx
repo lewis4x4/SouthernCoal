@@ -11,7 +11,7 @@ type Tile = {
   description: string;
   href: string;
   icon: typeof Upload;
-  gradient: string;
+  accent: string;
   roles: Role[];
 };
 
@@ -21,7 +21,7 @@ const TILES: Tile[] = [
     description: 'Process permits, lab data, and compliance reports',
     href: '/compliance',
     icon: Upload,
-    gradient: 'from-blue-600 to-blue-500',
+    accent: 'bg-qo-accent',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech'],
   },
   {
@@ -29,7 +29,7 @@ const TILES: Tile[] = [
     description: 'Track Consent Decree requirements and deadlines',
     href: '/obligations',
     icon: ClipboardList,
-    gradient: 'from-purple-600 to-purple-500',
+    accent: 'bg-qo-sidebar',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager'],
   },
   {
@@ -37,7 +37,7 @@ const TILES: Tile[] = [
     description: 'Create DMRs and quarterly EPA submissions',
     href: '/reports',
     icon: FileText,
-    gradient: 'from-emerald-600 to-emerald-500',
+    accent: 'bg-qo-sage',
     roles: ['admin', 'executive', 'environmental_manager'],
   },
   {
@@ -45,7 +45,7 @@ const TILES: Tile[] = [
     description: 'Failure to Sample penalty tracking and trends',
     href: '/compliance/failure-to-sample',
     icon: DollarSign,
-    gradient: 'from-red-600 to-red-500',
+    accent: 'bg-qo-risk',
     roles: ['admin', 'executive', 'environmental_manager'],
   },
   {
@@ -53,7 +53,7 @@ const TILES: Tile[] = [
     description: 'Monitor exceedances and real-time violations',
     href: '/monitoring',
     icon: Activity,
-    gradient: 'from-orange-600 to-orange-500',
+    accent: 'bg-qo-ochre',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager'],
   },
   {
@@ -61,7 +61,7 @@ const TILES: Tile[] = [
     description: 'Manage sampling assignments and dispatch',
     href: '/field/dispatch',
     icon: MapPin,
-    gradient: 'from-teal-600 to-teal-500',
+    accent: 'bg-qo-sage',
     roles: ['field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin'],
   },
   {
@@ -69,7 +69,7 @@ const TILES: Tile[] = [
     description: 'Track and resolve compliance issues',
     href: '/corrective-actions',
     icon: ClipboardCheck,
-    gradient: 'from-cyan-600 to-cyan-500',
+    accent: 'bg-qo-accent',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler'],
   },
   {
@@ -77,7 +77,7 @@ const TILES: Tile[] = [
     description: 'Weather alerts and precipitation monitoring',
     href: '/weather/alerts',
     icon: CloudRain,
-    gradient: 'from-sky-600 to-sky-500',
+    accent: 'bg-qo-ochre',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'wv_supervisor', 'coo'],
   },
 ];
@@ -102,14 +102,10 @@ export function QuickAccessTiles() {
             <Link
               key={tile.href}
               to={tile.href}
-              className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-6 backdrop-blur-xl transition-all hover:scale-[1.02] hover:border-white/[0.12]"
+              className="group rounded-qo border border-black/[0.08] bg-white p-6 transition-colors hover:border-black/[0.12] hover:bg-qo-nested"
             >
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${tile.gradient} opacity-0 transition-opacity group-hover:opacity-10`}
-              />
-
-              <div className={`mb-4 inline-flex rounded-lg bg-gradient-to-br ${tile.gradient} p-3`}>
-                <Icon className="h-6 w-6 text-white" />
+              <div className={`mb-4 inline-flex rounded-[9px] ${tile.accent} p-3`}>
+                <Icon className="h-6 w-6 text-[#F4EFE6]" />
               </div>
 
               <h3 className="mb-1 text-base font-semibold text-text-primary">{tile.title}</h3>

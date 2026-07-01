@@ -62,7 +62,7 @@ export function AdminArchivePage() {
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <SpotlightCard className="p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <DatabaseBackup className="h-5 w-5 text-cyan-300" />
+            <DatabaseBackup className="h-5 w-5 text-qo-accent" />
             <h2 className="text-lg font-semibold text-text-primary">Executed Batches</h2>
           </div>
           {loading ? (
@@ -75,8 +75,8 @@ export function AdminArchivePage() {
                   onClick={() => setSelectedBatchId(batch.id)}
                   className={`w-full rounded-xl border px-3 py-3 text-left ${
                     batch.id === selectedBatchId
-                      ? 'border-cyan-500/40 bg-cyan-500/10'
-                      : 'border-white/10 bg-white/[0.02]'
+                      ? 'border-qo-accent/40 bg-qo-accent/10'
+                      : 'border-black/[0.08] bg-qo-nested'
                   }`}
                 >
                   <div className="text-sm font-medium text-text-primary">{batch.label}</div>
@@ -129,8 +129,8 @@ export function AdminArchivePage() {
               </SpotlightCard>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="border-b border-white/10 px-4 py-3 text-sm font-medium text-text-primary">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested">
+              <div className="border-b border-black/[0.08] px-4 py-3 text-sm font-medium text-text-primary">
                 Archive Manifest
               </div>
               <div className="max-h-[320px] overflow-auto">
@@ -158,7 +158,7 @@ export function AdminArchivePage() {
 
           <SpotlightCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-cyan-300" />
+              <Search className="h-5 w-5 text-qo-accent" />
               <h2 className="text-lg font-semibold text-text-primary">Archive Table Preview</h2>
             </div>
 
@@ -166,7 +166,7 @@ export function AdminArchivePage() {
               <select
                 value={selectedTable ?? ''}
                 onChange={(event) => setSelectedTable(event.target.value || null)}
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary"
+                className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary"
               >
                 <option value="">Select archived table</option>
                 {manifest.map((row) => (
@@ -175,7 +175,7 @@ export function AdminArchivePage() {
               </select>
             </div>
 
-            <div className="max-h-[420px] overflow-auto rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="max-h-[420px] overflow-auto rounded-xl border border-black/[0.08] bg-qo-nested p-4">
               {archivePreviewRows.length === 0 ? (
                 <div className="text-sm text-text-secondary">Select a table to preview archived rows.</div>
               ) : (

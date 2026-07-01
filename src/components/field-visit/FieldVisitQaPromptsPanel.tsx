@@ -13,7 +13,7 @@ interface FieldVisitQaPromptsPanelProps {
 function toneClasses(tone: FieldVisitQaPrompt['tone']) {
   return tone === 'warning'
     ? 'border-amber-500/20 bg-amber-500/10 text-amber-100'
-    : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100';
+    : 'border-qo-accent/20 bg-qo-accent/10 text-qo-accent';
 }
 
 function bucketButtonLabel(bucket: FieldVisitPhotoCategory) {
@@ -36,9 +36,9 @@ export function FieldVisitQaPromptsPanel({
   if (prompts.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-cyan-300" aria-hidden />
+        <ShieldCheck className="h-4 w-4 text-qo-accent" aria-hidden />
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
           QA prompts
         </h3>
@@ -63,7 +63,7 @@ export function FieldVisitQaPromptsPanel({
                     type="button"
                     disabled={disabled}
                     onClick={() => onAppendNote(prompt.noteTemplate)}
-                    className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-current transition-colors hover:bg-white/15 disabled:opacity-60"
+                    className="rounded-lg border border-white/15 bg-black/[0.06] px-3 py-1.5 text-xs font-medium text-current transition-colors hover:bg-white/15 disabled:opacity-60"
                   >
                     Append QA note
                   </button>
@@ -71,7 +71,7 @@ export function FieldVisitQaPromptsPanel({
                     type="button"
                     disabled={disabled}
                     onClick={() => onFocusBucket(prompt.focusBucket)}
-                    className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-50 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+                    className="rounded-lg border border-qo-accent/25 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-60"
                   >
                     {bucketButtonLabel(prompt.focusBucket)}
                   </button>

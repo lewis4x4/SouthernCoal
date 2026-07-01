@@ -18,15 +18,15 @@ export function SQLReviewModal({ query, onConfirm, onCancel }: SQLReviewModalPro
     <div className="fixed inset-0 z-[9999]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 "
         onClick={onCancel}
       />
 
       {/* Modal */}
       <div className="absolute top-[15%] left-1/2 w-full max-w-2xl -translate-x-1/2">
-        <div className="rounded-2xl border border-white/[0.12] bg-crystal-surface/95 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-2xl border border-black/[0.12] bg-white shadow-2xl ">
           {/* Header */}
-          <div className="border-b border-white/[0.06] px-6 py-4">
+          <div className="border-b border-black/[0.06] px-6 py-4">
             <h2 className="text-lg font-semibold text-text-primary">Review Generated SQL</h2>
             <p className="mt-1 text-sm text-text-secondary">
               Review the query before execution. This data will be fetched from your compliance database.
@@ -54,7 +54,7 @@ export function SQLReviewModal({ query, onConfirm, onCancel }: SQLReviewModalPro
                 {query.tablesQueried.map((t) => (
                   <code
                     key={t}
-                    className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-white/60"
+                    className="rounded bg-black/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-text-primary/60"
                   >
                     {t}
                   </code>
@@ -68,7 +68,7 @@ export function SQLReviewModal({ query, onConfirm, onCancel }: SQLReviewModalPro
                 <label className="text-xs font-medium text-text-muted">Generated SQL</label>
                 <button
                   onClick={handleCopy}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary"
                 >
                   <Copy className="h-3 w-3" />
                   Copy
@@ -81,16 +81,16 @@ export function SQLReviewModal({ query, onConfirm, onCancel }: SQLReviewModalPro
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-white/[0.06] px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-black/[0.06] px-6 py-4">
             <button
               onClick={onCancel}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-blue-500"
             >
               Run Query
             </button>

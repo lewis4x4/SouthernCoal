@@ -111,7 +111,7 @@ export function Monitoring() {
                 type="button"
                 onClick={() => void dispatchDigest()}
                 disabled={alerting}
-                className="px-3 py-2 rounded-lg border border-white/10 text-xs text-text-secondary hover:bg-white/5 disabled:opacity-40"
+                className="px-3 py-2 rounded-lg border border-black/[0.08] text-xs text-text-secondary hover:bg-qo-nested disabled:opacity-40"
               >
                 Send digest
               </button>
@@ -120,7 +120,7 @@ export function Monitoring() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-qo-nested border border-black/[0.08] hover:bg-black/[0.06] transition-colors text-sm"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -144,7 +144,7 @@ export function Monitoring() {
 
               {/* Error state */}
               {exceedancesError && (
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-qo-risk text-sm">
                   {exceedancesError}
                 </div>
               )}

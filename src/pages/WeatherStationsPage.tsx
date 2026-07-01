@@ -17,7 +17,7 @@ const STATION_TYPE_BADGES: Record<WeatherStationType, string> = {
   noaa_asos: 'bg-sky-500/20 text-sky-400',
   noaa_coop: 'bg-indigo-500/20 text-indigo-400',
   noaa_ghcnd: 'bg-violet-500/20 text-violet-400',
-  site_gauge: 'bg-emerald-500/20 text-emerald-400',
+  site_gauge: 'bg-emerald-500/20 text-qo-sage-text',
 };
 
 const DATA_SOURCE_LABELS: Record<WeatherDataSource, string> = {
@@ -86,8 +86,8 @@ function RegisterStationDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         <h2 className="mb-4 text-lg font-semibold text-text-primary">Register Weather Station</h2>
 
         <div className="space-y-3">
@@ -98,7 +98,7 @@ function RegisterStationDialog({
                 value={form.station_id}
                 onChange={(e) => setForm((f) => ({ ...f, station_id: e.target.value }))}
                 placeholder="GHCND:USW00013866"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               />
             </div>
             <div>
@@ -106,7 +106,7 @@ function RegisterStationDialog({
               <select
                 value={form.station_type}
                 onChange={(e) => setForm((f) => ({ ...f, station_type: e.target.value as WeatherStationType }))}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               >
                 {Object.entries(STATION_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -121,7 +121,7 @@ function RegisterStationDialog({
               value={form.station_name}
               onChange={(e) => setForm((f) => ({ ...f, station_name: e.target.value }))}
               placeholder="Beckley Memorial Airport, WV"
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+              className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
             />
           </div>
 
@@ -134,7 +134,7 @@ function RegisterStationDialog({
                 value={form.latitude}
                 onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))}
                 placeholder="37.7878"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               />
             </div>
             <div>
@@ -145,7 +145,7 @@ function RegisterStationDialog({
                 value={form.longitude}
                 onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))}
                 placeholder="-81.1242"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               />
             </div>
             <div>
@@ -155,7 +155,7 @@ function RegisterStationDialog({
                 value={form.elevation_ft}
                 onChange={(e) => setForm((f) => ({ ...f, elevation_ft: e.target.value }))}
                 placeholder="2504"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               />
             </div>
           </div>
@@ -166,7 +166,7 @@ function RegisterStationDialog({
               <select
                 value={form.state_code}
                 onChange={(e) => setForm((f) => ({ ...f, state_code: e.target.value }))}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               >
                 <option value="AL">Alabama</option>
                 <option value="KY">Kentucky</option>
@@ -180,7 +180,7 @@ function RegisterStationDialog({
               <select
                 value={form.data_source}
                 onChange={(e) => setForm((f) => ({ ...f, data_source: e.target.value as WeatherDataSource }))}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+                className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
               >
                 {Object.entries(DATA_SOURCE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -196,19 +196,19 @@ function RegisterStationDialog({
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
               placeholder="Optional notes about this station..."
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
+              className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-sky-500/50"
             />
           </div>
         </div>
 
         <div className="mt-5 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-text-secondary hover:bg-white/[0.04]">
+          <button onClick={onClose} className="rounded-lg border border-black/[0.08] px-4 py-2 text-sm text-text-secondary hover:bg-black/[0.04]">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
-            className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-text-primary hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? 'Registering...' : 'Register Station'}
           </button>
@@ -264,7 +264,7 @@ export function WeatherStationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="inline-flex rounded-lg bg-gradient-to-br from-teal-600 to-teal-500 p-2.5">
-            <Satellite className="h-6 w-6 text-white" />
+            <Satellite className="h-6 w-6 text-text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">Weather Stations</h1>
@@ -276,7 +276,7 @@ export function WeatherStationsPage() {
         {isAdmin && (
           <button
             onClick={() => setShowRegister(true)}
-            className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-500"
+            className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-teal-500"
           >
             <Plus className="h-4 w-4" />
             Register Station
@@ -288,11 +288,11 @@ export function WeatherStationsPage() {
       {loading ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-48 animate-pulse rounded-2xl bg-white/[0.04]" />
+            <div key={i} className="h-48 animate-pulse rounded-2xl bg-black/[0.03]" />
           ))}
         </div>
       ) : stations.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-12 text-center backdrop-blur-xl">
+        <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-12 text-center ">
           <Satellite className="mx-auto mb-3 h-10 w-10 text-text-muted" />
           <h3 className="mb-1 text-base font-medium text-text-secondary">No Weather Stations</h3>
           <p className="text-sm text-text-muted">
@@ -309,17 +309,17 @@ export function WeatherStationsPage() {
             return (
               <div
                 key={station.id}
-                className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-5 backdrop-blur-xl transition-all hover:border-white/[0.12]"
+                className="group relative overflow-hidden rounded-2xl border border-black/[0.06] bg-gradient-to-br from-crystal-surface/50 to-crystal-surface/20 p-5  transition-all hover:border-black/[0.12]"
               >
                 {/* Status indicator */}
                 <div className="absolute right-4 top-4">
                   {station.is_active ? (
-                    <div className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                    <div className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-qo-sage-text">
                       <CheckCircle className="h-3 w-3" />
                       Active
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400">
+                    <div className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-qo-risk">
                       <AlertCircle className="h-3 w-3" />
                       Inactive
                     </div>
@@ -337,7 +337,7 @@ export function WeatherStationsPage() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATION_TYPE_BADGES[station.station_type]}`}>
                       {STATION_TYPE_LABELS[station.station_type]}
                     </span>
-                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-text-muted">
+                    <span className="rounded-full bg-black/[0.04] px-2 py-0.5 text-xs text-text-muted">
                       {station.station_id}
                     </span>
                   </div>
@@ -353,7 +353,7 @@ export function WeatherStationsPage() {
                 </div>
 
                 {/* Site assignments summary */}
-                <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+                <div className="flex items-center justify-between border-t border-black/[0.06] pt-3">
                   <p className="text-xs text-text-muted">
                     {totalSites > 0 ? (
                       <>
@@ -361,13 +361,13 @@ export function WeatherStationsPage() {
                         {primaryCount > 0 && <span className="ml-1 text-teal-400">({primaryCount} primary)</span>}
                       </>
                     ) : (
-                      <span className="text-amber-400">No sites assigned</span>
+                      <span className="text-qo-ochre-text">No sites assigned</span>
                     )}
                   </p>
                   {isAdmin && (
                     <button
                       onClick={() => handleDelete(station.id, station.station_name)}
-                      className="rounded-lg p-1.5 text-text-muted opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-text-muted opacity-0 transition-all hover:bg-red-500/10 hover:text-qo-risk group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

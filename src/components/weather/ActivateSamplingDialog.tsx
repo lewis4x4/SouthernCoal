@@ -118,13 +118,13 @@ export function ActivateSamplingDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="inline-flex rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-500 p-2">
-              <Droplets className="h-5 w-5 text-white" />
+              <Droplets className="h-5 w-5 text-text-primary" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">Activate Sampling</h2>
@@ -135,7 +135,7 @@ export function ActivateSamplingDialog({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -145,11 +145,11 @@ export function ActivateSamplingDialog({
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-white/[0.04]" />
+              <div key={i} className="h-14 animate-pulse rounded-lg bg-black/[0.03]" />
             ))}
           </div>
         ) : outfalls.length === 0 ? (
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-6 text-center">
+          <div className="rounded-lg border border-black/[0.06] bg-qo-nested p-6 text-center">
             <p className="text-sm text-text-muted">
               No rain-event outfalls linked to this station. Configure outfall triggers in Weather Stations.
             </p>
@@ -162,14 +162,14 @@ export function ActivateSamplingDialog({
                 className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
                   outfall.selected
                     ? 'border-emerald-500/30 bg-emerald-500/10'
-                    : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+                    : 'border-black/[0.06] bg-qo-nested hover:bg-black/[0.04]'
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={outfall.selected}
                   onChange={() => toggleOutfall(outfall.outfall_id)}
-                  className="h-4 w-4 rounded border-white/20 bg-white/[0.06] text-emerald-500 focus:ring-emerald-500/30"
+                  className="h-4 w-4 rounded border-black/[0.12] bg-black/[0.04] text-emerald-500 focus:ring-emerald-500/30"
                 />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-text-primary">
@@ -180,7 +180,7 @@ export function ActivateSamplingDialog({
                   </p>
                 </div>
                 {outfall.selected && (
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-qo-sage-text" />
                 )}
               </label>
             ))}
@@ -189,7 +189,7 @@ export function ActivateSamplingDialog({
 
         {/* Error */}
         {error && (
-          <p className="mt-4 text-sm text-red-400">{error}</p>
+          <p className="mt-4 text-sm text-qo-risk">{error}</p>
         )}
 
         {/* Summary + Actions */}
@@ -200,14 +200,14 @@ export function ActivateSamplingDialog({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.04]"
+              className="rounded-lg border border-black/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-black/[0.04]"
             >
               Cancel
             </button>
             <button
               onClick={handleActivate}
               disabled={selectedOutfalls.length === 0 || submitting}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? 'Activating...' : `Activate ${selectedOutfalls.length} Outfall${selectedOutfalls.length !== 1 ? 's' : ''}`}
             </button>

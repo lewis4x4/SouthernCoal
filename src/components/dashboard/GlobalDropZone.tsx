@@ -125,7 +125,7 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
 
       {/* Full-screen overlay when dragging */}
       {isDragging && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm border-[3px] border-dashed border-status-queued/50 animate-border-pulse">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60  border-[3px] border-dashed border-status-queued/50 animate-border-pulse">
           <div className="flex flex-col items-center gap-4">
             <Upload size={48} className="text-status-queued" />
             <p className="text-xl font-semibold text-text-primary">Release to Stage Files</p>

@@ -45,7 +45,7 @@ export function SubmissionEvidenceViewer({ paths, bucket }: SubmissionEvidenceVi
         return (
           <div
             key={path}
-            className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+            className="flex items-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
           >
             <Icon className="h-4 w-4 shrink-0 text-text-muted" />
             <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
@@ -53,7 +53,7 @@ export function SubmissionEvidenceViewer({ paths, bucket }: SubmissionEvidenceVi
             </span>
             <button
               onClick={() => handleDownload(path)}
-              className="shrink-0 rounded p-1 text-text-muted transition-colors hover:bg-white/[0.05] hover:text-blue-400"
+              className="shrink-0 rounded p-1 text-text-muted transition-colors hover:bg-black/[0.04] hover:text-blue-400"
               title="Download"
             >
               <Download size={14} />

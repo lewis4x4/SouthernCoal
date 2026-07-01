@@ -155,14 +155,14 @@ export function CorrectiveActionDetail({
 
         {/* Form Section */}
         <SpotlightCard className="p-6">
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-black/[0.06]">
             <h2 className="text-sm font-medium text-text-secondary">
               {WORKFLOW_STEP_LABELS[activeStep]}
             </h2>
             {activeStep !== action.workflow_step && (
               <button
                 onClick={() => setActiveStep(action.workflow_step)}
-                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                className="text-xs text-qo-accent hover:text-qo-accent transition-colors"
               >
                 Go to current step
               </button>
@@ -172,7 +172,7 @@ export function CorrectiveActionDetail({
 
           {/* Structured RCA panel — shown at root_cause_analysis step */}
           {activeStep === 'root_cause_analysis' && (
-            <div className="mt-6 pt-4 border-t border-white/[0.06]">
+            <div className="mt-6 pt-4 border-t border-black/[0.06]">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
                 Structured Root Cause Analysis
               </h3>
@@ -182,7 +182,7 @@ export function CorrectiveActionDetail({
         </SpotlightCard>
 
         {/* Action Bar */}
-        <div className="flex items-center justify-between p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+        <div className="flex items-center justify-between p-4 rounded-xl border border-black/[0.06] bg-qo-nested">
           <div className="flex items-center gap-2">
             {/* Signature buttons for closure step */}
             {isAtClosure && !isClosed && (
@@ -324,17 +324,17 @@ export function CorrectiveActionDetail({
               />
             )}
             {action.source_id && (
-              <div className="pt-2 border-t border-white/[0.06]">
+              <div className="pt-2 border-t border-black/[0.06]">
                 {action.source_type === 'incident' ? (
                   <Link
                     to={`/incidents/${action.source_id}`}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
+                    className="text-xs text-qo-accent hover:text-qo-accent transition-colors inline-flex items-center gap-1"
                   >
                     View Source Incident
                     <ExternalLink className="h-3 w-3" />
                   </Link>
                 ) : (
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1">
+                  <button className="text-xs text-qo-accent hover:text-qo-accent transition-colors inline-flex items-center gap-1">
                     View Source Record
                     <ExternalLink className="h-3 w-3" />
                   </button>
@@ -409,7 +409,7 @@ function InfoRow({ icon, label, value, variant = 'default' }: InfoRowProps) {
         <div
           className={cn(
             'text-sm truncate',
-            variant === 'error' ? 'text-red-400' : 'text-text-primary'
+            variant === 'error' ? 'text-qo-risk' : 'text-text-primary'
           )}
         >
           {value}

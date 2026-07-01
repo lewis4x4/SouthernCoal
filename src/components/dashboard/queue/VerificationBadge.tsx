@@ -31,7 +31,7 @@ export function VerificationBadge({ status }: VerificationBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border backdrop-blur-sm',
+        'inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ',
         BADGE_STYLES[status],
       )}
     >

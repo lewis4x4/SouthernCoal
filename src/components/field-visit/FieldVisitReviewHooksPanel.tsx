@@ -14,7 +14,7 @@ function toneClasses(tone: FieldVisitReviewHook['tone']) {
     case 'warning':
       return 'border-amber-500/20 bg-amber-500/10 text-amber-100';
     default:
-      return 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100';
+      return 'border-qo-accent/20 bg-qo-accent/10 text-qo-accent';
   }
 }
 
@@ -26,9 +26,9 @@ export function FieldVisitReviewHooksPanel({
   if (hooks.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <div className="flex items-center gap-2">
-        <Eye className="h-4 w-4 text-cyan-300" aria-hidden />
+        <Eye className="h-4 w-4 text-qo-accent" aria-hidden />
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
           Review-required markers
         </h3>
@@ -54,7 +54,7 @@ export function FieldVisitReviewHooksPanel({
       {governanceInboxHref ? (
         <a
           href={governanceInboxHref}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-qo-accent/25 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20"
         >
           Open governance inbox
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -65,7 +65,7 @@ export function FieldVisitReviewHooksPanel({
             type="button"
             disabled
             title={governanceDisabledReason ?? 'Governance inbox is not available from this role.'}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-muted opacity-70"
           >
             Open governance inbox
             <Lock className="h-3.5 w-3.5" aria-hidden />

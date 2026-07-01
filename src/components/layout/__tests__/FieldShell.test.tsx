@@ -59,7 +59,7 @@ describe('FieldShell', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Open main app menu' }));
-    expect(screen.getByText('SCC Monitor')).toBeInTheDocument();
+    expect(screen.getByText('Site Command')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(signOutMock).toHaveBeenCalled();
   });

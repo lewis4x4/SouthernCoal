@@ -117,7 +117,7 @@ export function ReportPermissionsPanel({ reportDef }: Props) {
               className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-all ${
                 isChecked
                   ? 'bg-blue-500/10 border border-blue-500/20'
-                  : 'bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1]'
+                  : 'bg-qo-nested border border-black/[0.06] hover:border-white/[0.1]'
               } ${isAdminRole ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <span className={`text-xs font-medium ${isChecked ? 'text-blue-300' : 'text-text-secondary'}`}>
@@ -125,11 +125,11 @@ export function ReportPermissionsPanel({ reportDef }: Props) {
               </span>
               <div
                 className={`h-4 w-4 rounded border-2 flex items-center justify-center transition-all ${
-                  isChecked ? 'bg-blue-500 border-blue-500' : 'border-white/20'
+                  isChecked ? 'bg-blue-500 border-blue-500' : 'border-black/[0.12]'
                 }`}
               >
                 {isChecked && (
-                  <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <svg className="h-2.5 w-2.5 text-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 )}

@@ -3,9 +3,9 @@ import { GAP_KIND_LABELS } from '@/lib/samplingGapSeverity';
 import type { SamplingGapKind, SamplingGapSeverity } from '@/lib/samplingGapSeverity';
 
 const SEVERITY_COLORS: Record<SamplingGapSeverity, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+  critical: 'bg-red-500/10 text-qo-risk border-red-500/20',
   high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  medium: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
 
@@ -34,7 +34,7 @@ export function SamplingGapSummaryCards({
   const cards: { key: SamplingGapKind | 'pending' | 'critical'; label: string; value: number; color: string }[] = [
     { key: 'missed', label: 'Missed', value: missed, color: KIND_COLORS.missed },
     { key: 'at_risk', label: 'At-Risk', value: atRisk, color: KIND_COLORS.at_risk },
-    { key: 'pending', label: 'Pending Triage', value: pending, color: 'bg-white/[0.05] text-text-secondary border-white/[0.08]' },
+    { key: 'pending', label: 'Pending Triage', value: pending, color: 'bg-black/[0.03] text-text-secondary border-black/[0.08]' },
     { key: 'critical', label: 'Critical Severity', value: critical, color: SEVERITY_COLORS.critical },
   ];
 

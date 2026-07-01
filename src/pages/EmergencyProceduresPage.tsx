@@ -169,7 +169,7 @@ export function EmergencyProceduresPage() {
           <p className="text-sm text-text-secondary mt-1">Emergency contacts, response procedures, and notification chains</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary">
+          <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary">
             Export CSV
           </button>
           <button
@@ -186,7 +186,7 @@ export function EmergencyProceduresPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SpotlightCard className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Phone className="w-4 h-4 text-cyan-400" />
+            <Phone className="w-4 h-4 text-qo-accent" />
             <span className="text-xs text-text-secondary">Active Contacts</span>
           </div>
           <p className="text-xl font-bold text-text-primary">{activeContacts.length}</p>
@@ -207,7 +207,7 @@ export function EmergencyProceduresPage() {
         </SpotlightCard>
         <SpotlightCard className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <AlertTriangle className="w-4 h-4 text-qo-ochre-text" />
             <span className="text-xs text-text-secondary">Needs Review</span>
           </div>
           <p className="text-xl font-bold text-text-primary">{needsReview.length}</p>
@@ -215,13 +215,13 @@ export function EmergencyProceduresPage() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+      <div className="flex gap-1 bg-qo-nested rounded-lg p-1">
         {(['contacts', 'procedures'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-              tab === t ? 'bg-white/10 text-text-primary' : 'text-text-secondary hover:text-text-primary'
+              tab === t ? 'bg-black/[0.06] text-text-primary' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             {t === 'contacts' ? 'Emergency Contacts' : 'Response Procedures'}
@@ -237,14 +237,14 @@ export function EmergencyProceduresPage() {
             <button onClick={resetContactForm} className="text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input value={cName} onChange={e => setCName(e.target.value)} placeholder="Contact Name *" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <select value={cRole} onChange={e => setCRole(e.target.value as EmergencyContactRole)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+            <input value={cName} onChange={e => setCName(e.target.value)} placeholder="Contact Name *" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <select value={cRole} onChange={e => setCRole(e.target.value as EmergencyContactRole)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
               {Object.entries(CONTACT_ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <input value={cOrg} onChange={e => setCOrg(e.target.value)} placeholder="Organization" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <input value={cPhone} onChange={e => setCPhone(e.target.value)} placeholder="Phone" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="Email" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <select value={cAvail} onChange={e => setCAvail(e.target.value as ContactAvailability)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+            <input value={cOrg} onChange={e => setCOrg(e.target.value)} placeholder="Organization" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <input value={cPhone} onChange={e => setCPhone(e.target.value)} placeholder="Phone" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="Email" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <select value={cAvail} onChange={e => setCAvail(e.target.value as ContactAvailability)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
               {Object.entries(AVAILABILITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
@@ -266,25 +266,25 @@ export function EmergencyProceduresPage() {
             <button onClick={resetProcedureForm} className="text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input value={pTitle} onChange={e => setPTitle(e.target.value)} placeholder="Procedure Title *" className="md:col-span-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <select value={pType} onChange={e => setPType(e.target.value as EmergencyIncidentType)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+            <input value={pTitle} onChange={e => setPTitle(e.target.value)} placeholder="Procedure Title *" className="md:col-span-3 px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <select value={pType} onChange={e => setPType(e.target.value as EmergencyIncidentType)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
               {Object.entries(INCIDENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <select value={pSeverity} onChange={e => setPSeverity(e.target.value as ProcedureSeverityLevel)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+            <select value={pSeverity} onChange={e => setPSeverity(e.target.value as ProcedureSeverityLevel)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
               {Object.entries(SEVERITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <textarea value={pDesc} onChange={e => setPDesc(e.target.value)} placeholder="Description" rows={2} className="md:col-span-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <textarea value={pDesc} onChange={e => setPDesc(e.target.value)} placeholder="Description" rows={2} className="md:col-span-3 px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
           </div>
           <div className="space-y-2">
             <p className="text-xs text-text-secondary font-medium">Response Steps</p>
             {pSteps.map((step, idx) => (
               <div key={idx} className="flex gap-2 items-start">
                 <span className="text-xs text-text-secondary mt-2.5 w-6">{idx + 1}.</span>
-                <input value={step.action} onChange={e => updateStep(idx, 'action', e.target.value)} placeholder="Action" className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
-                <input value={step.responsible} onChange={e => updateStep(idx, 'responsible', e.target.value)} placeholder="Responsible" className="w-32 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
-                <input value={step.timeframe} onChange={e => updateStep(idx, 'timeframe', e.target.value)} placeholder="Timeframe" className="w-28 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
+                <input value={step.action} onChange={e => updateStep(idx, 'action', e.target.value)} placeholder="Action" className="flex-1 px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
+                <input value={step.responsible} onChange={e => updateStep(idx, 'responsible', e.target.value)} placeholder="Responsible" className="w-32 px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
+                <input value={step.timeframe} onChange={e => updateStep(idx, 'timeframe', e.target.value)} placeholder="Timeframe" className="w-28 px-3 py-1.5 bg-qo-nested border border-black/[0.08] rounded text-sm text-text-primary placeholder:text-text-secondary/50" />
                 {pSteps.length > 1 && (
-                  <button onClick={() => removeStep(idx)} className="text-red-400 hover:text-red-300 mt-1.5"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => removeStep(idx)} className="text-qo-risk hover:text-red-300 mt-1.5"><Trash2 className="w-3.5 h-3.5" /></button>
                 )}
               </div>
             ))}
@@ -332,11 +332,11 @@ export function EmergencyProceduresPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => updateContact(c.id, { is_active: !c.is_active })}
-                    className={`px-2 py-1 text-xs rounded ${c.is_active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
+                    className={`px-2 py-1 text-xs rounded ${c.is_active ? 'text-qo-ochre-text hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
                   >
                     {c.is_active ? 'Deactivate' : 'Activate'}
                   </button>
-                  <button onClick={() => deleteContact(c.id)} className="p-1 text-red-400 hover:bg-red-500/10 rounded">
+                  <button onClick={() => deleteContact(c.id)} className="p-1 text-qo-risk hover:bg-red-500/10 rounded">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -391,7 +391,7 @@ function ProcedureCard({
             <span className={`px-1.5 py-0.5 text-[10px] rounded ${SEVERITY_COLORS[p.severity_level]}`}>
               {SEVERITY_LABELS[p.severity_level]}
             </span>
-            <span className="px-1.5 py-0.5 text-[10px] bg-white/5 text-text-secondary rounded">
+            <span className="px-1.5 py-0.5 text-[10px] bg-qo-nested text-text-secondary rounded">
               {INCIDENT_TYPE_LABELS[p.incident_type]}
             </span>
             {!p.is_active && <span className="px-1.5 py-0.5 text-[10px] bg-red-500/20 text-red-300 rounded">INACTIVE</span>}
@@ -406,7 +406,7 @@ function ProcedureCard({
           <button onClick={onReview} className="flex items-center gap-1 px-2 py-1 text-xs text-green-400 hover:bg-green-500/10 rounded">
             <CheckCircle2 className="w-3 h-3" />Review
           </button>
-          <button onClick={onToggleActive} className={`px-2 py-1 text-xs rounded ${p.is_active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}>
+          <button onClick={onToggleActive} className={`px-2 py-1 text-xs rounded ${p.is_active ? 'text-qo-ochre-text hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}>
             {p.is_active ? 'Deactivate' : 'Activate'}
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-text-secondary" /> : <ChevronDown className="w-4 h-4 text-text-secondary" />}
@@ -427,7 +427,7 @@ function ProcedureCard({
                     <div className="flex-1">
                       <span className="text-text-primary">{s.action}</span>
                       {s.responsible && <span className="text-text-secondary ml-2">— {s.responsible}</span>}
-                      {s.timeframe && <span className="text-cyan-400/70 ml-2">[{s.timeframe}]</span>}
+                      {s.timeframe && <span className="text-qo-accent/70 ml-2">[{s.timeframe}]</span>}
                     </div>
                   </div>
                 ))}

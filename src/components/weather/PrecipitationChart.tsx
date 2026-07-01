@@ -57,7 +57,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: any[] }
   if (!entry) return null;
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-surface-glass/95 backdrop-blur-xl p-3 shadow-lg text-xs space-y-1">
+    <div className="rounded-lg border border-black/[0.08] bg-surface-glass/95  p-3 shadow-lg text-xs space-y-1">
       <p className="font-medium text-text-primary">{entry.date}</p>
       <p className="text-text-secondary">
         Rainfall:{' '}
@@ -74,7 +74,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: any[] }
       </p>
       <p className="text-text-secondary">Station: {entry.station_name}</p>
       {entry.data_quality_flag && (
-        <p className="text-amber-400">Flag: {entry.data_quality_flag}</p>
+        <p className="text-qo-ochre-text">Flag: {entry.data_quality_flag}</p>
       )}
     </div>
   );
@@ -193,7 +193,7 @@ export function PrecipitationChart({
               'rounded-full px-3 py-1 text-xs font-medium transition-colors',
               range === btn.value
                 ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:bg-white/[0.08]',
+                : 'bg-black/[0.03] text-text-muted border border-black/[0.06] hover:bg-black/[0.06]',
             )}
           >
             {btn.label}
@@ -206,14 +206,14 @@ export function PrecipitationChart({
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2 py-1 text-xs text-text-primary"
+              className="rounded-lg bg-black/[0.03] border border-black/[0.06] px-2 py-1 text-xs text-text-primary"
             />
             <span className="text-text-muted text-xs">to</span>
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2 py-1 text-xs text-text-primary"
+              className="rounded-lg bg-black/[0.03] border border-black/[0.06] px-2 py-1 text-xs text-text-primary"
             />
           </div>
         )}

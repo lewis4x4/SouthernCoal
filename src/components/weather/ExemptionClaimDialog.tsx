@@ -56,13 +56,13 @@ export function ExemptionClaimDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="relative w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="inline-flex rounded-lg bg-gradient-to-br from-violet-600 to-violet-500 p-2">
-              <Shield className="h-5 w-5 text-white" />
+              <Shield className="h-5 w-5 text-text-primary" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">Claim Exemption</h2>
@@ -73,7 +73,7 @@ export function ExemptionClaimDialog({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-primary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -96,7 +96,7 @@ export function ExemptionClaimDialog({
         {/* Recurrence Interval */}
         <div className="mb-4">
           <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-            Recurrence interval (years) <span className="text-red-400">*</span>
+            Recurrence interval (years) <span className="text-qo-risk">*</span>
           </label>
           <input
             type="number"
@@ -105,10 +105,10 @@ export function ExemptionClaimDialog({
             value={recurrenceInterval}
             onChange={(e) => setRecurrenceInterval(e.target.value)}
             placeholder="Minimum 10-year storm"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
+            className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-sky-500/50"
           />
           {recurrenceInterval !== '' && intervalNum < 10 && (
-            <p className="mt-1 text-xs text-red-400">
+            <p className="mt-1 text-xs text-qo-risk">
               Must be at least 10-year recurrence interval
             </p>
           )}
@@ -117,7 +117,7 @@ export function ExemptionClaimDialog({
         {/* Justification */}
         <div className="mb-4">
           <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-            Justification <span className="text-red-400">*</span>
+            Justification <span className="text-qo-risk">*</span>
             <span className="ml-2 text-xs text-text-muted">
               ({trimmedJustification.length}/{MIN_JUSTIFICATION_LENGTH} min characters)
             </span>
@@ -130,11 +130,11 @@ export function ExemptionClaimDialog({
             className={`w-full rounded-lg border px-3 py-2.5 text-sm text-text-primary outline-none transition-colors ${
               trimmedJustification.length > 0 && trimmedJustification.length < MIN_JUSTIFICATION_LENGTH
                 ? 'border-red-500/50 bg-red-500/5'
-                : 'border-white/[0.08] bg-white/[0.04] focus:border-sky-500/50'
+                : 'border-black/[0.08] bg-black/[0.03] focus:border-sky-500/50'
             }`}
           />
           {trimmedJustification.length > 0 && trimmedJustification.length < MIN_JUSTIFICATION_LENGTH && (
-            <p className="mt-1 text-xs text-red-400">
+            <p className="mt-1 text-xs text-qo-risk">
               {MIN_JUSTIFICATION_LENGTH - trimmedJustification.length} more characters required
             </p>
           )}
@@ -150,21 +150,21 @@ export function ExemptionClaimDialog({
 
         {/* Error */}
         {error && (
-          <p className="mb-4 text-sm text-red-400">{error}</p>
+          <p className="mb-4 text-sm text-qo-risk">{error}</p>
         )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.04]"
+            className="rounded-lg border border-black/[0.08] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-black/[0.04]"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? 'Submitting...' : 'Submit Exemption Claim'}
           </button>

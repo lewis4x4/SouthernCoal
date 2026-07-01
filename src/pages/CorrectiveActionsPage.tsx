@@ -32,8 +32,8 @@ export function CorrectiveActionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-            <ClipboardCheck className="h-6 w-6 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-qo-accent/10 border border-qo-accent/20">
+            <ClipboardCheck className="h-6 w-6 text-qo-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">
@@ -46,7 +46,7 @@ export function CorrectiveActionsPage() {
         </div>
         <Link
           to="/corrective-actions/analytics"
-          className="flex items-center gap-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-black/[0.04] border border-black/[0.08] px-4 py-2 text-sm font-medium text-text-secondary hover:bg-white/[0.1] transition-colors"
         >
           <BarChart3 size={14} />
           Analytics
@@ -61,10 +61,10 @@ export function CorrectiveActionsPage() {
         >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <AlertTriangle className="h-4 w-4 text-qo-risk" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-red-400">
+              <div className="text-2xl font-semibold text-qo-risk">
                 {counts.overdue}
               </div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">
@@ -79,11 +79,11 @@ export function CorrectiveActionsPage() {
           spotlightColor="rgba(6, 182, 212, 0.08)"
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-              <Clock className="h-4 w-4 text-cyan-400" />
+            <div className="p-2 rounded-lg bg-qo-accent/10 border border-qo-accent/20">
+              <Clock className="h-4 w-4 text-qo-accent" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-cyan-400">
+              <div className="text-2xl font-semibold text-qo-accent">
                 {counts.open}
               </div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">
@@ -99,10 +99,10 @@ export function CorrectiveActionsPage() {
         >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <PlayCircle className="h-4 w-4 text-amber-400" />
+              <PlayCircle className="h-4 w-4 text-qo-ochre-text" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-amber-400">
+              <div className="text-2xl font-semibold text-qo-ochre-text">
                 {counts.in_progress}
               </div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">
@@ -137,10 +137,10 @@ export function CorrectiveActionsPage() {
         >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-qo-sage-text" />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-emerald-400">
+              <div className="text-2xl font-semibold text-qo-sage-text">
                 {counts.closed}
               </div>
               <div className="text-[11px] text-text-muted uppercase tracking-wider">
@@ -153,7 +153,7 @@ export function CorrectiveActionsPage() {
 
       {/* Error display */}
       {error && (
-        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-qo-risk">
           Error loading corrective actions: {error}
         </div>
       )}

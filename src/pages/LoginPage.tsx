@@ -57,24 +57,27 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col px-4">
-      <div className="flex-1 flex items-center justify-center">
+    <div className="flex min-h-screen flex-col bg-qo-canvas px-4">
+      <div className="flex flex-1 items-center justify-center">
         <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            SCC Compliance Monitor
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-qo-accent font-mono text-[13px] font-semibold text-[#F4EFE6]">
+            SC
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+            Site Command
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Sign in to access the Upload Dashboard
+            Sign in to the operations console
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl space-y-4"
+          className="space-y-4 rounded-qo border border-black/[0.08] bg-white p-6"
         >
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-1.5">
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-secondary">
               Email
             </label>
             <input
@@ -84,7 +87,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:border-status-queued/50 transition-colors"
+              className="qo-input w-full"
               placeholder="you@example.com"
             />
           </div>
@@ -92,7 +95,7 @@ export function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-text-secondary mb-1.5"
+              className="mb-1.5 block text-sm font-medium text-text-secondary"
             >
               Password
             </label>
@@ -103,7 +106,7 @@ export function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:border-status-queued/50 transition-colors"
+              className="qo-input w-full"
               placeholder="••••••••"
             />
           </div>
@@ -115,7 +118,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2.5 rounded-xl bg-status-queued/20 text-status-queued font-semibold text-sm border border-status-queued/20 hover:bg-status-queued/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full rounded-qo-sm border border-qo-accent bg-qo-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-qo-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? 'Signing in...' : 'Sign In'}
           </button>

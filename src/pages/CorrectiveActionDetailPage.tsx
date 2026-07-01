@@ -109,7 +109,7 @@ export function CorrectiveActionDetailPage() {
         <div className="text-text-muted">Corrective action not found</div>
         <button
           onClick={() => navigate('/corrective-actions')}
-          className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+          className="text-sm text-qo-accent hover:text-qo-accent transition-colors"
         >
           Back to list
         </button>
@@ -136,9 +136,9 @@ export function CorrectiveActionDetailPage() {
 
       {/* PDF Generation Overlay */}
       {generatingPdf && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-surface-elevated border border-white/[0.06] rounded-xl p-6 text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full mx-auto mb-4" />
+        <div className="fixed inset-0 bg-black/50  flex items-center justify-center z-50">
+          <div className="bg-surface-elevated border border-black/[0.06] rounded-xl p-6 text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-qo-accent border-t-transparent rounded-full mx-auto mb-4" />
             <div className="text-sm text-text-primary">Generating PDF...</div>
             <div className="text-xs text-text-muted mt-1">
               This may take a few seconds

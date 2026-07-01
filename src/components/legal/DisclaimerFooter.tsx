@@ -7,7 +7,7 @@ export function DisclaimerFooter() {
 
   return (
     <>
-      <footer className="px-6 py-4 border-t border-white/[0.04]">
+      <footer className="border-t border-black/[0.08] px-6 py-4">
         <p className="text-[11px] leading-relaxed text-text-muted max-w-5xl">
           {DISCLAIMER_SHORT}{' '}
           <button

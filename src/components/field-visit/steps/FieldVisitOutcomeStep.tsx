@@ -61,19 +61,19 @@ export function FieldVisitOutcomeStep({
               disabled={visitLocked}
               onClick={() => onOutcomeSelect(choice.value)}
               className={cn(
-                'flex min-h-[72px] items-center gap-4 rounded-2xl border px-5 text-left transition-colors active:bg-white/[0.08]',
+                'flex min-h-[72px] items-center gap-4 rounded-2xl border px-5 text-left transition-colors active:bg-black/[0.06]',
                 selected
-                  ? 'border-cyan-400/35 bg-cyan-500/12'
-                  : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]',
+                  ? 'border-qo-accent/35 bg-qo-accent/12'
+                  : 'border-black/[0.06] bg-qo-nested hover:bg-black/[0.04]',
               )}
             >
-              <Icon className="h-5 w-5 shrink-0 text-cyan-200" aria-hidden />
+              <Icon className="h-5 w-5 shrink-0 text-qo-accent" aria-hidden />
               <div className="min-w-0 flex-1">
                 <div className="text-base font-semibold text-text-primary">{choice.label}</div>
                 <div className="mt-0.5 text-sm text-text-secondary">{choice.copy}</div>
               </div>
               {selected ? (
-                <span className="shrink-0 rounded-full bg-cyan-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-cyan-100">
+                <span className="shrink-0 rounded-full bg-qo-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-qo-accent">
                   Selected
                 </span>
               ) : null}

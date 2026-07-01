@@ -10,10 +10,10 @@ interface CorrectionHistorySectionProps {
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-white/5 text-text-muted border-white/10',
-  pending_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+  draft: 'bg-qo-nested text-text-muted border-black/[0.08]',
+  pending_review: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  approved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  rejected: 'bg-red-500/10 text-qo-risk border-red-500/20',
 };
 
 /**
@@ -46,7 +46,7 @@ export function CorrectionHistorySection({ entityType, entityId }: CorrectionHis
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-4 text-xs text-text-muted">
-        <div className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/60" />
+        <div className="h-3 w-3 animate-spin rounded-full border border-black/[0.12] border-t-white/60" />
         Loading correction history...
       </div>
     );
@@ -68,7 +68,7 @@ export function CorrectionHistorySection({ entityType, entityId }: CorrectionHis
       {corrections.map(c => (
         <div
           key={c.id}
-          className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3"
+          className="rounded-lg border border-black/[0.06] bg-qo-nested p-3"
         >
           <div className="flex items-center gap-2">
             <span className={cn(
@@ -82,13 +82,13 @@ export function CorrectionHistorySection({ entityType, entityId }: CorrectionHis
 
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>
-              <div className="text-[9px] font-medium text-red-400/60">Original</div>
+              <div className="text-[9px] font-medium text-qo-risk/60">Original</div>
               <div className="font-mono text-[11px] text-text-secondary">
                 {JSON.stringify(c.original_value)}
               </div>
             </div>
             <div>
-              <div className="text-[9px] font-medium text-emerald-400/60">Proposed</div>
+              <div className="text-[9px] font-medium text-qo-sage-text/60">Proposed</div>
               <div className="font-mono text-[11px] text-text-secondary">
                 {JSON.stringify(c.proposed_value)}
               </div>

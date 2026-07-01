@@ -1707,7 +1707,7 @@ export function FieldVisitPage() {
   if (detailLoading || (!loadAttempted && !detail)) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/[0.12] border-t-white/60" />
       </div>
     );
   }
@@ -1743,7 +1743,7 @@ export function FieldVisitPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
                   to="/field/dispatch"
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                  className="rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
                 >
                   Back to field queue
                 </Link>
@@ -1905,7 +1905,7 @@ export function FieldVisitPage() {
 
   const renderSampleCollectedContent = () => (
     <div className="space-y-4">
-      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">
+      <div className="rounded-xl border border-qo-accent/20 bg-qo-accent/[0.06] px-4 py-3 text-sm text-qo-accent">
         Finish custody first, then save only the field readings required for this stop.
       </div>
 
@@ -1926,7 +1926,7 @@ export function FieldVisitPage() {
         onSave={handleSaveCoc}
       />
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-4 sm:p-5">
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
           On-Site Field Measurements
         </h3>
@@ -1942,7 +1942,7 @@ export function FieldVisitPage() {
               const latestSaved = findSavedMeasurementForRequirement(generalMeasurements, measurement);
 
               return (
-                <div key={measurement.key} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4 text-sm">
+                <div key={measurement.key} className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-4 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="font-medium text-text-primary">
@@ -1950,11 +1950,11 @@ export function FieldVisitPage() {
                         {measurement.default_unit ? ` · ${measurement.default_unit}` : ''}
                       </div>
                       <div className="mt-1 text-xs text-text-secondary">{measurement.rationale}</div>
-                      <div className="mt-1 text-xs text-cyan-200/85">
+                      <div className="mt-1 text-xs text-qo-accent/85">
                         Required because this stop includes: {measurement.source_parameter_names.join(', ')}
                       </div>
                     </div>
-                    <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-text-secondary">
+                    <div className="rounded-full border border-black/[0.08] bg-qo-nested px-3 py-1 text-xs text-text-secondary">
                       Latest saved:{' '}
                       <span className="font-medium text-text-primary">
                         {latestSaved
@@ -1975,13 +1975,13 @@ export function FieldVisitPage() {
                       disabled={visitLocked}
                       inputMode="decimal"
                       autoComplete="off"
-                      className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+                      className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => void handleSaveRequiredMeasurement(measurement)}
                       disabled={saving || visitLocked}
-                      className="rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
+                      className="rounded-xl bg-black/[0.04] px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.1] disabled:opacity-60"
                     >
                       Save reading
                     </button>
@@ -1999,7 +1999,7 @@ export function FieldVisitPage() {
             </div>
             <p className="text-xs text-text-secondary">{FIELD_VISIT_COPY.additionalFieldObservationsExplainer}</p>
             {additionalFieldObservations.map((measurement) => (
-              <div key={measurement.id} className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3 text-sm">
+              <div key={measurement.id} className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3 text-sm">
                 <div className="font-medium text-text-primary">{measurement.parameter_name}</div>
                 <div className="mt-1 text-text-secondary">
                   {measurement.measured_value ?? measurement.measured_text ?? '—'} {measurement.unit ?? ''}
@@ -2019,14 +2019,14 @@ export function FieldVisitPage() {
           onChange={(e) => setFieldNotes(e.target.value)}
           disabled={visitLocked}
           placeholder="Short context for this collection stop."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
         />
       </label>
     </div>
   );
 
   const renderNoDischargeContent = () => (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
         No-discharge record
       </h3>
@@ -2040,7 +2040,7 @@ export function FieldVisitPage() {
           rows={4}
           disabled={visitLocked}
           placeholder="Describe the no-flow condition at the actual sampling point."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
         />
       </label>
 
@@ -2053,7 +2053,7 @@ export function FieldVisitPage() {
           onChange={(e) => setNoDischargeCondition(e.target.value)}
           rows={3}
           disabled={visitLocked}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
         />
       </label>
 
@@ -2076,7 +2076,7 @@ export function FieldVisitPage() {
           onChange={(e) => setNoDischargeObstructionDetails(e.target.value)}
           rows={3}
           disabled={visitLocked}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
         />
       </label>
 
@@ -2086,7 +2086,7 @@ export function FieldVisitPage() {
             type="button"
             disabled={visitLocked}
             onClick={() => setNoDischargeNarrative(detail.previous_visit_context?.no_discharge_narrative ?? '')}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-black/[0.06] disabled:opacity-60"
           >
             Copy last no-discharge note
           </button>
@@ -2097,7 +2097,7 @@ export function FieldVisitPage() {
   );
 
   const renderAccessIssueContent = () => (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
         Access issue escalation
       </h3>
@@ -2110,7 +2110,7 @@ export function FieldVisitPage() {
           value={accessIssueType}
           onChange={(e) => setAccessIssueType(e.target.value)}
           disabled={visitLocked}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none"
         >
           <option value="access_issue">Access issue</option>
           <option value="road_blocked">Road blocked</option>
@@ -2131,7 +2131,7 @@ export function FieldVisitPage() {
           rows={4}
           disabled={visitLocked}
           placeholder="Describe the physical access problem and why sampling could not proceed."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+          className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
         />
       </label>
 
@@ -2168,14 +2168,14 @@ export function FieldVisitPage() {
           onChange={(e) => setContactName(e.target.value)}
           placeholder="Who you contacted (optional)"
           disabled={visitLocked || !contactAttempted}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
+          className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
         />
         <input
           value={contactOutcome}
           onChange={(e) => setContactOutcome(e.target.value)}
           placeholder="What they said / next steps (optional)"
           disabled={visitLocked || !contactAttempted}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
+          className="rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary outline-none disabled:opacity-50"
         />
       </div>
 
@@ -2190,7 +2190,7 @@ export function FieldVisitPage() {
                 setAccessIssueType(detail.previous_visit_context.access_issue_type);
               }
             }}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-black/[0.06] disabled:opacity-60"
           >
             Copy last access issue
           </button>
@@ -2204,7 +2204,7 @@ export function FieldVisitPage() {
   const currentStepMeta = getFieldVisitWizardStep(activeStep);
 
   const sameAsLastHelpers = detail.previous_visit_context ? (
-    <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-4">
+    <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
@@ -2219,7 +2219,7 @@ export function FieldVisitPage() {
             type="button"
             disabled={visitLocked}
             onClick={applyPreviousInspectionSummary}
-            className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+            className="rounded-lg border border-qo-accent/25 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-60"
           >
             Apply last inspection
           </button>
@@ -2231,7 +2231,7 @@ export function FieldVisitPage() {
                 ...prev,
                 signage_condition: normalizeSignageCondition(detail.previous_visit_context?.signage_condition) || prev.signage_condition || '',
               }))}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-black/[0.06] disabled:opacity-60"
             >
               Copy signage
             </button>
@@ -2244,7 +2244,7 @@ export function FieldVisitPage() {
                 ...prev,
                 pipe_condition: normalizePipeCondition(detail.previous_visit_context?.pipe_condition) || prev.pipe_condition || '',
               }))}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-black/[0.06] disabled:opacity-60"
             >
               Copy pipe condition
             </button>
@@ -2331,7 +2331,7 @@ export function FieldVisitPage() {
   const evidenceFocusPrompts = (
     <div className="space-y-3">
       {qaPrompts.length > 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4">
+        <div className="rounded-xl border border-black/[0.06] bg-qo-nested px-4 py-4">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
             Evidence focus prompts
           </div>
@@ -2342,7 +2342,7 @@ export function FieldVisitPage() {
                 type="button"
                 disabled={visitLocked}
                 onClick={() => focusPhotoBucket(prompt.focusBucket)}
-                className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:opacity-60"
+                className="rounded-lg border border-qo-accent/25 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-60"
               >
                 Focus {getPhotoBucketDefinition(prompt.focusBucket).label.toLowerCase()}
               </button>
@@ -2368,31 +2368,31 @@ export function FieldVisitPage() {
   const reviewSummaryCards = (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Outcome</div>
           <div className="mt-2 text-sm font-medium text-text-primary">{formatOutcomeLabel(outcome)}</div>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Completion GPS</div>
           <div className="mt-2 text-sm font-medium text-text-primary">
             {completionCoordsReady ? 'Recorded' : 'Missing'}
           </div>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Evidence</div>
           <div className="mt-2 text-sm font-medium text-text-primary">
             {photoCount} uploaded / {pendingPhotoCount} pending
           </div>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Governance issues</div>
           <div className="mt-2 text-sm font-medium text-text-primary">{detail.governanceIssues.length}</div>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Primary blockers</div>
           <div className="mt-2 text-sm font-medium text-text-primary">{readinessSummary.blockerCount}</div>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+        <div className="rounded-xl border border-black/[0.06] bg-black/10 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Follow-up prompts</div>
           <div className="mt-2 text-sm font-medium text-text-primary">{deficiencyPrompts.length + qaPrompts.length}</div>
         </div>
@@ -2414,7 +2414,7 @@ export function FieldVisitPage() {
   );
 
   const reviewCompletionLocation = (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
@@ -2428,7 +2428,7 @@ export function FieldVisitPage() {
           type="button"
           onClick={handleCaptureCompleteCoords}
           disabled={visitLocked}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary disabled:opacity-60"
+          className="rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary disabled:opacity-60"
         >
           Capture completion GPS
         </button>
@@ -2444,7 +2444,7 @@ export function FieldVisitPage() {
             autoComplete="off"
             value={completeCoords.latitude}
             onChange={(event) => setCompleteCoords((prev) => ({ ...prev, latitude: event.target.value }))}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
           />
         </label>
         <label className="space-y-2" htmlFor="field-visit-complete-lng">
@@ -2456,7 +2456,7 @@ export function FieldVisitPage() {
             autoComplete="off"
             value={completeCoords.longitude}
             onChange={(event) => setCompleteCoords((prev) => ({ ...prev, longitude: event.target.value }))}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-sm text-text-primary outline-none"
+            className="w-full rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-3 text-sm text-text-primary outline-none"
           />
         </label>
       </div>
@@ -2474,7 +2474,7 @@ export function FieldVisitPage() {
           <div
             key={issue.id}
             className={`rounded-xl border px-4 py-3 text-sm ${
-              isFm ? 'border-amber-500/25 bg-amber-500/5' : 'border-white/[0.06] bg-white/[0.02]'
+              isFm ? 'border-amber-500/25 bg-amber-500/5' : 'border-black/[0.06] bg-qo-nested'
             }`}
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -2509,7 +2509,7 @@ export function FieldVisitPage() {
       })}
       {governanceInboxHref ? (
         <div className="text-sm text-text-secondary">
-          <Link to={governanceInboxHref} className="text-cyan-300 hover:text-cyan-200">
+          <Link to={governanceInboxHref} className="text-qo-accent hover:text-qo-accent">
             Open governance inbox
           </Link>
         </div>
@@ -2578,7 +2578,7 @@ export function FieldVisitPage() {
             observedSiteConditions={observedSiteConditions}
             onObservedChange={setObservedSiteConditions}
             scheduledParameter={detail.scheduled_parameter_label ? (
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm">
+              <div className="rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm">
                 <p className="text-sm font-medium text-text-muted">Scheduled parameter</p>
                 <p className="mt-1 font-medium text-text-primary">{detail.scheduled_parameter_label}</p>
               </div>
@@ -2798,13 +2798,13 @@ export function FieldVisitPage() {
     (requirementsModel && requirementsModel.urgencyFlags.length > 0) ||
     (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live') ||
     hasSameOutfallConflict;
-  const alertDotColor = hasSyncIssues ? 'bg-red-400' : hasQueuedActions ? 'bg-amber-400' : 'bg-cyan-400';
+  const alertDotColor = hasSyncIssues ? 'bg-qo-risk' : hasQueuedActions ? 'bg-qo-ochre' : 'bg-cyan-400';
 
   if (obstructionReportConfirmed) {
     return (
       <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full bg-amber-500/15 p-5">
-          <AlertTriangle className="h-12 w-12 text-amber-400" aria-hidden />
+          <AlertTriangle className="h-12 w-12 text-qo-ochre-text" aria-hidden />
         </div>
         <h1 className="mt-6 text-2xl font-semibold text-text-primary">Obstruction reported</h1>
         <p className="mt-2 text-sm text-text-secondary">
@@ -2816,7 +2816,7 @@ export function FieldVisitPage() {
         <button
           type="button"
           onClick={() => navigate('/field/route')}
-          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-qo-accent/20 text-base font-semibold text-qo-accent transition-colors hover:bg-qo-accent/30 active:bg-qo-accent/40"
         >
           Move on to next outfall
         </button>
@@ -2828,7 +2828,7 @@ export function FieldVisitPage() {
     return (
       <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full bg-amber-500/15 p-5">
-          <AlertTriangle className="h-12 w-12 text-amber-400" aria-hidden />
+          <AlertTriangle className="h-12 w-12 text-qo-ochre-text" aria-hidden />
         </div>
         <h1 className="mt-6 text-2xl font-semibold text-text-primary">Visit recorded</h1>
         <p className="mt-2 text-sm text-text-secondary">
@@ -2840,7 +2840,7 @@ export function FieldVisitPage() {
         <button
           type="button"
           onClick={() => navigate('/field/route')}
-          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-qo-accent/20 text-base font-semibold text-qo-accent transition-colors hover:bg-qo-accent/30 active:bg-qo-accent/40"
         >
           Move on to next outfall
         </button>
@@ -2852,7 +2852,7 @@ export function FieldVisitPage() {
     return (
       <div className="flex min-h-[80dvh] flex-col items-center justify-center px-6 text-center">
         <div className="rounded-full bg-emerald-500/15 p-5">
-          <CheckCircle2 className="h-12 w-12 text-emerald-400" aria-hidden />
+          <CheckCircle2 className="h-12 w-12 text-qo-sage-text" aria-hidden />
         </div>
         <h1 className="mt-6 text-2xl font-semibold text-text-primary">Visit completed</h1>
         <p className="mt-2 text-sm text-text-secondary">
@@ -2861,7 +2861,7 @@ export function FieldVisitPage() {
         <button
           type="button"
           onClick={() => navigate('/field/route')}
-          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-cyan-500/20 text-base font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/30 active:bg-cyan-500/40"
+          className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-qo-accent/20 text-base font-semibold text-qo-accent transition-colors hover:bg-qo-accent/30 active:bg-qo-accent/40"
         >
           Back to today's route
         </button>
@@ -2883,7 +2883,7 @@ export function FieldVisitPage() {
         <>
           <Link
             to="/field/route"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary active:bg-white/[0.1]"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary active:bg-white/[0.1]"
             aria-label="Back to route"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -2940,7 +2940,7 @@ export function FieldVisitPage() {
             <button
               type="button"
               onClick={() => setAlertsPanelOpen((prev) => !prev)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 text-[11px] font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] bg-qo-nested px-2.5 text-[11px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
               aria-label="Toggle alerts"
             >
               <span className={`h-2 w-2 rounded-full ${alertDotColor}`} />
@@ -2952,7 +2952,7 @@ export function FieldVisitPage() {
               href={outfallMapsHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-cyan-200"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] bg-qo-nested text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-qo-accent"
               aria-label="Open in Maps"
             >
               <Navigation className="h-3.5 w-3.5" />
@@ -2992,7 +2992,7 @@ export function FieldVisitPage() {
 
       {/* Collapsible alerts panel */}
       {alertsPanelOpen ? (
-        <div className="mb-4 space-y-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
+        <div className="mb-4 space-y-3 rounded-2xl border border-black/[0.06] bg-qo-nested p-3">
           {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
           {detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live' ? (
             <FieldDataSourceBanner variant="visit" source={detailLoadSource} />

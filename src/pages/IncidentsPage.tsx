@@ -99,7 +99,7 @@ export function IncidentsPage() {
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="inline-flex rounded-xl bg-red-500/10 p-2.5">
-          <AlertOctagon className="h-6 w-6 text-red-400" />
+          <AlertOctagon className="h-6 w-6 text-qo-risk" />
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary">
@@ -111,7 +111,7 @@ export function IncidentsPage() {
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="flex items-center gap-1.5 rounded-xl bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl bg-qo-accent/15 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/25 transition-colors"
         >
           <Plus size={16} />
           Report Incident
@@ -120,7 +120,7 @@ export function IncidentsPage() {
 
       {/* Summary cards */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3">
           <span className="text-xs text-text-muted">Active</span>
           <p className="text-2xl font-bold text-text-primary">{activeCount}</p>
         </div>
@@ -128,10 +128,10 @@ export function IncidentsPage() {
           'rounded-xl border px-4 py-3',
           criticalCount > 0
             ? 'border-red-500/20 bg-red-500/[0.03]'
-            : 'border-white/[0.08] bg-white/[0.02]',
+            : 'border-black/[0.08] bg-qo-nested',
         )}>
           <span className="text-xs text-text-muted">Critical</span>
-          <p className={cn('text-2xl font-bold', criticalCount > 0 ? 'text-red-400' : 'text-text-primary')}>
+          <p className={cn('text-2xl font-bold', criticalCount > 0 ? 'text-qo-risk' : 'text-text-primary')}>
             {criticalCount}
           </p>
         </div>
@@ -139,10 +139,10 @@ export function IncidentsPage() {
           'rounded-xl border px-4 py-3',
           countdownActive > 0
             ? 'border-amber-500/20 bg-amber-500/[0.03]'
-            : 'border-white/[0.08] bg-white/[0.02]',
+            : 'border-black/[0.08] bg-qo-nested',
         )}>
           <span className="text-xs text-text-muted">Countdown Active</span>
-          <p className={cn('text-2xl font-bold', countdownActive > 0 ? 'text-amber-400' : 'text-text-primary')}>
+          <p className={cn('text-2xl font-bold', countdownActive > 0 ? 'text-qo-ochre-text' : 'text-text-primary')}>
             {countdownActive}
           </p>
         </div>
@@ -157,7 +157,7 @@ export function IncidentsPage() {
               value={newTypeCode}
               onChange={(e) => setNewTypeCode(e.target.value)}
               aria-label="Incident type"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
             >
               <option value="">Select incident type</option>
               {incidentTypes.map((t) => (
@@ -170,7 +170,7 @@ export function IncidentsPage() {
               value={newSeverity}
               onChange={(e) => setNewSeverity(e.target.value as IncidentSeverity | '')}
               aria-label="Severity"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
             >
               <option value="">Default severity</option>
               <option value="critical">Critical</option>
@@ -184,14 +184,14 @@ export function IncidentsPage() {
             placeholder="Incident title"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
           />
           <textarea
             placeholder="Description (optional)"
             value={newDescription}
             onChange={(e) => setNewDescription(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
           />
           <div className="flex gap-2">
             <button
@@ -221,19 +221,19 @@ export function IncidentsPage() {
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
               statusFilter === key
-                ? 'bg-cyan-500/20 text-cyan-300'
-                : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]',
+                ? 'bg-qo-accent/20 text-qo-accent'
+                : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06]',
             )}
           >
             {key.charAt(0).toUpperCase() + key.slice(1)}
           </button>
         ))}
-        <div className="w-px h-4 bg-white/[0.08] mx-1" />
+        <div className="w-px h-4 bg-black/[0.06] mx-1" />
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as IncidentCategory | 'all')}
           aria-label="Filter by category"
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1.5 text-xs text-text-secondary outline-none"
+          className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1.5 text-xs text-text-secondary outline-none"
         >
           <option value="all">All categories</option>
           {(Object.keys(CATEGORY_LABELS) as IncidentCategory[]).map((cat) => (
@@ -245,7 +245,7 @@ export function IncidentsPage() {
       {/* Incident list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-12 text-center text-sm text-text-muted">
+          <div className="rounded-2xl border border-black/[0.06] bg-qo-nested px-6 py-12 text-center text-sm text-text-muted">
             {statusFilter === 'active'
               ? 'No active incidents.'
               : statusFilter === 'closed'
@@ -264,7 +264,7 @@ export function IncidentsPage() {
               <Link
                 key={incident.id}
                 to={`/incidents/${incident.id}`}
-                className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 transition-colors hover:bg-white/[0.04]"
+                className="group flex items-center gap-3 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3 transition-colors hover:bg-black/[0.04]"
               >
                 {/* Severity indicator */}
                 <div className={cn(
@@ -302,8 +302,8 @@ export function IncidentsPage() {
                   <div className={cn(
                     'flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 border text-xs font-mono font-bold',
                     isExpired
-                      ? 'border-red-500/30 bg-red-500/10 text-red-400 animate-pulse'
-                      : 'border-amber-500/20 bg-amber-500/[0.05] text-amber-400',
+                      ? 'border-red-500/30 bg-red-500/10 text-qo-risk animate-pulse'
+                      : 'border-amber-500/20 bg-amber-500/[0.05] text-qo-ochre-text',
                   )}>
                     <Clock size={12} />
                     {countdown}

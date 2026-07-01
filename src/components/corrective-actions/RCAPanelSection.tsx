@@ -75,7 +75,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
   if (loadingFindings) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin h-5 w-5 border-2 border-cyan-400 border-t-transparent rounded-full" />
+        <div className="animate-spin h-5 w-5 border-2 border-qo-accent border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
             return (
               <div
                 key={finding.id}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-2"
+                className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
                   {!readOnly && (
                     <button
                       onClick={() => handleDelete(finding.id)}
-                      className="p-1 text-text-muted hover:text-red-400 transition-colors"
+                      className="p-1 text-text-muted hover:text-qo-risk transition-colors"
                       aria-label="Delete finding"
                     >
                       <Trash2 size={14} />
@@ -129,12 +129,12 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
 
                 {/* 5-Why chain */}
                 {(finding.why_1 || finding.why_2) && (
-                  <div className="mt-2 space-y-1 pl-3 border-l-2 border-cyan-500/20">
+                  <div className="mt-2 space-y-1 pl-3 border-l-2 border-qo-accent/20">
                     {[finding.why_1, finding.why_2, finding.why_3, finding.why_4, finding.why_5]
                       .filter(Boolean)
                       .map((why, i) => (
                         <p key={i} className="text-xs text-text-muted">
-                          <span className="text-cyan-400 font-mono mr-1">Why {i + 1}:</span>
+                          <span className="text-qo-accent font-mono mr-1">Why {i + 1}:</span>
                           {why}
                         </p>
                       ))}
@@ -153,7 +153,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
                 )}
 
                 {finding.decree_paragraphs.length > 0 && (
-                  <p className="text-[10px] text-amber-400">
+                  <p className="text-[10px] text-qo-ochre-text">
                     Decree ¶: {finding.decree_paragraphs.join(', ')}
                   </p>
                 )}
@@ -169,8 +169,8 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
 
       {/* Empty state */}
       {findings.length === 0 && !showForm && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-6 text-center">
-          <AlertTriangle size={24} className="mx-auto text-amber-400 mb-2" />
+        <div className="rounded-xl border border-black/[0.06] bg-white p-6 text-center">
+          <AlertTriangle size={24} className="mx-auto text-qo-ochre-text mb-2" />
           <p className="text-sm text-text-muted">No root cause analysis performed yet</p>
           {!readOnly && (
             <p className="text-xs text-text-muted mt-1">
@@ -184,7 +184,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
       {!readOnly && !showForm && (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-qo-accent/10 border border-qo-accent/20 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/20 transition-colors"
         >
           <Plus size={14} />
           Add Root Cause Analysis
@@ -193,7 +193,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
 
       {/* RCA Form */}
       {showForm && (
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.03] p-4 space-y-4">
+        <div className="rounded-xl border border-qo-accent/20 bg-qo-accent/[0.03] p-4 space-y-4">
           <h4 className="text-sm font-semibold text-text-primary">Root Cause Analysis</h4>
 
           {/* Template selector */}
@@ -210,7 +210,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
                     const tmpl = templates.find((t) => t.id === e.target.value);
                     if (tmpl) handleTemplateSelect(tmpl);
                   }}
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30 appearance-none"
+                  className="w-full rounded-lg border border-black/[0.08] bg-qo-nested pl-9 pr-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30 appearance-none"
                   aria-label="RCA template"
                 >
                   <option value="">Select a template...</option>
@@ -229,7 +229,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as RCACategory }))}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
               aria-label="RCA category"
             >
               {Object.entries(RCA_CATEGORY_LABELS).map(([key, label]) => (
@@ -246,7 +246,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
               const prompt = selectedTemplate?.why_prompts[n - 1];
               return (
                 <div key={n}>
-                  <label className="block text-[10px] text-cyan-400 font-mono mb-0.5">
+                  <label className="block text-[10px] text-qo-accent font-mono mb-0.5">
                     Why {n}{prompt ? `: ${prompt}` : ''}
                   </label>
                   <input
@@ -254,7 +254,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
                     value={(form[key] as string) || ''}
                     onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                     placeholder={prompt ?? `Why ${n}...`}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+                    className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
                   />
                 </div>
               );
@@ -271,7 +271,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
               onChange={(e) => setForm((f) => ({ ...f, root_cause_summary: e.target.value }))}
               rows={3}
               placeholder="Describe the root cause determined from the analysis..."
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
           </div>
 
@@ -281,7 +281,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
             <select
               value={form.recurrence_risk ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, recurrence_risk: (e.target.value || null) as RecurrenceRisk | null }))}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-400/30"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none focus:border-qo-accent/30"
               aria-label="Recurrence risk"
             >
               <option value="">Select...</option>
@@ -302,7 +302,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
               onChange={(e) => setForm((f) => ({ ...f, preventive_recommendation: e.target.value }))}
               rows={2}
               placeholder="Recommended actions to prevent recurrence..."
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-cyan-400/30"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-qo-accent/30"
             />
           </div>
 
@@ -311,7 +311,7 @@ export function RCAPanelSection({ caId, readOnly = false }: RCAPanelSectionProps
             <button
               onClick={handleSubmit}
               disabled={saving || !form.root_cause_summary.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-qo-accent/15 px-4 py-2 text-sm font-medium text-qo-accent hover:bg-qo-accent/25 disabled:opacity-50 transition-colors"
             >
               {saving ? 'Saving...' : 'Save Analysis'}
             </button>

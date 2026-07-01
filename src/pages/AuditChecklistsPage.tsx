@@ -34,9 +34,9 @@ const STATUS_LABELS: Record<ChecklistStatus, string> = {
 const STATUS_COLORS: Record<ChecklistStatus, string> = {
   draft: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
   active: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  in_progress: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  in_progress: 'bg-qo-accent/20 text-qo-accent border-qo-accent/30',
   complete: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  archived: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  archived: 'bg-gray-500/20 text-text-muted border-gray-500/30',
 };
 
 export function AuditChecklistsPage() {
@@ -57,9 +57,9 @@ export function AuditChecklistsPage() {
   };
 
   const scoreColor = (score: number) => {
-    if (score >= 90) return 'text-emerald-400';
-    if (score >= 70) return 'text-amber-400';
-    return 'text-red-400';
+    if (score >= 90) return 'text-qo-sage-text';
+    if (score >= 70) return 'text-qo-ochre-text';
+    return 'text-qo-risk';
   };
 
   return (
@@ -71,7 +71,7 @@ export function AuditChecklistsPage() {
             <ClipboardCheck className="w-6 h-6 text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Audit Checklists</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Audit Checklists</h1>
             <p className="text-sm text-text-secondary">Audit preparation and readiness tracking</p>
           </div>
         </div>
@@ -124,22 +124,22 @@ export function AuditChecklistsPage() {
       {/* Template Selector */}
       {showTemplates && (
         <SpotlightCard className="p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Choose a Template</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Choose a Template</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {CHECKLIST_TEMPLATES.map((template, i) => (
               <button
                 key={template.audit_type}
                 onClick={() => handleCreateFromTemplate(i)}
-                className="p-4 text-left rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/5 transition-colors"
+                className="p-4 text-left rounded-lg border border-black/[0.08] bg-qo-nested hover:bg-qo-nested transition-colors"
               >
-                <div className="text-white font-medium mb-1">{template.label}</div>
+                <div className="text-text-primary font-medium mb-1">{template.label}</div>
                 <div className="text-xs text-text-secondary">{template.items.length} items</div>
               </button>
             ))}
           </div>
           <button
             onClick={() => setShowTemplates(false)}
-            className="mt-3 text-sm text-text-secondary hover:text-white"
+            className="mt-3 text-sm text-text-secondary hover:text-text-primary"
           >
             Cancel
           </button>
@@ -156,8 +156,8 @@ export function AuditChecklistsPage() {
             className={clsx(
               'px-3 py-1 text-xs rounded-lg border transition-colors',
               statusFilter === s
-                ? 'bg-white/10 border-white/20 text-white'
-                : 'border-transparent text-text-secondary hover:text-white',
+                ? 'bg-black/[0.06] border-black/[0.12] text-text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary',
             )}
           >
             {s === 'all' ? 'All' : STATUS_LABELS[s as ChecklistStatus]}
@@ -185,20 +185,20 @@ export function AuditChecklistsPage() {
 
             return (
               <Link key={cl.id} to={`/audit/checklists/${cl.id}`}>
-                <SpotlightCard className="p-4 hover:bg-white/[0.04] transition-colors">
+                <SpotlightCard className="p-4 hover:bg-black/[0.04] transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-medium truncate">{cl.title}</h3>
+                        <h3 className="text-text-primary font-medium truncate">{cl.title}</h3>
                         {isOverdue && (
-                          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          <AlertTriangle className="w-4 h-4 text-qo-risk flex-shrink-0" />
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-text-secondary">
                         <span>{AUDIT_TYPE_LABELS[cl.audit_type]}</span>
                         {cl.state_code && <span>{cl.state_code}</span>}
                         {cl.target_date && (
-                          <span className={clsx(isOverdue && 'text-red-400')}>
+                          <span className={clsx(isOverdue && 'text-qo-risk')}>
                             Target: {cl.target_date}
                           </span>
                         )}
@@ -209,11 +209,11 @@ export function AuditChecklistsPage() {
                     </div>
                     <div className="flex items-center gap-3 ml-4">
                       {/* Progress bar */}
-                      <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="w-24 h-1.5 bg-black/[0.06] rounded-full overflow-hidden">
                         <div
                           className={clsx(
                             'h-full rounded-full transition-all',
-                            progress === 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-cyan-500' : 'bg-amber-500',
+                            progress === 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-qo-accent' : 'bg-amber-500',
                           )}
                           style={{ width: `${progress}%` }}
                         />

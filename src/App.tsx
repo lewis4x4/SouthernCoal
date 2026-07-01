@@ -205,11 +205,10 @@ export function App() {
         position="top-right"
         toastOptions={{
           style: {
-            background: 'rgba(13, 17, 23, 0.9)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            color: '#f1f5f9',
-            fontFamily: 'Satoshi, system-ui, sans-serif',
+            background: '#FFFFFF',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            color: '#211F1C',
+            fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
           },
         }}
       />

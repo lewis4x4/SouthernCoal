@@ -51,13 +51,13 @@ export function MissedAtRiskPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <AlertTriangle size={20} className="text-amber-400" />
+            <AlertTriangle size={20} className="text-qo-ochre-text" />
             <h2 className="text-xl font-semibold text-text-primary">Missed / At-Risk Sampling</h2>
           </div>
           <p className="mt-1 text-sm text-text-secondary">
             Nightly calendar-gap detection — expected events vs. arrived lab results
           </p>
-          <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-400/90">
+          <p className="mt-1 text-[10px] uppercase tracking-wide text-qo-ochre-text/90">
             DRAFT — severity for human review; not verified penalty amounts
           </p>
         </div>
@@ -67,7 +67,7 @@ export function MissedAtRiskPage() {
             type="button"
             onClick={() => void handleRunDetection()}
             disabled={detecting || loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.05] px-4 py-2 text-xs font-medium text-text-primary hover:bg-white/[0.1] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-black/[0.03] px-4 py-2 text-xs font-medium text-text-primary hover:bg-white/[0.1] disabled:opacity-50"
           >
             {detecting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Run gap detection

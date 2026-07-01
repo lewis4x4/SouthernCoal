@@ -111,13 +111,13 @@ export function DefensibleMissPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <Shield size={20} className="text-purple-400" />
+          <Shield size={20} className="text-qo-accent" />
           <h2 className="text-xl font-semibold text-text-primary">Defensible-Miss Packets</h2>
         </div>
         <p className="mt-1 text-sm text-text-secondary">
           Flanking clean samples and collector access patterns — evidence for counsel review
         </p>
-        <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-400/90">
+        <p className="mt-1 text-[10px] uppercase tracking-wide text-qo-ochre-text/90">
           DRAFT — not a legal conclusion or compliance certification
         </p>
       </div>
@@ -129,7 +129,7 @@ export function DefensibleMissPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+        <section className="rounded-xl border border-black/[0.08] p-4 space-y-3">
           <h3 className="text-sm font-semibold text-text-primary">Missed events (from QW1 queue)</h3>
           {gapsLoading ? (
             <Loader2 className="mx-auto animate-spin text-text-muted" size={20} />
@@ -142,7 +142,7 @@ export function DefensibleMissPage() {
                   <button
                     type="button"
                     onClick={() => void handleGenerate(row.id)}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left text-xs hover:bg-white/[0.04]"
+                    className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-left text-xs hover:bg-black/[0.04]"
                   >
                     <span className="font-medium text-text-primary">
                       {row.outfalls?.outfall_number ?? row.outfall_id.slice(0, 8)} ·{' '}
@@ -158,7 +158,7 @@ export function DefensibleMissPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+        <section className="rounded-xl border border-black/[0.08] p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-text-primary">Packet preview</h3>
             {packet && (
@@ -167,7 +167,7 @@ export function DefensibleMissPage() {
                   type="button"
                   onClick={() => void handleGeneratePdf()}
                   disabled={generatingPdf}
-                  className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-[10px] font-medium text-white hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg bg-qo-accent px-3 py-1.5 text-[10px] font-medium text-white hover:bg-qo-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {generatingPdf ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -179,7 +179,7 @@ export function DefensibleMissPage() {
                 <button
                   type="button"
                   onClick={handleExport}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/[0.12] px-3 py-1.5 text-[10px] font-medium text-text-primary hover:bg-white/[0.06]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-black/[0.12] px-3 py-1.5 text-[10px] font-medium text-text-primary hover:bg-black/[0.05]"
                 >
                   <FileText size={12} /> Export markdown
                 </button>
@@ -200,7 +200,7 @@ export function DefensibleMissPage() {
             </pre>
           )}
           {selectedGapId && (
-            <div className="space-y-2 border-t border-white/[0.06] pt-3">
+            <div className="space-y-2 border-t border-black/[0.06] pt-3">
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                 Stored packets
               </h4>
@@ -213,7 +213,7 @@ export function DefensibleMissPage() {
                   {storedPackets.map((stored) => (
                     <li
                       key={stored.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-black/[0.06] bg-qo-nested px-2 py-1.5"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-[10px] font-medium text-text-primary">
@@ -228,7 +228,7 @@ export function DefensibleMissPage() {
                         <button
                           type="button"
                           onClick={() => void handleDownloadStored(stored.storage_path!)}
-                          className="inline-flex shrink-0 items-center gap-1 rounded border border-white/[0.1] px-2 py-1 text-[9px] text-text-primary hover:bg-white/[0.06]"
+                          className="inline-flex shrink-0 items-center gap-1 rounded border border-white/[0.1] px-2 py-1 text-[9px] text-text-primary hover:bg-black/[0.05]"
                         >
                           <Download size={10} /> PDF
                         </button>
@@ -242,7 +242,7 @@ export function DefensibleMissPage() {
         </section>
       </div>
 
-      <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+      <section className="rounded-xl border border-black/[0.08] p-4 space-y-3">
         <h3 className="text-sm font-semibold text-text-primary">Collector access anomalies</h3>
         <p className="text-xs text-text-muted">
           Field visits with access_issue outcome — habitual &quot;road closed / no access&quot; signal
@@ -265,7 +265,7 @@ export function DefensibleMissPage() {
               </thead>
               <tbody>
                 {anomalies.map((a) => (
-                  <tr key={a.collector_id} className="border-t border-white/[0.06]">
+                  <tr key={a.collector_id} className="border-t border-black/[0.06]">
                     <td className="py-2 pr-3 text-text-primary">{a.collector_name}</td>
                     <td className="py-2 pr-3 tabular-nums">{a.access_issue_count}</td>
                     <td className="py-2 pr-3 tabular-nums">{a.no_discharge_count}</td>

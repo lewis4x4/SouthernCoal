@@ -12,18 +12,18 @@ interface ExceedanceTableProps {
 }
 
 const SEVERITY_CONFIG: Record<ExceedanceSeverity, { label: string; color: string; icon: typeof AlertTriangle }> = {
-  critical: { label: 'Critical', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: AlertTriangle },
+  critical: { label: 'Critical', color: 'bg-red-500/20 text-qo-risk border-red-500/30', icon: AlertTriangle },
   major: { label: 'Major', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: AlertTriangle },
   moderate: { label: 'Moderate', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: AlertTriangle },
   minor: { label: 'Minor', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: AlertTriangle },
 };
 
 const STATUS_CONFIG: Record<ExceedanceStatus, { label: string; color: string; icon: typeof CheckCircle }> = {
-  open: { label: 'Open', color: 'bg-red-500/20 text-red-400', icon: AlertTriangle },
+  open: { label: 'Open', color: 'bg-red-500/20 text-qo-risk', icon: AlertTriangle },
   acknowledged: { label: 'Acknowledged', color: 'bg-yellow-500/20 text-yellow-400', icon: Eye },
   under_investigation: { label: 'Investigating', color: 'bg-blue-500/20 text-blue-400', icon: Clock },
   resolved: { label: 'Resolved', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
-  false_positive: { label: 'False Positive', color: 'bg-gray-500/20 text-gray-400', icon: XCircle },
+  false_positive: { label: 'False Positive', color: 'bg-gray-500/20 text-text-muted', icon: XCircle },
 };
 
 /**
@@ -62,7 +62,7 @@ function Badge({ children, className }: { children: React.ReactNode; className?:
   return (
     <span
       className={clsx(
-        'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border backdrop-blur-sm',
+        'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ',
         className,
       )}
     >
@@ -102,7 +102,7 @@ export function ExceedanceTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-black/[0.08]">
             <th className="text-left py-3 px-4 font-medium text-muted-foreground w-8"></th>
             <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
             <th className="text-left py-3 px-4 font-medium text-muted-foreground">Outfall</th>
@@ -130,8 +130,8 @@ export function ExceedanceTable({
                 <tr
                   key={exceedance.id}
                   className={clsx(
-                    'border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors',
-                    isExpanded && 'bg-white/5',
+                    'border-b border-white/5 hover:bg-qo-nested cursor-pointer transition-colors',
+                    isExpanded && 'bg-qo-nested',
                   )}
                   onClick={() => setExpandedId(isExpanded ? null : exceedance.id)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : exceedance.id); } }}
@@ -170,7 +170,7 @@ export function ExceedanceTable({
                   <td className="py-3 px-4 text-right">
                     <span className={clsx(
                       'font-mono',
-                      exceedance.exceedance_pct && exceedance.exceedance_pct > 50 ? 'text-red-400' : 'text-yellow-400',
+                      exceedance.exceedance_pct && exceedance.exceedance_pct > 50 ? 'text-qo-risk' : 'text-yellow-400',
                     )}>
                       +{exceedance.exceedance_pct?.toFixed(1) || '0'}%
                     </span>
@@ -207,7 +207,7 @@ export function ExceedanceTable({
                   </td>
                 </tr>
                 {isExpanded && (
-                  <tr key={`${exceedance.id}-detail`} className="bg-white/5">
+                  <tr key={`${exceedance.id}-detail`} className="bg-qo-nested">
                     <td colSpan={10} className="p-4">
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
@@ -228,9 +228,9 @@ export function ExceedanceTable({
                         </div>
                       </div>
                       {exceedance.status === 'open' && onMarkFalsePositive && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
+                        <div className="mt-4 pt-4 border-t border-black/[0.08]">
                           <button
-                            className="text-xs px-2 py-1 rounded bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 transition-colors"
+                            className="text-xs px-2 py-1 rounded bg-gray-500/20 text-text-muted hover:bg-gray-500/30 transition-colors"
                             onClick={() => onMarkFalsePositive(exceedance.id)}
                           >
                             Mark as False Positive

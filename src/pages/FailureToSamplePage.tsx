@@ -67,7 +67,7 @@ export function FailureToSamplePage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <DollarSign size={20} className="text-red-400" />
+            <DollarSign size={20} className="text-qo-risk" />
             <h2 className="text-xl font-semibold text-text-primary">
               Failure to Sample Penalties
             </h2>
@@ -82,7 +82,7 @@ export function FailureToSamplePage() {
           <select
             value={filters.year ?? ''}
             onChange={(e) => setFilters({ year: e.target.value ? Number(e.target.value) : null })}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-white/20"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-black/[0.12]"
           >
             <option value="">All Years</option>
             {years.map((y) => (
@@ -97,7 +97,7 @@ export function FailureToSamplePage() {
             onChange={(e) =>
               setFilters({ quarter: e.target.value ? Number(e.target.value) : null })
             }
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-white/20"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-black/[0.12]"
           >
             <option value="">All Quarters</option>
             <option value="1">Q1</option>
@@ -109,7 +109,7 @@ export function FailureToSamplePage() {
           <select
             value={filters.state ?? ''}
             onChange={(e) => setFilters({ state: e.target.value || null })}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-white/20"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-black/[0.12]"
           >
             <option value="">All States</option>
             <option value="KY">Kentucky</option>
@@ -141,8 +141,8 @@ export function FailureToSamplePage() {
               className={cn(
                 'px-3 py-1 rounded-full text-sm transition-colors',
                 timeRange === r.key
-                  ? 'text-white bg-white/15 border border-white/25'
-                  : 'text-slate-400 bg-white/5 border border-white/10 hover:bg-white/10',
+                  ? 'text-text-primary bg-white/15 border border-white/25'
+                  : 'text-slate-400 bg-qo-nested border border-black/[0.08] hover:bg-black/[0.06]',
               )}
             >
               {r.label}

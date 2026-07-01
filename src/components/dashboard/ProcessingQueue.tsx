@@ -102,7 +102,7 @@ export function ProcessingQueue() {
 
   if (allEntries.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl p-12 text-center">
+      <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  p-12 text-center">
         <FileText size={40} className="mx-auto mb-3 text-text-muted" />
         <p className="text-text-secondary text-sm font-medium">No files in the queue</p>
         <p className="text-text-muted text-xs mt-1">
@@ -113,9 +113,9 @@ export function ProcessingQueue() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06]">
         <h3 className="text-sm font-semibold text-text-primary">
           Processing Queue
           <span className="ml-2 text-xs font-normal text-text-secondary">
@@ -168,7 +168,7 @@ export function ProcessingQueue() {
           )}
           <button
             onClick={() => refetch()}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
             title="Refresh queue"
             aria-label="Refresh queue"
           >
@@ -180,7 +180,7 @@ export function ProcessingQueue() {
       {failedEntries.length > 0 && (
         <div className="mx-5 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3">
           <div className="flex items-start gap-2 text-xs text-red-200/90">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-400" aria-hidden />
+            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-qo-risk" aria-hidden />
             <span>
               <span className="font-semibold text-red-300">{failedEntries.length} failed</span>
               {' '}
@@ -255,9 +255,9 @@ export function ProcessingQueue() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-white/[0.06]"
+            className="overflow-hidden border-t border-black/[0.06]"
           >
-            <div className="px-5 py-4 bg-white/[0.01]">
+            <div className="px-5 py-4 bg-white">
               {expandedEntry.status === 'failed' && (
                 <ErrorForensics
                   errorLog={expandedEntry.error_log as unknown[] | null}

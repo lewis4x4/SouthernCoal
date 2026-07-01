@@ -183,12 +183,12 @@ export function ReportSchedulePanel({ reportDef }: Props) {
       </div>
 
       {/* Active toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+      <div className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2.5">
         <span className="text-xs font-medium text-text-secondary">Active</span>
         <button
           onClick={() => setIsActive(!isActive)}
           className={`relative h-5 w-9 rounded-full transition-colors ${
-            isActive ? 'bg-green-500' : 'bg-white/10'
+            isActive ? 'bg-green-500' : 'bg-black/[0.06]'
           }`}
         >
           <span
@@ -210,7 +210,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
               className={`rounded-lg px-2.5 py-1.5 text-[11px] transition-all border ${
                 cronExpr === preset.cron
                   ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                  : 'bg-white/[0.02] border-white/[0.06] text-text-muted hover:border-white/[0.1]'
+                  : 'bg-qo-nested border-black/[0.06] text-text-muted hover:border-white/[0.1]'
               }`}
             >
               {preset.label}
@@ -227,7 +227,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
           value={cronExpr}
           onChange={(e) => setCronExpr(e.target.value)}
           placeholder="0 7 * * 1"
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary font-mono placeholder:text-text-muted focus:outline-none focus:border-amber-500/40"
+          className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary font-mono placeholder:text-text-muted focus:outline-none focus:border-amber-500/40"
         />
         <p className="text-[10px] text-text-muted">min hour day month weekday</p>
       </div>
@@ -238,7 +238,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
         <select
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500/40"
+          className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500/40"
         >
           <option value="America/New_York">Eastern (ET)</option>
           <option value="America/Chicago">Central (CT)</option>
@@ -250,7 +250,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
 
       {/* Last/Next run info */}
       {schedule && (
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-1.5">
+        <div className="rounded-lg border border-black/[0.06] bg-qo-nested p-3 space-y-1.5">
           <div className="flex justify-between text-xs">
             <span className="text-text-muted">Last run</span>
             <span className="text-text-secondary font-mono">
@@ -279,7 +279,7 @@ export function ReportSchedulePanel({ reportDef }: Props) {
           <button
             onClick={deleteSchedule}
             disabled={saving}
-            className="rounded-lg bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            className="rounded-lg bg-red-500/10 px-4 py-2 text-xs font-semibold text-qo-risk hover:bg-red-500/20 transition-colors disabled:opacity-50"
           >
             Delete
           </button>

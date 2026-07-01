@@ -8,10 +8,10 @@ import type { EddParagraph49ReviewStatus } from '@/lib/eddParagraph49';
 import type { EddParagraph49Evaluation } from '@/types/eddParagraph49';
 
 const STATUS_COLORS: Record<EddParagraph49ReviewStatus, string> = {
-  pending: 'bg-white/[0.05] text-text-secondary border-white/[0.08]',
-  acknowledged: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  pending: 'bg-black/[0.03] text-text-secondary border-black/[0.08]',
+  acknowledged: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
   disputed: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  resolved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 type FlagFilter = 'late' | 'exceedance_only' | null;
@@ -70,13 +70,13 @@ export function LateIncompleteEddPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <Clock size={20} className="text-cyan-400" />
+          <Clock size={20} className="text-qo-accent" />
           <h2 className="text-xl font-semibold text-text-primary">Late &amp; Incomplete EDDs</h2>
         </div>
         <p className="mt-1 text-sm text-text-secondary">
           CD ¶49 advisory — 48-hour analysis-to-arrival clock and exceedance-only transmittal flags
         </p>
-        <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-400/90">
+        <p className="mt-1 text-[10px] uppercase tracking-wide text-qo-ochre-text/90">
           DRAFT — for counsel review; not verified penalty amounts or legal conclusions
         </p>
       </div>
@@ -104,9 +104,9 @@ export function LateIncompleteEddPage() {
               className={cn(
                 'rounded-xl border px-4 py-3 text-left transition',
                 isActive
-                  ? 'border-cyan-500/40 bg-cyan-500/10'
-                  : 'border-white/[0.08] bg-white/[0.02]',
-                isFilter && 'hover:bg-white/[0.04]',
+                  ? 'border-qo-accent/40 bg-qo-accent/10'
+                  : 'border-black/[0.08] bg-qo-nested',
+                isFilter && 'hover:bg-black/[0.04]',
                 !isFilter && 'cursor-default',
               )}
             >
@@ -128,7 +128,7 @@ export function LateIncompleteEddPage() {
           <Loader2 size={20} className="animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+        <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-8 text-center">
           <p className="text-sm font-medium text-text-primary">No open ¶49 flags</p>
           <p className="mt-2 text-xs text-text-muted max-w-md mx-auto">
             Evaluations are created automatically on each lab EDD import via import-lab-data.
@@ -136,10 +136,10 @@ export function LateIncompleteEddPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+          <div className="overflow-hidden rounded-xl border border-black/[0.08]">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
-                <thead className="bg-white/[0.03] text-text-muted uppercase tracking-wide">
+                <thead className="bg-qo-nested text-text-muted uppercase tracking-wide">
                   <tr>
                     <th className="px-3 py-2 font-medium">Lab</th>
                     <th className="px-3 py-2 font-medium">State</th>
@@ -156,8 +156,8 @@ export function LateIncompleteEddPage() {
                       key={row.id}
                       onClick={() => setSelectedId(row.id)}
                       className={cn(
-                        'cursor-pointer border-t border-white/[0.06] hover:bg-white/[0.04]',
-                        selectedId === row.id && 'bg-cyan-500/5',
+                        'cursor-pointer border-t border-black/[0.06] hover:bg-black/[0.04]',
+                        selectedId === row.id && 'bg-qo-accent/5',
                       )}
                     >
                       <td className="px-3 py-2.5 text-text-primary">{row.lab_name ?? '—'}</td>
@@ -192,7 +192,7 @@ export function LateIncompleteEddPage() {
           </div>
 
           {selected && (
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+            <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-4 space-y-3">
               <h3 className="text-sm font-semibold text-text-primary">Triage</h3>
               <dl className="space-y-2 text-xs">
                 <div>
@@ -224,7 +224,7 @@ export function LateIncompleteEddPage() {
                         type="button"
                         disabled={saving}
                         onClick={() => void handleStatus(status)}
-                        className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[10px] font-medium text-text-primary hover:bg-white/[0.06] disabled:opacity-50"
+                        className="rounded-lg border border-black/[0.12] px-3 py-1.5 text-[10px] font-medium text-text-primary hover:bg-black/[0.05] disabled:opacity-50"
                       >
                         {EDD_REVIEW_STATUS_LABELS[status]}
                       </button>

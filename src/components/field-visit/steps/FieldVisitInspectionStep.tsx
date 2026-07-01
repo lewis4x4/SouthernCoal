@@ -66,7 +66,7 @@ function YesNoToggle({
         className={`min-h-11 rounded-xl border text-sm font-medium transition-colors ${
           value === true
             ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
-            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+            : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
         } disabled:opacity-60`}
       >
         Yes
@@ -79,7 +79,7 @@ function YesNoToggle({
         className={`min-h-11 rounded-xl border text-sm font-medium transition-colors ${
           value === false
             ? 'border-amber-500/30 bg-amber-500/15 text-amber-100'
-            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+            : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
         } disabled:opacity-60`}
       >
         No
@@ -153,7 +153,7 @@ export function FieldVisitInspectionStep({
             className={`min-h-12 rounded-2xl border text-base font-medium transition-colors ${
               canReachSite
                 ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
-                : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+                : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
             } disabled:opacity-60`}
           >
             Yes
@@ -166,7 +166,7 @@ export function FieldVisitInspectionStep({
             className={`min-h-12 rounded-2xl border text-base font-medium transition-colors ${
               !canReachSite
                 ? 'border-amber-500/30 bg-amber-500/15 text-amber-100'
-                : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+                : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
             } disabled:opacity-60`}
           >
             No
@@ -189,7 +189,7 @@ export function FieldVisitInspectionStep({
                   ) || null,
                 })}
               disabled={visitLocked}
-              className="w-full min-h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-text-primary outline-none"
+              className="w-full min-h-11 rounded-xl border border-black/[0.08] bg-qo-nested px-3 text-sm text-text-primary outline-none"
             >
               <option value="">Select type</option>
               {OBSTRUCTION_TYPE_OPTIONS.map((option) => (
@@ -199,7 +199,7 @@ export function FieldVisitInspectionStep({
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-amber-200/80">
-              Describe the obstruction <span className="text-cyan-200/90">(required)</span>
+              Describe the obstruction <span className="text-qo-accent/90">(required)</span>
             </span>
             <textarea
               value={obstruction.details}
@@ -213,7 +213,7 @@ export function FieldVisitInspectionStep({
               disabled={visitLocked}
               rows={2}
               placeholder="What is blocking or impairing the outlet?"
-              className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
+              className="w-full resize-none rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
             />
           </label>
 
@@ -247,8 +247,8 @@ export function FieldVisitInspectionStep({
                   onClick={() => onSiteConditionChange(cond.value)}
                   className={`min-h-12 rounded-2xl border px-4 text-left text-base font-medium transition-colors ${
                     selected
-                      ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
-                      : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05] active:bg-white/[0.08]'
+                      ? 'border-qo-accent/35 bg-qo-accent/15 text-qo-accent'
+                      : 'border-black/[0.06] bg-qo-nested text-text-secondary hover:bg-black/[0.04] active:bg-black/[0.06]'
                   } disabled:opacity-60`}
                 >
                   {cond.label}
@@ -261,8 +261,8 @@ export function FieldVisitInspectionStep({
 
       {/* Part C: Standing water sub-questions */}
       {canReachSite && siteCondition === 'standing_water' && (
-        <div className="space-y-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-4">
-          <div className="text-sm font-medium text-cyan-200/80">Standing water verification</div>
+        <div className="space-y-4 rounded-2xl border border-qo-accent/15 bg-qo-accent/[0.04] p-4">
+          <div className="text-sm font-medium text-qo-accent/80">Standing water verification</div>
 
           <div className="space-y-1.5">
             <span className="text-sm text-text-secondary">
@@ -306,7 +306,7 @@ export function FieldVisitInspectionStep({
            standingWaterChecks.noDisturbance === true &&
            standingWaterChecks.pointVerified === true && (
             <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-qo-sage-text" aria-hidden />
               <span className="text-sm text-emerald-100">Standing water is sampleable — proceed to collection</span>
             </div>
           )}
@@ -315,7 +315,7 @@ export function FieldVisitInspectionStep({
             standingWaterChecks.noDisturbance === false ||
             standingWaterChecks.pointVerified === false) && (
             <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
-              <XCircle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+              <XCircle className="h-4 w-4 shrink-0 text-qo-ochre-text" aria-hidden />
               <span className="text-sm text-amber-100">Sample cannot be collected — document the condition below</span>
             </div>
           )}
@@ -330,7 +330,7 @@ export function FieldVisitInspectionStep({
           </div>
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-text-muted">
-              Describe the observed condition <span className="text-cyan-200/90">(required)</span>
+              Describe the observed condition <span className="text-qo-accent/90">(required)</span>
             </span>
             <textarea
               value={notCollectableNotes}
@@ -338,7 +338,7 @@ export function FieldVisitInspectionStep({
               disabled={visitLocked}
               rows={3}
               placeholder="Describe what you observed at the monitoring point"
-              className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
+              className="w-full resize-none rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
             />
           </label>
           <div className="space-y-2">
@@ -355,9 +355,9 @@ export function FieldVisitInspectionStep({
 
       {/* Visual stream flow (WV receiving-stream style) — only for applicable outfall types */}
       {canReachSite && siteCondition === 'flowing_discharge' && streamFlowEstimationEnabled && (
-        <div className="space-y-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-4">
+        <div className="space-y-4 rounded-2xl border border-qo-accent/15 bg-qo-accent/[0.04] p-4">
           <div>
-            <div className="text-sm font-medium text-cyan-100">Estimated Stream Flow</div>
+            <div className="text-sm font-medium text-qo-accent">Estimated Stream Flow</div>
             <p className="mt-1 text-xs text-text-secondary">
               Visually assess the stream and select the best match. Consider stream width, depth, and water
               velocity.
@@ -384,8 +384,8 @@ export function FieldVisitInspectionStep({
                     }
                     className={`min-h-12 rounded-2xl border px-4 py-3 text-left text-base font-medium transition-colors ${
                       selected
-                        ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
-                        : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05] active:bg-white/[0.08]'
+                        ? 'border-qo-accent/35 bg-qo-accent/15 text-qo-accent'
+                        : 'border-black/[0.06] bg-qo-nested text-text-secondary hover:bg-black/[0.04] active:bg-black/[0.06]'
                     } disabled:opacity-60`}
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
@@ -435,7 +435,7 @@ export function FieldVisitInspectionStep({
                     });
                   }}
                   placeholder={String(FLOW_CATEGORY_MIDPOINT_CFS[inspection.flow_category])}
-                  className="w-full min-h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
+                  className="w-full min-h-11 rounded-xl border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
                 />
               </label>
 
@@ -455,8 +455,8 @@ export function FieldVisitInspectionStep({
                         }
                         className={`min-h-10 rounded-full border px-3 py-2 text-left text-sm font-medium transition-colors ${
                           selected
-                            ? 'border-cyan-400/35 bg-cyan-500/15 text-cyan-100'
-                            : 'border-white/[0.08] bg-white/[0.03] text-text-secondary hover:bg-white/[0.06]'
+                            ? 'border-qo-accent/35 bg-qo-accent/15 text-qo-accent'
+                            : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
                         } disabled:opacity-60`}
                       >
                         <span className="block">{opt.label}</span>
@@ -473,7 +473,7 @@ export function FieldVisitInspectionStep({
 
       {canReachSite && siteCondition === 'flowing_discharge' && streamFlowEstimateDone && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-qo-sage-text" aria-hidden />
           <span className="text-sm text-emerald-100">
             {streamFlowEstimationEnabled
               ? 'Stream flow estimate captured — proceed to sample collection'
@@ -493,7 +493,7 @@ export function FieldVisitInspectionStep({
           rows={2}
           disabled={visitLocked}
           placeholder="Any additional observations about the outlet condition"
-          className="w-full resize-none rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
+          className="w-full resize-none rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 outline-none"
         />
       </label>
     </div>

@@ -30,11 +30,11 @@ export const STATUS_LABELS: Record<RoadmapStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<RoadmapStatus, string> = {
-  not_started: 'bg-white/5 text-text-muted border-white/10',
+  not_started: 'bg-qo-nested text-text-muted border-black/[0.08]',
   in_progress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  blocked: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  complete: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  na: 'bg-white/5 text-text-muted border-white/10',
+  blocked: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  complete: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  na: 'bg-qo-nested text-text-muted border-black/[0.08]',
 };
 
 export const OWNER_LABELS: Record<OwnerType, string> = {
@@ -50,9 +50,9 @@ export const OWNER_COLORS: Record<OwnerType, string> = {
   you: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   tom: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   scc_mgmt: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  both: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  legal: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  software: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  both: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
+  legal: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  software: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 export const PHASE_LABELS: Record<number, string> = {

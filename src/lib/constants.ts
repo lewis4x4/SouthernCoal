@@ -280,9 +280,9 @@ export const TIER_DESCRIPTIONS: Record<PriorityTier, string> = {
 };
 
 export const TIER_COLORS: Record<PriorityTier, string> = {
-  1: 'bg-red-500/10 text-red-400 border-red-500/20',
-  2: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  3: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  1: 'bg-red-500/10 text-qo-risk border-red-500/20',
+  2: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  3: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
 };
 
 export const TIER_ICONS: Record<PriorityTier, string> = {

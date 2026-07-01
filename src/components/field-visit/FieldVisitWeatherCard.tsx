@@ -39,7 +39,7 @@ export function FieldVisitWeatherCard({
 
   return (
     <div
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5"
+      className="rounded-2xl border border-black/[0.08] bg-qo-nested p-5"
       role="region"
       aria-label="Weather and site conditions"
     >
@@ -49,7 +49,7 @@ export function FieldVisitWeatherCard({
             Weather and site conditions
           </h3>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-            <span className="font-medium text-cyan-200/90">System weather</span> is pulled from Open-Meteo at your
+            <span className="font-medium text-qo-accent/90">System weather</span> is pulled from Open-Meteo at your
             start GPS when you start the visit and are online (reference only).{' '}
             <span className="font-medium text-text-primary">Observed at site</span> is what you see at the outlet —
             always review and supplement.
@@ -77,7 +77,7 @@ export function FieldVisitWeatherCard({
       ) : null}
 
       {canLoadWeatherAfterStart ? (
-        <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">
+        <div className="mt-4 rounded-xl border border-qo-accent/20 bg-qo-accent/[0.06] px-4 py-3 text-sm text-qo-accent">
           System weather will load automatically after you press <span className="font-medium">Start visit</span>.
           Capture start GPS first so the request uses the correct coordinates.
         </div>
@@ -149,7 +149,7 @@ export function FieldVisitWeatherCard({
           disabled={visitLocked}
           rows={3}
           placeholder="e.g. Light rain at parking area; dry channel at discharge point; wind from NW."
-          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-base text-text-primary outline-none"
+          className="w-full rounded-2xl border border-black/[0.08] bg-qo-nested px-4 py-3.5 text-base text-text-primary outline-none"
         />
       </label>
     </div>

@@ -131,10 +131,10 @@ function TableResults({ data, columns }: { data: Record<string, unknown>[]; colu
   return (
     <div
       ref={parentRef}
-      className="max-h-[500px] overflow-auto rounded-xl border border-white/[0.06]"
+      className="max-h-[500px] overflow-auto rounded-xl border border-black/[0.06]"
     >
       <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-white/[0.06]">
+        <thead className="sticky top-0 z-10 bg-black/[0.04]">
           <tr>
             {displayColumns.map((col) => (
               <th
@@ -155,7 +155,7 @@ function TableResults({ data, columns }: { data: Record<string, unknown>[]; colu
                   return (
                     <div
                       key={vRow.index}
-                      className="absolute left-0 flex w-full items-center border-b border-white/[0.04] hover:bg-blue-500/[0.04]"
+                      className="absolute left-0 flex w-full items-center border-b border-black/[0.05] hover:bg-blue-500/[0.04]"
                       style={{
                         top: vRow.start,
                         height: vRow.size,
@@ -181,7 +181,7 @@ function TableResults({ data, columns }: { data: Record<string, unknown>[]; colu
             data.map((row, i) => (
               <tr
                 key={i}
-                className={`border-b border-white/[0.04] hover:bg-blue-500/[0.04] ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                className={`border-b border-black/[0.05] hover:bg-blue-500/[0.04] ${i % 2 === 1 ? 'bg-qo-nested' : ''}`}
               >
                 {displayColumns.map((col) => (
                   <td
@@ -263,7 +263,7 @@ function SummaryResults({ data }: { data: Record<string, unknown>[]; columns: st
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+    <div className="rounded-xl border border-black/[0.06] bg-qo-nested p-8 text-center">
       <p className="text-sm text-text-secondary">No results found. Try rephrasing your question.</p>
     </div>
   );
@@ -281,7 +281,7 @@ function ErrorState({
   return (
     <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
       <div className="flex items-start gap-3">
-        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-qo-risk" />
         <div className="space-y-2">
           <p className="text-sm text-text-primary">{error}</p>
           {suggestion && (
@@ -290,7 +290,7 @@ function ErrorState({
           {onRetry && (
             <button
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
             >
               <RefreshCw className="h-3 w-3" />
               Try again
@@ -347,7 +347,7 @@ function ExportCSV({
   return (
     <button
       onClick={handleExport}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
     >
       <Download className="h-3 w-3" />
       Export CSV

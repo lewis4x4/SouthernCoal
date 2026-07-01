@@ -85,7 +85,7 @@ export function CoverageGaps() {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3">
+      <div className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-qo-nested px-5 py-3">
         {/* Category tabs */}
         <div className="flex items-center gap-1">
           {CATEGORY_TABS.map((tab) => (
@@ -95,8 +95,8 @@ export function CoverageGaps() {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
                 category === tab.key
-                  ? 'bg-white/10 text-white shadow-lg shadow-white/5'
-                  : 'text-text-muted hover:bg-white/[0.05] hover:text-text-secondary',
+                  ? 'bg-black/[0.06] text-text-primary shadow-lg shadow-white/5'
+                  : 'text-text-muted hover:bg-black/[0.04] hover:text-text-secondary',
               )}
             >
               {tab.label}
@@ -108,7 +108,7 @@ export function CoverageGaps() {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-text-secondary focus:border-purple-500/50 focus:outline-none"
+          className="rounded-md border border-black/[0.08] bg-qo-nested px-2.5 py-1.5 text-xs text-text-secondary focus:border-purple-500/50 focus:outline-none"
         >
           {YEARS.map((y) => (
             <option key={y} value={y}>
@@ -119,18 +119,18 @@ export function CoverageGaps() {
       </div>
 
       {/* Matrix */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      <div className="rounded-xl border border-black/[0.06] bg-qo-nested overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-crystal-surface/90 backdrop-blur-sm px-4 py-3 text-left text-[10px] uppercase tracking-widest text-text-muted font-medium border-b border-white/[0.06]">
+                <th className="sticky left-0 z-10 bg-white90  px-4 py-3 text-left text-[10px] uppercase tracking-widest text-text-muted font-medium border-b border-black/[0.06]">
                   State
                 </th>
                 {MONTH_LABELS.map((m) => (
                   <th
                     key={m}
-                    className="px-2 py-3 text-center text-[10px] uppercase tracking-widest text-text-muted font-medium border-b border-white/[0.06]"
+                    className="px-2 py-3 text-center text-[10px] uppercase tracking-widest text-text-muted font-medium border-b border-black/[0.06]"
                   >
                     {m}
                   </th>
@@ -140,7 +140,7 @@ export function CoverageGaps() {
             <tbody>
               {STATES.map((state) => (
                 <tr key={state.code} className="group">
-                  <td className="sticky left-0 z-10 bg-crystal-surface/90 backdrop-blur-sm px-4 py-2.5 text-sm font-medium text-text-primary border-b border-white/[0.04]">
+                  <td className="sticky left-0 z-10 bg-white90  px-4 py-2.5 text-sm font-medium text-text-primary border-b border-black/[0.05]">
                     <span className="mr-1.5">{state.code}</span>
                     <span className="text-[10px] text-text-muted font-normal hidden sm:inline">
                       {state.name}
@@ -149,7 +149,7 @@ export function CoverageGaps() {
                   {cells[state.code]?.map((cell) => (
                     <td
                       key={`${state.code}-${cell.month}`}
-                      className="px-1 py-2.5 text-center border-b border-white/[0.04]"
+                      className="px-1 py-2.5 text-center border-b border-black/[0.05]"
                     >
                       <CoverageCell cell={cell} />
                     </td>
@@ -162,20 +162,20 @@ export function CoverageGaps() {
       </div>
 
       {/* Summary footer */}
-      <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3">
+      <div className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-qo-nested px-5 py-3">
         <div className="flex items-center gap-4 text-sm">
           <span className="text-text-secondary">
             <span className="font-semibold text-text-primary">{coveredCount}</span>/{totalCells} covered
             <span className="ml-1 text-text-muted">({pct}%)</span>
           </span>
           <span className="text-text-muted">·</span>
-          <span className={cn('font-medium', gapCount > 0 ? 'text-red-400' : 'text-emerald-400')}>
+          <span className={cn('font-medium', gapCount > 0 ? 'text-qo-risk' : 'text-qo-sage-text')}>
             {gapCount} gap{gapCount !== 1 ? 's' : ''}
           </span>
           {unplacedCount > 0 && (
             <>
               <span className="text-text-muted">·</span>
-              <span className="text-amber-400" title="Files missing extracted date range — not shown in matrix">
+              <span className="text-qo-ochre-text" title="Files missing extracted date range — not shown in matrix">
                 {unplacedCount} file{unplacedCount !== 1 ? 's' : ''} undated
               </span>
             </>
@@ -201,7 +201,7 @@ export function CoverageGaps() {
 
           <button
             onClick={exportCSV}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+            className="flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05]"
           >
             <Download size={12} />
             Export CSV
@@ -224,10 +224,10 @@ function CoverageCell({ cell }: { cell: { status: string; count: number; fileNam
       title={tooltip}
       className={cn(
         'mx-auto h-8 w-8 rounded-md border flex items-center justify-center text-[10px] font-medium cursor-default transition-all',
-        cell.status === 'empty' && 'bg-red-500/10 border-red-500/20 text-red-400/60',
-        cell.status === 'has_data' && 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-        cell.status === 'processing' && 'bg-amber-500/10 border-amber-500/20 text-amber-400 animate-pulse',
-        cell.status === 'failed' && 'bg-red-500/20 border-red-500/30 text-red-400',
+        cell.status === 'empty' && 'bg-red-500/10 border-red-500/20 text-qo-risk/60',
+        cell.status === 'has_data' && 'bg-emerald-500/10 border-emerald-500/20 text-qo-sage-text',
+        cell.status === 'processing' && 'bg-amber-500/10 border-amber-500/20 text-qo-ochre-text animate-pulse',
+        cell.status === 'failed' && 'bg-red-500/20 border-red-500/30 text-qo-risk',
       )}
     >
       {cell.count > 0 ? cell.count : ''}

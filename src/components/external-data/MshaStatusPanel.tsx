@@ -25,7 +25,7 @@ export function MshaStatusPanel({ mineId }: Props) {
         <button
           onClick={refetchMsha}
           disabled={mshaLoading || !configured}
-          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary disabled:opacity-40"
+          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary disabled:opacity-40"
           title="Refresh MSHA data"
         >
           {mshaLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -55,13 +55,13 @@ export function MshaStatusPanel({ mineId }: Props) {
             {mshaInspections.slice(0, 10).map((insp) => (
               <div
                 key={insp.id}
-                className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
               >
                 <div>
                   <p className="text-xs text-text-primary">
                     {insp.inspection_type || 'Inspection'}
                     {insp.significant_substantial && (
-                      <span className="ml-1 rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] text-red-400 font-medium">
+                      <span className="ml-1 rounded-full bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 text-[9px] text-qo-risk font-medium">
                         S&S
                       </span>
                     )}
@@ -76,7 +76,7 @@ export function MshaStatusPanel({ mineId }: Props) {
                 {insp.proposed_penalty != null && insp.proposed_penalty > 0 && (
                   <span className={cn(
                     'text-xs font-mono',
-                    insp.proposed_penalty > 5000 ? 'text-red-400' : 'text-amber-400',
+                    insp.proposed_penalty > 5000 ? 'text-qo-risk' : 'text-qo-ochre-text',
                   )}>
                     ${insp.proposed_penalty.toLocaleString()}
                   </span>
@@ -88,7 +88,7 @@ export function MshaStatusPanel({ mineId }: Props) {
       )}
 
       {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+      <div className="mt-4 pt-3 border-t border-black/[0.06] flex items-center justify-between">
         {hasData && (
           <div className="flex items-center gap-1 text-[10px] text-text-muted">
             <Clock size={10} />

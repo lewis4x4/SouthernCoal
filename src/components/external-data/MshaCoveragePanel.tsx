@@ -25,7 +25,7 @@ export function MshaCoveragePanel() {
     <section className="space-y-4" aria-labelledby="msha-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <HardHat size={18} className="text-amber-400" />
+          <HardHat size={18} className="text-qo-ochre-text" />
           <div>
             <h2 id="msha-heading" className="text-sm font-semibold text-text-primary">
               MSHA Sync &amp; Abatement Clocks
@@ -40,7 +40,7 @@ export function MshaCoveragePanel() {
             type="button"
             onClick={() => void refreshMap('refresh')}
             disabled={refreshing}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.12] px-3 py-2 text-xs font-medium text-text-primary hover:bg-white/[0.06] disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg border border-black/[0.12] px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.05] disabled:opacity-40"
           >
             {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Refresh map
@@ -93,7 +93,7 @@ export function MshaCoveragePanel() {
       </div>
 
       {driftSummary && (
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[10px] text-text-muted">
+        <div className="rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-[10px] text-text-muted">
           Latest {drift?.run_type}: {String(driftSummary.mapped ?? '—')} mapped ·{' '}
           {String(driftSummary.review ?? '—')} review ·{' '}
           {String(driftSummary.deactivated ?? '—')} deactivated
@@ -105,7 +105,7 @@ export function MshaCoveragePanel() {
 
         <SpotlightCard spotlightColor="rgba(245, 158, 11, 0.06)" className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={16} className="text-amber-400" />
+            <AlertTriangle size={16} className="text-qo-ochre-text" />
             <h3 className="text-sm font-semibold text-text-primary">Abatement at risk</h3>
           </div>
           {abatementLoading ? (
@@ -119,14 +119,14 @@ export function MshaCoveragePanel() {
               {rows.slice(0, 12).map((row) => (
                 <div
                   key={row.id}
-                  className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                  className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-text-primary">Mine {row.mine_id}</p>
                     <span
                       className={cn(
                         'text-[10px] font-medium uppercase',
-                        row.urgency === 'overdue' ? 'text-red-400' : 'text-amber-400',
+                        row.urgency === 'overdue' ? 'text-qo-risk' : 'text-qo-ochre-text',
                       )}
                     >
                       {row.urgency === 'overdue' ? 'Overdue' : 'Due soon'}
@@ -141,7 +141,7 @@ export function MshaCoveragePanel() {
             </div>
           )}
           {(overdue.length > 0 || dueSoon.length > 0) && (
-            <p className="mt-3 text-[10px] text-text-muted border-t border-white/[0.06] pt-3">
+            <p className="mt-3 text-[10px] text-text-muted border-t border-black/[0.06] pt-3">
               {overdue.length} overdue · {dueSoon.length} due within 14 days
             </p>
           )}
@@ -168,7 +168,7 @@ export function MshaCoveragePanel() {
               </thead>
               <tbody>
                 {reviewMines.map((mine) => (
-                  <tr key={mine.mine_id} className="border-t border-white/[0.06]">
+                  <tr key={mine.mine_id} className="border-t border-black/[0.06]">
                     <td className="py-1.5 pr-3 font-mono">{mine.mine_id}</td>
                     <td className="py-1.5 pr-3">{mine.operator_name}</td>
                     <td className="py-1.5 pr-3">{mine.state}</td>

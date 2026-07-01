@@ -17,7 +17,7 @@ export function SearchSQLPreview({ sql, description }: SearchSQLPreviewProps) {
   }
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02]">
+    <div className="rounded-lg border border-black/[0.06] bg-qo-nested">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-muted transition-colors hover:text-text-secondary"
@@ -35,7 +35,7 @@ export function SearchSQLPreview({ sql, description }: SearchSQLPreviewProps) {
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.06] px-3 py-3">
+            <div className="border-t border-black/[0.06] px-3 py-3">
               <p className="mb-2 text-xs text-text-secondary">{description}</p>
               <div className="relative">
                 <pre className="overflow-x-auto rounded-md bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-emerald-300/80">
@@ -43,7 +43,7 @@ export function SearchSQLPreview({ sql, description }: SearchSQLPreviewProps) {
                 </pre>
                 <button
                   onClick={handleCopy}
-                  className="absolute top-2 right-2 rounded p-1 text-text-muted transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
+                  className="absolute top-2 right-2 rounded p-1 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary"
                   title="Copy SQL"
                 >
                   <Copy className="h-3.5 w-3.5" />

@@ -94,8 +94,8 @@ export function CorrectionRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-crystal-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 ">
+      <div className="w-full max-w-lg rounded-2xl border border-black/[0.08] bg-crystal-surface p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-5 flex items-start justify-between">
           <div>
@@ -104,7 +104,7 @@ export function CorrectionRequestModal({
               {ENTITY_TYPE_LABELS[entityType]} &middot; Field: <span className="font-mono text-purple-400">{fieldName}</span>
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-white/[0.05]">
+          <button onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-black/[0.04]">
             <X size={18} />
           </button>
         </div>
@@ -126,7 +126,7 @@ export function CorrectionRequestModal({
               value={proposedValue}
               onChange={e => setProposedValue(e.target.value)}
               placeholder="Enter the corrected value"
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-white/[0.15]"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-white/[0.15]"
             />
           </div>
 
@@ -140,11 +140,11 @@ export function CorrectionRequestModal({
               onChange={e => setJustification(e.target.value)}
               placeholder="Explain why this correction is needed — reference lab reports, field notes, or permit conditions..."
               rows={3}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-white/[0.15]"
+              className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-white/[0.15]"
             />
             <div className={cn(
               'mt-0.5 text-right text-[10px]',
-              justification.length >= 20 ? 'text-emerald-400' : 'text-text-muted',
+              justification.length >= 20 ? 'text-qo-sage-text' : 'text-text-muted',
             )}>
               {justification.length}/20
             </div>
@@ -156,14 +156,14 @@ export function CorrectionRequestModal({
               Supporting Evidence <span className="text-text-muted">(optional)</span>
             </label>
             {evidenceFile ? (
-              <div className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+              <div className="flex items-center justify-between rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2">
                 <span className="text-xs text-text-secondary">{evidenceFile.name}</span>
-                <button onClick={() => setEvidenceFile(null)} className="text-text-muted hover:text-red-400">
+                <button onClick={() => setEvidenceFile(null)} className="text-text-muted hover:text-qo-risk">
                   <X size={14} />
                 </button>
               </div>
             ) : (
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/[0.1] bg-white/[0.01] px-3 py-3 text-xs text-text-muted transition-colors hover:border-white/[0.15] hover:bg-white/[0.03]">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/[0.1] bg-white px-3 py-3 text-xs text-text-muted transition-colors hover:border-white/[0.15] hover:bg-qo-nested">
                 <Upload size={14} />
                 <span>Upload PDF, PNG, or JPEG</span>
                 <input
@@ -181,7 +181,7 @@ export function CorrectionRequestModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-xs font-medium text-text-muted transition-colors hover:bg-white/[0.05]"
+            className="rounded-lg px-4 py-2 text-xs font-medium text-text-muted transition-colors hover:bg-black/[0.04]"
           >
             Cancel
           </button>
@@ -191,8 +191,8 @@ export function CorrectionRequestModal({
             className={cn(
               'rounded-lg px-4 py-2 text-xs font-medium transition-colors',
               isValid && !submitting
-                ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                : 'cursor-not-allowed bg-white/[0.03] text-text-muted',
+                ? 'bg-amber-500/10 text-qo-ochre-text hover:bg-amber-500/20'
+                : 'cursor-not-allowed bg-qo-nested text-text-muted',
             )}
           >
             {submitting ? 'Submitting...' : 'Submit for Review'}

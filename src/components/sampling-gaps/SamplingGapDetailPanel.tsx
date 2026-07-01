@@ -26,7 +26,7 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
 
   if (!row) {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-text-muted">
+      <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-6 text-sm text-text-muted">
         Select a gap row to triage. Severity is for internal review — not an asserted penalty.
       </div>
     );
@@ -47,11 +47,11 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-4">
+    <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <GapKindBadge kind={row.gap_kind} />
         <GapSeverityBadge severity={row.severity} />
-        <span className="text-[10px] uppercase tracking-wide text-amber-400/90">
+        <span className="text-[10px] uppercase tracking-wide text-qo-ochre-text/90">
           DRAFT — internal advisory
         </span>
       </div>
@@ -115,7 +115,7 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
           rows={3}
           disabled={!canTriage || saving}
           placeholder="Optional notes for audit trail"
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-white/20"
+          className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-black/[0.12]"
         />
       </div>
 
@@ -128,7 +128,7 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
               disabled={saving}
               onClick={() => void handleStatus(status)}
               className={cn(
-                'rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium',
+                'rounded-lg border border-black/[0.12] bg-black/[0.03] px-3 py-1.5 text-[11px] font-medium',
                 'text-text-primary hover:bg-white/[0.1] disabled:opacity-50',
               )}
             >

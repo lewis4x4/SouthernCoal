@@ -51,7 +51,7 @@ export function ErrorForensics({ errorLog, onRetry, className }: ErrorForensicsP
           {error.action && (
             <button
               onClick={error.action.onClick}
-              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/[0.05] text-text-secondary border border-white/[0.08] hover:bg-white/[0.08] transition-colors"
+              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-black/[0.03] text-text-secondary border border-black/[0.08] hover:bg-black/[0.06] transition-colors"
             >
               {error.action.icon}
               {error.action.label}
@@ -71,7 +71,7 @@ export function ErrorForensics({ errorLog, onRetry, className }: ErrorForensicsP
         </button>
         {showTechnical && (
           <div className="mt-2 relative">
-            <pre className="p-3 rounded-lg bg-crystal-surface text-[11px] text-text-secondary font-mono overflow-x-auto max-h-48 border border-white/[0.04]">
+            <pre className="p-3 rounded-lg bg-crystal-surface text-[11px] text-text-secondary font-mono overflow-x-auto max-h-48 border border-black/[0.05]">
               {JSON.stringify(errorLog, null, 2)}
             </pre>
             <button
@@ -80,7 +80,7 @@ export function ErrorForensics({ errorLog, onRetry, className }: ErrorForensicsP
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
-              className="absolute top-2 right-2 p-1.5 rounded text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+              className="absolute top-2 right-2 p-1.5 rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
               title="Copy error details"
               aria-label="Copy error details"
             >

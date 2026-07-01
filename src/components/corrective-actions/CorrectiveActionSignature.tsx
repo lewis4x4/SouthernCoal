@@ -129,23 +129,23 @@ export function CorrectiveActionSignature({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 "
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-4 bg-surface-elevated border border-white/[0.08] rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md mx-4 bg-surface-elevated border border-black/[0.08] rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between p-5 border-b border-black/[0.06]">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-              <ShieldCheck className="h-5 w-5 text-cyan-400" />
+            <div className="p-2 rounded-lg bg-qo-accent/10 border border-qo-accent/20">
+              <ShieldCheck className="h-5 w-5 text-qo-accent" />
             </div>
             <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -160,9 +160,9 @@ export function CorrectiveActionSignature({
           {/* Signature acknowledgment */}
           <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-qo-ochre-text flex-shrink-0 mt-0.5" />
               <div className="text-sm text-text-secondary">
-                <p className="font-medium text-amber-400 mb-1">
+                <p className="font-medium text-qo-ochre-text mb-1">
                   Legal Acknowledgment
                 </p>
                 <p>
@@ -186,19 +186,19 @@ export function CorrectiveActionSignature({
               placeholder="Password"
               className={cn(
                 'w-full rounded-lg border px-4 py-3 text-sm transition-colors',
-                'bg-white/[0.02] border-white/[0.08]',
+                'bg-qo-nested border-black/[0.08]',
                 'text-text-primary placeholder:text-text-muted',
-                'focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20',
+                'focus:outline-none focus:border-qo-accent/40 focus:ring-1 focus:ring-cyan-500/20',
                 error && 'border-red-500/40 focus:border-red-500/40 focus:ring-red-500/20'
               )}
             />
             {error && (
-              <p className="text-xs text-red-400">{error}</p>
+              <p className="text-xs text-qo-risk">{error}</p>
             )}
           </div>
 
           {/* User info */}
-          <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+          <div className="p-3 rounded-lg bg-qo-nested border border-black/[0.06]">
             <div className="text-xs text-text-muted">Signing as</div>
             <div className="text-sm text-text-primary font-medium">
               {user?.email}

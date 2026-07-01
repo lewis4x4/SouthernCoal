@@ -24,20 +24,20 @@ export function DisclaimerModal({ open, onClose }: DisclaimerModalProps) {
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 "
       onClick={(e) => {
         if (e.target === backdropRef.current) onClose();
       }}
     >
-      <div className="relative w-full max-w-2xl max-h-[80vh] mx-4 rounded-2xl border border-white/[0.08] bg-crystal-surface/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-2xl max-h-[80vh] mx-4 rounded-2xl border border-black/[0.08] bg-white  shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.06]">
           <h2 className="text-lg font-semibold text-text-primary">
             Software Disclaimer & Limitation of Liability
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
           >
             <X size={18} />
           </button>

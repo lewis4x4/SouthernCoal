@@ -27,7 +27,7 @@ export function RoleGuard({ allowedRoles, children, scope = 'assignment' }: Role
   if (availability === 'unavailable') {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-5 text-center">
+        <div className="max-w-md rounded-2xl border border-black/[0.08] bg-qo-nested px-6 py-5 text-center">
           <div className="text-lg font-semibold text-text-primary">Permissions unavailable</div>
           <div className="mt-2 text-sm text-text-secondary">
             The app could not verify your role assignments. Refresh or sign in again before continuing.

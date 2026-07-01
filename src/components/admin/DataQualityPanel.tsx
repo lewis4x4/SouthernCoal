@@ -144,7 +144,7 @@ export function DataQualityPanel() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 text-qo-ochre-text shrink-0 mt-0.5" />
         <div>
           <h4 className="text-sm font-semibold text-amber-300">
             {permits.length} Unconfirmed Permit Statuses
@@ -174,8 +174,8 @@ export function DataQualityPanel() {
             onClick={() => setStateFilter(s)}
             className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all border ${
               stateFilter === s
-                ? 'bg-white/[0.08] border-white/[0.12] text-text-primary'
-                : 'bg-white/[0.02] border-white/[0.06] text-text-muted hover:border-white/[0.1]'
+                ? 'bg-black/[0.06] border-black/[0.12] text-text-primary'
+                : 'bg-qo-nested border-black/[0.06] text-text-muted hover:border-white/[0.1]'
             }`}
           >
             {s === 'all' ? `All (${permits.length})` : `${s} (${permits.filter((p) => p.state_code === s).length})`}
@@ -191,7 +191,7 @@ export function DataQualityPanel() {
             {statePermits.map((permit) => (
               <div
                 key={permit.id}
-                className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="flex items-center justify-between rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export function DataQualityPanel() {
                   <button
                     onClick={() => resolve(permit, 'expired')}
                     disabled={saving === permit.id}
-                    className="rounded-md px-2 py-1 text-[10px] font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium bg-red-500/10 text-qo-risk hover:bg-red-500/20 transition-colors disabled:opacity-50"
                     title="Truly Expired"
                   >
                     <X className="h-3 w-3" />
@@ -228,7 +228,7 @@ export function DataQualityPanel() {
                   <button
                     onClick={() => resolve(permit, 'investigate')}
                     disabled={saving === permit.id}
-                    className="rounded-md px-2 py-1 text-[10px] font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium bg-amber-500/10 text-qo-ochre-text hover:bg-amber-500/20 transition-colors disabled:opacity-50"
                     title="Needs Investigation"
                   >
                     <HelpCircle className="h-3 w-3" />

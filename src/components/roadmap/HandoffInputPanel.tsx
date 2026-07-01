@@ -127,7 +127,7 @@ export function HandoffInputPanel() {
                   flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
                   ${isActive
                     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    : 'bg-white/[0.02] text-text-muted border border-white/[0.08] hover:bg-white/[0.04]'
+                    : 'bg-qo-nested text-text-muted border border-black/[0.08] hover:bg-black/[0.04]'
                   }
                 `}
               >
@@ -147,7 +147,7 @@ export function HandoffInputPanel() {
             type="date"
             value={sourceDate}
             onChange={(e) => setSourceDate(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           />
         </div>
         <div className="space-y-2">
@@ -157,7 +157,7 @@ export function HandoffInputPanel() {
             value={sourceFrom}
             onChange={(e) => setSourceFrom(e.target.value)}
             placeholder="e.g., Tom Lusk"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           />
         </div>
         <div className="space-y-2">
@@ -167,7 +167,7 @@ export function HandoffInputPanel() {
             value={sourceReference}
             onChange={(e) => setSourceReference(e.target.value)}
             placeholder="e.g., RE: Missing Files"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           />
         </div>
       </div>
@@ -196,7 +196,7 @@ export function HandoffInputPanel() {
             placeholder="Paste the email body, text message, call notes, or document content here..."
             rows={12}
             aria-label="Raw content to process"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50 font-mono resize-y min-h-[200px]"
+            className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50 font-mono resize-y min-h-[200px]"
           />
           <p className="text-xs text-text-muted">
             {rawContent.length} characters • Cmd+Enter to process
@@ -231,7 +231,7 @@ export function HandoffInputPanel() {
       {/* Keyboard hint - only for non-file mode */}
       {!isFileMode && (
         <div className="text-center">
-          <kbd className="px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-text-muted">
+          <kbd className="px-2 py-1 text-xs bg-black/[0.03] border border-black/[0.08] rounded text-text-muted">
             Cmd + Enter
           </kbd>
           <span className="text-xs text-text-muted ml-2">to process</span>

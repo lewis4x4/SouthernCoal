@@ -15,11 +15,11 @@ const SOURCE_BADGE: Record<
   },
   manual_entry: {
     label: 'Manual Entry',
-    className: 'bg-amber-500/20 text-amber-400',
+    className: 'bg-amber-500/20 text-qo-ochre-text',
   },
   gauge_upload: {
     label: 'Gauge Upload',
-    className: 'bg-emerald-500/20 text-emerald-400',
+    className: 'bg-emerald-500/20 text-qo-sage-text',
   },
 };
 
@@ -31,14 +31,14 @@ function qualityFlagBadge(flag: string | null) {
   if (!flag) return null;
 
   const map: Record<string, { className: string }> = {
-    STATION_DATA_GAP: { className: 'bg-red-500/20 text-red-400' },
-    STALE: { className: 'bg-amber-500/20 text-amber-400' },
-    NO_DATA: { className: 'bg-red-500/20 text-red-400' },
+    STATION_DATA_GAP: { className: 'bg-red-500/20 text-qo-risk' },
+    STALE: { className: 'bg-amber-500/20 text-qo-ochre-text' },
+    NO_DATA: { className: 'bg-red-500/20 text-qo-risk' },
     ESTIMATED: { className: 'bg-purple-500/20 text-purple-400' },
-    ACCUMULATED: { className: 'bg-cyan-500/20 text-cyan-400' },
+    ACCUMULATED: { className: 'bg-qo-accent/20 text-qo-accent' },
   };
 
-  const style = map[flag] ?? { className: 'bg-white/[0.06] text-text-secondary' };
+  const style = map[flag] ?? { className: 'bg-black/[0.04] text-text-secondary' };
 
   return (
     <span
@@ -90,10 +90,10 @@ export function ReadingsTable({ readings, stations }: ReadingsTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-white/[0.06]">
+    <div className="overflow-x-auto rounded-2xl border border-black/[0.06]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+          <tr className="border-b border-black/[0.06] bg-qo-nested">
             <th className="px-4 py-3 text-left text-xs font-medium text-text-muted">
               Date
             </th>
@@ -120,7 +120,7 @@ export function ReadingsTable({ readings, stations }: ReadingsTableProps) {
             return (
               <tr
                 key={r.id}
-                className="border-b border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                className="border-b border-black/[0.05] hover:bg-black/[0.04] transition-colors"
               >
                 <td className="px-4 py-3 text-text-primary font-mono text-xs whitespace-nowrap">
                   {r.reading_date}

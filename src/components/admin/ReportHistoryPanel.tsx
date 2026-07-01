@@ -48,9 +48,9 @@ export function ReportHistoryPanel() {
 
   const STATUS_STYLES: Record<string, string> = {
     complete: 'bg-green-500/15 text-green-400',
-    generating: 'bg-amber-500/15 text-amber-400 animate-pulse',
+    generating: 'bg-amber-500/15 text-qo-ochre-text animate-pulse',
     pending: 'bg-blue-500/15 text-blue-400',
-    failed: 'bg-red-500/15 text-red-400',
+    failed: 'bg-red-500/15 text-qo-risk',
   };
 
   if (loading) {
@@ -82,7 +82,7 @@ export function ReportHistoryPanel() {
           return (
             <div
               key={r.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2"
+              className="rounded-xl border border-black/[0.06] bg-qo-nested p-3 space-y-2"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
@@ -95,7 +95,7 @@ export function ReportHistoryPanel() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {flagCount > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-amber-400" title={`${flagCount} unconfirmed permits`}>
+                    <span className="flex items-center gap-1 text-[10px] text-qo-ochre-text" title={`${flagCount} unconfirmed permits`}>
                       <AlertTriangle className="h-3 w-3" />
                       {flagCount}
                     </span>
@@ -103,7 +103,7 @@ export function ReportHistoryPanel() {
                   {r.status === 'complete' && r.file_path_csv && (
                     <button
                       onClick={() => downloadReport(r.file_path_csv!)}
-                      className="rounded-lg p-1.5 text-text-muted hover:bg-white/[0.06] hover:text-green-400 transition-colors"
+                      className="rounded-lg p-1.5 text-text-muted hover:bg-black/[0.05] hover:text-green-400 transition-colors"
                       title="Download CSV"
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -124,7 +124,7 @@ export function ReportHistoryPanel() {
               </div>
 
               {r.error_message && (
-                <p className="text-[10px] text-red-400 bg-red-500/5 rounded px-2 py-1 font-mono">
+                <p className="text-[10px] text-qo-risk bg-red-500/5 rounded px-2 py-1 font-mono">
                   {r.error_message}
                 </p>
               )}

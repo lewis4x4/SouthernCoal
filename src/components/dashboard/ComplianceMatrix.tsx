@@ -34,7 +34,7 @@ function setExpectedCount(stateCode: string, count: number) {
 }
 
 const CELL_COLORS: Record<MatrixCellStatus, string> = {
-  empty: 'bg-white/[0.02] border-white/[0.04]',
+  empty: 'bg-qo-nested border-black/[0.05]',
   uploaded: 'bg-status-queued/10 border-status-queued/20',
   processing: 'bg-status-processing/10 border-status-processing/20 animate-pulse-glow-amber',
   imported: 'bg-status-imported/10 border-status-imported/20',
@@ -117,15 +117,15 @@ export function ComplianceMatrix() {
   }, [exportMatrix]);
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.08] bg-qo-nested  overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
         <h3 className="text-sm font-semibold text-text-primary">Compliance Matrix</h3>
         {can('export') && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => exportMatrix('csv')}
-              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
               title="Export as CSV"
             >
               <Download size={10} className="inline mr-0.5" />
@@ -133,7 +133,7 @@ export function ComplianceMatrix() {
             </button>
             <button
               onClick={() => exportMatrix('markdown')}
-              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
+              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
               title="Export as Markdown"
             >
               <Download size={10} className="inline mr-0.5" />
@@ -218,7 +218,7 @@ export function ComplianceMatrix() {
                       value={expectedCounts[state.code] ?? ''}
                       onChange={(e) => handleExpectedChange(state.code, e.target.value)}
                       aria-label={`Expected count for ${state.code}`}
-                      className="w-full h-7 rounded bg-white/[0.03] border border-white/[0.08] text-center text-text-secondary text-[10px] font-mono focus:outline-none focus:border-status-queued/50"
+                      className="w-full h-7 rounded bg-qo-nested border border-black/[0.08] text-center text-text-secondary text-[10px] font-mono focus:outline-none focus:border-status-queued/50"
                       placeholder="—"
                     />
                   </td>

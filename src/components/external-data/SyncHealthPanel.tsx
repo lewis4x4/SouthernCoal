@@ -45,10 +45,10 @@ function StatusPill({ status }: { status: string }) {
   const s = status.toLowerCase();
   const cls =
     s === 'completed'
-      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+      ? 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20'
       : s === 'running'
-        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-        : 'bg-red-500/10 text-red-400 border-red-500/20';
+        ? 'bg-qo-accent/10 text-qo-accent border-qo-accent/20'
+        : 'bg-red-500/10 text-qo-risk border-red-500/20';
   return (
     <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize', cls)}>
       {status}
@@ -78,7 +78,7 @@ export function SyncHealthPanel({
     <section className="space-y-4" aria-labelledby="sync-health-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Activity size={18} className="text-cyan-400" />
+          <Activity size={18} className="text-qo-accent" />
           <div>
             <h2 id="sync-health-heading" className="text-sm font-semibold text-text-primary">
               ECHO Sync Health
@@ -106,7 +106,7 @@ export function SyncHealthPanel({
               type="button"
               onClick={onSyncNow}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
             >
               {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               {isSyncing ? 'Syncing…' : 'Full sync'}
@@ -122,22 +122,22 @@ export function SyncHealthPanel({
         >
           <div className="flex items-center gap-2 mb-2">
             {healthOk ? (
-              <CheckCircle2 size={14} className="text-emerald-400" />
+              <CheckCircle2 size={14} className="text-qo-sage-text" />
             ) : (
-              <AlertTriangle size={14} className="text-amber-400" />
+              <AlertTriangle size={14} className="text-qo-ochre-text" />
             )}
             <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
               Overall
             </span>
           </div>
-          <p className={cn('text-sm font-semibold', healthOk ? 'text-emerald-400' : 'text-amber-300')}>
+          <p className={cn('text-sm font-semibold', healthOk ? 'text-qo-sage-text' : 'text-amber-300')}>
             {runningRun ? 'Sync in progress' : healthOk ? 'Healthy' : 'Needs attention'}
           </p>
         </SpotlightCard>
 
         <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Clock size={14} className="text-cyan-400" />
+            <Clock size={14} className="text-qo-accent" />
             <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
               Last success
             </span>
@@ -161,7 +161,7 @@ export function SyncHealthPanel({
           className="p-4"
         >
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={14} className={failedRuns30d.length > 0 ? 'text-red-400' : 'text-cyan-400'} />
+            <AlertTriangle size={14} className={failedRuns30d.length > 0 ? 'text-qo-risk' : 'text-qo-accent'} />
             <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
               Failed (30d)
             </span>
@@ -169,7 +169,7 @@ export function SyncHealthPanel({
           <p
             className={cn(
               'text-2xl font-bold',
-              failedRuns30d.length > 0 ? 'text-red-400' : 'text-emerald-400',
+              failedRuns30d.length > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
             )}
           >
             {loading ? '…' : failedRuns30d.length}
@@ -181,12 +181,12 @@ export function SyncHealthPanel({
           className="p-4"
         >
           <div className="flex items-center gap-2 mb-2">
-            <Clock size={14} className={staleCount > 0 ? 'text-amber-400' : 'text-cyan-400'} />
+            <Clock size={14} className={staleCount > 0 ? 'text-qo-ochre-text' : 'text-qo-accent'} />
             <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
               Stale permits
             </span>
           </div>
-          <p className={cn('text-2xl font-bold', staleCount > 0 ? 'text-amber-400' : 'text-emerald-400')}>
+          <p className={cn('text-2xl font-bold', staleCount > 0 ? 'text-qo-ochre-text' : 'text-qo-sage-text')}>
             {loading ? '…' : staleCount}
           </p>
           <p className="text-[10px] text-text-muted mt-1">&gt;{ECHO_STALE_DAYS} days since ECHO refresh</p>
@@ -194,11 +194,11 @@ export function SyncHealthPanel({
       </div>
 
       {/* Recent runs */}
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+      <div className="rounded-xl border border-black/[0.08] bg-qo-nested overflow-hidden">
         <button
           type="button"
           onClick={() => setRunsExpanded((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+          className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-qo-nested transition-colors"
         >
           <span className="text-xs font-semibold text-text-primary">
             Recent sync runs ({recentRuns.length})
@@ -206,10 +206,10 @@ export function SyncHealthPanel({
           {runsExpanded ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
         </button>
         {runsExpanded && (
-          <div className="overflow-x-auto border-t border-white/[0.06]">
+          <div className="overflow-x-auto border-t border-black/[0.06]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-text-muted border-b border-white/[0.06]">
+                <tr className="text-text-muted border-b border-black/[0.06]">
                   <th className="text-left py-2 px-3 font-medium">Started</th>
                   <th className="text-left py-2 px-3 font-medium">Run</th>
                   <th className="text-left py-2 px-3 font-medium">Type</th>
@@ -248,9 +248,9 @@ export function SyncHealthPanel({
               Stale permits — not refreshed in {ECHO_STALE_DAYS}+ days ({staleCount})
             </span>
             {staleExpanded ? (
-              <ChevronDown size={14} className="text-amber-400/70" />
+              <ChevronDown size={14} className="text-qo-ochre-text/70" />
             ) : (
-              <ChevronRight size={14} className="text-amber-400/70" />
+              <ChevronRight size={14} className="text-qo-ochre-text/70" />
             )}
           </button>
           {staleExpanded && (
@@ -283,7 +283,7 @@ function SyncRunTableRow({ run }: { run: SyncRunRow }) {
 
   return (
     <>
-      <tr className="border-t border-white/[0.03] hover:bg-white/[0.02]">
+      <tr className="border-t border-white/[0.03] hover:bg-qo-nested">
         <td className="py-2 px-3 text-text-muted whitespace-nowrap">
           {new Date(run.started_at).toLocaleString()}
         </td>
@@ -298,7 +298,7 @@ function SyncRunTableRow({ run }: { run: SyncRunRow }) {
             <button
               type="button"
               onClick={() => setShowErrors((v) => !v)}
-              className="text-red-400 hover:text-red-300 underline-offset-2 hover:underline"
+              className="text-qo-risk hover:text-red-300 underline-offset-2 hover:underline"
             >
               {run.records_failed}
             </button>

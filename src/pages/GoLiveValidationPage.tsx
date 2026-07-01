@@ -21,24 +21,24 @@ type Tab = 'checklist' | 'deploy' | 'smoke' | 'signoff';
 const STATUS_CYCLE: GoLiveItemStatus[] = ['pending', 'in_progress', 'passed', 'failed', 'blocked', 'na'];
 
 const ITEM_STATUS_STYLE: Record<GoLiveItemStatus, { bg: string; text: string; label: string }> = {
-  pending:     { bg: 'bg-white/5',        text: 'text-text-secondary', label: 'Pending' },
-  in_progress: { bg: 'bg-cyan-500/15',    text: 'text-cyan-300',       label: 'In Progress' },
+  pending:     { bg: 'bg-qo-nested',        text: 'text-text-secondary', label: 'Pending' },
+  in_progress: { bg: 'bg-qo-accent/15',    text: 'text-qo-accent',       label: 'In Progress' },
   passed:      { bg: 'bg-green-500/15',   text: 'text-green-300',      label: 'Passed' },
   failed:      { bg: 'bg-red-500/15',     text: 'text-red-300',        label: 'Failed' },
   blocked:     { bg: 'bg-amber-500/15',   text: 'text-amber-300',      label: 'Blocked' },
-  na:          { bg: 'bg-white/5',        text: 'text-text-secondary', label: 'N/A' },
+  na:          { bg: 'bg-qo-nested',        text: 'text-text-secondary', label: 'N/A' },
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
   critical:    'bg-red-500/20 text-red-300',
   required:    'bg-amber-500/20 text-amber-300',
   recommended: 'bg-blue-500/20 text-blue-300',
-  optional:    'bg-white/5 text-text-secondary',
+  optional:    'bg-qo-nested text-text-secondary',
 };
 
 const STAGE_STATUS_STYLE: Record<DeploymentStageStatus, { bg: string; icon: typeof CheckCircle2 }> = {
-  pending:      { bg: 'bg-white/5 border-white/10',         icon: Clock },
-  in_progress:  { bg: 'bg-cyan-500/15 border-cyan-500/30',  icon: Zap },
+  pending:      { bg: 'bg-qo-nested border-black/[0.08]',         icon: Clock },
+  in_progress:  { bg: 'bg-qo-accent/15 border-qo-accent/30',  icon: Zap },
   passed:       { bg: 'bg-green-500/15 border-green-500/30', icon: CheckCircle2 },
   failed:       { bg: 'bg-red-500/15 border-red-500/30',    icon: XCircle },
   rolled_back:  { bg: 'bg-amber-500/15 border-amber-500/30', icon: AlertTriangle },
@@ -164,7 +164,7 @@ export function GoLiveValidationPage() {
         </div>
         <div className="flex items-center gap-2">
           {activeChecklistId && (
-            <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary">
+            <button onClick={handleExportCSV} className="px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary">
               Export CSV
             </button>
           )}
@@ -185,10 +185,10 @@ export function GoLiveValidationPage() {
             <button onClick={() => setShowCreateForm(false)} className="text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input value={cTitle} onChange={e => setCTitle(e.target.value)} placeholder="Title *" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <input value={cVersion} onChange={e => setCVersion(e.target.value)} placeholder="Version (e.g. v1.0.0)" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-            <input type="date" value={cDate} onChange={e => setCDate(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary" />
-            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Description" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <input value={cTitle} onChange={e => setCTitle(e.target.value)} placeholder="Title *" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <input value={cVersion} onChange={e => setCVersion(e.target.value)} placeholder="Version (e.g. v1.0.0)" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+            <input type="date" value={cDate} onChange={e => setCDate(e.target.value)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary" />
+            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Description" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
           </div>
           <p className="text-[10px] text-text-secondary">Creates checklist with 29 template items across 15 modules + 4 deployment stages.</p>
           <button onClick={handleCreate} disabled={!cTitle.trim()} className="px-4 py-2 text-sm bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 text-primary disabled:opacity-50">
@@ -207,7 +207,7 @@ export function GoLiveValidationPage() {
               className={`px-3 py-1.5 text-xs rounded-lg whitespace-nowrap border transition-colors ${
                 activeChecklistId === cl.id
                   ? 'bg-primary/20 border-primary/30 text-primary'
-                  : 'bg-white/5 border-white/10 text-text-secondary hover:text-text-primary'
+                  : 'bg-qo-nested border-black/[0.08] text-text-secondary hover:text-text-primary'
               }`}
             >
               {cl.title} {cl.deployment_version ? `(${cl.deployment_version})` : ''}
@@ -226,12 +226,12 @@ export function GoLiveValidationPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <SpotlightCard className="p-4 md:col-span-1">
               <div className="flex items-center gap-2 mb-1">
-                <Rocket className={`w-5 h-5 ${readiness?.is_go ? 'text-green-400' : 'text-amber-400'}`} />
+                <Rocket className={`w-5 h-5 ${readiness?.is_go ? 'text-green-400' : 'text-qo-ochre-text'}`} />
                 <span className="text-xs text-text-secondary">Readiness</span>
               </div>
               <p className={`text-2xl font-bold ${
                 (readiness?.readiness_score ?? 0) >= 95 ? 'text-green-400' :
-                (readiness?.readiness_score ?? 0) >= 70 ? 'text-amber-400' : 'text-red-400'
+                (readiness?.readiness_score ?? 0) >= 70 ? 'text-qo-ochre-text' : 'text-qo-risk'
               }`}>
                 {readiness?.readiness_score ?? 0}%
               </p>
@@ -249,11 +249,11 @@ export function GoLiveValidationPage() {
 
             <SpotlightCard className="p-4">
               <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-cyan-400" />
+                <Zap className="w-4 h-4 text-qo-accent" />
                 <span className="text-xs text-text-secondary">Smoke Tests</span>
               </div>
               <p className="text-xl font-bold text-text-primary">{readiness?.passed_tests ?? 0}/{readiness?.total_tests ?? 0}</p>
-              {(readiness?.failed_tests ?? 0) > 0 && <p className="text-[10px] text-red-400">{readiness!.failed_tests} failed</p>}
+              {(readiness?.failed_tests ?? 0) > 0 && <p className="text-[10px] text-qo-risk">{readiness!.failed_tests} failed</p>}
             </SpotlightCard>
 
             <SpotlightCard className="p-4">
@@ -267,10 +267,10 @@ export function GoLiveValidationPage() {
 
             <SpotlightCard className="p-4">
               <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <AlertTriangle className="w-4 h-4 text-qo-ochre-text" />
                 <span className="text-xs text-text-secondary">Blockers</span>
               </div>
-              <p className={`text-xl font-bold ${(readiness?.blockers ?? 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+              <p className={`text-xl font-bold ${(readiness?.blockers ?? 0) > 0 ? 'text-qo-risk' : 'text-green-400'}`}>
                 {readiness?.blockers ?? 0}
               </p>
               <p className="text-[10px] text-text-secondary">Critical: {readiness?.critical_passed ?? 0}/{readiness?.critical_items ?? 0}</p>
@@ -278,7 +278,7 @@ export function GoLiveValidationPage() {
           </div>
 
           {/* Tab Bar */}
-          <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+          <div className="flex gap-1 bg-qo-nested rounded-lg p-1">
             {([
               { key: 'checklist' as Tab, label: 'Validation Checklist' },
               { key: 'deploy' as Tab, label: 'Deployment Pipeline' },
@@ -289,7 +289,7 @@ export function GoLiveValidationPage() {
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-                  tab === t.key ? 'bg-white/10 text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                  tab === t.key ? 'bg-black/[0.06] text-text-primary' : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {t.label}
@@ -303,7 +303,7 @@ export function GoLiveValidationPage() {
               <div className="flex items-center justify-end">
                 <button
                   onClick={() => activeChecklistId && calculateReadiness(activeChecklistId)}
-                  className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-text-secondary"
+                  className="px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary"
                 >
                   Recalculate Score
                 </button>
@@ -358,11 +358,11 @@ export function GoLiveValidationPage() {
                     <button onClick={() => setShowSmokeForm(false)} className="text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input value={stName} onChange={e => setStName(e.target.value)} placeholder="Test Name *" className="md:col-span-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-                    <select value={stModule} onChange={e => setStModule(e.target.value as GoLiveItemModule)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+                    <input value={stName} onChange={e => setStName(e.target.value)} placeholder="Test Name *" className="md:col-span-2 px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+                    <select value={stModule} onChange={e => setStModule(e.target.value as GoLiveItemModule)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
                       {Object.entries(MODULE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
-                    <select value={stType} onChange={e => setStType(e.target.value as SmokeTestType)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+                    <select value={stType} onChange={e => setStType(e.target.value as SmokeTestType)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
                       <option value="manual">Manual</option>
                       <option value="automated">Automated</option>
                       <option value="integration">Integration</option>
@@ -375,11 +375,11 @@ export function GoLiveValidationPage() {
                     </label>
                     <label className="flex items-center gap-1.5 text-sm">
                       <input type="radio" name="st-status" checked={stStatus === 'failed'} onChange={() => setStStatus('failed')} />
-                      <span className="text-red-400">Failed</span>
+                      <span className="text-qo-risk">Failed</span>
                     </label>
                   </div>
                   {stStatus === 'failed' && (
-                    <input value={stError} onChange={e => setStError(e.target.value)} placeholder="Error message" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50 w-full" />
+                    <input value={stError} onChange={e => setStError(e.target.value)} placeholder="Error message" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50 w-full" />
                   )}
                   <button onClick={handleRecordTest} disabled={!stName.trim()} className="px-4 py-2 text-sm bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 text-primary disabled:opacity-50">
                     Record Test
@@ -396,7 +396,7 @@ export function GoLiveValidationPage() {
                       {test.status === 'passed' ? (
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
                       ) : test.status === 'failed' ? (
-                        <XCircle className="w-4 h-4 text-red-400" />
+                        <XCircle className="w-4 h-4 text-qo-risk" />
                       ) : (
                         <Clock className="w-4 h-4 text-text-secondary" />
                       )}
@@ -410,11 +410,11 @@ export function GoLiveValidationPage() {
                     </div>
                     <span className={`px-2 py-0.5 text-[10px] rounded ${
                       test.status === 'passed' ? 'bg-green-500/20 text-green-300' :
-                      test.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-white/5 text-text-secondary'
+                      test.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-qo-nested text-text-secondary'
                     }`}>{test.status.toUpperCase()}</span>
                   </div>
                   {test.error_message && (
-                    <p className="text-xs text-red-400/80 mt-2 pl-7">{test.error_message}</p>
+                    <p className="text-xs text-qo-risk/80 mt-2 pl-7">{test.error_message}</p>
                   )}
                 </SpotlightCard>
               ))}
@@ -435,15 +435,15 @@ export function GoLiveValidationPage() {
                     <h3 className="text-sm font-semibold text-text-primary">Record Sign-off</h3>
                     <button onClick={() => setShowSignOffForm(false)} className="text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
                   </div>
-                  <p className="text-[10px] text-amber-400">Sign-offs are immutable. Once recorded, they cannot be edited or deleted.</p>
+                  <p className="text-[10px] text-qo-ochre-text">Sign-offs are immutable. Once recorded, they cannot be edited or deleted.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <select value={soType} onChange={e => setSoType(e.target.value as SignOffType)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary">
+                    <select value={soType} onChange={e => setSoType(e.target.value as SignOffType)} className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary">
                       {Object.entries(SIGN_OFF_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
-                    <input value={soName} onChange={e => setSoName(e.target.value)} placeholder="Signer Name *" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-                    <input value={soRole} onChange={e => setSoRole(e.target.value)} placeholder="Signer Role *" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-                    <input value={soConditions} onChange={e => setSoConditions(e.target.value)} placeholder="Conditions (optional)" className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
-                    <textarea value={soNotes} onChange={e => setSoNotes(e.target.value)} placeholder="Notes" rows={2} className="md:col-span-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+                    <input value={soName} onChange={e => setSoName(e.target.value)} placeholder="Signer Name *" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+                    <input value={soRole} onChange={e => setSoRole(e.target.value)} placeholder="Signer Role *" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+                    <input value={soConditions} onChange={e => setSoConditions(e.target.value)} placeholder="Conditions (optional)" className="px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
+                    <textarea value={soNotes} onChange={e => setSoNotes(e.target.value)} placeholder="Notes" rows={2} className="md:col-span-2 px-3 py-2 bg-qo-nested border border-black/[0.08] rounded-lg text-sm text-text-primary placeholder:text-text-secondary/50" />
                   </div>
                   <button onClick={handleSignOff} disabled={!soName.trim() || !soRole.trim()} className="px-4 py-2 text-sm bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 text-primary disabled:opacity-50">
                     Record Sign-off
@@ -464,7 +464,7 @@ export function GoLiveValidationPage() {
                         <div className="text-[10px] text-text-secondary">
                           <p>{signOff.signer_name} · {signOff.signer_role}</p>
                           <p>{new Date(signOff.signed_at).toLocaleString()}</p>
-                          {signOff.conditions && <p className="text-amber-400 mt-0.5">Conditions: {signOff.conditions}</p>}
+                          {signOff.conditions && <p className="text-qo-ochre-text mt-0.5">Conditions: {signOff.conditions}</p>}
                         </div>
                       ) : (
                         <p className="text-[10px] text-text-secondary">Awaiting</p>
@@ -523,9 +523,9 @@ function ModuleGroup({
           <span className="text-xs text-text-secondary">{passed}/{total}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden">
+          <div className="w-24 h-1.5 bg-qo-nested rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-400' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+              className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-400' : pct >= 50 ? 'bg-qo-ochre' : 'bg-qo-risk'}`}
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -550,7 +550,7 @@ function ModuleGroup({
                 <input
                   value={notesText}
                   onChange={e => onNotesChange(e.target.value)}
-                  className="px-2 py-0.5 text-xs bg-white/5 border border-white/10 rounded w-48 text-text-primary"
+                  className="px-2 py-0.5 text-xs bg-qo-nested border border-black/[0.08] rounded w-48 text-text-primary"
                   placeholder="Evidence notes"
                 />
                 <button onClick={() => onSaveNotes(item.id)} className="text-green-400 text-xs">Save</button>
@@ -605,12 +605,12 @@ function StageCard({
             </button>
           )}
           {stage.status === 'in_progress' && (
-            <button onClick={onFail} className="px-2 py-1 text-[10px] bg-red-500/10 text-red-400 rounded hover:bg-red-500/20">
+            <button onClick={onFail} className="px-2 py-1 text-[10px] bg-red-500/10 text-qo-risk rounded hover:bg-red-500/20">
               Fail
             </button>
           )}
           {(stage.status === 'passed' || stage.status === 'failed') && (
-            <button onClick={onRollback} className="px-2 py-1 text-[10px] bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20">
+            <button onClick={onRollback} className="px-2 py-1 text-[10px] bg-amber-500/10 text-qo-ochre-text rounded hover:bg-amber-500/20">
               Rollback
             </button>
           )}

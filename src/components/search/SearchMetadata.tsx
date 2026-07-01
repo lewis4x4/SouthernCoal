@@ -25,13 +25,13 @@ export function SearchMetadata({
     : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-white/50">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-text-primary/50">
       {/* Sources */}
       <span>
         Sources:{' '}
         {tablesQueried.map((t, i) => (
           <span key={t}>
-            <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-white/60">
+            <code className="rounded bg-black/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-text-primary/60">
               {t}
             </code>
             {i < tablesQueried.length - 1 && ', '}
