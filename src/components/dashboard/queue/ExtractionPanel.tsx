@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useVerificationStore } from '@/stores/verification';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useObligationGeneration } from '@/hooks/useObligationGeneration';
 import { useLabDataImport } from '@/hooks/useLabDataImport';
+import { useDmrImport } from '@/hooks/useDmrImport';
 import { VerificationBadge } from './VerificationBadge';
 import { ParameterSheetExtractionPanel } from './ParameterSheetExtractionPanel';
 import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus, Upload, Loader2 } from 'lucide-react';
@@ -80,6 +82,20 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
 
   const data = entry.extracted_data as ExtractedData | null;
   if (!data) return null;
+
+  // NetDMR bundle branch — parsed CSV/ZIP exports (import to dmr_submissions is a follow-on)
+  if (data.document_type === 'netdmr_bundle') {
+    return (
+      <NetDmrExtractionPanel
+        entry={entry}
+        data={data as unknown as NetDmrExtractionDisplay}
+        verificationStatus={verificationStatus}
+        onVerify={() => setStatus(entry.id, 'verified')}
+        onDispute={() => setStatus(entry.id, 'disputed')}
+        canVerify={can('verify')}
+      />
+    );
+  }
 
   // Lab data branch — different layout than permit extraction
   if (data.document_type === 'lab_data_edd') {
@@ -320,6 +336,135 @@ function TypeSpecificDetails({ data, docType }: { data: ExtractedData; docType: 
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// NetDMR Extraction Panel
+// ---------------------------------------------------------------------------
+
+interface NetDmrExtractionDisplay {
+  document_type: 'netdmr_bundle';
+  file_count: number;
+  total_rows: number;
+  parsed_rows: number;
+  skipped_rows: number;
+  permit_numbers: string[];
+  states: string[];
+  exceedance_count: number;
+  submission_count: number;
+  parameters_found: number;
+  warnings: string[];
+  summary: string;
+}
+
+interface NetDmrExtractionPanelProps {
+  entry: QueueEntry;
+  data: NetDmrExtractionDisplay;
+  verificationStatus: VerificationStatus;
+  onVerify: () => void;
+  onDispute: () => void;
+  canVerify: boolean;
+}
+
+function NetDmrExtractionPanel({
+  entry,
+  data,
+  verificationStatus,
+  onVerify,
+  canVerify,
+}: NetDmrExtractionPanelProps) {
+  const { importNetDmr, isImporting } = useDmrImport();
+  const { can } = usePermissions();
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-text-primary">NetDMR Bundle Extraction</h4>
+        <div className="flex items-center gap-2">
+          <VerificationBadge status={verificationStatus} />
+          {canVerify && verificationStatus !== 'verified' && (
+            <button
+              onClick={onVerify}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all"
+            >
+              <CheckCircle2 size={10} className="inline mr-1" />
+              Mark Verified
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryItem label="Files" value={data.file_count} />
+        <SummaryItem label="Parsed Rows" value={data.parsed_rows.toLocaleString()} />
+        <SummaryItem label="Exceedances" value={data.exceedance_count} />
+        <SummaryItem label="Submissions" value={data.submission_count} />
+      </div>
+
+      {data.permit_numbers.length > 0 && (
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Permits</p>
+          <p className="text-xs text-text-secondary font-mono">{data.permit_numbers.join(', ')}</p>
+        </div>
+      )}
+
+      {data.summary && (
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Summary</p>
+          <p className="text-xs text-text-secondary">{data.summary}</p>
+        </div>
+      )}
+
+      {entry.status === 'parsed' && can('process') && (
+        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+          <button
+            type="button"
+            onClick={() => importNetDmr(entry.id)}
+            disabled={isImporting(entry.id)}
+            aria-busy={isImporting(entry.id)}
+            aria-label={
+              isImporting(entry.id)
+                ? 'Importing DMR submissions...'
+                : 'Approve and import DMR data to database'
+            }
+            className="px-4 py-2 text-xs font-medium rounded-lg bg-green-500/15 text-green-300 border border-green-500/20 hover:bg-green-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isImporting(entry.id) ? (
+              <>
+                <Loader2 size={12} className="inline mr-1.5 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Upload size={12} className="inline mr-1.5" />
+                Approve & Import
+              </>
+            )}
+          </button>
+          <p className="text-[10px] text-text-muted mt-1.5">
+            Imports up to {data.parsed_rows.toLocaleString()} line items into dmr_submissions and
+            dmr_line_items (full file re-parsed server-side)
+          </p>
+        </div>
+      )}
+
+      {entry.status === 'imported' && (
+        <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-2">
+          <div className="flex items-center gap-2 text-xs text-green-300">
+            <CheckCircle2 size={14} />
+            <span>DMR data successfully imported to domain tables</span>
+          </div>
+          <p className="text-[10px] text-text-muted">
+            Open{' '}
+            <Link to="/dmr" className="text-cyan-400 hover:text-cyan-300">
+              DMR Submissions
+            </Link>{' '}
+            to review draft submissions created from this import.
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
