@@ -32,6 +32,25 @@ export interface CollectorAccessAnomaly {
   access_issue_rate_pct: number;
 }
 
+export interface DefensibleMissStoredPacket {
+  id: string;
+  gap_id: string;
+  file_name: string;
+  storage_path: string | null;
+  sha256_hash: string | null;
+  format: 'pdf' | 'markdown';
+  created_at: string;
+}
+
+export interface DefensibleMissPdfResult {
+  packet_id: string | null;
+  file_name: string;
+  storage_path: string;
+  sha256_hash: string;
+  signed_url: string | null;
+  created_at: string | null;
+}
+
 export function formatDefensibleMissMarkdown(
   packet: DefensibleMissPacket,
   outfallLabel: string,

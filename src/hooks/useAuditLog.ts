@@ -83,6 +83,7 @@ type AuditAction =
   // Lane C QW3 — defensible miss packets
   | 'defensible_miss_packet_generated'
   | 'defensible_miss_packet_exported'
+  | 'defensible_miss_packet_pdf_generated'
   // Report Engine
   | 'report_generated'
   | 'report_template_created'
