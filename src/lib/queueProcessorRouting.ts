@@ -5,6 +5,8 @@ export type QueueParserKind =
   | 'permit_pdf'
   | 'parameter_sheet'
   | 'lab_data'
+  | 'va_lab_csv'
+  | 'osmre_monitoring'
   | 'netdmr_bundle'
   | 'unsupported';
 
@@ -18,13 +20,42 @@ export interface QueueParserRoute {
 
 const EXCEL_EXT = /\.xlsx?$/i;
 const ZIP_EXT = /\.zip$/i;
+const CSV_EXT = /\.csv$/i;
+
+const OSMRE_FILENAME = /osmre|monitoring.?report|quarterly.?monitor|sme-90|tn.?monitor/i;
+const VA_LAB_FILENAME = /va.?lab|vpdes.?lab|dmlr.?lab|fixed.?width/i;
+
+const STATE_FROM_PATH = /(?:^|\/)(AL|KY|TN|VA|WV)(?:\/|$)/i;
+
+export function inferQueueState(entry: Pick<QueueEntry, 'state_code' | 'storage_path' | 'file_name'>): string | null {
+  if (entry.state_code) return entry.state_code.toUpperCase();
+  const pathMatch = entry.storage_path.match(STATE_FROM_PATH);
+  if (pathMatch?.[1]) return pathMatch[1].toUpperCase();
+  const nameMatch = entry.file_name.match(/^(AL|KY|TN|VA|WV)[-_]/i);
+  if (nameMatch?.[1]) return nameMatch[1].toUpperCase();
+  return null;
+}
 
 export function isParameterSheetFile(entry: Pick<QueueEntry, 'file_name'>): boolean {
   return EXCEL_EXT.test(entry.file_name);
 }
 
 export function isNetDmrBundleFile(entry: Pick<QueueEntry, 'file_name'>): boolean {
-  return ZIP_EXT.test(entry.file_name) || /\.csv$/i.test(entry.file_name) || /\.txt$/i.test(entry.file_name);
+  return ZIP_EXT.test(entry.file_name) || CSV_EXT.test(entry.file_name) || /\.txt$/i.test(entry.file_name);
+}
+
+export function isOsmreMonitoringFile(entry: Pick<QueueEntry, 'file_name' | 'storage_path' | 'state_code'>): boolean {
+  if (!EXCEL_EXT.test(entry.file_name)) return false;
+  const state = inferQueueState(entry);
+  if (state === 'TN') return true;
+  return OSMRE_FILENAME.test(entry.file_name) || OSMRE_FILENAME.test(entry.storage_path);
+}
+
+export function isVaLabCsvFile(entry: Pick<QueueEntry, 'file_name' | 'storage_path' | 'state_code'>): boolean {
+  if (!CSV_EXT.test(entry.file_name)) return false;
+  const state = inferQueueState(entry);
+  if (state === 'VA') return true;
+  return VA_LAB_FILENAME.test(entry.file_name) || VA_LAB_FILENAME.test(entry.storage_path);
 }
 
 /**
@@ -47,6 +78,20 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
         label: 'Permit PDF',
       };
     case 'lab_data':
+      if (isOsmreMonitoringFile(entry)) {
+        return {
+          kind: 'osmre_monitoring',
+          functionName: 'parse-osmre-monitoring',
+          label: 'OSMRE monitoring (TN)',
+        };
+      }
+      if (isVaLabCsvFile(entry)) {
+        return {
+          kind: 'va_lab_csv',
+          functionName: 'parse-va-lab-csv',
+          label: 'VA lab CSV',
+        };
+      }
       return {
         kind: 'lab_data',
         functionName: 'parse-lab-data-edd',

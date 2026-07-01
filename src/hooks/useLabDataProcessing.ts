@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useQueueStore } from '@/stores/queue';
+import { isOsmreMonitoringFile, resolveQueueParser } from '@/lib/queueProcessorRouting';
 import type { QueueEntry } from '@/types/queue';
 
 /** EDD marker columns — if a row contains all three, it's likely an EDD header row. */
@@ -93,6 +94,42 @@ async function clientSideParseExcel(
   };
 }
 
+/** Pre-parse all OSMRE workbook sheets for parse-osmre-monitoring. */
+async function clientSideParseOsmreWorkbook(
+  entry: QueueEntry,
+): Promise<{ pre_parsed_sheets: Array<{ name: string; rows: string[][] }> } | null> {
+  const isXlsx = /\.xlsx$/i.test(entry.file_name);
+  if (!isXlsx || !entry.storage_bucket || !entry.storage_path) return null;
+
+  const { data: fileData, error: dlError } = await supabase.storage
+    .from(entry.storage_bucket)
+    .download(entry.storage_path);
+
+  if (dlError || !fileData) {
+    throw new Error(`Failed to download file: ${dlError?.message ?? 'no data'}`);
+  }
+
+  const { default: readXlsxFile } = await import('read-excel-file/browser');
+  const workbook = await readXlsxFile(fileData);
+
+  if (!workbook.length) {
+    throw new Error('No worksheet found in this file.');
+  }
+
+  return {
+    pre_parsed_sheets: workbook.map((sheet) => ({
+      name: sheet.sheet,
+      rows: sheet.data.map((row) =>
+        row.map((cell) => {
+          if (cell == null) return '';
+          if (cell instanceof Date) return cell.toISOString();
+          return String(cell);
+        }),
+      ),
+    })),
+  };
+}
+
 /** Threshold for routing large files to bulk-import-lab-data (500KB). */
 const BULK_IMPORT_SIZE_THRESHOLD = 500 * 1024;
 
@@ -118,10 +155,18 @@ export function useLabDataProcessing() {
 
     if (!entry) return;
 
+    const route = resolveQueueParser(entry);
+    const parserFn = route.functionName ?? 'parse-lab-data-edd';
     const fileSize = entry.file_size_bytes ?? 0;
-    const useBulk = fileSize > BULK_IMPORT_SIZE_THRESHOLD;
+    const useBulk =
+      fileSize > BULK_IMPORT_SIZE_THRESHOLD &&
+      route.kind === 'lab_data';
 
-    if (import.meta.env.DEV) console.log(`[lab-data] ROUTING: file="${entry.file_name}" size=${fileSize} useBulk=${useBulk}`);
+    if (import.meta.env.DEV) {
+      console.log(
+        `[lab-data] ROUTING: file="${entry.file_name}" parser=${parserFn} size=${fileSize} useBulk=${useBulk}`,
+      );
+    }
 
     // Immediate UI feedback — Realtime subscription handles the real status
     useQueueStore.getState().upsertEntry({
@@ -169,15 +214,17 @@ export function useLabDataProcessing() {
           throw invokeErr;
         }
       } else {
-        // Small file → standard parse pipeline (client-side pre-parse → preview → import)
-        let preParsePayload: { pre_parsed_rows?: string[][]; file_format?: string } = {};
+        // Small file → state-specific or standard EDD parse pipeline
+        let preParsePayload: Record<string, unknown> = {};
         const isExcel = /\.xlsx?$/i.test(entry.file_name);
-        if (isExcel) {
+        if (isExcel && isOsmreMonitoringFile(entry)) {
+          toast.info(`Preparing ${entry.file_name}...`);
+          const parsed = await clientSideParseOsmreWorkbook(entry);
+          if (parsed) preParsePayload = parsed;
+        } else if (isExcel && route.kind === 'lab_data') {
           toast.info(`Preparing ${entry.file_name}...`);
           const parsed = await clientSideParseExcel(entry);
-          if (parsed) {
-            preParsePayload = parsed;
-          }
+          if (parsed) preParsePayload = parsed;
         }
 
         // 30s timeout — accounts for client-side parsing + Edge Function processing.
@@ -187,7 +234,7 @@ export function useLabDataProcessing() {
 
         try {
           const { error: fnError } = await Promise.race([
-            supabase.functions.invoke('parse-lab-data-edd', {
+            supabase.functions.invoke(parserFn, {
               body: { queue_id: queueId, ...preParsePayload },
             }),
             timeoutPromise,
@@ -251,8 +298,12 @@ export function useLabDataProcessing() {
 
     for (let i = 0; i < queued.length; i++) {
       const entry = queued[i]!;
+      const route = resolveQueueParser(entry);
+      const parserFn = route.functionName ?? 'parse-lab-data-edd';
       const fileSize = entry.file_size_bytes ?? 0;
-      const useBulk = fileSize > BULK_IMPORT_SIZE_THRESHOLD;
+      const useBulk =
+        fileSize > BULK_IMPORT_SIZE_THRESHOLD &&
+        route.kind === 'lab_data';
 
       // Optimistic UI update — show 'processing' immediately
       useQueueStore.getState().upsertEntry({
@@ -284,10 +335,17 @@ export function useLabDataProcessing() {
             toast.warning(`Partial: ${entry.file_name} — ${data.results_created} results (re-process for remaining)`);
           }
         } else {
-          // Small file → standard parse pipeline
-          let preParsePayload: { pre_parsed_rows?: string[][]; file_format?: string } = {};
+          // Small file → state-specific or standard EDD parse pipeline
+          let preParsePayload: Record<string, unknown> = {};
           const isExcel = /\.xlsx?$/i.test(entry.file_name);
-          if (isExcel) {
+          if (isExcel && isOsmreMonitoringFile(entry)) {
+            try {
+              const parsed = await clientSideParseOsmreWorkbook(entry);
+              if (parsed) preParsePayload = parsed;
+            } catch (parseErr) {
+              console.error(`[lab-data] OSMRE client-side parse failed for ${entry.file_name}:`, parseErr);
+            }
+          } else if (isExcel && route.kind === 'lab_data') {
             try {
               const parsed = await clientSideParseExcel(entry);
               if (parsed) preParsePayload = parsed;
@@ -301,7 +359,7 @@ export function useLabDataProcessing() {
           );
 
           const { error: fnError } = await Promise.race([
-            supabase.functions.invoke('parse-lab-data-edd', {
+            supabase.functions.invoke(parserFn, {
               body: { queue_id: entry.id, ...preParsePayload },
             }),
             timeoutPromise,

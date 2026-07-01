@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   canProcessQueueEntry,
+  isOsmreMonitoringFile,
   isParameterSheetFile,
+  isVaLabCsvFile,
   resolveQueueParser,
 } from '@/lib/queueProcessorRouting';
 import type { QueueEntry } from '@/types/queue';
@@ -34,11 +36,48 @@ describe('resolveQueueParser', () => {
     expect(isParameterSheetFile({ file_name: 'WV_Limits.xlsx' })).toBe(true);
   });
 
-  it('routes lab data to parse-lab-data-edd', () => {
+  it('routes standard lab data to parse-lab-data-edd', () => {
     const route = resolveQueueParser(
-      entry({ file_category: 'lab_data', file_name: 'results.csv' }),
+      entry({ file_category: 'lab_data', file_name: 'results.csv', storage_path: 'WV/results.csv' }),
     );
     expect(route.kind).toBe('lab_data');
+    expect(route.functionName).toBe('parse-lab-data-edd');
+  });
+
+  it('routes TN OSMRE xlsx to parse-osmre-monitoring', () => {
+    const route = resolveQueueParser(
+      entry({
+        file_category: 'lab_data',
+        file_name: 'Q1_monitoring.xlsx',
+        storage_path: 'TN/Q1_monitoring.xlsx',
+        state_code: 'TN',
+      }),
+    );
+    expect(route.kind).toBe('osmre_monitoring');
+    expect(route.functionName).toBe('parse-osmre-monitoring');
+    expect(isOsmreMonitoringFile({
+      file_name: 'Q1_monitoring.xlsx',
+      storage_path: 'TN/Q1_monitoring.xlsx',
+      state_code: 'TN',
+    })).toBe(true);
+  });
+
+  it('routes VA lab csv to parse-va-lab-csv', () => {
+    const route = resolveQueueParser(
+      entry({
+        file_category: 'lab_data',
+        file_name: 'lab_results.csv',
+        storage_path: 'VA/lab_results.csv',
+        state_code: 'VA',
+      }),
+    );
+    expect(route.kind).toBe('va_lab_csv');
+    expect(route.functionName).toBe('parse-va-lab-csv');
+    expect(isVaLabCsvFile({
+      file_name: 'lab_results.csv',
+      storage_path: 'VA/lab_results.csv',
+      state_code: 'VA',
+    })).toBe(true);
   });
 
   it('routes DMR zip/csv to parse-netdmr-bundle', () => {
