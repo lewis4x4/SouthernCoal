@@ -10,6 +10,8 @@ import { useSyncTrigger } from '@/hooks/useSyncTrigger';
 import { useDiscrepancyDetection } from '@/hooks/useDiscrepancyDetection';
 import { useComplianceAlerts } from '@/hooks/useComplianceAlerts';
 import { ComplianceAlertRulesPanel } from '@/components/review-queue/ComplianceAlertRulesPanel';
+import { DiscrepancyReadinessPanel } from '@/components/review-queue/DiscrepancyReadinessPanel';
+import { useDiscrepancyReadiness } from '@/hooks/useDiscrepancyReadiness';
 import { useReviewQueueStore } from '@/stores/reviewQueue';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { DiscrepancySeverity } from '@/stores/reviewQueue';
@@ -28,6 +30,8 @@ export function ReviewQueuePage() {
   } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { running: detecting, runDetection } = useDiscrepancyDetection();
+  const { assessment: detectionReadiness, loading: readinessLoading, refetch: refetchReadiness } =
+    useDiscrepancyReadiness();
   const { dispatching: alerting, dispatchDryRun, dispatchDigest } = useComplianceAlerts();
   const { selectedId, setSelectedId, filters, setFilters, clearFilters } = useReviewQueueStore();
   const { can } = usePermissions();
@@ -58,6 +62,7 @@ export function ReviewQueuePage() {
     if (result?.success) {
       setFilters({ status: 'pending' });
       await refetch();
+      await refetchReadiness();
     }
   }
 
@@ -212,6 +217,15 @@ export function ReviewQueuePage() {
           </button>
         </div>
       </div>
+
+      <DiscrepancyReadinessPanel
+        headline={detectionReadiness.headline}
+        overall={detectionReadiness.overall}
+        gates={detectionReadiness.gates}
+        canRunMeaningfulDetection={detectionReadiness.canRunMeaningfulDetection}
+        loading={readinessLoading}
+        onRefresh={() => void refetchReadiness()}
+      />
 
       {/* Triage progress */}
       {!loading && (pendingCount > 0 || escalatedCount > 0) && (

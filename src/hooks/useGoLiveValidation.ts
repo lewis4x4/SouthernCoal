@@ -326,6 +326,33 @@ export function useGoLiveValidation() {
     fetchSmokeTests(checklistId);
   }, [orgId, user, fetchSmokeTests, log]);
 
+  const updateSmokeTestStatus = useCallback(async (
+    testId: string,
+    checklistId: string,
+    status: 'passed' | 'failed',
+    errorMessage?: string,
+  ) => {
+    if (!orgId || !user) return;
+    const updates: Record<string, unknown> = {
+      status,
+      run_by: user.id,
+      run_at: new Date().toISOString(),
+      error_message: status === 'failed' ? (errorMessage ?? 'Failed during manual verification') : null,
+    };
+    const { error } = await supabase.from('smoke_test_runs').update(updates).eq('id', testId);
+    if (error) {
+      toast.error('Failed to update smoke test');
+      return;
+    }
+    toast.success(`Smoke test marked ${status}`);
+    log(
+      'smoke_test_status_updated',
+      { testId, status },
+      { module: 'go_live', tableName: 'smoke_test_runs', recordId: testId },
+    );
+    fetchSmokeTests(checklistId);
+  }, [orgId, user, fetchSmokeTests, log]);
+
   const seedSmokeTestTemplates = useCallback(async (
     checklistId: string,
     groupIds?: GoLiveSmokeTemplateGroupId[],
@@ -487,6 +514,7 @@ export function useGoLiveValidation() {
     advanceStage,
     // Smoke Tests
     recordSmokeTest,
+    updateSmokeTestStatus,
     seedSmokeTestTemplates,
     // Sign-Offs
     createSignOff,

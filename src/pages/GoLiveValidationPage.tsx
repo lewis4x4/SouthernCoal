@@ -59,6 +59,7 @@ export function GoLiveValidationPage() {
     updateItemStatus, updateItemNotes,
     advanceStage,
     recordSmokeTest,
+    updateSmokeTestStatus,
     seedSmokeTestTemplates,
     createSignOff,
     calculateReadiness,
@@ -124,6 +125,11 @@ export function GoLiveValidationPage() {
     await createSignOff(activeChecklistId, soType, soName.trim(), soRole.trim(), soConditions.trim() || undefined, soNotes.trim() || undefined);
     setSoName(''); setSoRole(''); setSoConditions(''); setSoNotes('');
     setShowSignOffForm(false);
+  };
+
+  const handleSmokeTestStatus = async (testId: string, status: 'passed' | 'failed') => {
+    if (!activeChecklistId) return;
+    await updateSmokeTestStatus(testId, activeChecklistId, status);
   };
 
   const handleSaveNotes = async (itemId: string) => {
@@ -459,6 +465,24 @@ export function GoLiveValidationPage() {
                         >
                           {isExpanded ? 'Hide steps' : 'Steps'}
                         </button>
+                      )}
+                      {test.status === 'pending' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void handleSmokeTestStatus(test.id, 'passed')}
+                            className="text-[10px] px-2 py-0.5 rounded bg-green-500/15 text-green-300 hover:bg-green-500/25"
+                          >
+                            Pass
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleSmokeTestStatus(test.id, 'failed')}
+                            className="text-[10px] px-2 py-0.5 rounded bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                          >
+                            Fail
+                          </button>
+                        </>
                       )}
                       <span className={`px-2 py-0.5 text-[10px] rounded ${
                         test.status === 'passed' ? 'bg-green-500/20 text-green-300' :
