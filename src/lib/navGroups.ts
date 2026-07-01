@@ -134,6 +134,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Monitoring', href: '/monitoring', icon: Activity, roles: COMPLIANCE_FULL_ROLES },
       { label: 'Failure to Sample', href: '/compliance/failure-to-sample', icon: DollarSign, roles: COMPLIANCE_ADVANCED_ROLES },
       { label: 'Missed / At-Risk', href: '/compliance/missed-at-risk', icon: AlertTriangle, roles: COMPLIANCE_ADVANCED_ROLES },
+      { label: 'Sampling Obligations', href: '/compliance/sampling-obligations', icon: CalendarDays, roles: COMPLIANCE_ADVANCED_ROLES },
       { label: 'Late / Incomplete EDD', href: '/compliance/late-incomplete-edd', icon: Clock, roles: COMPLIANCE_ADVANCED_ROLES },
       { label: 'Penalty Ledger', href: '/compliance/penalty-ledger', icon: Scale, roles: PENALTY_LEDGER_ROLES },
       { label: 'Defensible Miss', href: '/compliance/defensible-miss', icon: Shield, roles: COUNSEL_EVIDENCE_ROLES },

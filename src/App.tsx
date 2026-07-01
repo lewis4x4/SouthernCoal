@@ -75,6 +75,10 @@ const CorrectiveActionDetailPage = lazyRoute(
 );
 const FailureToSamplePage = lazyRoute(() => import('@/pages/FailureToSamplePage'), 'FailureToSamplePage');
 const MissedAtRiskPage = lazyRoute(() => import('@/pages/MissedAtRiskPage'), 'MissedAtRiskPage');
+const SamplingObligationLedgerPage = lazyRoute(
+  () => import('@/pages/SamplingObligationLedgerPage'),
+  'SamplingObligationLedgerPage',
+);
 const LateIncompleteEddPage = lazyRoute(() => import('@/pages/LateIncompleteEddPage'), 'LateIncompleteEddPage');
 const PenaltyLedgerPage = lazyRoute(() => import('@/pages/PenaltyLedgerPage'), 'PenaltyLedgerPage');
 const DefensibleMissPage = lazyRoute(() => import('@/pages/DefensibleMissPage'), 'DefensibleMissPage');
@@ -150,6 +154,7 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/search',                       element: <SearchPage />,                 roles: ALL_ROLES,                  guardScope: 'assignment', shell: 'app' },
   { path: '/compliance/failure-to-sample', element: <FailureToSamplePage />,        roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/missed-at-risk',     element: <MissedAtRiskPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/sampling-obligations', element: <SamplingObligationLedgerPage />, roles: COMPLIANCE_ADVANCED_ROLES, guardScope: 'global', shell: 'app' },
   { path: '/compliance/late-incomplete-edd', element: <LateIncompleteEddPage />,    roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/defensible-miss',   element: <DefensibleMissPage />,       roles: COUNSEL_EVIDENCE_ROLES,     guardScope: 'global',     shell: 'app' },
   { path: '/compliance/penalty-ledger',   element: <PenaltyLedgerPage />,        roles: PENALTY_LEDGER_ROLES,       guardScope: 'global',     shell: 'app' },
