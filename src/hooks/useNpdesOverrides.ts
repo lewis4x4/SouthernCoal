@@ -4,6 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { validateFederalNpdesId } from '@/lib/npdesMapping';
+import type { NpdesMappingImportCandidate } from '@/lib/npdesMappingImport';
+
+const UI_BULK_IMPORT_SOURCE = 'ui_bulk_import_npdes_mapping';
 
 export interface NpdesOverride {
   id: string;
@@ -257,6 +260,86 @@ export function useNpdesOverrides() {
     [overrides, fetchOverrides, syncPermitFederalMetadata, log],
   );
 
+  const bulkImportMappings = useCallback(
+    async (candidates: NpdesMappingImportCandidate[]) => {
+      if (!orgId || !user) return { error: 'Not authenticated', imported: 0 };
+      if (candidates.length === 0) return { error: 'No rows to import', imported: 0 };
+
+      setSaving(true);
+
+      const overridePayloads = candidates.map((c) => ({
+        organization_id: orgId,
+        state_code: c.state_code,
+        source_permit_id: c.permit_number,
+        npdes_id: c.npdes_id,
+        notes: `UI bulk import; confidence=${c.confidence}`,
+        created_by: user.id,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const BATCH = 50;
+      let overrideOk = 0;
+      for (let i = 0; i < overridePayloads.length; i += BATCH) {
+        const batch = overridePayloads.slice(i, i + BATCH);
+        const { error } = await supabase
+          .from('npdes_id_overrides')
+          .upsert(batch, { onConflict: 'organization_id,source_permit_id' });
+        if (error) {
+          setSaving(false);
+          return { error: error.message, imported: overrideOk };
+        }
+        overrideOk += batch.length;
+      }
+
+      let metadataOk = 0;
+      const metadataErrors: string[] = [];
+      for (const c of candidates) {
+        const validation = validateFederalNpdesId(c.npdes_id);
+        if (!validation.valid) continue;
+
+        const metaResult = await syncPermitFederalMetadata(c.permit_number, c.npdes_id);
+        if (metaResult.error) {
+          metadataErrors.push(`${c.permit_number}: ${metaResult.error}`);
+        } else if (!metaResult.skipped) {
+          metadataOk += 1;
+        }
+      }
+
+      log(
+        'bulk_npdes_mapping_import',
+        {
+          imported_count: metadataOk,
+          override_upserted: overrideOk,
+          source: UI_BULK_IMPORT_SOURCE,
+          metadata_errors: metadataErrors.length,
+        },
+        { module: 'external_data', tableName: 'npdes_id_overrides' },
+      );
+
+      setSaving(false);
+      await fetchOverrides();
+
+      if (metadataErrors.length > 0) {
+        return {
+          error: `${overrideOk} overrides saved; ${metadataErrors.length} registry metadata update(s) failed`,
+          imported: metadataOk,
+        };
+      }
+
+      return { error: null, imported: metadataOk };
+    },
+    [orgId, user, fetchOverrides, syncPermitFederalMetadata, log],
+  );
+
+  const fetchRegistryPermitNumbers = useCallback(async (): Promise<Set<string>> => {
+    if (!orgId) return new Set();
+    const { data } = await supabase
+      .from('npdes_permits')
+      .select('permit_number')
+      .eq('organization_id', orgId);
+    return new Set((data ?? []).map((r) => r.permit_number.trim().toUpperCase()));
+  }, [orgId]);
+
   return {
     overrides,
     unmatchedPermits,
@@ -266,5 +349,7 @@ export function useNpdesOverrides() {
     saveOverride,
     deleteOverride,
     refetch: fetchOverrides,
+    bulkImportMappings,
+    fetchRegistryPermitNumbers,
   };
 }

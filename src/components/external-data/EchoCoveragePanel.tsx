@@ -8,6 +8,7 @@ import { useSyncHealth, ECHO_STALE_DAYS } from '@/hooks/useSyncHealth';
 import { useNpdesOverrides } from '@/hooks/useNpdesOverrides';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
 import { SyncHealthPanel } from '@/components/external-data/SyncHealthPanel';
+import { NpdesMappingImportPanel } from '@/components/external-data/NpdesMappingImportPanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES } from '@/lib/constants';
@@ -74,6 +75,8 @@ export function EchoCoveragePanel() {
     saving: overrideSaving,
     saveOverride,
     deleteOverride,
+    bulkImportMappings,
+    fetchRegistryPermitNumbers,
   } = useNpdesOverrides();
 
   const [sortKey, setSortKey] = useState<SortKey>('state_code');
@@ -369,6 +372,14 @@ export function EchoCoveragePanel() {
           </table>
         </div>
       </div>
+
+      {can('bulk_process') && (
+        <NpdesMappingImportPanel
+          saving={overrideSaving}
+          onImport={bulkImportMappings}
+          loadRegistryPermitNumbers={fetchRegistryPermitNumbers}
+        />
+      )}
 
       {/* Registry permits still missing federal mapping (bulk import cleanup queue) */}
       {registryMappingGaps.length > 0 && (

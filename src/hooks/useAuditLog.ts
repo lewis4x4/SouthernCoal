@@ -165,6 +165,7 @@ type AuditAction =
   | 'human_override_approved'
   | 'npdes_federal_mapping_saved'
   | 'npdes_federal_mapping_removed'
+  | 'bulk_npdes_mapping_import'
   | 'legal_hold_placed'
   | 'legal_hold_released'
   // Phase 9 — Compliance Reporting & Analytics
