@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { unzip } from "https://esm.sh/unzipit@1.4.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { readZipTextEntry } from "../_shared/msha-zip.ts";
 import {
   isJusticeController,
   MSHA_MINES_ZIP_URL,
@@ -38,34 +38,18 @@ async function validateAuth(req: Request, supabase: ReturnType<typeof createClie
 }
 
 async function streamMines(blob: Blob): Promise<ParsedMineRecord[]> {
-  const { entries } = await unzip(blob);
-  const entry = entries.find((e) => e.name.toLowerCase().endsWith("mines.txt"));
-  if (!entry) throw new Error("Mines.txt not found in archive");
-
+  const text = await readZipTextEntry(blob, (name) => name.endsWith("mines.txt"));
   const records: ParsedMineRecord[] = [];
   let headerSkipped = false;
-  let buffer = "";
 
-  for await (const chunk of entry.read()) {
-    buffer += new TextDecoder().decode(chunk);
-    let idx = buffer.indexOf("\n");
-    while (idx >= 0) {
-      const line = buffer.slice(0, idx).replace(/\r$/, "");
-      buffer = buffer.slice(idx + 1);
-      if (!headerSkipped) {
-        headerSkipped = true;
-      } else {
-        const parsed = parseMshaMineLine(line);
-        if (parsed && stripField(parsed.COAL_METAL_IND).toUpperCase() === "C") {
-          records.push(toParsedMineRecord(parsed));
-        }
-      }
-      idx = buffer.indexOf("\n");
+  for (const line of text.split("\n")) {
+    const trimmed = line.replace(/\r$/, "");
+    if (!trimmed) continue;
+    if (!headerSkipped) {
+      headerSkipped = true;
+      continue;
     }
-  }
-
-  if (buffer.trim()) {
-    const parsed = parseMshaMineLine(buffer.trim());
+    const parsed = parseMshaMineLine(trimmed);
     if (parsed && stripField(parsed.COAL_METAL_IND).toUpperCase() === "C") {
       records.push(toParsedMineRecord(parsed));
     }
@@ -75,6 +59,7 @@ async function streamMines(blob: Blob): Promise<ParsedMineRecord[]> {
 }
 
 Deno.serve(async (req) => {
+  try {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -232,4 +217,12 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ success: true, ...summary }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[refresh-msha-mine-map]", message);
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });
