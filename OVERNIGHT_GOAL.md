@@ -18,7 +18,15 @@ Read first: `BRAIN_GUIDE.md`, `Roadmap/LANE_A_MILESTONE_2.md`
 5. [x] Goal 2C: Alerts (panels, dispatch functions, cron SQL in repo)
 6. [x] Goal 2D: ECHO/review queue + SyncHealthPanel
 7. [x] Goal 6: Update `BRAIN_GUIDE.md`
-8. [ ] Goal 5: NPDES gap report — **blocked** (no `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`)
+8. [~] Goal 5: NPDES gap report — **skipped** (optional; blocked — no `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`)
+
+## Goal status: **COMPLETE** (autonomous scope)
+
+**Completed:** 2026-07-01  
+**Branch:** `overnight/20260701-goal-pack` → [PR #21](https://github.com/lewis4x4/SouthernCoal/pull/21) (open, mergeable)
+
+All pre-authorized work packages done. Goal 5 was optional ("if time") and blocked on credentials.  
+Human-gated follow-ups (merge, staging QA, Supabase deploy) are **out of scope** for this goal — tracked under Morning summary.
 
 ## Definition of done
 
