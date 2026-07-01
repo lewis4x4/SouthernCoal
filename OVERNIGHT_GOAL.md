@@ -31,7 +31,7 @@ Read first: `BRAIN_GUIDE.md`, `Roadmap/LANE_A_MILESTONE_2.md`
 
 ## Results
 
-- **PR:** _(filled after push)_
+- **PR:** https://github.com/lewis4x4/SouthernCoal/pull/21
 
 ## Blockers
 
