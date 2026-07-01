@@ -71,7 +71,7 @@ export function useObligationGeneration() {
           initial_due_date: date.toISOString().split('T')[0],
           next_due_date: date.toISOString().split('T')[0],
           responsible_role: 'environmental_manager',
-          status: 'pending',
+          status: 'active',
         }));
 
         // Batch insert
