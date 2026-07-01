@@ -36,7 +36,22 @@ const GO_LIVE_CHECKLIST_TEMPLATE: ChecklistItemTemplate[] = [
   { module: 'auth', title: 'RLS policies block cross-org data access', priority: 'critical' },
   { module: 'upload', title: 'File upload pipeline: staging → processing → storage', priority: 'critical' },
   { module: 'upload', title: 'Allowed file types enforced; executables blocked', priority: 'required' },
+  {
+    module: 'upload',
+    title: 'Upload Dashboard smoke checklist (v6 §12) — automated + manual gates on /compliance',
+    priority: 'required',
+  },
   { module: 'compliance', title: 'Obligation tracker shows all 75 Consent Decree items', priority: 'critical' },
+  {
+    module: 'compliance',
+    title: 'Parameter alias harness (npm run validate:parameter-aliases) passes for org aliases',
+    priority: 'required',
+  },
+  {
+    module: 'compliance',
+    title: 'Alias registry (/compliance/aliases) lists parameter and outfall mappings',
+    priority: 'recommended',
+  },
   { module: 'compliance', title: 'Coverage matrix loads per-outfall parameter grid', priority: 'required' },
   { module: 'compliance', title: 'Failure-to-sample penalties calculate correctly', priority: 'required' },
   { module: 'field_ops', title: 'Sampling calendar renders scheduled events', priority: 'required' },

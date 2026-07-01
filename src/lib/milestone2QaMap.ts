@@ -28,3 +28,8 @@ export const MILESTONE_2_QA_AUTOMATED_COVERAGE = {
   B4: ['src/lib/__tests__/fieldOutboundQueue.test.ts'],
   B5: ['src/lib/__tests__/milestone2QaCoverage.test.ts'],
 } as const;
+
+/** Flat Vitest paths for `npm run qa:lane-a-m2` (staging gate before B1–B5 manual QA). */
+export const MILESTONE_2_QA_VITEST_FILES = [
+  ...new Set(Object.values(MILESTONE_2_QA_AUTOMATED_COVERAGE).flat()),
+] as const;

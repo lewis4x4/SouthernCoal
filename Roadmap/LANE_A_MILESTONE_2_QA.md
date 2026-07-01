@@ -74,7 +74,7 @@ Goal: **`audit_log`** rows for sync-resolution–class actions (flush, blocked q
 
 ## Automated coverage (Vitest — run before staging)
 
-Run: `npm test -- src/lib/__tests__/milestone2QaCoverage.test.ts` (and full suite: `npm test`).
+Run: `npm run qa:lane-a-m2` (focused Vitest gate + manual checklist reminder). Full suite: `npm run preflight` or `npm test`.
 
 | Criterion | Primary test files | What automation proves |
 |-----------|-------------------|------------------------|
