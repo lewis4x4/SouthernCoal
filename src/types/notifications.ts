@@ -4,6 +4,7 @@ export type NotificationEventType =
   | 'deadline_approaching'
   | 'deadline_overdue'
   | 'exceedance_detected'
+  | 'exceedance_digest'
   | 'corrective_action_assigned'
   | 'corrective_action_due'
   | 'governance_issue_raised'
@@ -16,6 +17,8 @@ export type NotificationEventType =
   | 'upload_processed'
   | 'upload_failed'
   | 'sync_conflict'
+  | 'discrepancy_detected'
+  | 'discrepancy_digest'
   | 'incident_escalated'
   | 'ca_step_advanced'
   | 'ca_signature_requested'
@@ -54,6 +57,7 @@ export const EVENT_TYPE_LABELS: Record<NotificationEventType, string> = {
   deadline_approaching: 'Deadline Approaching',
   deadline_overdue: 'Deadline Overdue',
   exceedance_detected: 'Exceedance Detected',
+  exceedance_digest: 'Exceedance Digest',
   corrective_action_assigned: 'Corrective Action Assigned',
   corrective_action_due: 'Corrective Action Due',
   governance_issue_raised: 'Governance Issue Raised',
@@ -66,6 +70,8 @@ export const EVENT_TYPE_LABELS: Record<NotificationEventType, string> = {
   upload_processed: 'Upload Processed',
   upload_failed: 'Upload Failed',
   sync_conflict: 'Sync Conflict',
+  discrepancy_detected: 'ECHO Discrepancy Alert',
+  discrepancy_digest: 'ECHO Discrepancy Digest',
   incident_escalated: 'Incident Escalated',
   ca_step_advanced: 'CA Step Advanced',
   ca_signature_requested: 'CA Signature Requested',

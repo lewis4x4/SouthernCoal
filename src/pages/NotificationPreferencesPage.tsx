@@ -48,7 +48,7 @@ export function NotificationPreferencesPage() {
   const groups: { label: string; types: NotificationEventType[] }[] = [
     {
       label: 'Deadlines & Compliance',
-      types: ['deadline_approaching', 'deadline_overdue', 'exceedance_detected'],
+      types: ['deadline_approaching', 'deadline_overdue', 'exceedance_detected', 'exceedance_digest'],
     },
     {
       label: 'Corrective Actions',
@@ -65,6 +65,10 @@ export function NotificationPreferencesPage() {
     {
       label: 'Data & Uploads',
       types: ['correction_submitted', 'correction_reviewed', 'upload_processed', 'upload_failed', 'sync_conflict'],
+    },
+    {
+      label: 'ECHO & Discrepancies',
+      types: ['discrepancy_detected', 'discrepancy_digest'],
     },
   ];
 

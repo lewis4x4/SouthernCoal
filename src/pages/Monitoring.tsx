@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { toast } from 'sonner';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw, Bell, Loader2 } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useExceedanceAlerts } from '@/hooks/useExceedanceAlerts';
+import { ExceedanceAlertRulesPanel } from '@/components/monitoring/ExceedanceAlertRulesPanel';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { SummaryCards, SeverityBreakdown } from '@/components/monitoring/SummaryCards';
 import { ExceedanceTable } from '@/components/monitoring/ExceedanceTable';
@@ -11,6 +14,9 @@ import { useMonitoringStore } from '@/stores/monitoring';
 
 export function Monitoring() {
   const { filters } = useMonitoringStore();
+  const { can } = usePermissions();
+  const canAlert = can('bulk_process');
+  const { dispatching: alerting, dispatchDryRun, dispatchDigest } = useExceedanceAlerts();
 
   // Convert store filters to hook filters
   const hookFilters = useMemo(() => ({
@@ -89,14 +95,40 @@ export function Monitoring() {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {canAlert && (
+            <>
+              <button
+                type="button"
+                onClick={() => void dispatchDryRun()}
+                disabled={alerting}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-orange-500/30 bg-orange-500/10 text-xs text-orange-300 hover:bg-orange-500/20 disabled:opacity-40"
+              >
+                {alerting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+                Test alert
+              </button>
+              <button
+                type="button"
+                onClick={() => void dispatchDigest()}
+                disabled={alerting}
+                className="px-3 py-2 rounded-lg border border-white/10 text-xs text-text-secondary hover:bg-white/5 disabled:opacity-40"
+              >
+                Send digest
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {canAlert && <ExceedanceAlertRulesPanel />}
 
       {/* Summary Cards */}
       <SummaryCards stats={stats} loading={statsLoading} />

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, CheckCheck, Clock, AlertTriangle, AlertOctagon, Siren } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { PRIORITY_COLORS } from '@/types/notifications';
@@ -12,6 +13,9 @@ interface NotificationDrawerProps {
   onMarkAllRead: () => void;
   onDismiss: (id: string) => void;
 }
+
+const REVIEW_QUEUE_EVENT_TYPES = new Set(['discrepancy_detected', 'discrepancy_digest']);
+const MONITORING_EVENT_TYPES = new Set(['exceedance_detected', 'exceedance_digest']);
 
 const PRIORITY_ICONS: Record<NotificationPriority, React.ReactNode> = {
   info: <Clock size={14} />,
@@ -40,7 +44,21 @@ export function NotificationDrawer({
   onMarkAllRead,
   onDismiss,
 }: NotificationDrawerProps) {
+  const navigate = useNavigate();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  function handleNotificationClick(notification: Notification) {
+    if (!notification.in_app_read_at) {
+      onMarkRead(notification.id);
+    }
+    if (REVIEW_QUEUE_EVENT_TYPES.has(notification.event_type)) {
+      navigate('/compliance/review-queue');
+      onClose();
+    } else if (MONITORING_EVENT_TYPES.has(notification.event_type)) {
+      navigate('/monitoring');
+      onClose();
+    }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -124,9 +142,7 @@ export function NotificationDrawer({
                     'group relative px-4 py-3 transition-colors hover:bg-white/[0.02] cursor-pointer',
                     isUnread && 'bg-white/[0.01]',
                   )}
-                  onClick={() => {
-                    if (isUnread) onMarkRead(notification.id);
-                  }}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   {/* Unread indicator */}
                   {isUnread && (
