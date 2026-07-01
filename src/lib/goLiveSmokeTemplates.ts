@@ -8,6 +8,7 @@ import type { GoLiveItemModule, SmokeTestType } from '@/types/database';
 
 export type GoLiveSmokeTemplateGroupId =
   | 'upload-dashboard-v6'
+  | 'lane-a-m1'
   | 'lane-a-m2'
   | 'compliance-validation';
 
@@ -29,6 +30,11 @@ export const GO_LIVE_SMOKE_TEMPLATE_GROUPS: Record<
   'upload-dashboard-v6': {
     label: 'Upload Dashboard (v6 §12)',
     description: 'Ten production-readiness checks from the Upload Dashboard handoff smoke checklist.',
+  },
+  'lane-a-m1': {
+    label: 'Lane A M1 online field execution (A1–A6)',
+    description:
+      'Manual staging QA for today\'s route, outcome evidence gates, GPS, online RPC complete, client audit, and offline queue.',
   },
   'lane-a-m2': {
     label: 'Lane A M2 field sync (B1–B5)',
@@ -53,6 +59,84 @@ const UPLOAD_SMOKE_TEMPLATES: GoLiveSmokeTestTemplate[] = UPLOAD_DASHBOARD_SMOKE
       : undefined,
   }),
 );
+
+const LANE_A_M1_TEMPLATES: GoLiveSmokeTestTemplate[] = [
+  {
+    templateId: 'lane-a-a1',
+    groupId: 'lane-a-m1',
+    testName: 'A1 — Today\'s route',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'Open Field dispatch — confirm WV filter loads without empty-state errors when data exists.',
+      'Open Today\'s route — list matches expected stops for the day.',
+      'Open a visit from that route — Field visit page loads (not "Field visit unavailable").',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 (fieldVisitInspectionRouting + fieldRouteLocalCache)',
+  },
+  {
+    templateId: 'lane-a-a2',
+    groupId: 'lane-a-m1',
+    testName: 'A2 — Outcome evidence gates',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'Sample collected: block complete without container ID, preservative, or unknown outlet flow.',
+      'No discharge: block without photo, narrative, and obstruction details when checked.',
+      'Access issue: block without photo and access narrative.',
+      'Confirm toasts reference why the record is blocked.',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 (fieldVisitCompletionValidation + fieldVisitRequirements)',
+  },
+  {
+    templateId: 'lane-a-a3',
+    groupId: 'lane-a-m1',
+    testName: 'A3 — GPS at complete',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'Complete blocked when lat/long empty or non-numeric.',
+      'GPS capture (if used) fills fields and allows complete when other gates pass.',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 (fieldVisitCompletionValidation GPS cases)',
+  },
+  {
+    templateId: 'lane-a-a4',
+    groupId: 'lane-a-m1',
+    testName: 'A4 — Online RPC',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'Online complete — visit shows completed after refresh; DB/UI consistent.',
+      'complete_field_visit errors surface as toast (not silent failure).',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 (fieldOutboundQueue complete_field_visit RPC)',
+  },
+  {
+    templateId: 'lane-a-a5',
+    groupId: 'lane-a-m1',
+    testName: 'A5 — Client audit',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'After online complete: audit_log row with field_visit_completed for that visit.',
+      'After offline/queued complete: field_visit_completion_queued before sync if applicable.',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 + Audit Log UI field visit presets',
+  },
+  {
+    templateId: 'lane-a-a6',
+    groupId: 'lane-a-m1',
+    testName: 'A6 — Offline queue',
+    module: 'field_ops',
+    testType: 'manual',
+    manualSteps: [
+      'Airplane mode: complete queues; toast indicates sync when back online.',
+      'Re-online: FieldDataSyncBar / queue processes without losing the completion.',
+    ],
+    automatedHint: 'npm run qa:lane-a-m1 (fieldOutboundQueue + fieldSyncPending)',
+  },
+];
 
 const LANE_A_M2_TEMPLATES: GoLiveSmokeTestTemplate[] = [
   {
@@ -140,6 +224,7 @@ const COMPLIANCE_VALIDATION_TEMPLATES: GoLiveSmokeTestTemplate[] = [
 
 export const GO_LIVE_SMOKE_TEMPLATES: GoLiveSmokeTestTemplate[] = [
   ...UPLOAD_SMOKE_TEMPLATES,
+  ...LANE_A_M1_TEMPLATES,
   ...LANE_A_M2_TEMPLATES,
   ...COMPLIANCE_VALIDATION_TEMPLATES,
 ];

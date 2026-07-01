@@ -60,6 +60,10 @@ npm run build        # production build
 npm run typecheck    # TypeScript
 npm run lint         # ESLint (tsconfigRootDir pinned in eslint.config.js)
 npm test             # Vitest (301+ tests)
+npm run qa:lane-a-staging   # Lane A M1+M2 automated gate + manual sign-off reminder
+npm run qa:lane-a-m1 # Lane A M1 automated gate (A1–A6 Vitest map)
+npm run qa:lane-a-m2 # Lane A M2 automated gate (B1–B5 Vitest map)
+npm run qa:lane-a    # Combined M1 + M2 gates (run before manual staging QA)
 npm run import:npdes-mappings   # NPDES override import (requires .env.local)
 npm run report:npdes-gaps       # Read-only gap report (requires service role key)
 ```
@@ -82,7 +86,9 @@ npm run report:npdes-gaps       # Read-only gap report (requires service role ke
 | **M1** — Online field execution | Code ready; staging A1–A6 sign-off pending | `Roadmap/LANE_A_MILESTONE_1.md` |
 | **M2** — Offline sync slice (Codex Phase 4) | **Code shipped** (slices 1–4); **staging B1–B5 QA pending** | `Roadmap/LANE_A_MILESTONE_2.md` |
 
+**M1 automated gate:** `npm run qa:lane-a-m1` + map in `src/lib/milestone1QaMap.ts` — see `Roadmap/LANE_A_MILESTONE_1_QA.md` § Automated coverage.
 **M2 automated gate:** `npm test -- milestone2QaCoverage` + map in `src/lib/milestone2QaMap.ts` — see `Roadmap/LANE_A_MILESTONE_2_QA.md` § Automated coverage.
+**Combined:** `npm run qa:lane-a` before manual A1–A6 + B1–B5 staging sign-off.
 
 **M2 north star:** A WV sampler can work offline with durable local route/visit data, reconnect without silent data loss, see sync health and blocked-queue reasons, and get conflict holds instead of overwrites.
 

@@ -74,6 +74,25 @@ In **`audit_log`** (or Audit Log UI if filtered):
 
 ---
 
+## Automated coverage (Vitest — run before staging)
+
+Run: `npm run qa:lane-a-m1` (focused Vitest gate + manual checklist reminder). Combined M1+M2 gate: `npm run qa:lane-a`. Full suite: `npm run preflight` or `npm test`.
+
+| Criterion | Primary test files | What automation proves |
+|-----------|-------------------|------------------------|
+| **A1** | `fieldVisitInspectionRouting.test.ts`, `fieldRouteLocalCache.test.ts` | Route/visit navigation wiring; durable route cache matching |
+| **A2** | `fieldVisitCompletionValidation.test.ts`, `fieldVisitRequirements.test.ts` | Outcome evidence gates block incomplete records |
+| **A3** | `fieldVisitCompletionValidation.test.ts` | GPS coordinate validation at start/complete |
+| **A4** | `fieldOutboundQueue.test.ts` | Online `complete_field_visit` RPC path |
+| **A5** | `milestone1QaCoverage.test.ts` + Audit Log UI presets | `field_visit_completed` / `field_visit_completion_queued` audit constants |
+| **A6** | `fieldOutboundQueue.test.ts`, `fieldSyncPending.test.ts` | Offline queue enqueue + pending sync visibility |
+
+Canonical action list: `src/lib/milestone1QaMap.ts` (`MILESTONE_1_FIELD_AUDIT_ACTIONS`).
+
+Staging QA still required for UX copy, airplane-mode, real JWT/RLS, and WV dispatch data — automation reduces code regressions only.
+
+---
+
 ## Sign-off
 
 Milestone 1 **accepted** / **not accepted** — **Reason:**

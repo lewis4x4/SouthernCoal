@@ -12,8 +12,9 @@ import { UPLOAD_DASHBOARD_SMOKE_CHECKS } from '@/lib/uploadDashboardSmokeCheckli
 
 describe('goLiveSmokeTemplates', () => {
   it('includes all Upload Dashboard v6 §12 checks plus Lane A + compliance harness', () => {
-    expect(GO_LIVE_SMOKE_TEMPLATES.length).toBe(UPLOAD_DASHBOARD_SMOKE_CHECKS.length + 5 + 1);
+    expect(GO_LIVE_SMOKE_TEMPLATES.length).toBe(UPLOAD_DASHBOARD_SMOKE_CHECKS.length + 6 + 5 + 1);
     expect(getGoLiveSmokeTemplates(['upload-dashboard-v6'])).toHaveLength(UPLOAD_DASHBOARD_SMOKE_CHECKS.length);
+    expect(getGoLiveSmokeTemplates(['lane-a-m1'])).toHaveLength(6);
     expect(getGoLiveSmokeTemplates(['lane-a-m2'])).toHaveLength(5);
     expect(getGoLiveSmokeTemplates(['compliance-validation'])).toHaveLength(1);
   });

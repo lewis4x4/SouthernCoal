@@ -18,6 +18,7 @@ Use with [`LANE_A_MILESTONE_2.md`](./LANE_A_MILESTONE_2.md) (acceptance **B1–B
 Goal: With **network off**, sampler can open **today’s route** and **visit shells** from local durable data **after** a prior online load.
 
 - [ ] While **online**, open **Today’s route** and one **Field visit** — confirm **live** load (e.g. `FieldDataSourceBanner` not showing cache-only warning, or as documented for your build).
+- [ ] Tap **Save route offline** on a date with visits — note saved date; empty **today** must not clobber a saved historical date.
 - [ ] Turn **network off**.
 - [ ] Reload or navigate back to **Today’s route** — list/stops still usable; no unrecoverable empty error if cache was populated on prior load.
 - [ ] Open the same **visit** — shell loads from cache path; **documented cold-start** limitation: if first load is offline and route is empty, user sees **clear message** (expected per product; note pass/fail).
@@ -74,11 +75,11 @@ Goal: **`audit_log`** rows for sync-resolution–class actions (flush, blocked q
 
 ## Automated coverage (Vitest — run before staging)
 
-Run: `npm run qa:lane-a-m2` (focused Vitest gate + manual checklist reminder). Full suite: `npm run preflight` or `npm test`.
+Run: `npm run qa:lane-a-m2` (focused Vitest gate + manual checklist reminder). Full Lane A automated gate: `npm run qa:lane-a` (M1 then M2). Full suite: `npm run preflight` or `npm test`.
 
 | Criterion | Primary test files | What automation proves |
 |-----------|-------------------|------------------------|
-| **B1** | `fieldRouteLocalCache.test.ts`, `fieldVisitLocalCache.test.ts` | Dual-write IDB + localStorage; matching load; visit lookup survives refresh path |
+| **B1** | `fieldRouteLocalCache.test.ts`, `fieldVisitLocalCache.test.ts` | Dual-write IDB + localStorage; empty-route auto-persist guard (`shouldAutoPersistFieldRouteSnapshot`); visit lookup survives refresh path |
 | **B2** | `fieldOutboundQueueDiagnostic.test.ts`, `fieldSyncPending.test.ts` | Blocked queue + conflictHold diagnostic flags persist |
 | **B3** | `fieldOutboundQueue.test.ts` | FIFO flush, evidence-before-RPC ordering, in-flight enqueue safety |
 | **B4** | `fieldOutboundQueue.test.ts` | Terminal `field_visit_start` hold; outcome mismatch on `field_visit_complete` |

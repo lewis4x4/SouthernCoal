@@ -11,6 +11,8 @@ import {
   loadFieldRouteCacheFromIdb,
   loadFieldRouteCacheFromIdbMatching,
   saveFieldRouteCacheDual,
+  shouldAutoPersistFieldRouteSnapshot,
+  shouldManualPersistFieldRouteSnapshot,
 } from '../fieldRouteLocalCache';
 import type { FieldVisitListItem } from '@/types';
 
@@ -409,5 +411,26 @@ describe('fieldRouteLocalCache', () => {
       }),
     ).toBe(false);
     spy.mockRestore();
+  });
+
+  it('shouldAutoPersistFieldRouteSnapshot skips empty routes while online (B1)', () => {
+    expect(
+      shouldAutoPersistFieldRouteSnapshot({ online: true, loading: false, visitCount: 0 }),
+    ).toBe(false);
+    expect(
+      shouldAutoPersistFieldRouteSnapshot({ online: true, loading: false, visitCount: 2 }),
+    ).toBe(true);
+    expect(
+      shouldAutoPersistFieldRouteSnapshot({ online: false, loading: false, visitCount: 2 }),
+    ).toBe(false);
+    expect(
+      shouldAutoPersistFieldRouteSnapshot({ online: true, loading: true, visitCount: 2 }),
+    ).toBe(false);
+  });
+
+  it('shouldManualPersistFieldRouteSnapshot requires visits (B1)', () => {
+    expect(shouldManualPersistFieldRouteSnapshot({ online: true, visitCount: 0 })).toBe(false);
+    expect(shouldManualPersistFieldRouteSnapshot({ online: true, visitCount: 1 })).toBe(true);
+    expect(shouldManualPersistFieldRouteSnapshot({ online: false, visitCount: 1 })).toBe(false);
   });
 });

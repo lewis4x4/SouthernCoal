@@ -356,3 +356,20 @@ export async function findVisitInFieldRouteCacheAsync(
   if (!row || !matchesOfflineVisitContext(localPayload, row, context)) return null;
   return row;
 }
+
+/** Lane A B1 — never auto-persist empty route snapshots (clobbers a prior saved date in single-slot cache). */
+export function shouldAutoPersistFieldRouteSnapshot(input: {
+  online: boolean;
+  loading: boolean;
+  visitCount: number;
+}): boolean {
+  return input.online && !input.loading && input.visitCount > 0;
+}
+
+/** Lane A B1 — manual save requires online context and at least one visit row. */
+export function shouldManualPersistFieldRouteSnapshot(input: {
+  online: boolean;
+  visitCount: number;
+}): boolean {
+  return input.online && input.visitCount > 0;
+}

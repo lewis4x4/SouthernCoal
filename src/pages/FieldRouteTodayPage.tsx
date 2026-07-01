@@ -24,6 +24,8 @@ import {
   loadFieldRouteCacheFromIdbMatching,
   loadFieldRouteCacheMatching,
   saveFieldRouteCacheDual,
+  shouldAutoPersistFieldRouteSnapshot,
+  shouldManualPersistFieldRouteSnapshot,
   type FieldRouteCachePayload,
 } from '@/lib/fieldRouteLocalCache';
 import { getEasternTodayYmd } from '@/lib/operationalDate';
@@ -263,9 +265,13 @@ export function FieldRouteTodayPage() {
 
   const persistOfflineCopy = useCallback(
     async (showToast: boolean) => {
-      if (!online) {
+      if (!shouldManualPersistFieldRouteSnapshot({ online, visitCount: dayVisitsLive.length })) {
         if (showToast) {
-          toast.error('Connect to the network to save an offline copy');
+          if (!online) {
+            toast.error('Connect to the network to save an offline copy');
+          } else {
+            toast.error('No visits on this date to save offline');
+          }
         }
         return;
       }
@@ -316,7 +322,15 @@ export function FieldRouteTodayPage() {
   }
 
   useEffect(() => {
-    if (!online || loading) return;
+    if (
+      !shouldAutoPersistFieldRouteSnapshot({
+        online,
+        loading,
+        visitCount: dayVisitsLive.length,
+      })
+    ) {
+      return;
+    }
     const cacheKey = JSON.stringify({
       organizationId: cacheOrganizationId,
       routeDate,
