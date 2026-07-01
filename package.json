@@ -21,6 +21,7 @@
     "smoke:upload-dashboard": "vitest run src/lib/__tests__/uploadDashboardSmokeChecklist.test.ts",
     "qa:upload-dashboard": "node scripts/lane-b-upload-preflight.mjs",
     "qa:upload-dashboard-staging": "node scripts/lane-b-upload-staging-smoke.mjs",
+    "qa:qw1": "node scripts/qw1-preflight.mjs",
     "validate:parameter-aliases": "node scripts/validate-parameter-aliases.mjs",
     "seed:wv-uat-auth": "node scripts/create-wv-uat-auth-users.mjs",
     "import:npdes-mappings": "node scripts/import-npdes-overrides.mjs",
