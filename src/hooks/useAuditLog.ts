@@ -205,6 +205,7 @@ type AuditAction =
   | 'go_live_exported'
   | 'deployment_stage_advanced'
   | 'smoke_test_recorded'
+  | 'go_live_smoke_templates_seeded'
   | 'go_live_sign_off_created'
   | 'go_live_readiness_calculated'
   // Rain Event Monitoring

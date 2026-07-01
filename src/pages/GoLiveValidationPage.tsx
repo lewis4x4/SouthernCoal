@@ -6,6 +6,13 @@ import {
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useGoLiveValidation, MODULE_LABELS, STAGE_LABELS, SIGN_OFF_LABELS } from '@/hooks/useGoLiveValidation';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import {
+  getGoLiveSmokeTemplate,
+  displaySmokeTestTitle,
+  parseSmokeTestTemplateId,
+  GO_LIVE_SMOKE_TEMPLATE_GROUPS,
+  type GoLiveSmokeTemplateGroupId,
+} from '@/lib/goLiveSmokeTemplates';
 import type {
   GoLiveItemStatus,
   GoLiveItemModule,
@@ -52,6 +59,7 @@ export function GoLiveValidationPage() {
     updateItemStatus, updateItemNotes,
     advanceStage,
     recordSmokeTest,
+    seedSmokeTestTemplates,
     createSignOff,
     calculateReadiness,
   } = useGoLiveValidation();
@@ -76,6 +84,8 @@ export function GoLiveValidationPage() {
   const [stType, setStType] = useState<SmokeTestType>('manual');
   const [stStatus, setStStatus] = useState<'passed' | 'failed'>('passed');
   const [stError, setStError] = useState('');
+  const [seedingSmoke, setSeedingSmoke] = useState(false);
+  const [expandedSmokeId, setExpandedSmokeId] = useState<string | null>(null);
 
   // Sign-off form
   const [soType, setSoType] = useState<SignOffType>('technical');
@@ -97,6 +107,16 @@ export function GoLiveValidationPage() {
     if (!stName.trim() || !activeChecklistId) return;
     await recordSmokeTest(activeChecklistId, stName.trim(), stModule, stType, stStatus, undefined, stError.trim() || undefined);
     setStName(''); setStError(''); setShowSmokeForm(false);
+  };
+
+  const handleSeedSmokeTemplates = async (groupIds?: GoLiveSmokeTemplateGroupId[]) => {
+    if (!activeChecklistId) return;
+    setSeedingSmoke(true);
+    try {
+      await seedSmokeTestTemplates(activeChecklistId, groupIds);
+    } finally {
+      setSeedingSmoke(false);
+    }
   };
 
   const handleSignOff = async () => {
@@ -346,11 +366,28 @@ export function GoLiveValidationPage() {
           {/* Smoke Tests Tab */}
           {tab === 'smoke' && (
             <div className="space-y-3">
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSeedSmokeTemplates()}
+                  disabled={!activeChecklistId || seedingSmoke}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.04] text-text-primary disabled:opacity-50"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  {seedingSmoke ? 'Seeding…' : 'Seed smoke templates'}
+                </button>
                 <button onClick={() => setShowSmokeForm(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 text-primary">
                   <Plus className="w-3.5 h-3.5" />Record Test
                 </button>
               </div>
+              <SpotlightCard className="p-3 border border-black/[0.06]">
+                <p className="text-xs text-text-secondary">
+                  Seed templates adds {Object.values(GO_LIVE_SMOKE_TEMPLATE_GROUPS).map((g) => g.label).join(', ')} as{' '}
+                  <span className="font-mono text-text-primary">pending</span> rows (skips duplicates). Run automated hints via{' '}
+                  <span className="font-mono">npm run smoke:upload-dashboard</span> and{' '}
+                  <span className="font-mono">npm run qa:lane-a-m2</span> before marking passed.
+                </p>
+              </SpotlightCard>
               {showSmokeForm && (
                 <SpotlightCard className="p-4 space-y-3 border border-primary/20">
                   <div className="flex items-center justify-between">
@@ -389,7 +426,11 @@ export function GoLiveValidationPage() {
               {smokeTests.length === 0 && !showSmokeForm && (
                 <p className="text-center text-text-secondary text-sm py-8">No smoke tests recorded yet.</p>
               )}
-              {smokeTests.map(test => (
+              {smokeTests.map(test => {
+                const templateId = parseSmokeTestTemplateId(test.test_name);
+                const template = templateId ? getGoLiveSmokeTemplate(templateId) : undefined;
+                const isExpanded = expandedSmokeId === test.id;
+                return (
                 <SpotlightCard key={test.id} className="p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -401,23 +442,51 @@ export function GoLiveValidationPage() {
                         <Clock className="w-4 h-4 text-text-secondary" />
                       )}
                       <div>
-                        <p className="text-sm text-text-primary">{test.test_name}</p>
+                        <p className="text-sm text-text-primary">{displaySmokeTestTitle(test.test_name)}</p>
                         <p className="text-xs text-text-secondary">
                           {MODULE_LABELS[test.module as GoLiveItemModule] ?? test.module} · {test.test_type}
                           {test.run_at ? ` · ${new Date(test.run_at).toLocaleString()}` : ''}
+                          {template ? ` · ${GO_LIVE_SMOKE_TEMPLATE_GROUPS[template.groupId].label}` : ''}
                         </p>
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 text-[10px] rounded ${
-                      test.status === 'passed' ? 'bg-green-500/20 text-green-300' :
-                      test.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-qo-nested text-text-secondary'
-                    }`}>{test.status.toUpperCase()}</span>
+                    <div className="flex items-center gap-2">
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSmokeId(isExpanded ? null : test.id)}
+                          className="text-[10px] px-2 py-0.5 rounded bg-qo-nested text-text-secondary hover:text-text-primary"
+                        >
+                          {isExpanded ? 'Hide steps' : 'Steps'}
+                        </button>
+                      )}
+                      <span className={`px-2 py-0.5 text-[10px] rounded ${
+                        test.status === 'passed' ? 'bg-green-500/20 text-green-300' :
+                        test.status === 'failed' ? 'bg-red-500/20 text-red-300' :
+                        test.status === 'pending' ? 'bg-amber-500/15 text-amber-300' :
+                        'bg-qo-nested text-text-secondary'
+                      }`}>{test.status.toUpperCase()}</span>
+                    </div>
                   </div>
+                  {isExpanded && template && (
+                    <div className="mt-3 pl-7 space-y-2 border-t border-black/[0.06] pt-3">
+                      {template.automatedHint && (
+                        <p className="text-xs text-text-secondary">
+                          Automated: <span className="font-mono text-text-primary">{template.automatedHint}</span>
+                        </p>
+                      )}
+                      <ol className="list-decimal list-inside text-xs text-text-secondary space-y-1">
+                        {template.manualSteps.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                   {test.error_message && (
                     <p className="text-xs text-qo-risk/80 mt-2 pl-7">{test.error_message}</p>
                   )}
                 </SpotlightCard>
-              ))}
+              );})}
             </div>
           )}
 

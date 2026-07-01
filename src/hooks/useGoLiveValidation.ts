@@ -3,6 +3,12 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import {
+  formatSmokeTestName,
+  getGoLiveSmokeTemplates,
+  parseSmokeTestTemplateId,
+  type GoLiveSmokeTemplateGroupId,
+} from '@/lib/goLiveSmokeTemplates';
 import { toast } from 'sonner';
 import type {
   GoLiveChecklist,
@@ -320,6 +326,64 @@ export function useGoLiveValidation() {
     fetchSmokeTests(checklistId);
   }, [orgId, user, fetchSmokeTests, log]);
 
+  const seedSmokeTestTemplates = useCallback(async (
+    checklistId: string,
+    groupIds?: GoLiveSmokeTemplateGroupId[],
+  ) => {
+    if (!orgId || !user) return { inserted: 0, skipped: 0 };
+
+    const templates = getGoLiveSmokeTemplates(groupIds);
+    const { data: existing, error: fetchError } = await supabase
+      .from('smoke_test_runs')
+      .select('test_name')
+      .eq('checklist_id', checklistId);
+
+    if (fetchError) {
+      toast.error('Failed to load existing smoke tests');
+      return { inserted: 0, skipped: 0 };
+    }
+
+    const seededTemplateIds = new Set(
+      (existing ?? [])
+        .map((row) => parseSmokeTestTemplateId(row.test_name))
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const toInsert = templates.filter((t) => !seededTemplateIds.has(t.templateId));
+    if (toInsert.length === 0) {
+      toast.info('All selected smoke templates are already seeded');
+      return { inserted: 0, skipped: templates.length };
+    }
+
+    const rows = toInsert.map((t) => ({
+      checklist_id: checklistId,
+      organization_id: orgId,
+      test_name: formatSmokeTestName(t.templateId, t.testName),
+      module: t.module,
+      test_type: t.testType,
+      status: 'pending' as const,
+      duration_ms: null,
+      error_message: null,
+      run_by: null,
+      run_at: null,
+    }));
+
+    const { error } = await supabase.from('smoke_test_runs').insert(rows);
+    if (error) {
+      toast.error('Failed to seed smoke templates');
+      return { inserted: 0, skipped: seededTemplateIds.size };
+    }
+
+    toast.success(`Seeded ${toInsert.length} smoke test template${toInsert.length === 1 ? '' : 's'}`);
+    log(
+      'go_live_smoke_templates_seeded',
+      { count: toInsert.length, groups: groupIds ?? 'all' },
+      { module: 'go_live', tableName: 'smoke_test_runs' },
+    );
+    fetchSmokeTests(checklistId);
+    return { inserted: toInsert.length, skipped: templates.length - toInsert.length };
+  }, [orgId, user, fetchSmokeTests, log]);
+
   // -- Sign-Offs --
 
   const fetchSignOffs = useCallback(async (checklistId: string) => {
@@ -423,6 +487,7 @@ export function useGoLiveValidation() {
     advanceStage,
     // Smoke Tests
     recordSmokeTest,
+    seedSmokeTestTemplates,
     // Sign-Offs
     createSignOff,
     // Readiness
