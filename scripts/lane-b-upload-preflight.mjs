@@ -37,6 +37,5 @@ console.log('\n--- Lane B Upload Dashboard manual smoke (v6 §12) ---');
 console.log('Route: /compliance (Upload Dashboard)');
 console.log('In-app panel: Production smoke checklist → expand each of 10 checks');
 console.log('Spec: SCC_Upload_Dashboard_Handoff_v5.md + v6 DELTA §12');
-console.log('Apply pending migrations before staging smoke:');
-console.log('  supabase db push --linked');
-console.log('  (includes 20260701195000 org dedup + 20260702140000 org RLS hardening)\n');
+console.log('Org RLS hardening: live on prod as 20260701182156_upload_dashboard_org_rls_hardening');
+console.log('Ledger drift: remote-only migrations exist — see supabase/BASELINE_ADOPTION.md before db push\n');

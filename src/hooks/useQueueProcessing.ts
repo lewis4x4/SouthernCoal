@@ -34,6 +34,9 @@ export function useQueueProcessing() {
         case 'parameter_sheet':
           return processParameterSheet(queueId);
         case 'lab_data':
+        case 'va_lab_csv':
+        case 'al_lab_data':
+        case 'osmre_monitoring':
           return processLabData(queueId);
         case 'netdmr_bundle':
           return processDmr(queueId);

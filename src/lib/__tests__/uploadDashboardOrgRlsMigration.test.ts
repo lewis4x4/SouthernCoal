@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = resolve(
   process.cwd(),
-  'supabase/migrations/20260702140000_upload_dashboard_org_rls_hardening.sql',
+  'supabase/migrations/20260701182156_upload_dashboard_org_rls_hardening.sql',
 );
 
 describe('upload dashboard org RLS migration', () => {

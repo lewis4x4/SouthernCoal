@@ -89,4 +89,13 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
   it.each(wiring)('$id wiring in $path', ({ path, patterns }) => {
     expect(assertSourceContains(path, patterns)).toBe(true);
   });
+
+  it('routes VA/AL/TN lab parsers through useQueueProcessing → processLabData', () => {
+    expect(assertSourceContains('hooks/useQueueProcessing.ts', [
+      /case 'va_lab_csv'/,
+      /case 'al_lab_data'/,
+      /case 'osmre_monitoring'/,
+      /processLabData\(queueId\)/,
+    ])).toBe(true);
+  });
 });
