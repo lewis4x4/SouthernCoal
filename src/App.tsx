@@ -72,6 +72,7 @@ const CorrectiveActionDetailPage = lazyRoute(
 );
 const FailureToSamplePage = lazyRoute(() => import('@/pages/FailureToSamplePage'), 'FailureToSamplePage');
 const MissedAtRiskPage = lazyRoute(() => import('@/pages/MissedAtRiskPage'), 'MissedAtRiskPage');
+const LateIncompleteEddPage = lazyRoute(() => import('@/pages/LateIncompleteEddPage'), 'LateIncompleteEddPage');
 const ExternalDataPage = lazyRoute(() => import('@/pages/ExternalDataPage'), 'ExternalDataPage');
 const AdminReportsPage = lazyRoute(() => import('@/pages/AdminReportsPage'), 'AdminReportsPage');
 const FieldSchedulePage = lazyRoute(() => import('@/pages/FieldSchedulePage'), 'FieldSchedulePage');
@@ -143,6 +144,7 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/search',                       element: <SearchPage />,                 roles: ALL_ROLES,                  guardScope: 'assignment', shell: 'app' },
   { path: '/compliance/failure-to-sample', element: <FailureToSamplePage />,        roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/missed-at-risk',     element: <MissedAtRiskPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/late-incomplete-edd', element: <LateIncompleteEddPage />,    roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/review-queue',      element: <ReviewQueuePage />,            roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/external-data',     element: <ExternalDataPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/field/schedule',               element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment', shell: 'app' },

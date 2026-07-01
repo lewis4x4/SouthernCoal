@@ -625,6 +625,25 @@ serve(async (req: Request) => {
       }
     }
 
+    if (importId && totalResultsCreated > 0) {
+      try {
+        const firstRecord = extractedData.records.find((r) => !r.is_duplicate) ?? extractedData.records[0];
+        const { error: p49Error } = await supabase.rpc("evaluate_edd_import_paragraph49", {
+          p_import_id: importId,
+          p_arrival_at: now,
+          p_source_file_id: queueId,
+          p_file_name: queueEntry.file_name,
+          p_lab_name: firstRecord?.lab_name ?? null,
+          p_site_state: firstRecord?.site_state ?? null,
+        });
+        if (p49Error) {
+          console.error("[import-lab-data] ¶49 evaluation failed:", p49Error.message);
+        }
+      } catch (err) {
+        console.error("[import-lab-data] ¶49 evaluation failed:", err);
+      }
+    }
+
     return jsonResponse({
       success: true,
       events_created: totalEventsCreated,

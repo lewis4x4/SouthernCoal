@@ -78,6 +78,8 @@ type AuditAction =
   // Lane C QW1 — calendar gap detection
   | 'sampling_gap_detection_manual'
   | 'sampling_gap_review_updated'
+  // Lane C QW2 — ¶49 EDD evaluation
+  | 'edd_paragraph49_review_updated'
   // Report Engine
   | 'report_generated'
   | 'report_template_created'
