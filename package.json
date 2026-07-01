@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "smoke:upload-dashboard": "vitest run src/lib/__tests__/uploadDashboardSmokeChecklist.test.ts",
+    "validate:parameter-aliases": "node scripts/validate-parameter-aliases.mjs",
     "seed:wv-uat-auth": "node scripts/create-wv-uat-auth-users.mjs",
     "import:npdes-mappings": "node scripts/import-npdes-overrides.mjs",
     "report:npdes-gaps": "node scripts/report-npdes-gaps.mjs"
