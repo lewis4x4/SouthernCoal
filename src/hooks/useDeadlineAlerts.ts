@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { getValidSession, supabase } from '@/lib/supabase';
 import { useAuditLog } from './useAuditLog';
-import type { PenaltyTier } from '@/types/obligations';
+import { OPEN_OBLIGATION_STATUSES, type PenaltyTier } from '@/types/obligations';
 
 export interface DeadlineAlert {
   id: string;
@@ -40,7 +40,7 @@ export function useDeadlineAlerts() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
         .select('id, description, obligation_type, next_due_date, days_at_risk, penalty_tier, accrued_penalty')
-        .in('status', ['pending', 'in_progress', 'overdue'])
+        .in('status', OPEN_OBLIGATION_STATUSES)
         .gt('days_at_risk', 0)
         .order('days_at_risk', { ascending: false });
 

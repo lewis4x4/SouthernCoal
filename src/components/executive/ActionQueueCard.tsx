@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
+import { OPEN_OBLIGATION_STATUSES } from '@/types/obligations';
 
 interface ActionItem {
   id: string;
@@ -25,7 +26,7 @@ export function ActionQueueCard() {
       const { data: rows, error } = await supabase
         .from('consent_decree_obligations')
         .select('id, description, next_due_date, obligation_type, status, days_at_risk')
-        .in('status', ['pending', 'in_progress', 'overdue'])
+        .in('status', OPEN_OBLIGATION_STATUSES)
         .order('next_due_date', { ascending: true })
         .limit(20);
 

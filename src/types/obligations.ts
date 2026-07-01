@@ -29,7 +29,23 @@ export interface Obligation {
 }
 
 export type PenaltyTier = 'none' | 'tier_1' | 'tier_2' | 'tier_3';
-export type ObligationStatus = 'pending' | 'in_progress' | 'completed' | 'overdue';
+
+/** Matches consent_decree_obligations_status_check in Postgres. */
+export type ObligationStatus = 'active' | 'completed' | 'overdue' | 'waived' | 'modified';
+
+/** Statuses for obligations still subject to tracking and penalties. */
+export const OPEN_OBLIGATION_STATUSES: ObligationStatus[] = ['active', 'overdue', 'modified'];
+
+export function obligationStatusLabel(status: ObligationStatus | string): string {
+  switch (status) {
+    case 'active': return 'Active';
+    case 'completed': return 'Completed';
+    case 'overdue': return 'Overdue';
+    case 'waived': return 'Waived';
+    case 'modified': return 'Modified';
+    default: return status;
+  }
+}
 
 export function tierLabel(tier: PenaltyTier): string {
   switch (tier) {

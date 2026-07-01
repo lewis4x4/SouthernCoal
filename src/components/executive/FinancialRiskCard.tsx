@@ -10,6 +10,7 @@ import { useLiveProgramScope } from '@/hooks/useLiveProgramScope';
 import { ftsMonthlyTotalInScope } from '@/lib/liveProgramScope';
 import type { FtsMonthlyTotal } from '@/types/fts';
 import type { PenaltyTier } from '@/types/obligations';
+import { OPEN_OBLIGATION_STATUSES } from '@/types/obligations';
 
 interface ObligationTier {
   count: number;
@@ -62,7 +63,7 @@ export function FinancialRiskCard() {
               .from('consent_decree_obligations')
               .select('id, penalty_tier, accrued_penalty')
               .eq('organization_id', orgId)
-              .in('status', ['pending', 'in_progress', 'overdue']);
+              .in('status', OPEN_OBLIGATION_STATUSES);
 
             if (!scoped.error) return scoped;
 
@@ -70,7 +71,7 @@ export function FinancialRiskCard() {
               return supabase
                 .from('consent_decree_obligations')
                 .select('id, penalty_tier, accrued_penalty')
-                .in('status', ['pending', 'in_progress', 'overdue']);
+                .in('status', OPEN_OBLIGATION_STATUSES);
             }
 
             return scoped;

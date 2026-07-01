@@ -2,9 +2,21 @@ import { useEffect, useState, useMemo } from 'react';
 import { ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
-import type { Obligation, PenaltyTier } from '@/types/obligations';
+import type { Obligation, ObligationStatus, PenaltyTier } from '@/types/obligations';
+import { obligationStatusLabel } from '@/types/obligations';
 
-type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue';
+type StatusFilter = 'all' | ObligationStatus | 'overdue_at_risk';
+
+function matchesStatusFilter(o: Obligation, filter: StatusFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'overdue_at_risk') {
+    return (
+      o.status === 'overdue'
+      || (o.days_at_risk > 0 && o.status !== 'completed' && o.status !== 'waived')
+    );
+  }
+  return o.status === filter;
+}
 type TierFilter = 'all' | 'current' | 'tier1' | 'tier2' | 'tier3';
 
 /** Map server tier format (tier_1) to style keys (tier1) */
@@ -54,7 +66,7 @@ export function Obligations() {
   const filtered = useMemo(() => {
     const serverTier = filterToServerTier(tierFilter);
     return obligations.filter((o) => {
-      if (statusFilter !== 'all' && o.status !== statusFilter) return false;
+      if (!matchesStatusFilter(o, statusFilter)) return false;
       if (serverTier !== null && o.penalty_tier !== serverTier) return false;
       return true;
     });
@@ -143,10 +155,11 @@ export function Obligations() {
           onChange={(v) => setStatusFilter(v as StatusFilter)}
           options={[
             { value: 'all', label: 'All Statuses' },
-            { value: 'pending', label: 'Pending' },
-            { value: 'in_progress', label: 'In Progress' },
+            { value: 'active', label: 'Active' },
+            { value: 'overdue_at_risk', label: 'Overdue / At Risk' },
             { value: 'completed', label: 'Completed' },
-            { value: 'overdue', label: 'Overdue' },
+            { value: 'waived', label: 'Waived' },
+            { value: 'modified', label: 'Modified' },
           ]}
         />
         <FilterSelect
@@ -216,12 +229,18 @@ export function Obligations() {
                         'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                         o.status === 'completed'
                           ? 'border-emerald-500/20 bg-emerald-500/10 text-qo-sage-text'
-                          : o.status === 'overdue'
+                          : o.status === 'overdue' || o.days_at_risk > 0
                             ? 'border-red-500/20 bg-red-500/10 text-qo-risk'
-                            : 'border-black/[0.08] bg-qo-nested text-text-secondary',
+                            : o.status === 'active'
+                              ? 'border-emerald-500/20 bg-emerald-500/10 text-qo-sage-text'
+                              : o.status === 'waived'
+                                ? 'border-black/[0.08] bg-black/[0.03] text-text-muted'
+                                : o.status === 'modified'
+                                  ? 'border-purple-500/20 bg-purple-500/10 text-purple-300'
+                                  : 'border-black/[0.08] bg-qo-nested text-text-secondary',
                       )}
                     >
-                      {o.status}
+                      {obligationStatusLabel(o.status)}
                     </span>
                   </div>
                   <div
