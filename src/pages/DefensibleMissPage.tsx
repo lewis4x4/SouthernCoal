@@ -1,0 +1,178 @@
+import { useMemo, useState } from 'react';
+import { FileText, Loader2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
+import { useSamplingGaps } from '@/hooks/useSamplingGaps';
+import { useDefensibleMiss } from '@/hooks/useDefensibleMiss';
+import { formatDefensibleMissMarkdown, type DefensibleMissPacket } from '@/lib/defensibleMiss';
+import { useAuditLog } from '@/hooks/useAuditLog';
+
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function DefensibleMissPage() {
+  const { rows, loading: gapsLoading } = useSamplingGaps();
+  const { anomalies, loadingAnomalies, generating, error, generatePacket } = useDefensibleMiss();
+  const { log } = useAuditLog();
+
+  const missedRows = useMemo(
+    () => rows.filter((r) => r.gap_kind === 'missed'),
+    [rows],
+  );
+
+  const [selectedGapId, setSelectedGapId] = useState<string | null>(null);
+  const [packet, setPacket] = useState<DefensibleMissPacket | null>(null);
+
+  const selectedGap = useMemo(
+    () => missedRows.find((r) => r.id === selectedGapId) ?? null,
+    [missedRows, selectedGapId],
+  );
+
+  async function handleGenerate(gapId: string) {
+    setSelectedGapId(gapId);
+    const result = await generatePacket(gapId);
+    setPacket(result);
+    if (!result) toast.error('Could not generate packet');
+  }
+
+  function handleExport() {
+    if (!packet || !selectedGap) return;
+    const outfall = selectedGap.outfalls?.outfall_number ?? selectedGap.outfall_id.slice(0, 8);
+    const param = selectedGap.parameters?.short_name ?? selectedGap.parameter_id.slice(0, 8);
+    const md = formatDefensibleMissMarkdown(packet, outfall, param);
+    downloadText(`defensible-miss-${selectedGap.scheduled_date}-${outfall}.md`, md);
+    log('defensible_miss_packet_exported', { gap_id: packet.gap_id }, {
+      module: 'environmental_compliance',
+      tableName: 'sampling_gap_records',
+      recordId: packet.gap_id,
+    });
+    toast.success('Packet exported');
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center gap-2">
+          <Shield size={20} className="text-purple-400" />
+          <h2 className="text-xl font-semibold text-text-primary">Defensible-Miss Packets</h2>
+        </div>
+        <p className="mt-1 text-sm text-text-secondary">
+          Flanking clean samples and collector access patterns — evidence for counsel review
+        </p>
+        <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-400/90">
+          DRAFT — not a legal conclusion or compliance certification
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-text-primary">Missed events (from QW1 queue)</h3>
+          {gapsLoading ? (
+            <Loader2 className="mx-auto animate-spin text-text-muted" size={20} />
+          ) : missedRows.length === 0 ? (
+            <p className="text-xs text-text-muted">No open missed gaps — run gap detection first.</p>
+          ) : (
+            <ul className="space-y-2 max-h-72 overflow-y-auto">
+              {missedRows.map((row) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerate(row.id)}
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left text-xs hover:bg-white/[0.04]"
+                  >
+                    <span className="font-medium text-text-primary">
+                      {row.outfalls?.outfall_number ?? row.outfall_id.slice(0, 8)} ·{' '}
+                      {row.parameters?.short_name ?? row.parameter_id.slice(0, 8)}
+                    </span>
+                    <span className="block text-text-muted mt-0.5">
+                      Expected {row.scheduled_date} · {row.days_late}d late
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-text-primary">Packet preview</h3>
+            {packet && (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/[0.12] px-3 py-1.5 text-[10px] font-medium text-text-primary hover:bg-white/[0.06]"
+              >
+                <FileText size={12} /> Export markdown
+              </button>
+            )}
+          </div>
+          {generating && <Loader2 className="animate-spin text-text-muted" size={18} />}
+          {!generating && !packet && (
+            <p className="text-xs text-text-muted">Select a missed event to generate flanking sample cross-reference.</p>
+          )}
+          {packet && selectedGap && (
+            <pre className="max-h-80 overflow-auto rounded-lg bg-black/30 p-3 text-[10px] text-text-secondary whitespace-pre-wrap">
+              {formatDefensibleMissMarkdown(
+                packet,
+                selectedGap.outfalls?.outfall_number ?? selectedGap.outfall_id,
+                selectedGap.parameters?.short_name ?? selectedGap.parameter_id,
+              )}
+            </pre>
+          )}
+        </section>
+      </div>
+
+      <section className="rounded-xl border border-white/[0.08] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-text-primary">Collector access anomalies</h3>
+        <p className="text-xs text-text-muted">
+          Field visits with access_issue outcome — habitual &quot;road closed / no access&quot; signal
+        </p>
+        {loadingAnomalies ? (
+          <Loader2 className="animate-spin text-text-muted" size={18} />
+        ) : anomalies.length === 0 ? (
+          <p className="text-xs text-text-muted">No access-issue patterns in the lookback window.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-xs">
+              <thead className="text-text-muted uppercase tracking-wide">
+                <tr>
+                  <th className="py-2 pr-3">Collector</th>
+                  <th className="py-2 pr-3">Access issues</th>
+                  <th className="py-2 pr-3">No discharge</th>
+                  <th className="py-2 pr-3">Visits</th>
+                  <th className="py-2">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {anomalies.map((a) => (
+                  <tr key={a.collector_id} className="border-t border-white/[0.06]">
+                    <td className="py-2 pr-3 text-text-primary">{a.collector_name}</td>
+                    <td className="py-2 pr-3 tabular-nums">{a.access_issue_count}</td>
+                    <td className="py-2 pr-3 tabular-nums">{a.no_discharge_count}</td>
+                    <td className="py-2 pr-3 tabular-nums">{a.completed_visits}</td>
+                    <td className="py-2 tabular-nums">{a.access_issue_rate_pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export default DefensibleMissPage;

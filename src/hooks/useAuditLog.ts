@@ -80,6 +80,9 @@ type AuditAction =
   | 'sampling_gap_review_updated'
   // Lane C QW2 — ¶49 EDD evaluation
   | 'edd_paragraph49_review_updated'
+  // Lane C QW3 — defensible miss packets
+  | 'defensible_miss_packet_generated'
+  | 'defensible_miss_packet_exported'
   // Report Engine
   | 'report_generated'
   | 'report_template_created'
