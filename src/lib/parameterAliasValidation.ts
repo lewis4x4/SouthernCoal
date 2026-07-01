@@ -88,6 +88,35 @@ export interface ParameterMapValidationResult {
   unknownCanonicalTargets: string[];
 }
 
+export interface ParameterAliasCoverage {
+  parameter_count: number;
+  alias_count: number;
+  missing_storet_code: string[];
+  parameters_without_aliases: string[];
+  ok: boolean;
+  disclaimer: string;
+}
+
+export function parseParameterAliasCoverage(raw: unknown): ParameterAliasCoverage | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  return {
+    parameter_count: Number(obj.parameter_count ?? 0),
+    alias_count: Number(obj.alias_count ?? 0),
+    missing_storet_code: Array.isArray(obj.missing_storet_code)
+      ? (obj.missing_storet_code as string[])
+      : [],
+    parameters_without_aliases: Array.isArray(obj.parameters_without_aliases)
+      ? (obj.parameters_without_aliases as string[])
+      : [],
+    ok: Boolean(obj.ok),
+    disclaimer: String(
+      obj.disclaimer ??
+        'Automated harness — does not replace Bill Johnson Q28 canonical parameter dictionary sign-off',
+    ),
+  };
+}
+
 export function validateParserParameterMap(map: Record<string, string>): ParameterMapValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];

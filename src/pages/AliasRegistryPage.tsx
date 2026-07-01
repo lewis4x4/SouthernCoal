@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { GitBranch, Search, Plus, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAliasRegistry } from '@/hooks/useAliasRegistry';
+import { ParameterAliasCoveragePanel } from '@/components/aliases/ParameterAliasCoveragePanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { STATES } from '@/lib/constants';
 
@@ -85,6 +86,8 @@ export function AliasRegistryPage() {
           </p>
         </div>
       </div>
+
+      <ParameterAliasCoveragePanel />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">

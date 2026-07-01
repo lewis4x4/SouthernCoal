@@ -3,6 +3,7 @@ import { PARAMETER_MAP } from '../../../supabase/functions/_shared/lab-import-re
 import {
   CRITICAL_LAB_PARAMETER_ALIASES,
   SEEDED_CANONICAL_PARAMETER_NAMES,
+  parseParameterAliasCoverage,
   validateParserParameterMap,
 } from '@/lib/parameterAliasValidation';
 
@@ -25,5 +26,18 @@ describe('parameterAliasValidation (2.64)', () => {
     expect(SEEDED_CANONICAL_PARAMETER_NAMES.length).toBeGreaterThanOrEqual(21);
     expect(SEEDED_CANONICAL_PARAMETER_NAMES).toContain('Iron, Total');
     expect(SEEDED_CANONICAL_PARAMETER_NAMES).toContain('Specific Conductance');
+  });
+
+  it('parses RPC coverage payload', () => {
+    const parsed = parseParameterAliasCoverage({
+      parameter_count: 21,
+      alias_count: 120,
+      missing_storet_code: [],
+      parameters_without_aliases: ['BOD'],
+      ok: true,
+      disclaimer: 'test',
+    });
+    expect(parsed?.ok).toBe(true);
+    expect(parsed?.parameters_without_aliases).toEqual(['BOD']);
   });
 });
