@@ -12,7 +12,7 @@ import type { EquipmentType } from '@/types/equipment';
 const EQUIPMENT_TYPES: EquipmentType[] = ['tablet', 'meter', 'gps', 'cooler', 'vehicle', 'probe', 'sampler', 'other'];
 
 export function EquipmentAdminPage() {
-  const { equipment, calibrationsDue, loading, addEquipment } = useEquipment();
+  const { equipment, calibrationsDue, maintenanceDue, loading, addEquipment } = useEquipment();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<EquipmentType>('meter');
@@ -22,7 +22,11 @@ export function EquipmentAdminPage() {
   const [newRequiresCal, setNewRequiresCal] = useState(false);
   const [newCalInterval, setNewCalInterval] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'calibration'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'calibration' | 'maintenance'>('inventory');
+
+  const overdueMaintenance = maintenanceDue.filter(
+    (item) => item.days_until_due !== null && item.days_until_due < 0,
+  );
 
   async function handleAdd() {
     if (!newName.trim()) return;
@@ -81,6 +85,16 @@ export function EquipmentAdminPage() {
       </div>
 
       {/* Calibration due alert */}
+      {overdueMaintenance.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.03] px-4 py-3">
+          <AlertTriangle size={18} className="text-red-400 shrink-0" />
+          <span className="text-sm text-text-secondary">
+            <strong className="text-red-300">{overdueMaintenance.length}</strong> field gear item
+            {overdueMaintenance.length !== 1 ? 's' : ''} overdue for maintenance
+          </span>
+        </div>
+      )}
+
       {calibrationsDue.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] px-4 py-3">
           <AlertTriangle size={18} className="text-amber-400 shrink-0" />
@@ -177,7 +191,7 @@ export function EquipmentAdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-white/[0.06] pb-0">
-        {(['inventory', 'calibration'] as const).map((tab) => (
+        {(['inventory', 'calibration', 'maintenance'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -188,10 +202,17 @@ export function EquipmentAdminPage() {
                 : 'border-transparent text-text-muted hover:text-text-secondary',
             )}
           >
-            {tab === 'inventory' ? 'Inventory' : 'Calibration Due'}
+            {tab === 'inventory' && 'Inventory'}
+            {tab === 'calibration' && 'Calibration Due'}
+            {tab === 'maintenance' && 'Overdue Gear'}
             {tab === 'calibration' && calibrationsDue.length > 0 && (
               <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
                 {calibrationsDue.length}
+              </span>
+            )}
+            {tab === 'maintenance' && maintenanceDue.length > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                {maintenanceDue.length}
               </span>
             )}
           </button>
@@ -299,6 +320,77 @@ export function EquipmentAdminPage() {
               );
             })
           )}
+        </div>
+      )}
+
+      {/* Overdue gear tab */}
+      {activeTab === 'maintenance' && (
+        <div className="space-y-2">
+          {maintenanceDue.length === 0 ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] px-6 py-8 text-sm text-emerald-300">
+              <CheckCircle2 size={18} />
+              All field gear maintenance is current — or no maintenance logs recorded yet.
+            </div>
+          ) : (
+            maintenanceDue.map((item) => {
+              const isOverdue = item.days_until_due !== null && item.days_until_due < 0;
+              return (
+                <div
+                  key={item.equipment_id}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl border px-4 py-3',
+                    isOverdue
+                      ? 'border-red-500/20 bg-red-500/[0.03]'
+                      : 'border-amber-500/20 bg-amber-500/[0.03]',
+                  )}
+                >
+                  <AlertTriangle
+                    size={16}
+                    className={isOverdue ? 'text-red-400' : 'text-amber-400'}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium text-text-primary">
+                      {item.equipment_name}
+                    </span>
+                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-muted">
+                      <span>
+                        {EQUIPMENT_TYPE_LABELS[item.equipment_type as keyof typeof EQUIPMENT_TYPE_LABELS] ?? item.equipment_type}
+                      </span>
+                      {item.serial_number && <span>S/N: {item.serial_number}</span>}
+                      {item.assigned_to_name && <span>Assigned: {item.assigned_to_name}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={cn(
+                        'text-sm font-bold',
+                        isOverdue ? 'text-red-400' : 'text-amber-400',
+                      )}
+                    >
+                      {item.days_until_due !== null
+                        ? isOverdue
+                          ? `${Math.abs(item.days_until_due)}d overdue`
+                          : `${item.days_until_due}d`
+                        : 'No PM logged'}
+                    </span>
+                    {item.next_maintenance_due && (
+                      <p className="text-[10px] text-text-muted">
+                        Due {new Date(item.next_maintenance_due).toLocaleDateString()}
+                      </p>
+                    )}
+                    {item.last_serviced_at && (
+                      <p className="text-[10px] text-text-muted">
+                        Last {new Date(item.last_serviced_at).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <p className="text-[10px] uppercase tracking-wide text-text-muted pt-2">
+            Field-sampling gear only — advisory PM due list, not heavy-equipment CMMS
+          </p>
         </div>
       )}
     </div>

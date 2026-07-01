@@ -112,6 +112,17 @@ export interface CalibrationDueItem {
   assigned_to_name: string | null;
 }
 
+export interface MaintenanceDueItem {
+  equipment_id: string;
+  equipment_name: string;
+  equipment_type: string;
+  serial_number: string | null;
+  last_serviced_at: string | null;
+  next_maintenance_due: string | null;
+  days_until_due: number | null;
+  assigned_to_name: string | null;
+}
+
 export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
   tablet: 'Tablet',
   meter: 'Meter',

@@ -8,6 +8,7 @@ import type {
   EquipmentCatalogItem,
   EquipmentAssignment,
   CalibrationDueItem,
+  MaintenanceDueItem,
 } from '@/types/equipment';
 
 export function useEquipment() {
@@ -17,6 +18,7 @@ export function useEquipment() {
   const [equipment, setEquipment] = useState<EquipmentCatalogItem[]>([]);
   const [assignments, setAssignments] = useState<EquipmentAssignment[]>([]);
   const [calibrationsDue, setCalibrationsDue] = useState<CalibrationDueItem[]>([]);
+  const [maintenanceDue, setMaintenanceDue] = useState<MaintenanceDueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const orgId = profile?.organization_id ?? null;
@@ -78,15 +80,32 @@ export function useEquipment() {
     setCalibrationsDue((data ?? []) as CalibrationDueItem[]);
   }, [orgId]);
 
+  const fetchMaintenanceDue = useCallback(async () => {
+    if (!orgId) return;
+    const { data, error } = await supabase.rpc('get_equipment_due_maintenance', {
+      p_org_id: orgId,
+      p_within_days: 14,
+    });
+
+    if (error) {
+      console.error('[equipment] maintenance due fetch failed:', error.message);
+      return;
+    }
+    setMaintenanceDue((data ?? []) as MaintenanceDueItem[]);
+  }, [orgId]);
+
   useEffect(() => {
     if (!orgId) {
       setLoading(false);
       return;
     }
-    Promise.all([fetchEquipment(), fetchAssignments(), fetchCalibrationsDue()]).then(() =>
-      setLoading(false),
-    );
-  }, [fetchEquipment, fetchAssignments, fetchCalibrationsDue, orgId]);
+    Promise.all([
+      fetchEquipment(),
+      fetchAssignments(),
+      fetchCalibrationsDue(),
+      fetchMaintenanceDue(),
+    ]).then(() => setLoading(false));
+  }, [fetchEquipment, fetchAssignments, fetchCalibrationsDue, fetchMaintenanceDue, orgId]);
 
   const addEquipment = useCallback(
     async (item: {
@@ -205,10 +224,17 @@ export function useEquipment() {
     equipment,
     assignments,
     calibrationsDue,
+    maintenanceDue,
     loading,
     addEquipment,
     assignEquipment,
     logCalibration,
-    refresh: () => Promise.all([fetchEquipment(), fetchAssignments(), fetchCalibrationsDue()]),
+    refresh: () =>
+      Promise.all([
+        fetchEquipment(),
+        fetchAssignments(),
+        fetchCalibrationsDue(),
+        fetchMaintenanceDue(),
+      ]),
   };
 }
