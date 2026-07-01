@@ -54,11 +54,11 @@ const ADJUSTMENT_OPTIONS: Array<{ value: 'skip' | 'reschedule' | 'makeup'; label
 function dispatchTone(status: SamplingDispatchStatus | SamplingRouteBatchStatus | 'pending') {
   switch (status) {
     case 'completed':
-      return 'text-emerald-300 border-emerald-500/20 bg-emerald-500/10';
+      return 'text-qo-sage-text border-emerald-500/20 bg-emerald-500/10';
     case 'in_progress':
-      return 'text-amber-300 border-amber-500/20 bg-amber-500/10';
+      return 'text-qo-ochre-text border-amber-500/20 bg-amber-500/10';
     case 'exception':
-      return 'text-red-300 border-red-500/20 bg-red-500/10';
+      return 'text-qo-risk border-qo-risk/25 bg-qo-risk/10';
     case 'dispatched':
       return 'text-qo-accent border-qo-accent/20 bg-qo-accent/10';
     case 'skipped':
@@ -66,7 +66,7 @@ function dispatchTone(status: SamplingDispatchStatus | SamplingRouteBatchStatus 
       return 'text-slate-300 border-black/[0.08] bg-black/[0.04]';
     case 'pending':
     default:
-      return 'text-violet-300 border-violet-500/20 bg-violet-500/10';
+      return 'text-text-secondary border-black/[0.08] bg-qo-nested';
   }
 }
 
@@ -645,7 +645,7 @@ export function FieldSchedulePage() {
           </p>
         </div>
         <div className="rounded-xl bg-violet-500/10 p-3">
-          <CalendarDays className="h-6 w-6 text-violet-300" />
+          <CalendarDays className="h-6 w-6 text-qo-accent" />
         </div>
       </div>
 
@@ -678,12 +678,12 @@ export function FieldSchedulePage() {
         </SpotlightCard>
         <SpotlightCard className="p-5">
           <div className="text-xs uppercase tracking-wider text-text-muted">Overdue</div>
-          <div className="mt-2 text-3xl font-semibold text-amber-300">{queueStats.overdue}</div>
+          <div className="mt-2 text-3xl font-semibold text-qo-ochre-text">{queueStats.overdue}</div>
           <div className="mt-2 text-sm text-text-secondary">sampling work past its due date</div>
         </SpotlightCard>
         <SpotlightCard className="p-5">
           <div className="text-xs uppercase tracking-wider text-text-muted">Due soon</div>
-          <div className="mt-2 text-3xl font-semibold text-violet-300">{queueStats.dueSoon}</div>
+          <div className="mt-2 text-3xl font-semibold text-qo-accent">{queueStats.dueSoon}</div>
           <div className="mt-2 text-sm text-text-secondary">work due within the next two days</div>
         </SpotlightCard>
       </div>
@@ -694,7 +694,7 @@ export function FieldSchedulePage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <Route className="h-4 w-4 text-violet-300" />
+                  <Route className="h-4 w-4 text-qo-accent" />
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                     Generate Monthly Calendar
                   </h2>
@@ -714,7 +714,7 @@ export function FieldSchedulePage() {
                 <button
                   onClick={handleGenerateMonth}
                   disabled={mutating}
-                  className="inline-flex items-center gap-2 rounded-xl bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-200 transition-colors hover:bg-violet-500/25 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-qo-accent transition-colors hover:bg-violet-500/25 disabled:opacity-60"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Generate
@@ -909,7 +909,7 @@ export function FieldSchedulePage() {
 
             <SpotlightCard className="p-6">
               <div className="flex items-center gap-2">
-                <CloudRain className="h-4 w-4 text-amber-300" />
+                <CloudRain className="h-4 w-4 text-qo-ochre-text" />
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                   Manual / Rain Event Entry
                 </h2>
@@ -1025,7 +1025,7 @@ export function FieldSchedulePage() {
                 <button
                   onClick={handleCreateManualEntry}
                   disabled={mutating}
-                  className="rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/25 disabled:opacity-60"
+                  className="rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-medium text-qo-ochre-text transition-colors hover:bg-amber-500/25 disabled:opacity-60"
                 >
                   Create manual calendar entry
                 </button>
@@ -1036,7 +1036,7 @@ export function FieldSchedulePage() {
           <SpotlightCard className="p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <MapPinned className="h-4 w-4 text-violet-300" />
+                <MapPinned className="h-4 w-4 text-qo-accent" />
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                   Generated Work Queue
                 </h2>
@@ -1163,7 +1163,7 @@ export function FieldSchedulePage() {
         <div className="space-y-6">
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <Route className="h-4 w-4 text-violet-300" />
+              <Route className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Route Batch Builder
               </h2>
@@ -1218,7 +1218,7 @@ export function FieldSchedulePage() {
               <button
                 onClick={handleCreateRouteBatch}
                 disabled={mutating}
-                className="w-full rounded-xl bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-200 transition-colors hover:bg-violet-500/25 disabled:opacity-60"
+                className="w-full rounded-xl bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-qo-accent transition-colors hover:bg-violet-500/25 disabled:opacity-60"
               >
                 Create route batch
               </button>
@@ -1274,7 +1274,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-violet-300" />
+              <BarChart3 className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Route preview & balance
               </h2>
@@ -1290,7 +1290,7 @@ export function FieldSchedulePage() {
                   <div className="mt-3 text-lg font-semibold text-text-primary">
                     ~{routePreview.totalMinutes} min total
                     {routePreview.missingCoordCount > 0 && (
-                      <span className="ml-2 text-xs font-normal text-amber-300">
+                      <span className="ml-2 text-xs font-normal text-qo-ochre-text">
                         ({routePreview.missingCoordCount} stop{routePreview.missingCoordCount === 1 ? '' : 's'} missing outfall coordinates)
                       </span>
                     )}
@@ -1308,13 +1308,13 @@ export function FieldSchedulePage() {
 
                 <div className="rounded-2xl border border-black/[0.06] bg-qo-nested p-4">
                   <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">Stop order review</div>
-                  <p className={`mt-2 ${stopOrderPriorityReview.ok ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  <p className={`mt-2 ${stopOrderPriorityReview.ok ? 'text-qo-sage-text' : 'text-qo-ochre-text'}`}>
                     {stopOrderPriorityReview.ok
                       ? 'Sequence follows non-decreasing priority rank (short-hold / due-soon ordering).'
                       : stopOrderPriorityReview.detail}
                   </p>
                   {routePreview.repeatLabels.length > 0 && (
-                    <p className="mt-2 text-xs text-amber-300">
+                    <p className="mt-2 text-xs text-qo-ochre-text">
                       Same outfall appears non-consecutive: {routePreview.repeatLabels.join(', ')} — consider reordering when editing is available.
                     </p>
                   )}
@@ -1487,7 +1487,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-amber-300" />
+              <ShieldAlert className="h-4 w-4 text-qo-ochre-text" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Override / Makeup
               </h2>
@@ -1534,7 +1534,7 @@ export function FieldSchedulePage() {
                 <button
                   onClick={handleApplyAdjustment}
                   disabled={mutating}
-                  className="w-full rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/25 disabled:opacity-60"
+                  className="w-full rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-medium text-qo-ochre-text transition-colors hover:bg-amber-500/25 disabled:opacity-60"
                 >
                   Record adjustment
                 </button>
@@ -1546,7 +1546,7 @@ export function FieldSchedulePage() {
 
           <SpotlightCard className="p-6">
             <div className="flex items-center gap-2">
-              <Waves className="h-4 w-4 text-violet-300" />
+              <Waves className="h-4 w-4 text-qo-accent" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
                 Active Schedules
               </h2>

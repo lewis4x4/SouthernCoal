@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isValidFieldGpsPair } from '@/lib/fieldVisitCompletionValidation';
 import { FIELD_MEASUREMENT_COC_PRIMARY_CONTAINER } from '@/lib/fieldOpsConstants';
 import type {
   AccessIssueRecord,
@@ -155,9 +156,8 @@ function isFieldVisitCompleteOp(
     ['sample_collected', 'no_discharge', 'access_issue'].includes(o.outcome) &&
     typeof o.completedAt === 'string' &&
     typeof o.completedLatitude === 'number' &&
-    Number.isFinite(o.completedLatitude) &&
     typeof o.completedLongitude === 'number' &&
-    Number.isFinite(o.completedLongitude) &&
+    isValidFieldGpsPair(o.completedLatitude, o.completedLongitude) &&
     typeof o.potentialForceMajeure === 'boolean' &&
     typeof o.noDischargeObstructionObserved === 'boolean' &&
     typeof o.accessIssueContactAttempted === 'boolean' &&
@@ -186,9 +186,8 @@ function isFieldVisitStartOp(
     typeof o.startedAt === 'string' &&
     typeof o.enqueuedAt === 'string' &&
     typeof o.latitude === 'number' &&
-    Number.isFinite(o.latitude) &&
     typeof o.longitude === 'number' &&
-    Number.isFinite(o.longitude)
+    isValidFieldGpsPair(o.latitude, o.longitude)
   );
 }
 

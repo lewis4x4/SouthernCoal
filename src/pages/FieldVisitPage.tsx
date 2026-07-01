@@ -61,6 +61,8 @@ import { mapsSearchQueryUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { countOutboundQueueOpsForVisit } from '@/lib/fieldOutboundQueue';
 import {
   getFieldVisitCompletionChecklistItems,
+  isValidFieldGpsPair,
+  parseFieldGpsCoordinate,
   summarizeCompletionChecklist,
   validateFieldVisitCompletion,
   validateFieldVisitOutcomeEvidence,
@@ -130,9 +132,9 @@ import type {
 function deadlineToneClass(tone: GovernanceDeadlineTone) {
   switch (tone) {
     case 'overdue':
-      return 'text-red-300';
+      return 'text-qo-risk';
     case 'soon':
-      return 'text-amber-200';
+      return 'text-qo-ochre-text';
     case 'ok':
       return 'text-text-primary';
     default:
@@ -726,8 +728,8 @@ export function FieldVisitPage() {
 
   const completionChecklistItems = useMemo(() => {
     if (!detail) return [];
-    const lat = Number(completeCoords.latitude);
-    const lng = Number(completeCoords.longitude);
+    const lat = parseFieldGpsCoordinate(completeCoords.latitude) ?? NaN;
+    const lng = parseFieldGpsCoordinate(completeCoords.longitude) ?? NaN;
     return getFieldVisitCompletionChecklistItems({
       visitStarted,
       requiredFieldMeasurementsComplete,
@@ -796,10 +798,9 @@ export function FieldVisitPage() {
 
   const startLatitude = Number(startCoords.latitude);
   const startLongitude = Number(startCoords.longitude);
-  const completeLatitude = Number(completeCoords.latitude);
-  const completeLongitude = Number(completeCoords.longitude);
-  const completionCoordsReady =
-    Number.isFinite(completeLatitude) && Number.isFinite(completeLongitude);
+  const completeLatitude = parseFieldGpsCoordinate(completeCoords.latitude) ?? NaN;
+  const completeLongitude = parseFieldGpsCoordinate(completeCoords.longitude) ?? NaN;
+  const completionCoordsReady = isValidFieldGpsPair(completeLatitude, completeLongitude);
   const serverFlowKnown =
     detail?.inspection?.flow_status != null &&
     detail.inspection.flow_status !== 'unknown';
@@ -1730,9 +1731,9 @@ export function FieldVisitPage() {
             auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
           />
         ) : null}
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
+        <div className="rounded-xl border border-qo-risk/25 bg-qo-risk/10 p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-qo-risk" aria-hidden />
             <div>
               <h1 className="text-lg font-semibold text-text-primary">Field visit unavailable</h1>
               <p className="mt-2 text-sm text-text-secondary">
@@ -1761,7 +1762,7 @@ export function FieldVisitPage() {
                         setLoadAttempted(true);
                       });
                   }}
-                  className="inline-flex items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-100 transition-colors hover:bg-red-500/20"
+                  className="inline-flex items-center gap-2 rounded-xl border border-qo-risk/30 bg-qo-risk px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-qo-risk/90"
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden />
                   Retry visit load
@@ -1853,7 +1854,7 @@ export function FieldVisitPage() {
       {pendingEvidenceDrafts.length > 0 && (
         <div className="mt-4 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.07] px-3 py-2">
-            <p className="text-xs text-amber-100/90">
+            <p className="text-xs text-qo-ochre-text/90">
               Pending on this device — upload when online.
             </p>
             <button
@@ -1864,7 +1865,7 @@ export function FieldVisitPage() {
                   toast.error(err instanceof Error ? err.message : 'Retry failed');
                 });
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-qo-ochre-text transition-colors hover:bg-amber-500/25 disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 ${fieldQueueLoading || detailLoading ? 'animate-spin' : ''}`}
@@ -1878,14 +1879,14 @@ export function FieldVisitPage() {
               key={draft.id}
               className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm"
             >
-              <div className="font-medium text-amber-100">{draft.fileName}</div>
-              <div className="mt-1 text-xs text-amber-200/80">
+              <div className="font-medium text-qo-ochre-text">{draft.fileName}</div>
+              <div className="mt-1 text-xs text-qo-ochre-text/80">
                 {draft.evidenceType === 'photo' && parsePhotoEvidenceCategory(draft.notes)
                   ? `${getPhotoBucketDefinition(parsePhotoEvidenceCategory(draft.notes)!).label} photo pending sync`
                   : `${draft.evidenceType.replace('_', ' ')} pending sync`}
               </div>
               {evidenceFailureByDraftId.get(draft.id) ? (
-                <div className="mt-2 text-xs text-red-200/95">
+                <div className="mt-2 text-xs text-qo-risk">
                   Last upload attempt: {evidenceFailureByDraftId.get(draft.id)}
                 </div>
               ) : null}
@@ -2032,7 +2033,7 @@ export function FieldVisitPage() {
       </h3>
       <label className="mt-4 block space-y-2">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-          Narrative <span className="text-amber-200/90">(required)</span>
+          Narrative <span className="text-qo-ochre-text/90">(required)</span>
         </span>
         <textarea
           value={noDischargeNarrative}
@@ -2123,7 +2124,7 @@ export function FieldVisitPage() {
 
       <label className="mt-4 block space-y-2">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-          Obstruction narrative <span className="text-rose-200/90">(required)</span>
+          Obstruction narrative <span className="text-qo-risk">(required)</span>
         </span>
         <textarea
           value={accessIssueNarrative}
@@ -2352,13 +2353,13 @@ export function FieldVisitPage() {
       ) : null}
 
       {potentialForceMajeure ? (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-qo-ochre-text">
           Force majeure is flagged. Make sure the <span className="font-medium">Site / weather</span> bucket shows the conditions that support the timing narrative.
         </div>
       ) : null}
 
       {deficiencyPrompts.length > 0 ? (
-        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+        <div className="rounded-xl border border-qo-risk/25 bg-qo-risk/10 px-4 py-3 text-sm text-qo-risk">
           Inspection follow-up is active. Keep the <span className="font-medium">Obstruction / deficiency</span> bucket current before review.
         </div>
       ) : null}
@@ -2485,7 +2486,7 @@ export function FieldVisitPage() {
                 </div>
               </div>
               {isFm ? (
-                <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-200">
+                <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-qo-ochre-text">
                   FM candidate
                 </span>
               ) : null}
@@ -2520,24 +2521,24 @@ export function FieldVisitPage() {
   ) : null;
 
   const forceMajeureBanner = potentialForceMajeure ? (
-    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-qo-ochre-text">
       Potential force majeure is flagged on this visit. Review the timing language, site/weather evidence, and governance deadlines before completion.
     </div>
   ) : null;
 
   const lockedBanner = visitLocked ? (
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+    <div className="rounded-xl border border-qo-sage/30 bg-qo-sage/10 px-4 py-3 text-sm font-medium text-qo-sage-text">
       This visit record is complete and locked from further field edits.
     </div>
   ) : null;
 
   const weatherStatusBanner = visitStarted && !visitLocked && isWeatherFetchEnabled()
     ? systemWeatherLoading ? (
-        <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+        <div className="rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-sm text-text-secondary">
           System weather is still loading from your start GPS. You can keep moving, but confirm the snapshot before closeout.
         </div>
       ) : systemWeatherError ? (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-qo-ochre-text">
           System weather did not load. {systemWeatherError} Return to <span className="font-medium">Start Visit</span> and use{' '}
           <span className="font-medium">Refresh system weather</span>.
         </div>
@@ -2584,8 +2585,8 @@ export function FieldVisitPage() {
               </div>
             ) : null}
             scheduleInstructions={detail.schedule_instructions ? (
-              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                <p className="text-sm font-medium text-amber-200/80">Schedule instructions</p>
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-qo-ochre-text">
+                <p className="text-sm font-medium text-qo-ochre-text/80">Schedule instructions</p>
                 <p className="mt-1 whitespace-pre-wrap text-text-primary">{detail.schedule_instructions}</p>
               </div>
             ) : null}
@@ -2959,7 +2960,7 @@ export function FieldVisitPage() {
             </a>
           ) : null}
           {visitLocked ? (
-            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
+            <span className="rounded-full border border-qo-sage/30 bg-qo-sage/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-qo-sage-text">
               Locked
             </span>
           ) : null}
@@ -2998,9 +2999,9 @@ export function FieldVisitPage() {
             <FieldDataSourceBanner variant="visit" source={detailLoadSource} />
           ) : null}
           {hasQueuedActions ? (
-            <div className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" aria-hidden />
-              <p className="text-sm text-amber-50">
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-qo-ochre-text">
+              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-qo-ochre-text" aria-hidden />
+              <p className="text-sm text-qo-ochre-text">
                 {visitOutboundQueuedCount} queued action{visitOutboundQueuedCount === 1 ? '' : 's'} — uploads when online
               </p>
             </div>
@@ -3013,13 +3014,13 @@ export function FieldVisitPage() {
             <FieldSameOutfallDayWarning groups={visitSiblingOutfallConflicts} contextLabel="this visit" />
           ) : null}
           {detail.visit.linked_sampling_event_id ? (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-              <Beaker className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+            <div className="flex items-center gap-3 rounded-xl border border-qo-sage/30 bg-qo-sage/10 px-4 py-3 text-sm text-qo-sage-text">
+              <Beaker className="h-4 w-4 shrink-0 text-qo-sage" aria-hidden />
               <span className="min-w-0 truncate font-mono text-xs">{detail.visit.linked_sampling_event_id}</span>
               <button
                 type="button"
                 onClick={() => void handleCopySamplingEventId()}
-                className="ml-auto shrink-0 rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-50 hover:bg-emerald-500/25"
+                className="ml-auto shrink-0 rounded-lg border border-qo-sage/30 bg-qo-sage/15 px-2 py-1 text-xs font-medium text-qo-sage-text hover:bg-qo-sage/25"
               >
                 <Copy className="h-3 w-3" aria-hidden />
               </button>

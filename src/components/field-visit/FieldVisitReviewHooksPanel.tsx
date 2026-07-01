@@ -10,9 +10,9 @@ interface FieldVisitReviewHooksPanelProps {
 function toneClasses(tone: FieldVisitReviewHook['tone']) {
   switch (tone) {
     case 'critical':
-      return 'border-rose-500/25 bg-rose-500/10 text-rose-100';
+      return 'border-qo-risk/25 bg-qo-risk/10 text-qo-risk';
     case 'warning':
-      return 'border-amber-500/20 bg-amber-500/10 text-amber-100';
+      return 'border-qo-ochre/25 bg-qo-ochre/10 text-qo-ochre-text';
     default:
       return 'border-qo-accent/20 bg-qo-accent/10 text-qo-accent';
   }

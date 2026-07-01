@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unzip } from "https://esm.sh/unzipit@1.4.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import {
   isWithinLookback,
   mapMshaViolationRow,
@@ -52,10 +53,11 @@ async function validateAuth(
     return { authorized: false, userId: null };
   }
 
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
   if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
     return { authorized: true, userId: null };
   }
+  if (isPrivilegedOrAnonymousJwt(token)) return { authorized: false, userId: null };
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return { authorized: false, userId: null };

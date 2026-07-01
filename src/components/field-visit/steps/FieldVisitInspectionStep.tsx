@@ -65,7 +65,7 @@ function YesNoToggle({
         disabled={disabled}
         className={`min-h-11 rounded-xl border text-sm font-medium transition-colors ${
           value === true
-            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
+            ? 'border-qo-sage/30 bg-qo-sage/15 text-qo-sage-text'
             : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
         } disabled:opacity-60`}
       >
@@ -78,7 +78,7 @@ function YesNoToggle({
         disabled={disabled}
         className={`min-h-11 rounded-xl border text-sm font-medium transition-colors ${
           value === false
-            ? 'border-amber-500/30 bg-amber-500/15 text-amber-100'
+            ? 'border-amber-500/30 bg-amber-500/15 text-qo-ochre-text'
             : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
         } disabled:opacity-60`}
       >
@@ -152,7 +152,7 @@ export function FieldVisitInspectionStep({
             disabled={visitLocked}
             className={`min-h-12 rounded-2xl border text-base font-medium transition-colors ${
               canReachSite
-                ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
+                ? 'border-qo-sage/30 bg-qo-sage/15 text-qo-sage-text'
                 : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
             } disabled:opacity-60`}
           >
@@ -165,7 +165,7 @@ export function FieldVisitInspectionStep({
             disabled={visitLocked}
             className={`min-h-12 rounded-2xl border text-base font-medium transition-colors ${
               !canReachSite
-                ? 'border-amber-500/30 bg-amber-500/15 text-amber-100'
+                ? 'border-amber-500/30 bg-amber-500/15 text-qo-ochre-text'
                 : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]'
             } disabled:opacity-60`}
           >
@@ -178,7 +178,7 @@ export function FieldVisitInspectionStep({
       {!canReachSite && (
         <div className="space-y-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-amber-200/80">Obstruction type</span>
+            <span className="text-xs font-medium text-qo-ochre-text">Obstruction type</span>
             <select
               value={obstruction.type}
               onChange={(event) =>
@@ -198,7 +198,7 @@ export function FieldVisitInspectionStep({
             </select>
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-amber-200/80">
+            <span className="text-xs font-medium text-qo-ochre-text">
               Describe the obstruction <span className="text-qo-accent/90">(required)</span>
             </span>
             <textarea
@@ -219,8 +219,8 @@ export function FieldVisitInspectionStep({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <ImagePlus className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-              <span className="text-sm font-medium text-amber-200/80">
+              <ImagePlus className="h-4 w-4 shrink-0 text-qo-ochre" aria-hidden />
+              <span className="text-sm font-medium text-qo-ochre-text">
                 Photo of obstruction {obstructionPhotoCount > 0 ? `(${obstructionPhotoCount} attached)` : '(optional)'}
               </span>
             </div>
@@ -307,7 +307,7 @@ export function FieldVisitInspectionStep({
            standingWaterChecks.pointVerified === true && (
             <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-qo-sage-text" aria-hidden />
-              <span className="text-sm text-emerald-100">Standing water is sampleable — proceed to collection</span>
+              <span className="text-sm text-qo-sage-text">Standing water is sampleable — proceed to collection</span>
             </div>
           )}
 
@@ -316,7 +316,7 @@ export function FieldVisitInspectionStep({
             standingWaterChecks.pointVerified === false) && (
             <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
               <XCircle className="h-4 w-4 shrink-0 text-qo-ochre-text" aria-hidden />
-              <span className="text-sm text-amber-100">Sample cannot be collected — document the condition below</span>
+              <span className="text-sm text-qo-ochre-text">Sample cannot be collected — document the condition below</span>
             </div>
           )}
         </div>
@@ -325,7 +325,7 @@ export function FieldVisitInspectionStep({
       {/* Part D: Not collectable — notes + photo required */}
       {canReachSite && isNotCollectable && (
         <div className="space-y-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
-          <div className="text-sm font-medium text-amber-200/80">
+          <div className="text-sm font-medium text-qo-ochre-text">
             Why was the sample not collectable?
           </div>
           <label className="block space-y-1.5">
@@ -343,8 +343,8 @@ export function FieldVisitInspectionStep({
           </label>
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <Camera className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-              <span className="text-sm font-medium text-amber-200/80">
+              <Camera className="h-4 w-4 shrink-0 text-qo-ochre" aria-hidden />
+              <span className="text-sm font-medium text-qo-ochre-text">
                 Photo evidence {conditionPhotoCount > 0 ? `(${conditionPhotoCount} attached)` : '(required)'}
               </span>
             </div>
@@ -406,8 +406,8 @@ export function FieldVisitInspectionStep({
                   className="flex gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] px-4 py-3"
                   role="status"
                 >
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
-                  <p className="text-sm text-amber-100">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-qo-ochre" aria-hidden />
+                  <p className="text-sm text-qo-ochre-text">
                     Do not enter the stream. Record visual observations and photos from a safe distance. Flow
                     estimate is approximate.
                   </p>
@@ -474,7 +474,7 @@ export function FieldVisitInspectionStep({
       {canReachSite && siteCondition === 'flowing_discharge' && streamFlowEstimateDone && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-qo-sage-text" aria-hidden />
-          <span className="text-sm text-emerald-100">
+          <span className="text-sm text-qo-sage-text">
             {streamFlowEstimationEnabled
               ? 'Stream flow estimate captured — proceed to sample collection'
               : 'Flowing discharge confirmed — proceed to sample collection'}

@@ -36,12 +36,33 @@ export type FieldVisitCompletionValidationResult =
   | { ok: true }
   | { ok: false; message: string };
 
+/** Parse a GPS coordinate from a form field; empty / non-numeric → null (never treat blank as 0). */
+export function parseFieldGpsCoordinate(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return null;
+  return value;
+}
+
+/**
+ * Valid WGS84 pair for field visit start/complete (A3).
+ * Rejects missing, non-finite, out-of-range, and 0,0 (blank fields coerce to 0 without parseFieldGpsCoordinate).
+ */
+export function isValidFieldGpsPair(latitude: number, longitude: number): boolean {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  if (latitude === 0 && longitude === 0) return false;
+  if (latitude < -90 || latitude > 90) return false;
+  if (longitude < -180 || longitude > 180) return false;
+  return true;
+}
+
 /** Start visit requires finite latitude/longitude (A3). */
 export function validateFieldVisitStartCoordinates(
   latitude: number,
   longitude: number,
 ): FieldVisitCompletionValidationResult {
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  if (!isValidFieldGpsPair(latitude, longitude)) {
     return { ok: false, message: FIELD_VISIT_COPY.startGpsRequired };
   }
   return { ok: true };
@@ -106,7 +127,7 @@ export function validateFieldVisitCompletion(
     accessIssueNarrativeTrimmed,
   } = input;
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+  if (!isValidFieldGpsPair(lat, lng)) {
     return { ok: false, message: FIELD_VISIT_COPY.completeGpsRequired };
   }
 
@@ -223,7 +244,7 @@ export function getFieldVisitCompletionChecklistItems(
   } = input;
 
   const flowKnown = outletInspectionObstructed || (inspectionFlowStatus ?? 'unknown') !== 'unknown';
-  const completionGpsOk = Number.isFinite(lat) && Number.isFinite(lng);
+  const completionGpsOk = isValidFieldGpsPair(lat, lng);
   const obstructionOk =
     !outletInspectionObstructed || Boolean(inspectionObstructionDetailsTrimmed);
 

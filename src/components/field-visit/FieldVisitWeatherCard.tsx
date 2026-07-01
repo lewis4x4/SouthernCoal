@@ -61,7 +61,7 @@ export function FieldVisitWeatherCard({
             disabled={visitLocked || systemLoading || !isOnline}
             onClick={() => onRefreshSystem()}
             className={cn(
-              'inline-flex min-h-12 items-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 text-sm font-medium text-sky-100 transition-colors hover:bg-sky-500/20 active:bg-sky-500/25 disabled:opacity-50',
+              'inline-flex min-h-12 items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-4 text-sm font-medium text-text-primary transition-colors hover:bg-black/[0.04] active:bg-black/[0.06] disabled:opacity-50',
             )}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', systemLoading && 'animate-spin')} aria-hidden />
@@ -84,22 +84,22 @@ export function FieldVisitWeatherCard({
       ) : null}
 
       {showSystemSection ? (
-        <div className="mt-4 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3 text-sm">
+        <div className="mt-4 rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-sm">
           <div className="flex items-start gap-2">
             {systemError ? (
-              <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+              <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-qo-ochre" aria-hidden />
             ) : (
-              <Cloud className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" aria-hidden />
+              <Cloud className="mt-0.5 h-4 w-4 shrink-0 text-qo-accent" aria-hidden />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-sky-200/85">System weather</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">System weather</p>
               {coordinateSummary ? (
                 <p className="mt-1 text-xs text-text-muted">Using start coordinates {coordinateSummary}</p>
               ) : null}
               {systemLoading ? (
                 <p className="mt-2 text-sm text-text-secondary">Fetching current conditions…</p>
               ) : systemError ? (
-                <p className="mt-2 text-sm text-amber-100/95">{systemError}</p>
+                <p className="mt-2 text-sm text-qo-ochre-text">{systemError}</p>
               ) : systemWeather ? (
                 <>
                   <p className="mt-2 text-sm text-text-primary">{systemWeather.summary}</p>
@@ -110,7 +110,7 @@ export function FieldVisitWeatherCard({
                     type="button"
                     disabled={visitLocked}
                     onClick={onApplySystemToObserved}
-                    className="mt-3 min-h-12 rounded-2xl border border-sky-400/35 bg-sky-500/15 px-4 text-sm font-medium text-sky-50 transition-colors hover:bg-sky-500/25 active:bg-sky-500/30 disabled:opacity-50"
+                    className="mt-3 min-h-12 rounded-2xl border border-qo-accent/25 bg-qo-accent/10 px-4 text-sm font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 active:bg-qo-accent/25 disabled:opacity-50"
                   >
                     Insert system line into observed notes
                   </button>
@@ -126,7 +126,7 @@ export function FieldVisitWeatherCard({
               href="https://open-meteo.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sky-200/90 underline decoration-sky-400/40 underline-offset-2 hover:text-sky-100"
+              className="text-qo-accent underline decoration-qo-accent/40 underline-offset-2 hover:text-qo-accent-hover"
             >
               Open-Meteo
             </a>

@@ -12,7 +12,7 @@ interface FieldVisitQaPromptsPanelProps {
 
 function toneClasses(tone: FieldVisitQaPrompt['tone']) {
   return tone === 'warning'
-    ? 'border-amber-500/20 bg-amber-500/10 text-amber-100'
+    ? 'border-qo-ochre/25 bg-qo-ochre/10 text-qo-ochre-text'
     : 'border-qo-accent/20 bg-qo-accent/10 text-qo-accent';
 }
 

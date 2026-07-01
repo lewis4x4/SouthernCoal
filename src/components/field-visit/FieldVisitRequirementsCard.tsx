@@ -104,7 +104,7 @@ export function FieldVisitRequirementsCard({
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-text-primary">{item.label}</div>
                   {item.requiredNow ? (
-                    <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+                    <span className="rounded-full border border-qo-ochre/35 bg-qo-ochre/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-qo-ochre-text">
                       Required now
                     </span>
                   ) : null}
@@ -117,8 +117,8 @@ export function FieldVisitRequirementsCard({
       </div>
 
       {model.instructionLines.length > 0 ? (
-        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200/80">
+        <div className="mt-4 rounded-xl border border-qo-ochre/25 bg-qo-ochre/10 px-4 py-3 text-sm text-qo-ochre-text">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-qo-ochre-text">
             Schedule instructions
           </div>
           <div className="mt-2 space-y-2">

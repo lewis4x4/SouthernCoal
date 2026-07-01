@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -51,7 +52,8 @@ async function authenticateUser(
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
 
   // Create user-scoped client to verify JWT
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

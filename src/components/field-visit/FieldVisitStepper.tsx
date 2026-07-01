@@ -26,11 +26,11 @@ interface FieldVisitStepperProps {
 
 function StepIcon({ status, index }: { status: FieldVisitStepStatus; index: number }) {
   if (status === 'complete') {
-    return <CheckCircle2 className="h-5 w-5 text-emerald-300" aria-hidden />;
+    return <CheckCircle2 className="h-5 w-5 text-qo-sage" aria-hidden />;
   }
 
   if (status === 'attention') {
-    return <AlertTriangle className="h-5 w-5 text-amber-200" aria-hidden />;
+    return <AlertTriangle className="h-5 w-5 text-qo-ochre" aria-hidden />;
   }
 
   return (

@@ -369,7 +369,7 @@ export function FieldRouteTodayPage() {
               onClick={() => setScope('mine')}
               className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
                 scope === 'mine'
-                  ? 'bg-emerald-500/20 text-emerald-200'
+                  ? 'bg-qo-sage/15 text-qo-sage-text'
                   : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
               }`}
             >
@@ -380,7 +380,7 @@ export function FieldRouteTodayPage() {
               onClick={() => setScope('org')}
               className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
                 scope === 'org'
-                  ? 'bg-emerald-500/20 text-emerald-200'
+                  ? 'bg-qo-sage/15 text-qo-sage-text'
                   : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
               }`}
             >
@@ -394,7 +394,7 @@ export function FieldRouteTodayPage() {
             onClick={() => setOpenStopsOnly(false)}
             className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
               !openStopsOnly
-                ? 'bg-emerald-500/20 text-emerald-200'
+                ? 'bg-qo-sage/15 text-qo-sage-text'
                 : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
             }`}
           >
@@ -405,7 +405,7 @@ export function FieldRouteTodayPage() {
             onClick={() => setOpenStopsOnly(true)}
             className={`min-h-12 rounded-2xl px-4 text-sm font-medium transition-colors ${
               openStopsOnly
-                ? 'bg-emerald-500/20 text-emerald-200'
+                ? 'bg-qo-sage/15 text-qo-sage-text'
                 : 'bg-black/[0.03] text-text-muted hover:bg-black/[0.06] active:bg-black/[0.08]'
             }`}
           >
@@ -431,7 +431,7 @@ export function FieldRouteTodayPage() {
             href={fullRouteHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-black/[0.08] bg-qo-nested text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-emerald-200"
+            className="inline-flex min-h-12 w-12 items-center justify-center rounded-2xl border border-black/[0.08] bg-qo-nested text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-qo-sage-text"
             aria-label="Open full route in Maps"
           >
             <Navigation className="h-5 w-5" />
@@ -529,7 +529,7 @@ export function FieldRouteTodayPage() {
                 <li key={visit.id}>
                   <div className="rounded-2xl border-2 border-qo-accent/30 bg-qo-accent/[0.06] p-4">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-2xl font-bold text-emerald-200">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-qo-sage/30 bg-qo-sage/10 text-2xl font-bold text-qo-sage-text">
                         {visit.route_stop_sequence ?? '—'}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -539,13 +539,13 @@ export function FieldRouteTodayPage() {
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold uppercase ${
                             visit.visit_status === 'in_progress'
-                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                              ? 'border-amber-500/30 bg-amber-500/10 text-qo-ochre-text'
                               : 'border-white/[0.1] bg-black/[0.03] text-text-muted'
                           }`}>
                             {visit.visit_status.replace('_', ' ')}
                           </span>
                           {visit.potential_force_majeure ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-200">
+                            <span className="inline-flex items-center gap-1 text-xs text-qo-ochre-text">
                               <AlertTriangle className="h-3 w-3" aria-hidden /> FM
                             </span>
                           ) : null}
@@ -560,7 +560,7 @@ export function FieldRouteTodayPage() {
                     <div className="mt-4 grid gap-2">
                       <Link
                         to={`/field/visits/${visit.id}`}
-                        className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-500/20 text-base font-semibold text-emerald-100 transition-colors hover:bg-emerald-500/30 active:bg-emerald-500/35"
+                        className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-qo-sage text-base font-semibold text-white transition-colors hover:bg-qo-sage/90 active:bg-qo-sage/85"
                       >
                         {visit.visit_status === 'in_progress' ? 'Continue this stop' : 'Start this stop'}
                         <ChevronRight className="h-5 w-5" />
@@ -570,7 +570,7 @@ export function FieldRouteTodayPage() {
                           href={mapsSearchUrl(coord.lat, coord.lng)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-black/[0.08] bg-qo-nested text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-emerald-200"
+                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-black/[0.08] bg-qo-nested text-sm font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-qo-sage-text"
                         >
                           <Navigation className="h-4 w-4" />
                           Navigate
@@ -592,7 +592,7 @@ export function FieldRouteTodayPage() {
                       : 'border-black/[0.06]'
                   }`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-sm font-bold text-emerald-200">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-qo-sage/30 bg-qo-sage/10 text-sm font-bold text-qo-sage-text">
                     {visit.route_stop_sequence ?? '—'}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -605,9 +605,9 @@ export function FieldRouteTodayPage() {
                   </span>
                   <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                     visit.visit_status === 'completed'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                      ? 'border-qo-sage/30 bg-qo-sage/10 text-qo-sage-text'
                       : visit.visit_status === 'in_progress'
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-qo-ochre-text'
                         : 'border-white/[0.1] bg-black/[0.03] text-text-muted'
                   }`}>
                     {visit.visit_status.replace('_', ' ')}

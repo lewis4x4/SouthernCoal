@@ -22,9 +22,9 @@ export interface FieldVisitWizardShellProps {
 function actionClasses(variant: WizardAction['variant']) {
   switch (variant) {
     case 'success':
-      return 'bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30 active:bg-emerald-500/35';
+      return 'bg-qo-sage text-white hover:bg-qo-sage/90 active:bg-qo-sage/85';
     case 'warning':
-      return 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/30 active:bg-amber-500/35';
+      return 'bg-qo-ochre text-white hover:bg-qo-ochre/90 active:bg-qo-ochre/85';
     case 'default':
       return 'bg-black/[0.04] text-text-primary hover:bg-white/[0.1] active:bg-white/[0.14]';
     default:

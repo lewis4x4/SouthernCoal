@@ -113,28 +113,28 @@ export function FieldDataSyncBar({
       {queueFlushDiagnostic ? (
         <div
           role="alert"
-          className="flex flex-wrap items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/[0.08] px-4 py-3 text-sm"
+          className="flex flex-wrap items-start gap-3 rounded-xl border border-qo-risk/25 bg-qo-risk/10 px-4 py-3 text-sm"
         >
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-qo-risk" aria-hidden />
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="font-medium text-red-100">
+            <p className="font-medium text-qo-risk">
               {queueFlushDiagnostic.conflictHold
                 ? 'Field sync conflict — queue on hold'
                 : 'Field upload queue blocked'}
             </p>
-            <p className="text-xs text-red-200/90">
-              <span className="font-semibold">{humanizeOutboundOpKind(queueFlushDiagnostic.opKind)}</span>
-              <span className="text-red-200/70"> · op </span>
-              <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-[11px] text-red-100/95">
+            <p className="text-xs text-text-secondary">
+              <span className="font-semibold text-text-primary">{humanizeOutboundOpKind(queueFlushDiagnostic.opKind)}</span>
+              <span className="text-text-muted"> · op </span>
+              <code className="rounded bg-black/[0.06] px-1 py-0.5 font-mono text-[11px] text-text-primary">
                 {queueFlushDiagnostic.opKind}
               </code>
             </p>
-            <p className="text-xs text-red-200/85">
+            <p className="text-xs text-text-secondary">
               Visit ID:{' '}
               {queueFlushDiagnostic.visitId !== '—' ? (
                 <Link
                   to={`/field/visits/${queueFlushDiagnostic.visitId}`}
-                  className="font-mono text-[11px] text-amber-200 underline decoration-amber-200/40 underline-offset-2 hover:text-amber-100"
+                  className="font-mono text-[11px] text-qo-accent underline decoration-qo-accent/40 underline-offset-2 hover:text-qo-accent-hover"
                 >
                   {queueFlushDiagnostic.visitId}
                 </Link>
@@ -159,12 +159,12 @@ export function FieldDataSyncBar({
       {hasEvidenceFailures ? (
         <div
           role="alert"
-          className="flex flex-wrap items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 py-3 text-sm"
+          className="flex flex-wrap items-start gap-3 rounded-xl border border-qo-risk/25 bg-qo-risk/10 px-4 py-3 text-sm"
         >
-          <ImageOff className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" aria-hidden />
+          <ImageOff className="mt-0.5 h-5 w-5 shrink-0 text-qo-risk" aria-hidden />
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="font-medium text-rose-100">Photo or file upload needs a retry</p>
-            <p className="text-xs text-rose-200/85">
+            <p className="font-medium text-qo-risk">Photo or file upload needs a retry</p>
+            <p className="text-xs text-text-secondary">
               Evidence drafts are still on this device. Stay online, then retry or use Refresh below.
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-text-secondary">
@@ -182,7 +182,7 @@ export function FieldDataSyncBar({
                 type="button"
                 disabled={busy}
                 onClick={() => void onRetryEvidenceSync()}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-400/35 bg-rose-500/20 px-3 py-1.5 text-xs font-medium text-rose-50 transition-colors hover:bg-rose-500/30 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-qo-risk/30 bg-qo-risk px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-qo-risk/90 disabled:opacity-50"
               >
                 <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${busy ? 'animate-spin' : ''}`} aria-hidden />
                 Retry uploads
@@ -210,7 +210,7 @@ export function FieldDataSyncBar({
           {statusText}
         </span>
         <span
-          className={`inline-flex items-center gap-1.5 ${online ? 'text-emerald-200/90' : 'text-amber-200'}`}
+          className={`inline-flex items-center gap-1.5 ${online ? 'text-qo-sage-text' : 'text-qo-ochre-text'}`}
           aria-hidden
         >
           {online ? (
@@ -222,7 +222,7 @@ export function FieldDataSyncBar({
         </span>
         <span className="text-text-muted" aria-hidden>
           {pendingOutboundCount > 0 ? (
-            <span className="mr-2 font-medium text-amber-200/95">
+            <span className="mr-2 font-medium text-qo-ochre-text">
               {pendingOutboundCount} pending (queue + device photos)
             </span>
           ) : null}

@@ -35,14 +35,14 @@ export function FieldVisitRequiredChecklist({
 
       {summary.blockerLabels.length > 0 ? (
         <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200/85">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-qo-ochre-text/85">
             Primary blockers
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {summary.blockerLabels.slice(0, 3).map((label) => (
               <span
                 key={label}
-                className="rounded-full border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-100"
+                className="rounded-full border border-amber-500/35 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-qo-ochre-text"
               >
                 {label}
               </span>
@@ -58,8 +58,8 @@ export function FieldVisitRequiredChecklist({
               className={cn(
                 'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
                 item.done
-                  ? 'border-emerald-500/35 bg-emerald-500/15 text-emerald-300'
-                  : 'border-amber-500/35 bg-amber-500/10 text-amber-200',
+                  ? 'border-emerald-500/30 bg-emerald-500/15 text-qo-sage-text'
+                  : 'border-amber-500/35 bg-amber-500/10 text-qo-ochre-text',
               )}
             >
               {item.done ? (
@@ -68,7 +68,7 @@ export function FieldVisitRequiredChecklist({
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
               )}
             </span>
-            <span className={item.done ? 'text-sm text-text-secondary' : 'text-sm text-amber-100'}>
+            <span className={item.done ? 'text-sm text-text-secondary' : 'text-sm text-qo-ochre-text'}>
               {item.label}
             </span>
           </li>

@@ -30,18 +30,18 @@ export function FieldDataSourceBanner(props: Props) {
       <div
         role="status"
         aria-live="polite"
-        className="flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100"
+        className="flex items-start gap-3 rounded-xl border border-qo-ochre/25 bg-qo-ochre/10 px-4 py-3 text-sm"
       >
-        <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" aria-hidden />
+        <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-qo-ochre" aria-hidden />
         <div className="min-w-0">
-          <p className="font-medium text-sky-50">Offline — saved route on this device</p>
-          <p className="mt-1 text-xs text-sky-200/85">
+          <p className="font-medium text-qo-ochre-text">Offline — saved route on this device</p>
+          <p className="mt-1 text-xs text-text-secondary">
             Stop order and visit rows come from your last saved copy (localStorage / IndexedDB). Map pins use cached
             coordinates. Reconnect and use Refresh for live assignments and server updates. Field actions still use the
             outbound queue when you are back online.
           </p>
           {savedLabel ? (
-            <p className="mt-2 text-xs font-medium text-sky-200/90">Last saved {savedLabel}.</p>
+            <p className="mt-2 text-xs font-medium text-text-muted">Last saved {savedLabel}.</p>
           ) : null}
         </div>
       </div>
@@ -64,12 +64,12 @@ export function FieldDataSourceBanner(props: Props) {
     <div
       role="status"
       aria-live="polite"
-      className="flex items-start gap-3 rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-3 text-sm text-violet-100"
+      className="flex items-start gap-3 rounded-xl border border-black/[0.08] bg-qo-nested px-4 py-3 text-sm"
     >
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-qo-accent" aria-hidden />
       <div className="min-w-0">
-        <p className="font-medium text-violet-50">{title}</p>
-        <p className="mt-1 text-xs text-violet-200/85">{body}</p>
+        <p className="font-medium text-text-primary">{title}</p>
+        <p className="mt-1 text-xs text-text-secondary">{body}</p>
       </div>
     </div>
   );

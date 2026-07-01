@@ -44,8 +44,8 @@ export function FieldVisitOutcomeStep({
   return (
     <div className="space-y-4">
       {potentialForceMajeure ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          <CloudRain className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
+        <div className="flex items-start gap-3 rounded-2xl border border-qo-ochre/25 bg-qo-ochre/10 px-4 py-3 text-sm text-qo-ochre-text">
+          <CloudRain className="mt-0.5 h-5 w-5 shrink-0 text-qo-ochre" aria-hidden />
           Force majeure flagged. Choose the outcome first, then document in the next step.
         </div>
       ) : null}

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -67,12 +68,13 @@ async function validateAuth(
 
   const authHeader = req.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
 
     // Path 2: Service role key (pg_cron / pg_net)
     if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
       return { authorized: true, userId: null, orgId: null, role: "system" };
     }
+    if (isPrivilegedOrAnonymousJwt(token)) return denied;
 
     // Path 3: User JWT (frontend "Sync Now") — verify signature via Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);

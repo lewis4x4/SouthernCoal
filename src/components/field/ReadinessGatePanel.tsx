@@ -68,12 +68,12 @@ export function ReadinessGatePanel({
         {result.passed ? (
           <>
             <ShieldCheck size={18} className="text-qo-sage-text" />
-            <span className="text-sm font-medium text-emerald-300">Readiness gate passed</span>
+            <span className="text-sm font-medium text-qo-sage-text">Readiness gate passed</span>
           </>
         ) : (
           <>
             <ShieldX size={18} className="text-qo-ochre-text" />
-            <span className="text-sm font-medium text-amber-300">
+            <span className="text-sm font-medium text-qo-ochre-text">
               Readiness gate blocked — {result.failingBlocking.length} requirement{result.failingBlocking.length !== 1 ? 's' : ''} failing
             </span>
           </>
@@ -146,7 +146,7 @@ export function ReadinessGatePanel({
                 <button
                   onClick={handleOverride}
                   disabled={!overrideReason.trim() || loading}
-                  className="rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/25 disabled:opacity-50 transition-colors"
+                  className="rounded-lg bg-qo-ochre/15 px-3 py-1.5 text-xs font-medium text-qo-ochre-text hover:bg-qo-ochre/25 disabled:opacity-50 transition-colors"
                 >
                   Confirm Override
                 </button>

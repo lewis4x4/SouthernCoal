@@ -24,11 +24,11 @@ export function FieldVisitEvidenceStep({
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className="text-text-muted">{syncedPhotoCount} uploaded</span>
         {pendingPhotoCount > 0 ? (
-          <span className="text-amber-200">{pendingPhotoCount} pending</span>
+          <span className="font-medium text-qo-ochre-text">{pendingPhotoCount} pending</span>
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+      <div className="rounded-2xl border border-qo-ochre/25 bg-qo-ochre/10 px-4 py-3 text-sm text-qo-ochre-text">
         {requiredPrompt}
       </div>
 

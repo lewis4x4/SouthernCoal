@@ -35,11 +35,11 @@ function getBarcodeDetectorCtor(): BarcodeDetectorCtor | null {
 function validationToneClasses(status: FieldVisitContainerValidation['status']) {
   switch (status) {
     case 'match':
-      return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-100';
+      return 'border-emerald-500/25 bg-emerald-500/10 text-qo-sage-text';
     case 'warning':
-      return 'border-rose-500/25 bg-rose-500/10 text-rose-100';
+      return 'border-qo-risk/25 bg-qo-risk/10 text-qo-risk';
     default:
-      return 'border-amber-500/20 bg-amber-500/10 text-amber-100';
+      return 'border-amber-500/20 bg-amber-500/10 text-qo-ochre-text';
   }
 }
 
@@ -204,7 +204,7 @@ export function CustodyScanPanel({
           />
           <p className="mt-3 text-sm text-text-secondary">{scannerStatus}</p>
           {scannerError ? (
-            <div className="mt-3 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            <div className="mt-3 rounded-xl border border-qo-risk/25 bg-qo-risk/10 px-4 py-3 text-sm text-qo-risk">
               {scannerError}
             </div>
           ) : null}
@@ -258,7 +258,7 @@ export function CustodyScanPanel({
         className={cn(
           'mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border text-base font-medium transition-colors disabled:opacity-60',
           preservativeConfirmed
-            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100'
+            ? 'border-emerald-500/30 bg-emerald-500/15 text-qo-sage-text'
             : 'border-black/[0.08] bg-qo-nested text-text-secondary hover:bg-black/[0.05]',
         )}
       >

@@ -49,6 +49,15 @@ export function isPrivilegedOrAnonymousJwt(token: string): boolean {
   return false;
 }
 
+/** Extract user JWT from Authorization header; rejects anon/service_role/malformed (SEC-003). */
+export function extractUserBearerToken(req: Request): string | null {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (isPrivilegedOrAnonymousJwt(token)) return null;
+  return token;
+}
+
 /**
  * Verify JWT token from request Authorization header.
  * Returns user ID if valid, null otherwise.
@@ -57,11 +66,8 @@ export async function verifyAuth(
   req: Request,
   supabase: SupabaseClient,
 ): Promise<string | null> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
-
-  const token = authHeader.replace("Bearer ", "");
-  if (isPrivilegedOrAnonymousJwt(token)) return null;
+  const token = extractUserBearerToken(req);
+  if (!token) return null;
 
   const {
     data: { user },

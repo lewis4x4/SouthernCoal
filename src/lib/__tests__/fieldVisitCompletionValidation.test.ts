@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   getFieldVisitCompletionChecklistItems,
+  isValidFieldGpsPair,
+  parseFieldGpsCoordinate,
   summarizeCompletionChecklist,
   validateFieldVisitCompletion,
   validateFieldVisitStartCoordinates,
@@ -27,6 +29,42 @@ const base = () => ({
   accessIssueNarrativeTrimmed: '',
 });
 
+describe('parseFieldGpsCoordinate', () => {
+  it('returns null for empty or whitespace (blank must not become 0)', () => {
+    expect(parseFieldGpsCoordinate('')).toBeNull();
+    expect(parseFieldGpsCoordinate('   ')).toBeNull();
+  });
+
+  it('returns null for non-numeric input', () => {
+    expect(parseFieldGpsCoordinate('abc')).toBeNull();
+  });
+
+  it('parses valid decimal strings', () => {
+    expect(parseFieldGpsCoordinate('38.3491')).toBe(38.3491);
+    expect(parseFieldGpsCoordinate('-81.6322')).toBe(-81.6322);
+  });
+});
+
+describe('isValidFieldGpsPair', () => {
+  it('accepts in-range WV coordinates', () => {
+    expect(isValidFieldGpsPair(38.3491, -81.6322)).toBe(true);
+  });
+
+  it('rejects 0,0 null-island sentinel (A3)', () => {
+    expect(isValidFieldGpsPair(0, 0)).toBe(false);
+  });
+
+  it('rejects non-finite values', () => {
+    expect(isValidFieldGpsPair(NaN, -81)).toBe(false);
+    expect(isValidFieldGpsPair(38, Infinity)).toBe(false);
+  });
+
+  it('rejects out-of-range latitude or longitude', () => {
+    expect(isValidFieldGpsPair(91, 0)).toBe(false);
+    expect(isValidFieldGpsPair(0, -181)).toBe(false);
+  });
+});
+
 describe('validateFieldVisitStartCoordinates', () => {
   it('passes for finite coordinates', () => {
     expect(validateFieldVisitStartCoordinates(38, -81)).toEqual({ ok: true });
@@ -42,6 +80,12 @@ describe('validateFieldVisitStartCoordinates', () => {
     const r = validateFieldVisitStartCoordinates(38, Infinity);
     expect(r.ok).toBe(false);
   });
+
+  it('fails for 0,0 coordinates (A3)', () => {
+    const r = validateFieldVisitStartCoordinates(0, 0);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.startGpsRequired);
+  });
 });
 
 describe('validateFieldVisitCompletion', () => {
@@ -54,6 +98,28 @@ describe('validateFieldVisitCompletion', () => {
       ...base(),
       completeLatitude: NaN,
       completeLongitude: -81,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.completeGpsRequired);
+  });
+
+  it('fails when completion coordinates are 0,0 (A3 blank-field sentinel)', () => {
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      completeLatitude: 0,
+      completeLongitude: 0,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.completeGpsRequired);
+  });
+
+  it('fails when only completion latitude is missing (empty field coerced via parse)', () => {
+    const lat = parseFieldGpsCoordinate('') ?? NaN;
+    const lng = parseFieldGpsCoordinate('-81.6322') ?? NaN;
+    const r = validateFieldVisitCompletion({
+      ...base(),
+      completeLatitude: lat,
+      completeLongitude: lng,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.message).toBe(FIELD_VISIT_COPY.completeGpsRequired);
@@ -256,5 +322,29 @@ describe('getFieldVisitCompletionChecklistItems', () => {
 
     expect(summary.blockerCount).toBe(2);
     expect(summary.blockerLabels).toEqual(['Start visit', 'Completion GPS']);
+  });
+
+  it('marks completion GPS incomplete for 0,0 checklist input (A3)', () => {
+    const items = getFieldVisitCompletionChecklistItems({
+      visitStarted: true,
+      requiredFieldMeasurementsComplete: true,
+      containerValidationBlocking: false,
+      completeLatitude: 0,
+      completeLongitude: 0,
+      inspectionFlowStatus: 'flowing',
+      outletInspectionObstructed: false,
+      inspectionObstructionDetailsTrimmed: '',
+      outcome: 'sample_collected',
+      cocContainerIdTrimmed: 'BTL-001',
+      cocPreservativeConfirmed: true,
+      syncedPhotoCount: 0,
+      pendingPhotoCount: 0,
+      isOnline: true,
+      noDischargeNarrativeTrimmed: '',
+      noDischargeObstructionObserved: false,
+      noDischargeObstructionDetailsTrimmed: '',
+      accessIssueNarrativeTrimmed: '',
+    });
+    expect(items.find((i) => i.id === 'completion_gps')?.done).toBe(false);
   });
 });

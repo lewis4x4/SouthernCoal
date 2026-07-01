@@ -23,9 +23,9 @@ interface FieldVisitForceMajeureAssistPanelProps {
 function deadlineToneClass(tone: ReturnType<typeof describeGovernanceDeadline>['tone']) {
   switch (tone) {
     case 'overdue':
-      return 'text-rose-100';
+      return 'text-qo-risk';
     case 'soon':
-      return 'text-amber-100';
+      return 'text-qo-ochre-text';
     case 'ok':
       return 'text-qo-accent';
     default:
@@ -56,15 +56,15 @@ export function FieldVisitForceMajeureAssistPanel({
     <div
       role="region"
       aria-label="Force majeure assist"
-      className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5"
+      className="rounded-2xl border border-qo-ochre/25 bg-qo-ochre/10 p-5"
     >
       <div className="flex items-center gap-2">
-        <CloudRain className="h-4 w-4 text-amber-200" aria-hidden />
-        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-50">
+        <CloudRain className="h-4 w-4 text-qo-ochre" aria-hidden />
+        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-qo-ochre-text">
           Force majeure assist
         </h3>
       </div>
-      <p className="mt-2 text-sm text-amber-50/90">
+      <p className="mt-2 text-sm text-qo-ochre-text">
         Use this when weather, access, or other extraordinary site conditions may affect notice handling or later governance review.
       </p>
 
@@ -80,7 +80,7 @@ export function FieldVisitForceMajeureAssistPanel({
       </label>
 
       <div className="mt-4 rounded-xl border border-amber-500/20 bg-black/10 px-4 py-4">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200/85">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-qo-ochre-text">
           <TimerReset className="h-3.5 w-3.5" aria-hidden />
           Timing guidance
         </div>
@@ -187,7 +187,7 @@ export function FieldVisitForceMajeureAssistPanel({
       </div>
 
       {checked ? (
-        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+        <div className="mt-4 rounded-xl border border-qo-ochre/25 bg-qo-ochre/10 px-4 py-3 text-sm text-qo-ochre-text">
           This flag does not replace evidence. Make sure the narrative and photo context are strong enough for a later governance decision.
         </div>
       ) : null}

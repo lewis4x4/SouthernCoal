@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { readZipTextEntry } from "../_shared/msha-zip.ts";
 import {
   isJusticeController,
@@ -29,10 +30,11 @@ async function validateAuth(req: Request, supabase: ReturnType<typeof createClie
   }
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return { ok: false, userId: null };
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
   if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
     return { ok: true, userId: null };
   }
+  if (isPrivilegedOrAnonymousJwt(token)) return { ok: false, userId: null };
   const { data: { user } } = await supabase.auth.getUser(token);
   return { ok: !!user, userId: user?.id ?? null };
 }

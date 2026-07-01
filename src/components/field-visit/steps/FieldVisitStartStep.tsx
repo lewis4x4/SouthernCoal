@@ -69,7 +69,7 @@ export function FieldVisitStartStep({
           )}
 
           {!hasCoords && (
-            <p className="text-sm text-amber-200/80">
+            <p className="text-sm text-qo-ochre-text">
               No coordinates on file for this outfall — contact your manager.
             </p>
           )}
@@ -121,7 +121,7 @@ export function FieldVisitStartStep({
         ) : weatherError ? (
           <>
             <CloudOff className="h-4 w-4 shrink-0 text-qo-ochre-text" aria-hidden />
-            <span className="text-sm text-amber-200/80">Weather queued — will load when back online</span>
+            <span className="text-sm text-qo-ochre-text">Weather queued — will load when back online</span>
           </>
         ) : weatherSummary ? (
           <>

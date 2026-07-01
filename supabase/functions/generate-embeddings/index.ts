@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -79,7 +80,10 @@ async function validateAuth(
   if (!authHeader?.startsWith("Bearer ")) {
     return { authorized: false, userId: null, orgId: null };
   }
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (isPrivilegedOrAnonymousJwt(token)) {
+    return { authorized: false, userId: null, orgId: null };
+  }
   const {
     data: { user },
     error,

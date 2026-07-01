@@ -22,8 +22,8 @@ const MANAGER_ROLES = ['site_manager', 'environmental_manager', 'executive', 'ad
 
 function statusTone(visit: FieldVisitListItem) {
   if (visit.visit_status === 'completed') return 'text-qo-sage-text border-emerald-500/20 bg-emerald-500/10';
-  if (visit.visit_status === 'in_progress') return 'text-amber-300 border-amber-500/20 bg-amber-500/10';
-  if (visit.visit_status === 'cancelled') return 'text-red-300 border-red-500/20 bg-red-500/10';
+  if (visit.visit_status === 'in_progress') return 'text-qo-ochre-text border-qo-ochre/25 bg-qo-ochre/10';
+  if (visit.visit_status === 'cancelled') return 'text-qo-risk border-qo-risk/25 bg-qo-risk/10';
   return 'text-qo-accent border-qo-accent/20 bg-qo-accent/10';
 }
 

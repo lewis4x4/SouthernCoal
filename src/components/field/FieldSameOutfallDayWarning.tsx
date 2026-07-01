@@ -22,37 +22,37 @@ export function FieldSameOutfallDayWarning({
 
   return (
     <div
-      className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+      className="rounded-xl border border-qo-ochre/30 bg-qo-ochre/10 px-4 py-3 text-sm text-qo-ochre-text"
       role="status"
       aria-live="polite"
     >
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" aria-hidden />
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-qo-ochre" aria-hidden />
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="font-medium text-amber-50">
+          <p className="font-medium text-qo-ochre-text">
             Same outfall, same day — {groups.length} conflict{groups.length === 1 ? '' : 's'} ({contextLabel})
           </p>
-          <p className="text-xs text-amber-200/85">
+          <p className="text-xs text-qo-ochre-text/90">
             Multiple field visits target the same outfall on the same scheduled date. Confirm dispatch intent
             before sampling; both records stay in the queue until resolved or completed.
           </p>
           {detailed ? (
             <ul
-              className={`space-y-2 border-t border-amber-500/20 pt-2 text-xs text-amber-100/95 ${detailListClassName ?? ''}`}
+              className={`space-y-2 border-t border-qo-ochre/20 pt-2 text-xs text-qo-ochre-text/90 ${detailListClassName ?? ''}`}
             >
               {groups.map((g) => (
                 <li key={`${g.scheduledDate}-${g.outfallId}`}>
-                  <span className="font-medium text-amber-50">
+                  <span className="font-medium text-qo-ochre-text">
                     {g.permitLabel ?? 'Permit'} / {g.outfallLabel ?? 'Outfall'}
                   </span>
-                  <span className="text-amber-200/80"> · {g.scheduledDate}</span>
-                  <span className="text-amber-200/70"> · {g.visits.length} visits</span>
+                  <span className="text-text-muted"> · {g.scheduledDate}</span>
+                  <span className="text-text-muted"> · {g.visits.length} visits</span>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                     {g.visits.map((v) => (
                       <Link
                         key={v.id}
                         to={`/field/visits/${v.id}`}
-                        className="text-qo-accent/90 underline decoration-cyan-500/40 underline-offset-2 hover:text-qo-accent"
+                        className="text-qo-accent underline decoration-qo-accent/40 underline-offset-2 hover:text-qo-accent-hover"
                       >
                         {v.visit_status.replace('_', ' ')} — {v.assigned_to_name}
                       </Link>
