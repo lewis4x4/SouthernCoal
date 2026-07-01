@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { validateFederalNpdesId } from '@/lib/npdesMapping';
 
 export interface NpdesOverride {
   id: string;
@@ -179,6 +180,12 @@ export function useNpdesOverrides() {
   const saveOverride = useCallback(
     async (sourcePermitId: string, npdesId: string, stateCode: string, notes?: string) => {
       if (!orgId || !user) return { error: 'Not authenticated' };
+
+      const validation = validateFederalNpdesId(npdesId);
+      if (!validation.valid) {
+        return { error: validation.message ?? 'Invalid federal NPDES ID' };
+      }
+
       setSaving(true);
 
       const { error } = await supabase

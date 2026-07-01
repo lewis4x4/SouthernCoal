@@ -11,6 +11,11 @@ import { SyncHealthPanel } from '@/components/external-data/SyncHealthPanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES } from '@/lib/constants';
+import {
+  classifyRegistryPermitId,
+  registryGapHint,
+  validateFederalNpdesId,
+} from '@/lib/npdesMapping';
 import type { CoverageFacility, StateCoverage } from '@/hooks/useEchoCoverage';
 import type { NpdesOverride, RegistryFederalMappingGap, UnmatchedPermit } from '@/hooks/useNpdesOverrides';
 
@@ -74,6 +79,7 @@ export function EchoCoveragePanel() {
   const [sortKey, setSortKey] = useState<SortKey>('state_code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [stateFilter, setStateFilter] = useState<string>('all');
+  const [gapStateFilter, setGapStateFilter] = useState<string>('VA');
 
   const isSyncing = syncing || triggerSyncing;
 
@@ -106,6 +112,11 @@ export function EchoCoveragePanel() {
       setSortDir('asc');
     }
   }
+
+  const filteredRegistryGaps = useMemo(() => {
+    if (gapStateFilter === 'all') return registryMappingGaps;
+    return registryMappingGaps.filter((g) => g.state_code === gapStateFilter);
+  }, [registryMappingGaps, gapStateFilter]);
 
   const sortedFacilities = useMemo(() => {
     const filtered = stateFilter === 'all'
@@ -367,20 +378,42 @@ export function EchoCoveragePanel() {
               <AlertTriangle size={14} className="text-qo-ochre-text" />
               <h3 className="text-sm font-semibold text-text-primary">Registry Mapping Gaps</h3>
             </div>
-            <span className="text-xs text-amber-300/90 font-medium">
-              {registryMappingGaps.length} permit{registryMappingGaps.length === 1 ? '' : 's'} — cleanup backlog
-            </span>
+            <div className="flex items-center gap-2">
+              <select
+                value={gapStateFilter}
+                onChange={(e) => setGapStateFilter(e.target.value)}
+                className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs text-text-secondary focus:outline-none focus:border-qo-accent/50"
+              >
+                <option value="all">All states</option>
+                {STATES.map((s) => (
+                  <option key={s.code} value={s.code}>{s.code}</option>
+                ))}
+              </select>
+              <span className="text-xs text-amber-300/90 font-medium">
+                {filteredRegistryGaps.length} of {registryMappingGaps.length} permit
+                {registryMappingGaps.length === 1 ? '' : 's'} — cleanup backlog
+              </span>
+            </div>
           </div>
           <p className="px-4 pt-3 text-xs text-text-muted">
             These active registry rows have no federal NPDES ID in metadata yet (mostly VA DMLR / data-quality
-            edge cases). Tracked in{' '}
+            edge cases). Map DMLR mining IDs to verified federal VPDES IDs to unblock ECHO sync. Tracked in{' '}
             <span className="font-mono text-text-secondary">docs/NPDES_MAPPING_CLEANUP_BACKLOG.md</span>.
           </p>
-          <div className="max-h-64 overflow-y-auto px-4 py-3">
-            <div className="space-y-1.5">
-              {registryMappingGaps.map((gap) => (
-                <RegistryGapRow key={gap.permit_number} gap={gap} />
+          <div className="max-h-96 overflow-y-auto px-4 py-3">
+            <div className="space-y-2">
+              {filteredRegistryGaps.map((gap) => (
+                <RegistryGapRow
+                  key={gap.permit_number}
+                  gap={gap}
+                  saving={overrideSaving}
+                  canMap={can('bulk_process')}
+                  onSave={saveOverride}
+                />
               ))}
+              {filteredRegistryGaps.length === 0 && (
+                <p className="text-xs text-text-muted py-2">No gaps for this state filter.</p>
+              )}
             </div>
           </div>
         </div>
@@ -437,12 +470,83 @@ export function EchoCoveragePanel() {
   );
 }
 
-function RegistryGapRow({ gap }: { gap: RegistryFederalMappingGap }) {
+function RegistryGapRow({
+  gap,
+  saving,
+  canMap,
+  onSave,
+}: {
+  gap: RegistryFederalMappingGap;
+  saving: boolean;
+  canMap: boolean;
+  onSave: (sourceId: string, npdesId: string, stateCode: string, notes?: string) => Promise<{ error: string | null }>;
+}) {
+  const [npdesId, setNpdesId] = useState('');
+  const kind = classifyRegistryPermitId(gap.permit_number, gap.state_code);
+  const hint = registryGapHint(gap.permit_number, gap.state_code);
+
+  async function handleSave() {
+    const validation = validateFederalNpdesId(npdesId);
+    if (!validation.valid) {
+      toast.error(validation.message ?? 'Invalid NPDES ID');
+      return;
+    }
+    const federalId = npdesId.trim().toUpperCase();
+    const { error } = await onSave(
+      gap.permit_number,
+      federalId,
+      gap.state_code === '—' ? 'VA' : gap.state_code,
+      kind === 'dmlr_mining' ? 'DMLR → federal crosswalk' : undefined,
+    );
+    if (error) {
+      toast.error(`Save failed: ${error}`);
+    } else {
+      toast.success(`Mapped ${gap.permit_number} → ${federalId} (registry + ECHO override)`);
+      setNpdesId('');
+    }
+  }
+
+  const kindBadge =
+    kind === 'dmlr_mining'
+      ? 'DMLR'
+      : kind === 'pseudo_va_npdes'
+        ? 'Pseudo-NPDES'
+        : null;
+
   return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="font-mono text-text-secondary w-8">{gap.state_code}</span>
-      <span className="font-mono text-text-primary w-36">{gap.permit_number}</span>
-      <span className="text-text-muted truncate">{gap.issuing_agency ?? '—'}</span>
+    <div className="rounded-lg border border-black/[0.06] bg-qo-nested/60 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-mono text-text-secondary w-8">{gap.state_code}</span>
+        <span className="font-mono text-text-primary">{gap.permit_number}</span>
+        {kindBadge && (
+          <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-qo-ochre-text">
+            {kindBadge}
+          </span>
+        )}
+        <span className="text-text-muted truncate">{gap.issuing_agency ?? '—'}</span>
+      </div>
+      {hint && <p className="mt-1.5 text-[11px] text-text-muted leading-snug">{hint}</p>}
+      {canMap && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-text-muted">&rarr;</span>
+          <input
+            type="text"
+            value={npdesId}
+            onChange={(e) => setNpdesId(e.target.value)}
+            placeholder="Federal NPDES ID (e.g. VA0081742)"
+            className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 w-44"
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !npdesId.trim()}
+            className="flex items-center gap-1 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
+          >
+            <Save size={10} />
+            Map
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -494,15 +598,17 @@ function UnmatchedPermitRow({
   const [npdesId, setNpdesId] = useState('');
 
   async function handleSave() {
-    if (!npdesId.trim()) {
-      toast.error('Enter a valid NPDES ID');
+    const validation = validateFederalNpdesId(npdesId);
+    if (!validation.valid) {
+      toast.error(validation.message ?? 'Invalid NPDES ID');
       return;
     }
-    const { error } = await onSave(permit.source_permit_id, npdesId.trim(), permit.state_code);
+    const federalId = npdesId.trim().toUpperCase();
+    const { error } = await onSave(permit.source_permit_id, federalId, permit.state_code);
     if (error) {
       toast.error(`Save failed: ${error}`);
     } else {
-      toast.success(`Mapped ${permit.source_permit_id} → ${npdesId.trim().toUpperCase()} (registry + ECHO override)`);
+      toast.success(`Mapped ${permit.source_permit_id} → ${federalId} (registry + ECHO override)`);
       setNpdesId('');
     }
   }
