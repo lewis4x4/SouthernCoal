@@ -8,6 +8,12 @@ import { useLabDataImport } from '@/hooks/useLabDataImport';
 import { useDmrImport } from '@/hooks/useDmrImport';
 import { VerificationBadge } from './VerificationBadge';
 import { ParameterSheetExtractionPanel } from './ParameterSheetExtractionPanel';
+import {
+  getLabExtractionMeta,
+  isLabExtractionDocumentType,
+  normalizeLabExtractionDisplay,
+  type LabDataExtractionDisplay,
+} from '@/lib/labExtractionDisplay';
 import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus, Upload, Loader2 } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { VerificationStatus } from '@/stores/verification';
@@ -97,12 +103,16 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
     );
   }
 
-  // Lab data branch — different layout than permit extraction
-  if (data.document_type === 'lab_data_edd') {
+  // Lab data branch — EDD + state-specific parsers (VA/TN/AL)
+  if (isLabExtractionDocumentType(data.document_type)) {
+    const normalized = normalizeLabExtractionDisplay(data as unknown as Record<string, unknown>);
+    if (!normalized) return null;
+    const meta = getLabExtractionMeta(data as unknown as Record<string, unknown>);
     return (
       <LabDataExtractionPanel
         entry={entry}
-        data={data as unknown as LabDataExtractionDisplay}
+        data={normalized}
+        meta={meta}
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
         onDispute={() => setStatus(entry.id, 'disputed')}
@@ -471,53 +481,10 @@ function NetDmrExtractionPanel({
 // Lab Data Extraction Panel
 // ---------------------------------------------------------------------------
 
-/**
- * Display-focused interface for lab data extraction UI.
- * This is a stricter version of ExtractedLabData with required display fields.
- * The base ExtractedLabData type is used for import operations.
- */
-interface LabDataExtractionDisplay {
-  document_type: 'lab_data_edd';
-  file_format: string;
-  column_count: number;
-  total_rows: number;
-  parsed_rows: number;
-  skipped_rows: number;
-  permit_numbers: string[];
-  states: string[];
-  sites: string[];
-  date_range: { earliest: string | null; latest: string | null };
-  lab_names: string[];
-  parameters_found: number;
-  parameter_summary: Array<{
-    canonical_name: string;
-    sample_count: number;
-    below_detection_count: number;
-  }>;
-  outfalls_found: number;
-  outfall_summary: Array<{
-    raw_name: string;
-    matched_id: string | null;
-    sample_count: number;
-  }>;
-  warnings: string[];
-  validation_errors: Array<{ row: number; column: string; message: string }>;
-  hold_time_violations: Array<{
-    row: number;
-    parameter: string;
-    outfall: string;
-    sample_date: string;
-    analysis_date: string;
-    days_held: number;
-    max_hold_days: number;
-  }>;
-  records_truncated: boolean;
-  summary: string;
-}
-
 interface LabDataExtractionPanelProps {
   entry: QueueEntry;
   data: LabDataExtractionDisplay;
+  meta: ReturnType<typeof getLabExtractionMeta>;
   verificationStatus: VerificationStatus;
   onVerify: () => void;
   onDispute: () => void;
@@ -527,6 +494,7 @@ interface LabDataExtractionPanelProps {
 function LabDataExtractionPanel({
   entry,
   data,
+  meta,
   verificationStatus,
   onVerify,
   onDispute,
@@ -544,10 +512,25 @@ function LabDataExtractionPanel({
 
   return (
     <div className="space-y-4">
+      {meta.draftMode && (
+        <div className="rounded-lg border border-qo-ochre/30 bg-qo-ochre/10 px-3 py-2.5">
+          <p className="text-xs font-medium text-qo-ochre-text">
+            DRAFT parser output — internal preview only
+          </p>
+          <p className="mt-1 text-[11px] text-text-secondary">
+            {meta.parserLabel}
+            {meta.specVersion ? ` spec v${meta.specVersion}` : ''}
+            {meta.parserVersion ? ` · parser v${meta.parserVersion}` : ''}
+            . Column mapping may change when client sample files arrive. Verify before import or
+            regulatory use.
+          </p>
+        </div>
+      )}
+
       {/* Header with verification badge */}
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-text-primary">
-          Lab Data Extraction
+          {meta.parserLabel}
         </h4>
         <div className="flex items-center gap-2">
           <VerificationBadge status={verificationStatus} />
@@ -782,7 +765,9 @@ function LabDataExtractionPanel({
             )}
           </button>
           <p className="text-[10px] text-text-muted mt-1.5">
-            Imports {data.parsed_rows.toLocaleString()} records to sampling_events and lab_results tables
+            Imports {data.parsed_rows.toLocaleString()} records to sampling_events and lab_results
+            tables
+            {meta.draftMode ? ' (requires outfall matches in database)' : ''}
           </p>
         </div>
       )}

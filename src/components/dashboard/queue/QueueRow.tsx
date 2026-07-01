@@ -5,6 +5,7 @@ import { useQueueStore } from '@/stores/queue';
 import { useVerificationStore } from '@/stores/verification';
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES, CATEGORY_BY_DB_KEY, STATES } from '@/lib/constants';
+import { LAB_DOC_TYPE_LABELS } from '@/lib/labExtractionDisplay';
 import { cn } from '@/lib/cn';
 import { ChevronDown, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
@@ -26,7 +27,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   wet_suspension: 'WET Suspension',
   selenium_compliance: 'Selenium Compliance',
   administrative_notice: 'Admin Notice',
-  lab_data_edd: 'Lab Data (EDD)',
+  ...LAB_DOC_TYPE_LABELS,
   parameter_sheet: 'Parameter Sheet',
   netdmr_bundle: 'NetDMR Bundle',
 };
