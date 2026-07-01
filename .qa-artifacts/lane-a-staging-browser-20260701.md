@@ -34,7 +34,7 @@
 
 | Milestone | Status |
 |-----------|--------|
-| **M1** | **Ready for sign-off** — A6 `field_visit_completion_queued` audit line optional human confirm |
-| **M2** | **Ready for sign-off** |
+| **M1** | **Signed off** 2026-07-01 — A6 optional audit line accepted with post-fix offline completion |
+| **M2** | **Signed off** 2026-07-01 |
 
-Track in Go-Live: `/admin/go-live` → smoke groups `lane-a-m1` + `lane-a-m2`.
+Track in Go-Live: `/admin/go-live` → smoke groups `lane-a-m1` + `lane-a-m2` → **passed**.

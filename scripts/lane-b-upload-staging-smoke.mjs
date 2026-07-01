@@ -5,7 +5,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,12 @@ if (pipeline.status !== 0) process.exit(pipeline.status ?? 1);
 
 mkdirSync(ARTIFACT_DIR, { recursive: true });
 const artifactPath = resolve(ARTIFACT_DIR, `lane-b-upload-staging-smoke-${DATE.replace(/-/g, '')}.md`);
+
+if (existsSync(artifactPath)) {
+  console.log(`\nAutomated gate passed. Worksheet already exists (preserving manual sign-off):`);
+  console.log(`  ${artifactPath}\n`);
+  process.exit(0);
+}
 
 const rows = extractSmokeTitles().map(
   (check) =>
