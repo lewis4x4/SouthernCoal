@@ -19,4 +19,17 @@ describe('edd paragraph49 migration', () => {
     expect(sql).toContain('is_exceedance_only');
     expect(sql).toContain('edd_paragraph49_evaluated');
   });
+
+  it('resolves org from lab import graph in follow-up fix migration', () => {
+    const sql = readFileSync(
+      resolve(
+        import.meta.dirname,
+        '../../../supabase/migrations/20260702140000_qw2_fix_paragraph49_org_resolution.sql',
+      ),
+      'utf8',
+    );
+
+    expect(sql).toContain('COALESCE(p.organization_id, si.organization_id)');
+    expect(sql).not.toContain('di.organization_id');
+  });
 });
