@@ -44,7 +44,7 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
     {
       id: 'non_admin_upload',
       path: 'hooks/useFileUpload.ts',
-      patterns: [/getFreshToken\(\)/, /file_processing_queue/, /organization_id/],
+      patterns: [/getFreshToken\(\)/, /file_processing_queue/, /organization_id: userProfile\.organization_id/],
     },
     {
       id: 'realtime_rls',
