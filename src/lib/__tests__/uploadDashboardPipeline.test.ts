@@ -116,6 +116,16 @@ describe('upload dashboard export + insert wiring', () => {
     expect(source).toContain('isOrgScopedDedupViolation');
   });
 
+  it('refreshes JWT before parse-permit-pdf in usePermitProcessing', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/hooks/usePermitProcessing.ts'),
+      'utf8',
+    );
+    expect(source).toContain('getFreshToken()');
+    expect(source).toContain('edgeFunctionFetchHeaders');
+    expect(source).toContain('/functions/v1/parse-permit-pdf');
+  });
+
   it('uses standard export disclaimer one-liner', () => {
     expect(DISCLAIMER_EXPORT).toContain('Not an EMS');
     expect(DISCLAIMER_EXPORT).toContain('independent verification');

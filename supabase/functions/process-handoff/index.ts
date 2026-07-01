@@ -237,7 +237,7 @@ serve(async (req) => {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-5",
           max_tokens: 4096,
           messages: [{
             role: "user",
@@ -324,7 +324,7 @@ serve(async (req) => {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-5",
           max_tokens: 8192, // Increased for larger response with all tasks
           messages: [{
             role: "user",
@@ -405,7 +405,7 @@ serve(async (req) => {
         source_date: body.source_date,
         // Store full AI response for debugging
         ai_extraction: {
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-5",
           extracted_text_length: extractedText.length,
           tasks_evaluated: tasks?.length ?? 0,
           processing_time_ms: Date.now() - startTime,

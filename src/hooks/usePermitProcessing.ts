@@ -1,14 +1,41 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { isParameterSheetFile } from '@/lib/queueProcessorRouting';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
+const PARSE_PERMIT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-permit-pdf`;
+
+async function invokeParsePermitPdf(queueId: string, timeoutMs: number): Promise<void> {
+  const token = await getFreshToken();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(PARSE_PERMIT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...edgeFunctionFetchHeaders(token),
+      },
+      body: JSON.stringify({ queue_id: queueId }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(detail || `Edge Function HTTP ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Permit processing hook — triggers parse-permit-pdf Edge Function.
- * Uses supabase.functions.invoke() for SDK-managed auth (same path as storage).
+ * Uses explicit fetch + getFreshToken() (v6 §11) — same path as compliance-search.
  * Status tracked via Realtime subscription.
  */
 export function usePermitProcessing() {
@@ -32,23 +59,8 @@ export function usePermitProcessing() {
     });
 
     try {
-      // 10s timeout — just long enough to catch immediate HTTP errors.
-      // Edge Function continues server-side; Realtime subscription handles status updates.
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new DOMException('Timeout', 'AbortError')), 10_000),
-      );
-
       try {
-        const { error: fnError } = await Promise.race([
-          supabase.functions.invoke('parse-permit-pdf', {
-            body: { queue_id: queueId },
-          }),
-          timeoutPromise,
-        ]);
-
-        if (fnError) {
-          throw new Error(fnError.message || `Edge Function error`);
-        }
+        await invokeParsePermitPdf(queueId, 10_000);
       } catch (invokeErr) {
         // AbortError = timeout, Edge Function still running server-side
         if (invokeErr instanceof DOMException && invokeErr.name === 'AbortError') {
@@ -109,26 +121,8 @@ export function usePermitProcessing() {
       });
 
       try {
-        // Wait for the FULL response — ensures Edge Function finishes
-        // and releases its DB connection before we start the next one.
-        // 180s timeout prevents indefinite hangs on batch processing.
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new DOMException('Timeout', 'AbortError')), 180_000),
-        );
-
-        const { error: fnError } = await Promise.race([
-          supabase.functions.invoke('parse-permit-pdf', {
-            body: { queue_id: entry.id },
-          }),
-          timeoutPromise,
-        ]);
-
-        if (fnError) {
-          console.error(`[permits] Failed ${entry.file_name}:`, fnError.message);
-          toast.error(`Failed: ${entry.file_name}`);
-        } else {
-          toast.success(`Parsed ${entry.file_name} (${i + 1}/${queued.length})`);
-        }
+        await invokeParsePermitPdf(entry.id, 180_000);
+        toast.success(`Parsed ${entry.file_name} (${i + 1}/${queued.length})`);
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           console.warn(`[permits] Timeout processing ${entry.file_name} — continuing batch`);

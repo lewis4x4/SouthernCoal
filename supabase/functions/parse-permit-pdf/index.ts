@@ -3,7 +3,7 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { resolveCorsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -11,7 +11,11 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+
+/** Read at call time so post-deploy secret updates are picked up (not module-load cache). */
+function getAnthropicApiKey(): string {
+  return (Deno.env.get("ANTHROPIC_API_KEY") ?? "").trim();
+}
 
 const CLAUDE_TIMEOUT_MS = 180_000; // 180 seconds — scanned PDFs with many image pages take longer
 const SIGNED_URL_EXPIRY = 300; // 5 minutes — enough for Claude to fetch the PDF
@@ -265,6 +269,7 @@ type PdfSource =
 async function extractPermitData(
   source: PdfSource,
   fileName: string,
+  anthropicApiKey: string,
 ): Promise<ExtractedPermitData> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
@@ -278,11 +283,11 @@ async function extractPermitData(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
+        "x-api-key": anthropicApiKey,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-5",
         max_tokens: 8192,
         messages: [
           {
@@ -481,27 +486,25 @@ async function markFailed(
 }
 
 // ---------------------------------------------------------------------------
-// JSON response helper
-// ---------------------------------------------------------------------------
-
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
 serve(async (req: Request) => {
+  const cors = resolveCorsHeaders(req);
+
+  function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+
   try {
   console.log("[parse-permit-pdf] Invoked at", new Date().toISOString());
 
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   // 1. Verify JWT before method/body/service-role (SEC-003)
@@ -516,9 +519,10 @@ serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Check required secrets
-  if (!ANTHROPIC_API_KEY) {
-    console.error("[parse-permit-pdf] ANTHROPIC_API_KEY not set");
+  // Check required secrets (read at runtime, not module init)
+  const anthropicApiKey = getAnthropicApiKey();
+  if (!anthropicApiKey || !anthropicApiKey.startsWith("sk-ant-")) {
+    console.error("[parse-permit-pdf] ANTHROPIC_API_KEY missing or invalid after trim");
     return jsonResponse({ success: false, error: "Server configuration error" }, 500);
   }
 
@@ -599,6 +603,7 @@ serve(async (req: Request) => {
       extractedData = await extractPermitData(
         { type: "url", url: pdfUrl },
         queueEntry.file_name,
+        anthropicApiKey,
       );
     } catch (urlErr) {
       const urlErrMsg = urlErr instanceof Error ? urlErr.message : String(urlErr);
@@ -623,6 +628,7 @@ serve(async (req: Request) => {
         extractedData = await extractPermitData(
           { type: "base64", media_type: "application/pdf", data: base64 },
           queueEntry.file_name,
+          anthropicApiKey,
         );
       } else if (fileSize <= BASE64_MAX_BYTES) {
         // Small file — try plain base64 fallback
@@ -638,6 +644,7 @@ serve(async (req: Request) => {
         extractedData = await extractPermitData(
           { type: "base64", media_type: "application/pdf", data: pdfBase64 },
           queueEntry.file_name,
+          anthropicApiKey,
         );
       } else {
         throw urlErr; // Too large for base64 — surface the real error
@@ -729,7 +736,7 @@ serve(async (req: Request) => {
     console.error("[parse-permit-pdf] Unhandled exception:", err);
     return new Response(JSON.stringify({ success: false, error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });
