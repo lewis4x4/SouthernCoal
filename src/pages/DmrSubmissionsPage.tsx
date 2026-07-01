@@ -29,6 +29,7 @@ const TYPE_LABELS: Record<DmrSubmissionType, string> = {
 interface PermitOption {
   id: string;
   permit_number: string;
+  federal_npdes_id: string | null;
   site_name: string | null;
 }
 
@@ -57,16 +58,23 @@ export function DmrSubmissionsPage() {
     setLoadingPermits(true);
     const { data } = await supabase
       .from('npdes_permits')
-      .select('id, permit_number, site:sites(name)')
+      .select('id, permit_number, metadata, site:sites(name)')
       .eq('organization_id', profile.organization_id)
       .order('permit_number');
 
     setPermits(
-      (data ?? []).map((p: Record<string, unknown>) => ({
-        id: p.id as string,
-        permit_number: p.permit_number as string,
-        site_name: (p.site as Record<string, unknown> | null)?.name as string | null,
-      })),
+      (data ?? []).map((p: Record<string, unknown>) => {
+        const meta = p.metadata as Record<string, unknown> | null;
+        const federal =
+          (meta?.federal_npdes_id_override as string | undefined)?.trim() ||
+          null;
+        return {
+          id: p.id as string,
+          permit_number: p.permit_number as string,
+          federal_npdes_id: federal,
+          site_name: (p.site as Record<string, unknown> | null)?.name as string | null,
+        };
+      }),
     );
     setLoadingPermits(false);
   }, [profile?.organization_id]);
@@ -218,7 +226,11 @@ export function DmrSubmissionsPage() {
                 <option value="">{loadingPermits ? 'Loading...' : 'Select permit...'}</option>
                 {permits.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.permit_number}{p.site_name ? ` — ${p.site_name}` : ''}
+                    {p.permit_number}
+                    {p.federal_npdes_id && p.federal_npdes_id !== p.permit_number.toUpperCase()
+                      ? ` → ${p.federal_npdes_id}`
+                      : ''}
+                    {p.site_name ? ` — ${p.site_name}` : ''}
                   </option>
                 ))}
               </select>
@@ -314,6 +326,13 @@ export function DmrSubmissionsPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-text-primary truncate">
                       {sub.permit_number ?? 'Unknown Permit'}
+                      {sub.federal_npdes_id &&
+                      sub.federal_npdes_id !== sub.permit_number?.toUpperCase() ? (
+                        <span className="font-mono text-cyan-400/90 font-normal">
+                          {' '}
+                          → {sub.federal_npdes_id}
+                        </span>
+                      ) : null}
                     </span>
                     <span className={cn(
                       'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase border',
@@ -324,6 +343,11 @@ export function DmrSubmissionsPage() {
                     <span className="text-[10px] text-text-muted uppercase">
                       {TYPE_LABELS[sub.submission_type]}
                     </span>
+                    {sub.source_file_id && (
+                      <span className="text-[10px] rounded-full border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-purple-300">
+                        NetDMR
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted">
                     {sub.site_name && <span>{sub.site_name}</span>}

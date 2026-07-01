@@ -16,7 +16,21 @@ import type {
 // ---------------------------------------------------------------------------
 export interface DmrSubmissionWithPermit extends DmrSubmission {
   permit_number?: string;
+  federal_npdes_id?: string | null;
   site_name?: string;
+}
+
+function mapSubmissionRow(row: Record<string, unknown>): DmrSubmissionWithPermit {
+  const permit = row.permit as Record<string, unknown> | null;
+  const site = permit?.site as Record<string, unknown> | null;
+  const meta = permit?.metadata as Record<string, unknown> | null;
+  const federal = (meta?.federal_npdes_id_override as string | undefined)?.trim() || null;
+  return {
+    ...row,
+    permit_number: (permit?.permit_number as string) ?? undefined,
+    federal_npdes_id: federal,
+    site_name: (site?.name as string) ?? undefined,
+  } as DmrSubmissionWithPermit;
 }
 
 export interface DmrValidationResult {
@@ -58,7 +72,7 @@ export function useDmrSubmissions() {
       .from('dmr_submissions')
       .select(`
         *,
-        permit:npdes_permits(permit_number, site:sites(name))
+        permit:npdes_permits(permit_number, metadata, site:sites(name))
       `)
       .eq('organization_id', orgId)
       .order('monitoring_period_end', { ascending: false })
@@ -70,18 +84,29 @@ export function useDmrSubmissions() {
       return;
     }
 
-    const mapped: DmrSubmissionWithPermit[] = (data ?? []).map((row: Record<string, unknown>) => {
-      const permit = row.permit as Record<string, unknown> | null;
-      const site = permit?.site as Record<string, unknown> | null;
-      return {
-        ...row,
-        permit_number: (permit?.permit_number as string) ?? undefined,
-        site_name: (site?.name as string) ?? undefined,
-      } as DmrSubmissionWithPermit;
-    });
-
-    setSubmissions(mapped);
+    setSubmissions((data ?? []).map(mapSubmissionRow));
   }, [orgId]);
+
+  const fetchSubmissionById = useCallback(
+    async (submissionId: string): Promise<DmrSubmissionWithPermit | null> => {
+      const { data, error } = await supabase
+        .from('dmr_submissions')
+        .select(`
+          *,
+          permit:npdes_permits(permit_number, metadata, site:sites(name))
+        `)
+        .eq('id', submissionId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[dmr] submission fetch failed:', error.message);
+        return null;
+      }
+      if (!data) return null;
+      return mapSubmissionRow(data as Record<string, unknown>);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (orgId) {
@@ -244,7 +269,7 @@ export function useDmrSubmissions() {
       .from('dmr_line_items')
       .select(`
         *,
-        outfall:outfalls(outfall_id, npdes_permit_id),
+        outfall:outfalls(outfall_number, permit_id),
         parameter:parameters(name, short_name, storet_code)
       `)
       .eq('submission_id', submissionId)
@@ -259,10 +284,12 @@ export function useDmrSubmissions() {
       const outfall = row.outfall as Record<string, unknown> | null;
       return {
         ...row,
-        outfall: outfall ? {
-          outfall_id: outfall.outfall_id as string,
-          permit_id: outfall.npdes_permit_id as string,
-        } : null,
+        outfall: outfall
+          ? {
+              outfall_number: outfall.outfall_number as string,
+              permit_id: outfall.permit_id as string,
+            }
+          : null,
       } as DmrLineItemWithRelations;
     });
   }, []);
@@ -357,6 +384,7 @@ export function useDmrSubmissions() {
     updateSubmission,
     submitDmr,
     markSubmitted,
+    fetchSubmissionById,
     fetchLineItems,
     updateLineItem,
     autoPopulate,

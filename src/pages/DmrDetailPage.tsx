@@ -51,7 +51,7 @@ export function DmrDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const { log } = useAuditLog();
   const {
-    submissions,
+    fetchSubmissionById,
     fetchLineItems,
     updateLineItem,
     updateSubmission,
@@ -73,15 +73,16 @@ export function DmrDetailPage() {
 
   // Find submission and load line items
   const loadDetail = useCallback(async () => {
-    const found = submissions.find((s) => s.id === id);
-    if (found) setSubmission(found);
-
-    if (id) {
-      const items = await fetchLineItems(id);
-      setLineItems(items);
+    if (!id) {
+      setLoading(false);
+      return;
     }
+    const found = await fetchSubmissionById(id);
+    setSubmission(found);
+    const items = await fetchLineItems(id);
+    setLineItems(items);
     setLoading(false);
-  }, [id, submissions, fetchLineItems]);
+  }, [id, fetchSubmissionById, fetchLineItems]);
 
   useEffect(() => {
     loadDetail();
@@ -171,7 +172,7 @@ export function DmrDetailPage() {
     const headers = ['Outfall', 'Parameter', 'STORET', 'Statistical Base', 'Limit', 'Limit Unit', 'Measured', 'Unit', 'NODI', 'Exceedance', 'Samples'];
     const rows = lineItems.map((item) =>
       [
-        item.outfall?.outfall_id ?? '',
+        item.outfall?.outfall_number ?? '',
         item.parameter?.name ?? '',
         item.storet_code ?? '',
         item.statistical_base,
@@ -223,7 +224,7 @@ export function DmrDetailPage() {
   // Group line items by outfall
   const outfallGroups = new Map<string, DmrLineItemWithRelations[]>();
   for (const item of lineItems) {
-    const key = item.outfall?.outfall_id ?? 'Unknown';
+    const key = item.outfall?.outfall_number ?? 'Unknown';
     const group = outfallGroups.get(key) ?? [];
     group.push(item);
     outfallGroups.set(key, group);
@@ -245,6 +246,12 @@ export function DmrDetailPage() {
           <div>
             <h1 className="text-xl font-bold text-text-primary">
               {submission.permit_number ?? 'Unknown Permit'}
+              {submission.federal_npdes_id &&
+              submission.federal_npdes_id !== submission.permit_number?.toUpperCase() ? (
+                <span className="ml-2 font-mono text-base font-normal text-cyan-400">
+                  → {submission.federal_npdes_id}
+                </span>
+              ) : null}
             </h1>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase border', statusCfg.bg, statusCfg.border, statusCfg.text)}>
@@ -254,6 +261,11 @@ export function DmrDetailPage() {
                 {submission.submission_type} · {submission.monitoring_period_start} — {submission.monitoring_period_end}
               </span>
               {submission.site_name && <span className="text-xs text-text-muted">· {submission.site_name}</span>}
+              {submission.source_file_id && (
+                <span className="text-[10px] rounded-full border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-purple-300">
+                  NetDMR import
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -315,6 +327,14 @@ export function DmrDetailPage() {
           )}
         </div>
       </div>
+
+      {submission.source_file_id && lineItems.length > 0 && (
+        <div className="rounded-xl border border-purple-500/20 bg-purple-500/[0.05] px-4 py-3 text-xs text-purple-200/90">
+          Imported from NetDMR via Upload Dashboard ({lineItems.length} line items). Review
+          values, run Validate, then Submit when ready. Use Auto-Populate to merge lab data for
+          the same monitoring period.
+        </div>
+      )}
 
       {/* Submit confirmation form */}
       {showSubmitForm && (
