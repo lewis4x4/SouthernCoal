@@ -394,6 +394,35 @@ Deno.serve(async (req) => {
     }),
   });
 
+  // Trigger MSHA discrepancy detection for each org with mapped mines (non-fatal)
+  if (finalStatus === "completed") {
+    for (const orgId of orgIds) {
+      try {
+        const detectUrl = `${SUPABASE_URL}/functions/v1/detect-discrepancies`;
+        const resp = await fetch(detectUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": SYNC_INTERNAL_SECRET,
+          },
+          body: JSON.stringify({
+            source: "msha",
+            organization_id: orgId,
+            sync_log_id: syncLog.id,
+            triggered_by: auth.userId,
+          }),
+        });
+        if (!resp.ok) {
+          console.error(
+            `detect-discrepancies (msha) auto-trigger failed for org ${orgId}: ${resp.status} ${resp.statusText}`,
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to trigger MSHA discrepancy detection for org ${orgId}:`, err);
+      }
+    }
+  }
+
   return new Response(
     JSON.stringify({
       success: finalStatus === "completed",

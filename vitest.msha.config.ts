@@ -14,6 +14,7 @@ export default defineConfig({
       'src/lib/__tests__/mshaViolations.test.ts',
       'src/lib/__tests__/mshaMineMap.test.ts',
       'src/lib/__tests__/mshaPipelineMigration.test.ts',
+      'src/lib/__tests__/mshaDiscrepancyRules.test.ts',
     ],
   },
   resolve: {

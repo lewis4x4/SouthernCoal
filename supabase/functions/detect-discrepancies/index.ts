@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
+import { evaluateMshaCitations, type MshaCitationInput } from "../_shared/msha-discrepancy-rules.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -419,6 +420,78 @@ async function detectEchoDiscrepancies(
 }
 
 // ---------------------------------------------------------------------------
+// MSHA abatement / S&S rules — open citations at risk (DRAFT operational aid)
+// ---------------------------------------------------------------------------
+async function detectMshaDiscrepancies(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
+): Promise<Discrepancy[]> {
+  const citations: MshaCitationInput[] = [];
+  let offset = 0;
+  const PAGE = 1000;
+  let hasMore = true;
+  let iterations = 0;
+
+  while (hasMore && iterations < MAX_PAGINATION_ITERATIONS) {
+    const { data: page } = await supabase
+      .from("external_msha_inspections")
+      .select(
+        "id, mine_id, violation_number, event_number, inspection_date, violation_issue_date, " +
+        "abatement_due_date, termination_date, significant_substantial, contested, current_status, proposed_penalty",
+      )
+      .eq("organization_id", orgId)
+      .is("termination_date", null)
+      .order("id")
+      .range(offset, offset + PAGE - 1);
+
+    const rows = page || [];
+    for (const row of rows) {
+      citations.push({
+        id: String(row.id),
+        mine_id: String(row.mine_id),
+        violation_number: String(row.violation_number ?? ""),
+        event_number: row.event_number ? String(row.event_number) : null,
+        inspection_date: row.inspection_date ? String(row.inspection_date) : null,
+        violation_issue_date: row.violation_issue_date ? String(row.violation_issue_date) : null,
+        abatement_due_date: row.abatement_due_date ? String(row.abatement_due_date) : null,
+        termination_date: row.termination_date ? String(row.termination_date) : null,
+        significant_substantial: Boolean(row.significant_substantial),
+        contested: Boolean(row.contested),
+        current_status: row.current_status ? String(row.current_status) : null,
+        proposed_penalty: row.proposed_penalty != null ? Number(row.proposed_penalty) : null,
+      });
+    }
+
+    hasMore = rows.length === PAGE;
+    offset += PAGE;
+    iterations++;
+  }
+
+  if (iterations >= MAX_PAGINATION_ITERATIONS) {
+    console.warn(
+      `MSHA citation pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations, ${citations.length} rows)`,
+    );
+  }
+
+  return evaluateMshaCitations(citations).map((candidate) => ({
+    organization_id: orgId,
+    npdes_id: null,
+    mine_id: candidate.mine_id,
+    source: "msha",
+    discrepancy_type: candidate.discrepancy_type,
+    severity: candidate.severity,
+    description: candidate.description,
+    internal_value: candidate.internal_value,
+    external_value: candidate.external_value,
+    internal_source_table: null,
+    internal_source_id: null,
+    external_source_id: candidate.external_source_id,
+    monitoring_period_start: candidate.monitoring_period_start,
+    monitoring_period_end: candidate.monitoring_period_end,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 serve(async (req) => {
@@ -451,10 +524,11 @@ serve(async (req) => {
     // Defaults on parse failure
   }
 
-  // If no org specified, get the first one that has external data
+  // If no org specified, infer from synced external data for the requested source
   if (!orgId) {
+    const table = source === "msha" ? "external_msha_inspections" : "external_echo_facilities";
     const { data: orgs } = await supabase
-      .from("external_echo_facilities")
+      .from(table)
       .select("organization_id")
       .limit(1)
       .single();
@@ -473,8 +547,9 @@ serve(async (req) => {
 
   if (source === "echo") {
     discrepancies = await detectEchoDiscrepancies(supabase, orgId);
+  } else if (source === "msha") {
+    discrepancies = await detectMshaDiscrepancies(supabase, orgId);
   }
-  // MSHA detection will be added when sync pipeline is implemented
 
   // Batch insert via RPC — handles partial unique index dedup in SQL
   let inserted = 0;
