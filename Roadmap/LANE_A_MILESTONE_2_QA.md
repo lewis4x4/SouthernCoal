@@ -72,6 +72,24 @@ Goal: **`audit_log`** rows for sync-resolution–class actions (flush, blocked q
 
 ---
 
+## Automated coverage (Vitest — run before staging)
+
+Run: `npm test -- src/lib/__tests__/milestone2QaCoverage.test.ts` (and full suite: `npm test`).
+
+| Criterion | Primary test files | What automation proves |
+|-----------|-------------------|------------------------|
+| **B1** | `fieldRouteLocalCache.test.ts`, `fieldVisitLocalCache.test.ts` | Dual-write IDB + localStorage; matching load; visit lookup survives refresh path |
+| **B2** | `fieldOutboundQueueDiagnostic.test.ts`, `fieldSyncPending.test.ts` | Blocked queue + conflictHold diagnostic flags persist |
+| **B3** | `fieldOutboundQueue.test.ts` | FIFO flush, evidence-before-RPC ordering, in-flight enqueue safety |
+| **B4** | `fieldOutboundQueue.test.ts` | Terminal `field_visit_start` hold; outcome mismatch on `field_visit_complete` |
+| **B5** | `milestone2QaCoverage.test.ts` + Audit Log UI presets | Sync audit action constants; conflict hold distinguishable; `field_outbound_conflict_hold` in filter presets |
+
+Canonical action list: `src/lib/milestone2QaMap.ts` (`MILESTONE_2_FIELD_SYNC_AUDIT_ACTIONS`).
+
+Staging QA still required for UX copy, airplane-mode, and real JWT/RLS — automation reduces code regressions only.
+
+---
+
 ## Sign-off
 
 Milestone 2 **accepted** / **not accepted** — **Reason:**

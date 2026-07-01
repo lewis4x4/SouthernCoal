@@ -1,16 +1,18 @@
-import { useRef, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
+import { FileText, RefreshCw, Play, AlertTriangle, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 import { useQueueStore, filterEntries } from '@/stores/queue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePermissions } from '@/hooks/usePermissions';
-import { usePermitProcessing } from '@/hooks/usePermitProcessing';
-import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
+import { useQueueProcessing } from '@/hooks/useQueueProcessing';
+import { isParameterSheetFile } from '@/lib/queueProcessorRouting';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { ErrorForensics } from '@/components/ui/ErrorForensics';
 import { ExtractionPanel } from '@/components/dashboard/queue/ExtractionPanel';
 import { QueueRow } from '@/components/dashboard/queue/QueueRow';
 import { QueueFilters } from '@/components/dashboard/queue/QueueFilters';
-import { FileText, RefreshCw, Play } from 'lucide-react';
 
 const ROW_HEIGHT = 56;
 
@@ -26,10 +28,22 @@ export function ProcessingQueue() {
   const expandedRowId = useQueueStore((s) => s.expandedRowId);
   const { refetch } = useRealtimeQueue();
   const { can } = usePermissions();
-  const { processAllQueued, retryFailed } = usePermitProcessing();
-  const { processAllQueuedLabData } = useLabDataProcessing();
+  const {
+    processAllPermitPdfs,
+    processAllParameterSheets,
+    processAllQueuedLabData,
+    processAllQueuedDmrs,
+    retryFailed,
+  } = useQueueProcessing();
+  const { log } = useAuditLog();
+  const [retryingFailed, setRetryingFailed] = useState(false);
 
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const failedEntries = useMemo(
+    () => allEntries.filter((entry) => entry.status === 'failed'),
+    [allEntries],
+  );
 
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -38,17 +52,53 @@ export function ProcessingQueue() {
     overscan: 5,
   });
 
-  const queuedPermitCount = allEntries.filter(
-    (e) => e.file_category === 'npdes_permit' && e.status === 'queued',
+  const queuedPermitPdfCount = allEntries.filter(
+    (e) =>
+      e.file_category === 'npdes_permit' &&
+      e.status === 'queued' &&
+      !isParameterSheetFile(e),
+  ).length;
+
+  const queuedParameterSheetCount = allEntries.filter(
+    (e) =>
+      e.file_category === 'npdes_permit' &&
+      e.status === 'queued' &&
+      isParameterSheetFile(e),
   ).length;
 
   const queuedLabDataCount = allEntries.filter(
     (e) => e.file_category === 'lab_data' && e.status === 'queued',
   ).length;
 
+  const queuedDmrCount = allEntries.filter(
+    (e) => e.file_category === 'dmr' && e.status === 'queued',
+  ).length;
+
   const expandedEntry = expandedRowId
     ? entries.find((e) => e.id === expandedRowId)
     : null;
+
+  async function handleRetryAllFailed() {
+    if (failedEntries.length === 0 || !can('retry')) return;
+    setRetryingFailed(true);
+    let retried = 0;
+    for (const entry of failedEntries) {
+      try {
+        await retryFailed(entry.id);
+        retried += 1;
+      } catch (err) {
+        console.error('[ProcessingQueue] retry failed for', entry.id, err);
+      }
+    }
+    setRetryingFailed(false);
+    log(
+      'bulk_retry',
+      { retried_count: retried, failed_total: failedEntries.length },
+      { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+    );
+    toast.info(`Retried ${retried} failed file${retried === 1 ? '' : 's'}`);
+    await refetch();
+  }
 
   if (allEntries.length === 0) {
     return (
@@ -76,14 +126,34 @@ export function ProcessingQueue() {
           </span>
         </h3>
         <div className="flex items-center gap-2">
-          {queuedPermitCount > 0 && can('bulk_process') && (
+          {queuedPermitPdfCount > 0 && can('bulk_process') && (
             <button
-              onClick={() => processAllQueued()}
+              onClick={() => processAllPermitPdfs()}
               className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Process ${queuedPermitCount} queued permit${queuedPermitCount !== 1 ? 's' : ''} sequentially`}
+              title={`Process ${queuedPermitPdfCount} queued permit PDF${queuedPermitPdfCount !== 1 ? 's' : ''} sequentially`}
             >
               <Play size={10} className="inline mr-1" />
-              Process Permits ({queuedPermitCount})
+              Process Permits ({queuedPermitPdfCount})
+            </button>
+          )}
+          {queuedParameterSheetCount > 0 && can('bulk_process') && (
+            <button
+              onClick={() => processAllParameterSheets()}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
+              title={`Process ${queuedParameterSheetCount} WV parameter sheet${queuedParameterSheetCount !== 1 ? 's' : ''}`}
+            >
+              <Play size={10} className="inline mr-1" />
+              Parameter Sheets ({queuedParameterSheetCount})
+            </button>
+          )}
+          {queuedDmrCount > 0 && can('bulk_process') && (
+            <button
+              onClick={() => processAllQueuedDmrs()}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
+              title={`Process ${queuedDmrCount} NetDMR export${queuedDmrCount !== 1 ? 's' : ''}`}
+            >
+              <Play size={10} className="inline mr-1" />
+              Process DMRs ({queuedDmrCount})
             </button>
           )}
           {queuedLabDataCount > 0 && can('bulk_process') && (
@@ -106,6 +176,30 @@ export function ProcessingQueue() {
           </button>
         </div>
       </div>
+
+      {failedEntries.length > 0 && (
+        <div className="mx-5 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3">
+          <div className="flex items-start gap-2 text-xs text-red-200/90">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-400" aria-hidden />
+            <span>
+              <span className="font-semibold text-red-300">{failedEntries.length} failed</span>
+              {' '}
+              — parser or import errors need review. Expand a row for forensics.
+            </span>
+          </div>
+          {can('retry') && (
+            <button
+              type="button"
+              onClick={() => void handleRetryAllFailed()}
+              disabled={retryingFailed}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+            >
+              <RotateCcw size={12} className={retryingFailed ? 'animate-spin' : ''} />
+              {retryingFailed ? 'Retrying…' : `Retry all failed (${failedEntries.length})`}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <QueueFilters />

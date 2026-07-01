@@ -6,7 +6,7 @@ Use this after changes to auth, permissions, field caches, or the outbound queue
 
 - Log in as a user with `FIELD_ROUTE_ROLES` (e.g. field sampler).
 - Open **Today’s Route** online at least once; use **Save route offline** so IndexedDB/localStorage has a snapshot.
-- Open one or more **visit** screens online so per-visit cache is warm (optional but realistic).
+- Open one or more **visit** screens online so per-visit cache is warm in **localStorage and IndexedDB** (optional but realistic).
 
 ## Scenarios
 

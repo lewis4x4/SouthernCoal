@@ -8,6 +8,7 @@ import {
   fieldRouteCacheMatchesView,
   findVisitInFieldRouteCache,
   findVisitInFieldRouteCacheAsync,
+  loadFieldRouteCacheFromIdb,
   loadFieldRouteCacheFromIdbMatching,
   saveFieldRouteCacheDual,
 } from '../fieldRouteLocalCache';
@@ -84,6 +85,21 @@ describe('fieldRouteLocalCache', () => {
     ).toBe(true);
     expect(loadFieldRouteCacheMatching('2026-04-01', 'mine', 'u1', 'org-1')).toBeNull();
     expect(loadFieldRouteCacheMatching('2026-03-31', 'org', null, 'org-1')).toBeNull();
+  });
+
+  it('keeps snapshot when only route date or scope differs (M2 offline reload)', () => {
+    expect(
+      saveFieldRouteCache({
+        routeDate: '2026-04-02',
+        organizationId: 'org-1',
+        scope: 'mine',
+        viewerUserId: 'u1',
+        visits: [minimalVisit()],
+        outfallCoords: {},
+      }),
+    ).toBe(true);
+    expect(loadFieldRouteCacheMatching('2026-05-25', 'mine', 'u1', 'org-1')).toBeNull();
+    expect(loadFieldRouteCache()?.routeDate).toBe('2026-04-02');
   });
 
   it('fieldRouteCacheMatchesView checks date, scope, and viewer', () => {
@@ -329,6 +345,21 @@ describe('fieldRouteLocalCache', () => {
     expect(ok).toBe(true);
     expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u2', 'org-1')).toBeNull();
     expect(await loadFieldRouteCacheFromIdbMatching('2026-03-31', 'org', 'u1', 'org-1')).toBeNull();
+  });
+
+  it('loadFieldRouteCacheFromIdbMatching keeps IDB snapshot when only date differs', async () => {
+    if (typeof indexedDB === 'undefined') return;
+    const { ok } = await saveFieldRouteCacheDual({
+      routeDate: '2026-04-02',
+      organizationId: 'org-1',
+      scope: 'mine',
+      viewerUserId: 'u1',
+      visits: [minimalVisit()],
+      outfallCoords: {},
+    });
+    expect(ok).toBe(true);
+    expect(await loadFieldRouteCacheFromIdbMatching('2026-05-25', 'mine', 'u1', 'org-1')).toBeNull();
+    expect((await loadFieldRouteCacheFromIdb())?.routeDate).toBe('2026-04-02');
   });
 
   it('loadFieldRouteCacheFromIdbMatching keeps snapshot when auth context is not ready', async () => {

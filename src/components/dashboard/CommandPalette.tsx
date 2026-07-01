@@ -4,8 +4,7 @@ import { Command } from 'cmdk';
 import { useQueueStore } from '@/stores/queue';
 import { useStagingStore } from '@/stores/staging';
 import { usePermissions } from '@/hooks/usePermissions';
-import { usePermitProcessing } from '@/hooks/usePermitProcessing';
-import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
+import { useQueueProcessing } from '@/hooks/useQueueProcessing';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES, CATEGORIES } from '@/lib/constants';
 import {
@@ -28,8 +27,14 @@ export function CommandPalette() {
   const { can } = usePermissions();
   const setFilters = useQueueStore((s) => s.setFilters);
   const clearAll = useStagingStore((s) => s.clearAll);
-  const { processAllQueued, retryFailed: retryPermit } = usePermitProcessing();
-  const { retryFailed: retryLabData } = useLabDataProcessing();
+  const {
+    processAllPermitPdfs,
+    processAllParameterSheets,
+    processAllQueuedLabData,
+    processAllQueuedDmrs,
+    retryFailed,
+    canProcessQueueEntry,
+  } = useQueueProcessing();
   const entries = useQueueStore((s) => s.entries);
   const { log } = useAuditLog();
 
@@ -163,14 +168,52 @@ export function CommandPalette() {
               )}
               {can('bulk_process') && (
                 <Command.Item
-                  value="process all queued permits"
+                  value="process all queued permits pdf"
                   onSelect={() =>
-                    runAction('bulk_process', () => processAllQueued())
+                    runAction('bulk_process_permits', () => processAllPermitPdfs())
                   }
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
                 >
                   <Play size={12} />
-                  Process all queued permits
+                  Process all queued permit PDFs
+                </Command.Item>
+              )}
+              {can('bulk_process') && (
+                <Command.Item
+                  value="process all parameter sheets"
+                  onSelect={() =>
+                    runAction('bulk_process_parameter_sheets', () =>
+                      processAllParameterSheets(),
+                    )
+                  }
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                >
+                  <Play size={12} />
+                  Process all parameter sheets
+                </Command.Item>
+              )}
+              {can('bulk_process') && (
+                <Command.Item
+                  value="process all lab data"
+                  onSelect={() =>
+                    runAction('bulk_process_lab_data', () => processAllQueuedLabData())
+                  }
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                >
+                  <Play size={12} />
+                  Process all queued lab data
+                </Command.Item>
+              )}
+              {can('bulk_process') && (
+                <Command.Item
+                  value="process all dmrs netdmr"
+                  onSelect={() =>
+                    runAction('bulk_process_dmrs', () => processAllQueuedDmrs())
+                  }
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-white/[0.06] data-[selected=true]:text-text-primary"
+                >
+                  <Play size={12} />
+                  Process all queued DMR exports
                 </Command.Item>
               )}
               {can('retry') && (
@@ -178,7 +221,9 @@ export function CommandPalette() {
                   value="retry all failed"
                   onSelect={() =>
                     runAction('retry_all_failed', () => {
-                      const failed = entries.filter((e) => e.status === 'failed');
+                      const failed = entries.filter(
+                        (e) => e.status === 'failed' && canProcessQueueEntry(e),
+                      );
                       if (failed.length > 0) {
                         log(
                           'bulk_retry',
@@ -187,8 +232,7 @@ export function CommandPalette() {
                         );
                       }
                       for (const entry of failed) {
-                        if (entry.file_category === 'npdes_permit') retryPermit(entry.id);
-                        else if (entry.file_category === 'lab_data') retryLabData(entry.id);
+                        void retryFailed(entry.id);
                       }
                     })
                   }

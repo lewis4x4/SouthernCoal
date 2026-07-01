@@ -20,6 +20,7 @@ import { mapsDirUrl, mapsSearchUrl } from '@/lib/fieldMapsNav';
 import { groupSameOutfallSameDay } from '@/lib/fieldSameOutfallDay';
 import {
   fieldRouteCacheMatchesView,
+  loadFieldRouteCacheFromIdb,
   loadFieldRouteCacheFromIdbMatching,
   loadFieldRouteCacheMatching,
   saveFieldRouteCacheDual,
@@ -85,6 +86,7 @@ export function FieldRouteTodayPage() {
   const [openStopsOnly, setOpenStopsOnly] = useState(false);
   const [outfallCoords, setOutfallCoords] = useState<Record<string, { lat: number; lng: number }>>({});
   const [idbRouteSnapshot, setIdbRouteSnapshot] = useState<FieldRouteCachePayload | null>(null);
+  const [offlineSavedRouteHint, setOfflineSavedRouteHint] = useState<FieldRouteCachePayload | null>(null);
   const lastAutoSavedKeyRef = useRef<string | null>(null);
 
   const cacheViewerId = user?.id ?? null;
@@ -126,6 +128,34 @@ export function FieldRouteTodayPage() {
     if (idbRouteSnapshot) return idbRouteSnapshot;
     return routeCache;
   }, [idbRouteSnapshot, routeCache]);
+
+  useEffect(() => {
+    if (online || effectiveRouteCache) {
+      setOfflineSavedRouteHint(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const snapshot = await loadFieldRouteCacheFromIdb();
+        if (cancelled || !snapshot) return;
+        if (!cacheOrganizationId || !cacheViewerId) return;
+        if (snapshot.organizationId !== cacheOrganizationId || snapshot.viewerUserId !== cacheViewerId) {
+          return;
+        }
+        if (snapshot.routeDate === routeDate && snapshot.scope === scope) {
+          setOfflineSavedRouteHint(null);
+          return;
+        }
+        setOfflineSavedRouteHint(snapshot);
+      } catch {
+        if (!cancelled) setOfflineSavedRouteHint(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [online, effectiveRouteCache, routeDate, scope, cacheOrganizationId, cacheViewerId]);
 
   const dayVisitsLive = useMemo(() => {
     let list = visits.filter((v) => v.scheduled_date === routeDate);
@@ -305,6 +335,8 @@ export function FieldRouteTodayPage() {
   const nextOpenStop = displayDayVisits.find((v) => visitNeedsDisposition(v));
   const hasRouteAlerts = outboundQueueDiagnostic || dispatchLoadAlerts.length > 0 ||
     routeOutfallDayConflicts.length > 0 || forceMajeureFlaggedCount > 0 || accessIssueOutcomeCount > 0;
+  const showRouteSyncHealth =
+    !online || outboundPendingCount > 0 || !!outboundQueueDiagnostic;
 
   return (
     <div className="space-y-3">
@@ -393,7 +425,18 @@ export function FieldRouteTodayPage() {
         ) : null}
       </div>
 
-      {/* Collapsible status strip */}
+      {showRouteSyncHealth ? (
+        <FieldDataSyncBar
+          loading={loading}
+          lastSyncedAt={lastSyncedAt}
+          pendingOutboundCount={outboundPendingCount}
+          queueFlushDiagnostic={outboundQueueDiagnostic}
+          onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+          onRefresh={refresh}
+          auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
+        />
+      ) : null}
+
       {hasRouteAlerts ? (
         <details className="rounded-2xl border border-white/[0.06] bg-white/[0.02]">
           <summary className="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-sm text-text-secondary">
@@ -408,15 +451,6 @@ export function FieldRouteTodayPage() {
             <ChevronRight className="h-4 w-4 shrink-0 transition-transform [[open]>&]:rotate-90" aria-hidden />
           </summary>
           <div className="space-y-3 border-t border-white/[0.06] p-3">
-            <FieldDataSyncBar
-              loading={loading}
-              lastSyncedAt={lastSyncedAt}
-              pendingOutboundCount={outboundPendingCount}
-              queueFlushDiagnostic={outboundQueueDiagnostic}
-              onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
-              onRefresh={refresh}
-              auditRefreshPayload={{ surface: 'field_route_today', route_date: routeDate, scope }}
-            />
             <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} />
             <FieldSameOutfallDayWarning groups={routeOutfallDayConflicts} contextLabel={"Today's route list"} />
           </div>
@@ -427,11 +461,32 @@ export function FieldRouteTodayPage() {
         <FieldDataSourceBanner variant="route_offline_device" routeSavedAt={effectiveRouteCache?.savedAt} />
       ) : null}
 
-      {!online && !effectiveRouteCache && (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
-          Offline with no saved route. Go online, open this page, then save offline.
+      {!online && !effectiveRouteCache ? (
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-text-secondary">
+            Offline with no saved route for this date. Go online, open this page, then save offline.
+          </div>
+          {offlineSavedRouteHint ? (
+            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+              <p>
+                A saved offline route exists for{' '}
+                <span className="font-medium">{offlineSavedRouteHint.routeDate}</span>
+                {offlineSavedRouteHint.scope === 'org' ? ' (all samplers)' : ' (your stops)'}.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRouteDate(offlineSavedRouteHint.routeDate);
+                  setScope(offlineSavedRouteHint.scope);
+                }}
+                className="mt-3 min-h-10 rounded-xl border border-cyan-400/35 bg-cyan-500/15 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-500/25"
+              >
+                Open saved route date
+              </button>
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {/* Stop list */}
       {showRouteLoader ? (

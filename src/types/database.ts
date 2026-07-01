@@ -221,7 +221,7 @@ export interface DmrLineItemWithRelations extends DmrLineItem {
     status: DmrSubmissionStatus;
   } | null;
   outfall: {
-    outfall_id: string;
+    outfall_number: string;
     permit_id: string;
   } | null;
   parameter: {

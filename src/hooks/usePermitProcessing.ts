@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { isParameterSheetFile } from '@/lib/queueProcessorRouting';
 import { useQueueStore } from '@/stores/queue';
 import type { QueueEntry } from '@/types/queue';
 
@@ -79,7 +80,9 @@ export function usePermitProcessing() {
     const entries = useQueueStore.getState().entries;
     const queued = entries.filter(
       (e) =>
-        e.status === 'queued' && e.file_category === 'npdes_permit',
+        e.status === 'queued' &&
+        e.file_category === 'npdes_permit' &&
+        !isParameterSheetFile(e),
     );
 
     if (queued.length === 0) {

@@ -1,7 +1,9 @@
 import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { formatDiscrepancyReviewerLabel, selfReviewDisplayNameFromProfile } from '@/lib/reviewQueueDisplay';
 import { useReviewQueueStore } from '@/stores/reviewQueue';
@@ -30,7 +32,13 @@ const TYPE_LABELS: Record<DiscrepancyType, string> = {
 };
 
 const SEVERITY_OPTIONS: DiscrepancySeverity[] = ['critical', 'high', 'medium', 'low'];
-const STATUS_OPTIONS: DiscrepancyStatus[] = ['pending', 'reviewed', 'dismissed', 'escalated', 'resolved'];
+const STATUS_OPTIONS: DiscrepancyStatus[] = ['pending', 'reviewed', 'escalated'];
+const TYPE_OPTIONS: DiscrepancyType[] = [
+  'status_mismatch',
+  'missing_internal',
+  'value_mismatch',
+  'missing_external',
+];
 const SOURCE_OPTIONS = ['echo', 'msha'];
 
 /** Fixed row height for virtualizer (single-line cells). */
@@ -38,11 +46,15 @@ const ROW_HEIGHT_PX = 52;
 
 interface Props {
   rows: DiscrepancyRow[];
+  reviewerNames?: Record<string, string>;
   onSelect: (id: string) => void;
+  onQuickReview?: (id: string) => void;
 }
 
-export function DiscrepancyTable({ rows, onSelect }: Props) {
+export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview }: Props) {
   const { user } = useAuth();
+  const { can } = usePermissions();
+  const canTriage = can('verify');
   const { profile } = useUserProfile();
   const selfName = selfReviewDisplayNameFromProfile(profile);
   const { filters, setFilters } = useReviewQueueStore();
@@ -122,6 +134,21 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
             {s}
           </button>
         ))}
+        <div className="h-4 border-l border-white/[0.08]" />
+        {TYPE_OPTIONS.map((t) => (
+          <button
+            key={t}
+            onClick={() => toggleFilter('type', t)}
+            className={cn(
+              'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors',
+              filters.type === t
+                ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                : 'border-white/[0.08] text-text-muted hover:border-white/[0.15] hover:text-text-secondary',
+            )}
+          >
+            {TYPE_LABELS[t]}
+          </button>
+        ))}
       </div>
 
       {/* Table — virtualized body for large discrepancy lists */}
@@ -140,7 +167,8 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
               <col className="w-[10%]" />
               <col className="w-[8%]" />
               <col className="w-[12%]" />
-              <col className="w-[22%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
             </colgroup>
             <thead className="sticky top-0 z-[1] border-b border-white/[0.06] bg-crystal-surface/95 backdrop-blur-md">
               <tr>
@@ -165,19 +193,22 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
                 <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium">
                   Reviewer
                 </th>
+                <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-text-muted font-medium text-right">
+                  Triage
+                </th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-text-muted text-sm">
+                  <td colSpan={8} className="px-4 py-8 text-center text-text-muted text-sm">
                     No discrepancies match the current filters
                   </td>
                 </tr>
               )}
               {filtered.length > 0 && paddingTop > 0 && (
                 <tr aria-hidden="true">
-                  <td colSpan={7} className="p-0 border-0" style={{ height: paddingTop, lineHeight: 0 }} />
+                  <td colSpan={8} className="p-0 border-0" style={{ height: paddingTop, lineHeight: 0 }} />
                 </tr>
               )}
               {virtualItems.map((vRow) => {
@@ -234,14 +265,40 @@ export function DiscrepancyTable({ rows, onSelect }: Props) {
                       className="px-4 py-3 text-xs text-text-muted truncate"
                       title={row.reviewed_by ?? undefined}
                     >
-                      {formatDiscrepancyReviewerLabel(row.reviewed_by, user?.id ?? null, selfName)}
+                      {formatDiscrepancyReviewerLabel(
+                        row.reviewed_by,
+                        user?.id ?? null,
+                        selfName,
+                        reviewerNames,
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {row.status === 'pending' && onQuickReview && (
+                        <button
+                          type="button"
+                          disabled={!canTriage}
+                          title={
+                            canTriage
+                              ? 'Mark reviewed without opening detail'
+                              : 'Requires verify permission'
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onQuickReview(row.id);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-[10px] font-medium text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-40"
+                        >
+                          <CheckCircle size={12} />
+                          Review
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
               })}
               {filtered.length > 0 && paddingBottom > 0 && (
                 <tr aria-hidden="true">
-                  <td colSpan={7} className="p-0 border-0" style={{ height: paddingBottom, lineHeight: 0 }} />
+                  <td colSpan={8} className="p-0 border-0" style={{ height: paddingBottom, lineHeight: 0 }} />
                 </tr>
               )}
             </tbody>

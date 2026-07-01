@@ -8,7 +8,9 @@ type AuditAction =
   | 'matrix_export_markdown'
   | 'bulk_process'
   | 'bulk_process_permits'
+  | 'bulk_process_parameter_sheets'
   | 'bulk_process_lab_data'
+  | 'bulk_process_dmrs'
   | 'bulk_retry'
   | 'staging_clear_all'
   | 'command_palette_action'
@@ -70,6 +72,9 @@ type AuditAction =
   | 'fts_filter_change'
   // ECHO Coverage
   | 'echo_sync_manual_trigger'
+  | 'echo_sync_stale_trigger'
+  | 'compliance_alert_dispatched'
+  | 'exceedance_alert_dispatched'
   // Report Engine
   | 'report_generated'
   | 'report_template_created'
@@ -148,6 +153,8 @@ type AuditAction =
   | 'enforcement_created'
   | 'human_override_created'
   | 'human_override_approved'
+  | 'npdes_federal_mapping_saved'
+  | 'npdes_federal_mapping_removed'
   | 'legal_hold_placed'
   | 'legal_hold_released'
   // Phase 9 — Compliance Reporting & Analytics

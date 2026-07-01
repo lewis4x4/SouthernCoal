@@ -1,7 +1,6 @@
 import { GlassBadge } from '@/components/ui/GlassBadge';
 import { VerificationBadge } from '@/components/dashboard/queue/VerificationBadge';
-import { usePermitProcessing } from '@/hooks/usePermitProcessing';
-import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
+import { useQueueProcessing } from '@/hooks/useQueueProcessing';
 import { useQueueStore } from '@/stores/queue';
 import { useVerificationStore } from '@/stores/verification';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +27,8 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   selenium_compliance: 'Selenium Compliance',
   administrative_notice: 'Admin Notice',
   lab_data_edd: 'Lab Data (EDD)',
+  parameter_sheet: 'Parameter Sheet',
+  netdmr_bundle: 'NetDMR Bundle',
 };
 
 interface QueueRowProps {
@@ -43,16 +44,20 @@ interface QueueRowProps {
 export function QueueRow({ entry, can }: QueueRowProps) {
   const expandedRowId = useQueueStore((s) => s.expandedRowId);
   const setExpandedRow = useQueueStore((s) => s.setExpandedRow);
-  const { processPermit, retryFailed: retryPermit } = usePermitProcessing();
-  const { processLabData, retryFailed: retryLabData } = useLabDataProcessing();
+  const { processEntry, retryFailed, canProcessQueueEntry, resolveQueueParser } =
+    useQueueProcessing();
 
   const isExpanded = expandedRowId === entry.id;
   const isPermit = entry.file_category === 'npdes_permit';
   const isLabData = entry.file_category === 'lab_data';
+  const isDmr = entry.file_category === 'dmr';
+  const parserRoute = resolveQueueParser(entry);
   const verificationStatus = useVerificationStore((s) => s.getStatus(entry.id));
-  const showVerificationBadge = isPermit || isLabData;
-  const canProcess = (isPermit || isLabData) && entry.status === 'queued' && can('process');
-  const canRetry = (isPermit || isLabData) && entry.status === 'failed' && can('retry');
+  const showVerificationBadge = isPermit || isLabData || isDmr;
+  const canProcess =
+    canProcessQueueEntry(entry) && entry.status === 'queued' && can('process');
+  const canRetry =
+    canProcessQueueEntry(entry) && entry.status === 'failed' && can('retry');
 
   async function handleStateChange(queueEntry: QueueEntry, newState: string) {
     const stateCode = newState || null;
@@ -204,9 +209,9 @@ export function QueueRow({ entry, can }: QueueRowProps) {
       <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         {canProcess && (
           <button
-            onClick={() => isPermit ? processPermit(entry.id) : processLabData(entry.id)}
+            onClick={() => processEntry(entry.id)}
             className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-            title={isPermit ? 'Process this permit' : 'Process this lab data file'}
+            title={`Process (${parserRoute.label})`}
           >
             <Play size={10} className="inline mr-1" />
             Process
@@ -214,7 +219,7 @@ export function QueueRow({ entry, can }: QueueRowProps) {
         )}
         {canRetry && (
           <button
-            onClick={() => isPermit ? retryPermit(entry.id) : retryLabData(entry.id)}
+            onClick={() => retryFailed(entry.id)}
             className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-status-processing/15 text-status-processing border border-status-processing/20 hover:bg-status-processing/25 transition-all"
             title="Retry processing"
           >

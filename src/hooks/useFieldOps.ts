@@ -47,7 +47,10 @@ import {
   formatScheduledParameterLabel,
 } from '@/lib/fieldVisitScheduleHints';
 import type { FieldVisitDetailLoadSource } from '@/lib/fieldDataSource';
-import { loadFieldVisitCache, saveFieldVisitCache } from '@/lib/fieldVisitLocalCache';
+import {
+  loadFieldVisitCacheAsync,
+  saveFieldVisitCacheDual,
+} from '@/lib/fieldVisitLocalCache';
 import { LANE_A_MILESTONE_1_ID } from '@/lib/laneAMilestone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -363,7 +366,7 @@ export function useFieldOps() {
     setDetailLoading(true);
     setDetailLoadSource(null);
 
-    const cachedDetail = loadFieldVisitCache(visitId, {
+    const cachedDetail = await loadFieldVisitCacheAsync(visitId, {
       organizationId,
       viewerUserId: userId,
     });
@@ -383,7 +386,7 @@ export function useFieldOps() {
       if (routeListItem) {
         const shell = fieldVisitShellFromRouteListItem(visitId, routeListItem, userId);
         if (commitDetail(shell, visitId, 'device_route_shell')) {
-          saveFieldVisitCache(shell, {
+          void saveFieldVisitCacheDual(shell, {
             organizationId,
             viewerUserId: userId,
           });
@@ -428,7 +431,7 @@ export function useFieldOps() {
           'Live load failed; showing your saved route copy for this stop. Reconnect and tap Refresh when you can.',
         );
         if (commitDetail(shell, visitId, 'device_route_shell')) {
-          saveFieldVisitCache(shell, {
+          void saveFieldVisitCacheDual(shell, {
             organizationId,
             viewerUserId: userId,
           });
@@ -686,7 +689,7 @@ export function useFieldOps() {
     };
 
     if (commitDetail(nextDetail, visitId, 'live')) {
-      saveFieldVisitCache(nextDetail, {
+      void saveFieldVisitCacheDual(nextDetail, {
         organizationId,
         viewerUserId: userId,
       });
@@ -705,7 +708,7 @@ export function useFieldOps() {
       && detailOwnerScopeRef.current.organizationId === organizationId
       && detailOwnerScopeRef.current.viewerUserId === userId
     ) {
-      saveFieldVisitCache(detail, {
+      void saveFieldVisitCacheDual(detail, {
         organizationId,
         viewerUserId: userId,
       });

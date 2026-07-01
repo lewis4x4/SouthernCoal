@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -269,6 +269,23 @@ function clearStoredFieldVisitDraft(visitId: string) {
   }
 }
 
+function subscribeOnline(cb: () => void) {
+  window.addEventListener('online', cb);
+  window.addEventListener('offline', cb);
+  return () => {
+    window.removeEventListener('online', cb);
+    window.removeEventListener('offline', cb);
+  };
+}
+
+function getOnlineSnapshot() {
+  return typeof navigator !== 'undefined' && navigator.onLine;
+}
+
+function getServerSnapshot() {
+  return true;
+}
+
 export function FieldVisitPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -300,6 +317,8 @@ export function FieldVisitPage() {
     recordEvidenceAsset,
     completeVisit,
   } = useFieldOps();
+
+  const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerSnapshot);
 
   const [inspection, setInspection] = useState<Partial<OutletInspectionRecord>>({
     ...EMPTY_INSPECTION_STATE,
@@ -1087,6 +1106,12 @@ export function FieldVisitPage() {
     return () => window.removeEventListener('online', handleOnline);
   }, [detail, visitLocked]);
 
+  useEffect(() => {
+    if (outboundQueueDiagnostic || evidenceUploadFailures.length > 0) {
+      setAlertsPanelOpen(true);
+    }
+  }, [outboundQueueDiagnostic, evidenceUploadFailures]);
+
   const applyPreviousInspectionSummary = useCallback(() => {
     const previous = detail?.previous_visit_context;
     if (!previous) return;
@@ -1688,16 +1713,32 @@ export function FieldVisitPage() {
   }
 
   if (!detail) {
+    const offlineColdStart = !online;
+    const showUnavailableSyncHealth =
+      !!id && (!online || outboundPendingCount > 0 || !!outboundQueueDiagnostic);
+
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-4">
+        {showUnavailableSyncHealth && id ? (
+          <FieldDataSyncBar
+            loading={fieldQueueLoading || detailLoading}
+            lastSyncedAt={lastSyncedAt}
+            pendingOutboundCount={outboundPendingCount}
+            queueFlushDiagnostic={outboundQueueDiagnostic}
+            onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+            onRefresh={handleFieldSyncRefresh}
+            auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
+          />
+        ) : null}
         <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-6">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" aria-hidden />
             <div>
               <h1 className="text-lg font-semibold text-text-primary">Field visit unavailable</h1>
               <p className="mt-2 text-sm text-text-secondary">
-                We could not load this visit after checking the scoped cache, saved route shell, and live data.
-                Refresh the field queue or go back and retry once you have the right org/user context or a better connection.
+                {offlineColdStart
+                  ? 'Offline with no saved visit on this device. Open this visit online once, or open today\'s route and tap the stop from your saved offline copy.'
+                  : 'We could not load this visit after checking the scoped cache (localStorage and IndexedDB), saved route shell, and live data. Refresh the field queue or go back and retry once you have the right org/user context or a better connection.'}
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
@@ -2751,6 +2792,8 @@ export function FieldVisitPage() {
   const hasSyncIssues = !!(outboundQueueDiagnostic || evidenceUploadFailures.length > 0);
   const hasQueuedActions = visitOutboundQueuedCount > 0;
   const hasSameOutfallConflict = visitSiblingOutfallConflicts.length > 0;
+  const showVisitSyncHealth =
+    !!id && (!online || outboundPendingCount > 0 || hasSyncIssues);
   const hasAlerts = hasSyncIssues || hasQueuedActions || !!weatherStatusBanner ||
     (requirementsModel && requirementsModel.urgencyFlags.length > 0) ||
     (detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live') ||
@@ -2923,30 +2966,33 @@ export function FieldVisitPage() {
         </div>
       }
     >
+      {showVisitSyncHealth && id ? (
+        <div className="mb-4">
+          <FieldDataSyncBar
+            loading={fieldQueueLoading || detailLoading}
+            lastSyncedAt={lastSyncedAt}
+            pendingOutboundCount={outboundPendingCount}
+            queueFlushDiagnostic={outboundQueueDiagnostic}
+            onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
+            onRefresh={handleFieldSyncRefresh}
+            auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
+            evidenceSyncFailures={evidenceUploadFailures}
+            onRetryEvidenceSync={() => {
+              void handleFieldSyncRefresh().catch((err) => {
+                toast.error(err instanceof Error ? err.message : 'Retry failed');
+              });
+            }}
+            onDismissEvidenceFailures={() => {
+              clearPersistedFieldEvidenceSyncFailuresForVisit(id);
+              setEvidenceUploadFailures([]);
+            }}
+          />
+        </div>
+      ) : null}
+
       {/* Collapsible alerts panel */}
       {alertsPanelOpen ? (
         <div className="mb-4 space-y-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
-          {id ? (
-            <FieldDataSyncBar
-              loading={fieldQueueLoading || detailLoading}
-              lastSyncedAt={lastSyncedAt}
-              pendingOutboundCount={outboundPendingCount}
-              queueFlushDiagnostic={outboundQueueDiagnostic}
-              onDismissQueueFlushDiagnostic={clearOutboundQueueDiagnostic}
-              onRefresh={handleFieldSyncRefresh}
-              auditRefreshPayload={{ surface: 'field_visit', visit_id: id }}
-              evidenceSyncFailures={evidenceUploadFailures}
-              onRetryEvidenceSync={() => {
-                void handleFieldSyncRefresh().catch((err) => {
-                  toast.error(err instanceof Error ? err.message : 'Retry failed');
-                });
-              }}
-              onDismissEvidenceFailures={() => {
-                clearPersistedFieldEvidenceSyncFailuresForVisit(id);
-                setEvidenceUploadFailures([]);
-              }}
-            />
-          ) : null}
           {id ? <FieldDispatchLoadAlerts alerts={dispatchLoadAlerts} /> : null}
           {detail && !detailLoading && detailLoadSource && detailLoadSource !== 'live' ? (
             <FieldDataSourceBanner variant="visit" source={detailLoadSource} />

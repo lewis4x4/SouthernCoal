@@ -33,6 +33,7 @@ const ACTION_COLORS: Record<string, string> = {
   field_visit_completion_queued: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   field_outbound_queue_flushed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   field_outbound_queue_blocked: 'bg-red-500/10 text-red-400 border-red-500/20',
+  field_outbound_conflict_hold: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 /** Short labels for dense table cells and filter dropdowns (raw action still the filter value). */
@@ -42,6 +43,7 @@ const ACTION_LABELS: Record<string, string> = {
   field_visit_completion_queued: 'Field: completion queued',
   field_outbound_queue_flushed: 'Field: queue flushed',
   field_outbound_queue_blocked: 'Field: queue blocked',
+  field_outbound_conflict_hold: 'Field: conflict hold',
 };
 
 const DEFAULT_ACTION_COLOR = 'bg-white/5 text-text-secondary border-white/10';
@@ -72,6 +74,7 @@ const PRESET_FIELD_AUDIT_ACTIONS = [
   'field_visit_completion_queued',
   'field_outbound_queue_flushed',
   'field_outbound_queue_blocked',
+  'field_outbound_conflict_hold',
 ] as const;
 
 export function AuditLogPage() {

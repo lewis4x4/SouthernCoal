@@ -10,17 +10,31 @@ interface SyncResult {
   error?: string;
 }
 
+export interface EchoSyncInvokeBody {
+  sync_type?: 'manual' | 'scheduled';
+  stale_days?: number;
+  stale_only?: boolean;
+  limit?: number;
+  run_tag?: string;
+}
+
 export function useSyncTrigger() {
   const [syncing, setSyncing] = useState<Record<string, boolean>>({});
 
-  const triggerSync = useCallback(async (source: 'echo' | 'msha') => {
+  const triggerSync = useCallback(async (
+    source: 'echo' | 'msha',
+    echoBody?: EchoSyncInvokeBody,
+  ) => {
     const fnName = source === 'echo' ? 'sync-echo-data' : 'sync-msha-data';
     setSyncing((prev) => ({ ...prev, [source]: true }));
 
+    const body =
+      source === 'echo'
+        ? { sync_type: 'manual' as const, ...echoBody }
+        : { sync_type: 'manual' };
+
     try {
-      const { data, error } = await supabase.functions.invoke(fnName, {
-        body: { sync_type: 'manual' },
-      });
+      const { data, error } = await supabase.functions.invoke(fnName, { body });
 
       if (error) {
         toast.error(`${source.toUpperCase()} sync failed: ${error.message}`);
@@ -46,7 +60,10 @@ export function useSyncTrigger() {
 
   return {
     syncing,
-    triggerEchoSync: useCallback(() => triggerSync('echo'), [triggerSync]),
+    triggerEchoSync: useCallback(
+      (options?: EchoSyncInvokeBody) => triggerSync('echo', options),
+      [triggerSync],
+    ),
     triggerMshaSync: useCallback(() => triggerSync('msha'), [triggerSync]),
   };
 }
