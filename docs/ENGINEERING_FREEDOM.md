@@ -1,7 +1,7 @@
 # Engineering Freedom Amendment
 
-**Version:** 1.1  
-**Date:** 2026-07-01  
+**Version:** 1.2  
+**Date:** 2026-07-01 (v1.2 adds the two SCC-OS keystone gates — see Roadmap §7.3)  
 **Status:** Active — governs all agent and contractor build behavior in this repo  
 **Orchestrator:** `.cursor/skills/orchestrator/SKILL.md` + `.cursor/rules/orchestrator-autonomous.mdc` — agents run in continuous build mode; never pause to ask “should I continue?”  
 **Authority:** This document resolves conflicts between legacy “wait / approve / block” language and current build policy. When docs disagree on **whether you may build**, this file wins.
@@ -107,7 +107,7 @@ These are the **only** categories where an agent must **not** proceed autonomous
 | **File** Force Majeure or other CD notices with EPA/DEP/DOJ | Legal act; counsel-owned |
 | **Send** email/SMS/letter to regulators, counsel, or clients presenting compliance status as fact | External communication |
 | **Certify** quarterly CD compliance or signatory-attested reports in-product | Criminal exposure if wrong |
-| Remove **DRAFT** badge or mark penalty/exposure figures **verified for external use** | Requires Steve Ball / Bill Johnson sign-off (task 3.17 pattern) |
+| Remove **DRAFT** badge or mark penalty/exposure figures **verified for external use** | Requires Steve Ball / Bill Johnson sign-off (task 3.17 pattern) **and** the compiled CD stipulated-penalty appendix as verified `penalty_regimes` rows (Roadmap §7.3 decree-compilation gate) |
 
 Agents may build **draft → review → approve → submit** workflows; the **submit/certify/verify-external** step is human-only.
 
@@ -138,6 +138,7 @@ Agents may build **draft → review → approve → submit** workflows; the **su
 | Quote **specific penalty dollar amounts** to DOJ/EPA/counsel or in client-facing copy as **authoritative** | Figures in Sovereign docs are DRAFT until Bill/Steve reconcile |
 | Present agent output as **legal advice** or **EMS certification** | Product is compliance reporting tool only |
 | Waive or narrow **attorney-client privilege** scope | GC (Steve Ball) / counsel |
+| Start any **SCC-OS keystone Phase 2** feature (exposure positions, self-assessment or disclosure drafting, completeness certification) | Counsel must settle the privilege architecture first — Roadmap §7.3/§7.4 |
 
 Building UI that **shows** DRAFT figures internally is allowed. **Citing** them externally is gated.
 
@@ -170,6 +171,7 @@ About to do work
   ├─ Submit/certify/file/send to regulator or counsel as fact?  → STOP (human)
   ├─ Drop/truncate prod DDL / bucket policy change / seed overwrite / migration repair? → STOP (human)
   ├─ Mark dollars verified for external use?                     → STOP (human)
+  ├─ SCC-OS keystone Phase 2 (exposure positions / disclosure drafting)? → STOP (counsel gate, Roadmap §7)
   ├─ Commit secrets / force push / hard reset?                   → STOP (never)
   └─ Anything else → BUILD (orchestrator loop)
         ├─ sub-agents for parallel explore/implement

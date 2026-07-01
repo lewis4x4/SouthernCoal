@@ -1,9 +1,10 @@
 # SCC Unified Master Roadmap — Lanes A, B, C
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-07-01
 **Status:** Active — this is the single document a code builder (Cursor/Codex/Claude) should read to know what to build next, in what order, and why.
 **Supersedes:** Nothing else is deprecated. This is a *sequencing layer* on top of `BRAIN_GUIDE.md` (architecture/pitfalls), `UNIFIED_ROADMAP.md` (task IDs 3.xx/5.xx), and **`docs/ENGINEERING_FREEDOM.md`** (autonomous build vs hard human gates). Read this first for **order**, then those for **detail** and **authority**.
+**v1.1:** adds §7 — the SCC-OS keystone crosswalk. The SCC-OS vision package (kept outside this repo) now feeds this roadmap; §7 maps every Lane C slice to its keystone target and lists the schema rules and gates that flow back into the current cycle.
 
 *Not legal advice. Not an EMS. Compliance reporting tool only — every number and every automated flag requires independent human/counsel verification before regulatory or litigation use.*
 
@@ -147,9 +148,48 @@ Everything else in `DISCOVERY_QUESTIONS.md` can go out as a single consolidated 
 - [ ] Lane A: PR #21 merged, A1–A6 + B1–B5 staging QA signed off
 - [ ] Lane B: Upload Dashboard v5+v6 DELTA shipped (built in parallel, not after Lane A)
 - [ ] Lane C: QW1, QW2, QW4, QW3, MSHA pipeline body, VA/TN/AL parsers, and the draft-labeled penalty ledger all shipped, typechecked, tested, audit-logged — each renders a clearly labeled draft/empty/not-configured state wherever source data hasn't landed yet, rather than being left unbuilt
+- [ ] Lane C schema discipline: new detector/ledger tables follow the §7.2 rules (coupled work orders at insert, bitemporal columns, `citation` + `verification_status` on penalty rows)
 - [ ] Outreach: DISCOVERY_QUESTIONS.md sent, at minimum Q35/Q14/Q3 answered
 
-None of these four boxes blocks another — they check independently, on their own tracks. As outreach answers and Upload Dashboard data land, previously-draft/empty Lane C features populate automatically with no further engineering work, because the machine was already built to receive them.
+None of these boxes blocks another — they check independently, on their own tracks. As outreach answers and Upload Dashboard data land, previously-draft/empty Lane C features populate automatically with no further engineering work, because the machine was already built to receive them.
+
+---
+
+## 7. SCC-OS keystone crosswalk (added v1.1)
+
+The SCC-OS vision package — keystone memo, gap audit, and builder handoff — lives **outside this repo** at `/Users/brianlewis/Southern Coal/SOUTHERN COAL/` (start with `SCC-OS_BUILDER_HANDOFF.md` there). It stays outside deliberately: it is strategy material that does not belong in a pushed repository. This section is the only SCC-OS content maintained in-repo: the mapping from this roadmap's slices to the keystone architecture, plus the build rules and gates that flow back into the current cycle.
+
+**Relationship:** the keystone package *feeds* this roadmap; it does not override it. This doc still decides **order**; `ENGINEERING_FREEDOM.md` still decides **authority**; `CLAUDE.md` still owns audit/RLS/RBAC mechanics.
+
+### 7.1 Crosswalk — every Lane C slice is an early organ of the keystone
+
+| This roadmap (build now) | Keystone target (memo §4/§6) | Upgrade path |
+|---|---|---|
+| QW1 missed-sampling detector | Adverse-fact detector #1 | QW1 miss rows are proto-`adverse_facts`; insert a coupled `work_orders` row in the same transaction (no orphan alerts) |
+| QW2 ¶49 EDD clock + completeness flag | Adverse-fact detector #2 + lab-data rigor (gap audit T1-3) | Extend `lab_results` toward full Part 136 method / MDL-ML / qualifier / non-detect-policy coverage as the parsers land |
+| QW4 overdue-PM detector | Evidence-quality guard | Feeds defensible-miss context; scope stays sampling-gear-only |
+| QW3 defensible-miss packet | Proto evidence package (keystone Completeness Certificate / FM evidence file lineage) | Same export path; packets are evidence for counsel, never conclusions |
+| Draft stipulated-penalty ledger (§3 build-now) | **The Exposure Ledger — keystone wedge step 1** | `compute_stipulated_penalty` + DRAFT badge → `penalty_regimes` (a `citation` + `verification_status` per row) → `penalty_curves` |
+| Full missed-sampling obligation ledger (§3 build-now) | Obligation enumeration substrate | Must eventually enumerate SMCRA + MSHA clocks too (gap audit T2-15) or downstream completeness claims over-claim |
+| MSHA pipeline body + abatement clocks | MSHA-side adverse-fact detectors | The controller-ID mapping (106 mines → 16 orgs) is the seed of temporal ownership/control edges (gap audit T1-1) |
+
+### 7.2 Rules that flow back into this cycle (adopt now — cheap now, brutal to retrofit)
+
+1. **No orphan alerts:** every new detector inserts its gap/miss row and a coupled `work_orders` row in the same transaction.
+2. **Bitemporal columns on every new ledger/fact table** (valid time + transaction time), per the standard pattern; do not retrofit later at 10× the cost.
+3. **Penalty rows carry `citation` + `verification_status`.** Nothing flips DRAFT → VERIFIED until the CD stipulated-penalty appendix is compiled into verified rows **and** the task-3.17 human sign-off lands.
+4. **Degraded-mode logging:** nightly jobs record their own failures as audit events — a failed run is a logged fact, never silence.
+5. **Ack-tracked alerts:** any alert tied to a statutory clock needs acknowledgment tracking (proof of receipt), not just send.
+
+### 7.3 Gates (authority lives in `ENGINEERING_FREEDOM.md` — mirrored there in v1.2)
+
+- **Decree-compilation gate:** the DRAFT → VERIFIED flip on any penalty figure requires the compiled Case 7:16-cv-00462-GEC stipulated-penalty appendix (verified `penalty_regimes` rows) plus human sign-off (3.17 pattern).
+- **Counsel privilege gate:** no SCC-OS Phase 2 feature (exposure positions, self-assessment or disclosure drafting) starts before counsel settles the privilege architecture. Not this cycle.
+- The existing **verified-dollar** and **external submit/certify** gates continue to cover any number or document leaving the building.
+
+### 7.4 Explicitly NOT in this cycle
+
+Keystone Phase 2+ surfaces — exposure positions, disclosure drafting, completeness certification, voice-native field capture, any counterparty-facing attestation — are all behind named gates in the handoff sheet. This cycle builds the detectors, ledgers, and schema discipline they will stand on. Build nothing from this list without the §7.3 gates clearing first.
 
 ---
 
