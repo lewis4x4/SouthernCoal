@@ -1,16 +1,18 @@
 import { useState, useMemo } from 'react';
-import { RefreshCw, Loader2, AlertTriangle, Clock, Database, Shield, Link2, Save, Trash2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Database, Shield, Link2, Save, Trash2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useEchoCoverage } from '@/hooks/useEchoCoverage';
+import { useSyncHealth, ECHO_STALE_DAYS } from '@/hooks/useSyncHealth';
 import { useNpdesOverrides } from '@/hooks/useNpdesOverrides';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
+import { SyncHealthPanel } from '@/components/external-data/SyncHealthPanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES } from '@/lib/constants';
 import type { CoverageFacility, StateCoverage } from '@/hooks/useEchoCoverage';
-import type { NpdesOverride, UnmatchedPermit } from '@/hooks/useNpdesOverrides';
+import type { NpdesOverride, RegistryFederalMappingGap, UnmatchedPermit } from '@/hooks/useNpdesOverrides';
 
 type SortKey = 'npdes_id' | 'facility_name' | 'state_code' | 'compliance_status' | 'dmr_count' | 'synced_at';
 type SortDir = 'asc' | 'desc';
@@ -55,11 +57,19 @@ function StateCoverageCard({ coverage }: { coverage: StateCoverage }) {
 
 export function EchoCoveragePanel() {
   const { facilities, stateCoverage, lastSync, syncing, loading, error } = useEchoCoverage();
+  const syncHealth = useSyncHealth(facilities);
   const { syncing: syncState, triggerEchoSync } = useSyncTrigger();
   const triggerSyncing = syncState['echo'] ?? false;
   const { can } = usePermissions();
   const { log } = useAuditLog();
-  const { overrides, unmatchedPermits, saving: overrideSaving, saveOverride, deleteOverride } = useNpdesOverrides();
+  const {
+    overrides,
+    unmatchedPermits,
+    registryMappingGaps,
+    saving: overrideSaving,
+    saveOverride,
+    deleteOverride,
+  } = useNpdesOverrides();
 
   const [sortKey, setSortKey] = useState<SortKey>('state_code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -70,7 +80,22 @@ export function EchoCoveragePanel() {
   function handleSync() {
     triggerEchoSync();
     log('echo_sync_manual_trigger', {}, { module: 'external_data', tableName: 'external_sync_log' });
-    toast.info('ECHO sync started...');
+    toast.info('ECHO full sync started…');
+  }
+
+  function handleSyncStale() {
+    triggerEchoSync({
+      stale_days: ECHO_STALE_DAYS,
+      stale_only: true,
+      limit: 5,
+      run_tag: 'manual-stale-batch',
+    });
+    log(
+      'echo_sync_stale_trigger',
+      { stale_days: ECHO_STALE_DAYS, limit: 5 },
+      { module: 'external_data', tableName: 'external_sync_log' },
+    );
+    toast.info(`ECHO stale sync started (up to 5 permits, ${ECHO_STALE_DAYS}+ days old)…`);
   }
 
   function handleSort(key: SortKey) {
@@ -101,6 +126,39 @@ export function EchoCoveragePanel() {
   const totalDmrs = stateCoverage.reduce((sum, s) => sum + s.dmr_total, 0);
   const totalSNC = stateCoverage.reduce((sum, s) => sum + s.snc_count, 0);
 
+  const registryByFederalNpdes = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ov of overrides) {
+      map.set(ov.npdes_id.toUpperCase(), ov.source_permit_id);
+    }
+    return map;
+  }, [overrides]);
+
+  const showRegistryColumn = registryByFederalNpdes.size > 0;
+
+  function exportMappingSnapshot() {
+    const lines = [
+      'type,permit_number,npdes_id,state_code,issuing_agency',
+      ...overrides.map(
+        (ov) =>
+          `mapped,${ov.source_permit_id},${ov.npdes_id},${ov.state_code},`,
+      ),
+      ...registryMappingGaps.map(
+        (gap) =>
+          `gap,${gap.permit_number},,${gap.state_code},${(gap.issuing_agency ?? '').replace(/,/g, ' ')}`,
+      ),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `npdes_mapping_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log('coverage_export_csv', { rows: lines.length - 1 }, { module: 'external_data', tableName: 'npdes_id_overrides' });
+    toast.success('Mapping snapshot exported');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -121,33 +179,32 @@ export function EchoCoveragePanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">ECHO Sync Coverage</h1>
-          <p className="text-sm text-text-muted mt-1">
-            EPA ECHO data across {facilities.length} facilities in {stateCoverage.length} states
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastSync && (
-            <div className="flex items-center gap-1.5 text-xs text-text-muted">
-              <Clock size={12} />
-              Last sync: {lastSync.completed_at ? new Date(lastSync.completed_at).toLocaleDateString() : 'In progress'}
-            </div>
+      <div>
+        <h1 className="text-xl font-bold text-text-primary">ECHO Sync Coverage</h1>
+        <p className="text-sm text-text-muted mt-1">
+          EPA ECHO data across {facilities.length} facilities in {stateCoverage.length} states
+          {lastSync?.completed_at && (
+            <span className="text-text-muted/80">
+              {' '}
+              · last log {new Date(lastSync.completed_at).toLocaleDateString()}
+            </span>
           )}
-          {can('bulk_process') && (
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
-              title={!can('bulk_process') ? 'Requires bulk_process permission' : 'Sync all permits from EPA ECHO'}
-            >
-              {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
-            </button>
-          )}
-        </div>
+        </p>
       </div>
+
+      <SyncHealthPanel
+        recentRuns={syncHealth.recentRuns}
+        staleFacilities={syncHealth.staleFacilities}
+        staleCount={syncHealth.staleCount}
+        lastCompleted={syncHealth.lastCompleted}
+        runningRun={syncHealth.runningRun}
+        failedRuns30d={syncHealth.failedRuns30d}
+        loading={syncHealth.loading || loading}
+        isSyncing={isSyncing}
+        canSync={can('bulk_process')}
+        onSyncNow={handleSync}
+        onSyncStale={handleSyncStale}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -180,6 +237,39 @@ export function EchoCoveragePanel() {
           <p className="text-2xl font-bold text-text-primary">{stateCoverage.length}</p>
         </SpotlightCard>
       </div>
+
+      {/* Federal NPDES mapping posture (bulk import + manual overrides) */}
+      {(overrides.length > 0 || registryMappingGaps.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SpotlightCard spotlightColor="rgba(16, 185, 129, 0.06)" className="p-4">
+            <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Registry mapped</p>
+            <p className="text-2xl font-bold text-emerald-400 mt-1">{overrides.length}</p>
+            <p className="text-xs text-text-muted mt-1">ECHO overrides + permit metadata</p>
+          </SpotlightCard>
+          <SpotlightCard spotlightColor="rgba(245, 158, 11, 0.06)" className="p-4">
+            <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Mapping gaps</p>
+            <p className="text-2xl font-bold text-amber-400 mt-1">{registryMappingGaps.length}</p>
+            <p className="text-xs text-text-muted mt-1">See cleanup backlog below</p>
+          </SpotlightCard>
+          <SpotlightCard spotlightColor="rgba(6, 182, 212, 0.06)" className="p-4">
+            <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">ECHO facilities</p>
+            <p className="text-2xl font-bold text-cyan-400 mt-1">{facilities.length}</p>
+            <p className="text-xs text-text-muted mt-1">EPA sync in external_echo_facilities</p>
+          </SpotlightCard>
+        </div>
+      )}
+      {(overrides.length > 0 || registryMappingGaps.length > 0) && can('bulk_process') && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={exportMappingSnapshot}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <Download size={12} />
+            Export mapping snapshot (CSV)
+          </button>
+        </div>
+      )}
 
       {/* State Breakdown */}
       <div>
@@ -216,8 +306,19 @@ export function EchoCoveragePanel() {
           <table className="w-full text-xs">
             <thead>
               <tr className="text-text-muted border-b border-white/[0.06]">
+                <th
+                  onClick={() => handleSort('npdes_id')}
+                  className="text-left py-2 px-3 font-medium cursor-pointer hover:text-text-secondary transition-colors"
+                >
+                  NPDES ID
+                  {sortKey === 'npdes_id' && (
+                    <span className="ml-1">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
+                  )}
+                </th>
+                {showRegistryColumn ? (
+                  <th className="text-left py-2 px-3 font-medium text-text-muted">Registry Permit</th>
+                ) : null}
                 {([
-                  ['npdes_id', 'NPDES ID'],
                   ['facility_name', 'Facility'],
                   ['state_code', 'State'],
                   ['compliance_status', 'Compliance'],
@@ -239,11 +340,16 @@ export function EchoCoveragePanel() {
             </thead>
             <tbody>
               {sortedFacilities.map((f) => (
-                <FacilityRow key={f.id} facility={f} />
+                <FacilityRow
+                  key={f.id}
+                  facility={f}
+                  registryPermit={registryByFederalNpdes.get(f.npdes_id.toUpperCase())}
+                  showRegistryColumn={showRegistryColumn}
+                />
               ))}
               {sortedFacilities.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-muted">
+                  <td colSpan={showRegistryColumn ? 7 : 6} className="py-8 text-center text-text-muted">
                     No facilities found
                   </td>
                 </tr>
@@ -252,6 +358,33 @@ export function EchoCoveragePanel() {
           </table>
         </div>
       </div>
+
+      {/* Registry permits still missing federal mapping (bulk import cleanup queue) */}
+      {registryMappingGaps.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] backdrop-blur-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-amber-500/15">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-amber-400" />
+              <h3 className="text-sm font-semibold text-text-primary">Registry Mapping Gaps</h3>
+            </div>
+            <span className="text-xs text-amber-300/90 font-medium">
+              {registryMappingGaps.length} permit{registryMappingGaps.length === 1 ? '' : 's'} — cleanup backlog
+            </span>
+          </div>
+          <p className="px-4 pt-3 text-xs text-text-muted">
+            These active registry rows have no federal NPDES ID in metadata yet (mostly VA DMLR / data-quality
+            edge cases). Tracked in{' '}
+            <span className="font-mono text-text-secondary">docs/NPDES_MAPPING_CLEANUP_BACKLOG.md</span>.
+          </p>
+          <div className="max-h-64 overflow-y-auto px-4 py-3">
+            <div className="space-y-1.5">
+              {registryMappingGaps.map((gap) => (
+                <RegistryGapRow key={gap.permit_number} gap={gap} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* NPDES ID Overrides — for permits that can't be matched by ECHO (e.g., VA DMLR IDs) */}
       {can('bulk_process') && (unmatchedPermits.length > 0 || overrides.length > 0) && (
@@ -262,7 +395,8 @@ export function EchoCoveragePanel() {
               <h3 className="text-sm font-semibold text-text-primary">NPDES ID Overrides</h3>
             </div>
             <span className="text-xs text-text-muted">
-              {unmatchedPermits.length} unmatched &middot; {overrides.length} mapped
+              {unmatchedPermits.length} queue unmatched &middot; {overrides.length} override
+              {registryMappingGaps.length > 0 ? ` · ${registryMappingGaps.length} registry gaps` : ''}
             </span>
           </div>
 
@@ -299,6 +433,16 @@ export function EchoCoveragePanel() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function RegistryGapRow({ gap }: { gap: RegistryFederalMappingGap }) {
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <span className="font-mono text-text-secondary w-8">{gap.state_code}</span>
+      <span className="font-mono text-text-primary w-36">{gap.permit_number}</span>
+      <span className="text-text-muted truncate">{gap.issuing_agency ?? '—'}</span>
     </div>
   );
 }
@@ -358,7 +502,7 @@ function UnmatchedPermitRow({
     if (error) {
       toast.error(`Save failed: ${error}`);
     } else {
-      toast.success(`Mapped ${permit.source_permit_id} → ${npdesId.trim().toUpperCase()}`);
+      toast.success(`Mapped ${permit.source_permit_id} → ${npdesId.trim().toUpperCase()} (registry + ECHO override)`);
       setNpdesId('');
     }
   }
@@ -387,10 +531,23 @@ function UnmatchedPermitRow({
   );
 }
 
-function FacilityRow({ facility: f }: { facility: CoverageFacility }) {
+function FacilityRow({
+  facility: f,
+  registryPermit,
+  showRegistryColumn,
+}: {
+  facility: CoverageFacility;
+  registryPermit?: string;
+  showRegistryColumn: boolean;
+}) {
   return (
     <tr className="border-t border-white/[0.03] hover:bg-white/[0.02] transition-colors">
       <td className="py-2.5 px-3 font-mono font-medium text-text-primary">{f.npdes_id}</td>
+      {showRegistryColumn ? (
+        <td className="py-2.5 px-3 font-mono text-cyan-400/90">
+          {registryPermit ?? '—'}
+        </td>
+      ) : null}
       <td className="py-2.5 px-3 text-text-secondary max-w-[200px] truncate">{f.facility_name || '-'}</td>
       <td className="py-2.5 px-3 text-text-secondary">{f.state_code}</td>
       <td className="py-2.5 px-3"><ComplianceBadge status={f.compliance_status} /></td>

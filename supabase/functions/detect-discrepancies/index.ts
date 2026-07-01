@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -13,11 +14,64 @@ const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 const MAX_PAGINATION_ITERATIONS = 500;
 
 // ---------------------------------------------------------------------------
-// Auth
+// Auth — internal secret OR user JWT (Review Queue manual re-run)
 // ---------------------------------------------------------------------------
-function validateAuth(req: Request): boolean {
+const ALLOWED_ROLES = ["environmental_manager", "executive", "admin"];
+
+interface AuthResult {
+  authorized: boolean;
+  userId: string | null;
+  orgId: string | null;
+}
+
+async function validateAuth(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<AuthResult> {
+  const denied: AuthResult = { authorized: false, userId: null, orgId: null };
+
   const secret = req.headers.get("x-internal-secret");
-  return !!SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET;
+  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+    return { authorized: true, userId: null, orgId: null };
+  }
+
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return denied;
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return denied;
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.organization_id) return denied;
+
+  const { data: roleData } = await supabase
+    .from("user_role_assignments")
+    .select("roles(name)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .single();
+
+  const userRole = (
+    roleData?.roles &&
+    typeof roleData.roles === "object" &&
+    "name" in roleData.roles
+  )
+    ? (roleData.roles as { name: string }).name
+    : null;
+
+  if (!userRole || !ALLOWED_ROLES.includes(userRole)) return denied;
+
+  return {
+    authorized: true,
+    userId: user.id,
+    orgId: profile.organization_id,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -250,11 +304,8 @@ async function detectEchoDiscrepancies(
     .eq("organization_id", orgId);
 
   if ((dmrCount ?? 0) > 0) {
-    // Pre-fetch internal DMR line items with joins through FKs.
-    // dmr_line_items uses FK references (parameter_id, outfall_id, dmr_submission_id)
-    // rather than denormalized columns. We join through dmr_submissions → npdes_permits
-    // and water_quality_parameters to build composite match keys.
-    // Key: "npdes_id:outfall:storet_code:period_end" for accurate cross-reference.
+    // Pre-fetch internal DMR line items (NetDMR import / DMR pipeline schema).
+    // Key: "npdes_id:outfall:storet_code:period_end" — npdes_id prefers federal override.
     const intDmrMap = new Map<string, { id: string; reported_value: number }>();
     let intOffset = 0;
     let hasMoreInt = true;
@@ -263,25 +314,35 @@ async function detectEchoDiscrepancies(
       const { data: intPage } = await supabase
         .from("dmr_line_items")
         .select(`
-          id, concentration_avg, quantity_avg,
+          id,
+          measured_value,
+          storet_code,
           outfalls!inner(outfall_number),
-          water_quality_parameters!inner(storet_code),
-          dmr_submissions!inner(reporting_period_end, npdes_permits!inner(permit_number))
+          dmr_submissions!inner(
+            monitoring_period_end,
+            organization_id,
+            npdes_permits!inner(permit_number, metadata)
+          )
         `)
+        .eq("dmr_submissions.organization_id", orgId)
+        .not("measured_value", "is", null)
         .order("id")
         .range(intOffset, intOffset + PAGE_SIZE - 1);
       const intRows = (intPage || []) as Array<Record<string, unknown>>;
       for (const row of intRows) {
         const sub = row.dmr_submissions as Record<string, unknown> | null;
         const permit = sub?.npdes_permits as Record<string, unknown> | null;
-        const param = row.water_quality_parameters as Record<string, unknown> | null;
         const outfall = row.outfalls as Record<string, unknown> | null;
-
-        const npdesId = String(permit?.permit_number || "").toUpperCase();
-        const storetCode = String(param?.storet_code || "");
-        const outfallNum = String(outfall?.outfall_number || "");
-        const periodEnd = String(sub?.reporting_period_end || "");
-        const reportedValue = (row.concentration_avg as number) ?? (row.quantity_avg as number);
+        const meta = permit?.metadata as Record<string, unknown> | null;
+        const federalOverride = (meta?.federal_npdes_id_override as string | undefined)
+          ?.trim()
+          .toUpperCase();
+        const npdesId = federalOverride ||
+          String(permit?.permit_number || "").toUpperCase();
+        const storetCode = String(row.storet_code || "").trim();
+        const outfallNum = String(outfall?.outfall_number || "").trim();
+        const periodEnd = String(sub?.monitoring_period_end || "");
+        const reportedValue = row.measured_value as number;
 
         if (!npdesId || !storetCode || reportedValue == null) continue;
 
@@ -362,19 +423,20 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (!validateAuth(req)) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const auth = await validateAuth(req, supabase);
+  if (!auth.authorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
   let source = "echo";
-  let orgId: string | null = null;
+  let orgId: string | null = auth.orgId;
   let syncLogId: string | null = null;
-  let triggeredBy: string | null = null;
+  let triggeredBy: string | null = auth.userId;
 
   try {
     const body = await req.json();
@@ -469,6 +531,18 @@ serve(async (req) => {
   console.log(
     `Discrepancy detection: ${discrepancies.length} found, ${inserted} inserted, ${skippedDupes} skipped (dupes), ${insertErrors} insert errors`,
   );
+
+  // 5.16 — evaluate alert rules and dispatch email/SMS (non-fatal)
+  try {
+    await triggerInternalEdgeFunction("dispatch-compliance-alerts", {
+      organization_id: orgId,
+      source,
+      inserted,
+      sync_log_id: syncLogId,
+    });
+  } catch (err) {
+    console.error("dispatch-compliance-alerts invoke error:", err);
+  }
 
   return new Response(
     JSON.stringify({

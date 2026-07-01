@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { DiscrepancyRow, DiscrepancySeverity, DiscrepancyStatus } from '@/stores/reviewQueue';
 
@@ -18,11 +19,20 @@ export function useDiscrepancies() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<SeverityCounts>({ critical: 0, high: 0, medium: 0, low: 0 });
+  const [pendingCount, setPendingCount] = useState(0);
+  const [escalatedCount, setEscalatedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { log } = useAuditLog();
   const abortRef = useRef<AbortController | null>(null);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchHandlersRef = useRef<{ fetchRows: () => Promise<void>; fetchCounts: () => Promise<void> }>({
+    fetchRows: async () => {},
+    fetchCounts: async () => {},
+  });
   const userId = user?.id ?? null;
+  const orgId = profile?.organization_id ?? null;
 
   // Fetch severity counts server-side (accurate across all rows, not capped by PostgREST)
   const fetchCounts = useCallback(async () => {
@@ -34,13 +44,26 @@ export function useDiscrepancies() {
         const { count } = await supabase
           .from('discrepancy_reviews')
           .select('id', { count: 'exact', head: true })
-          .in('status', ['pending', 'reviewed'])
+          .in('status', ['pending', 'reviewed', 'escalated'])
           .eq('severity', sev);
         results[sev] = count ?? 0;
       }),
     );
 
     setCounts(results);
+
+    const [{ count: pending }, { count: escalated }] = await Promise.all([
+      supabase
+        .from('discrepancy_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending'),
+      supabase
+        .from('discrepancy_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'escalated'),
+    ]);
+    setPendingCount(pending ?? 0);
+    setEscalatedCount(escalated ?? 0);
   }, []);
 
   const fetchDiscrepancies = useCallback(async () => {
@@ -62,7 +85,7 @@ export function useDiscrepancies() {
       const { data, error: fetchErr } = await supabase
         .from('discrepancy_reviews')
         .select('*')
-        .in('status', ['pending', 'reviewed'])
+        .in('status', ['pending', 'reviewed', 'escalated'])
         .order('severity', { ascending: true })
         .order('detected_at', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
@@ -92,10 +115,49 @@ export function useDiscrepancies() {
     setLoading(false);
   }, [fetchCounts]);
 
+  fetchHandlersRef.current = {
+    fetchRows: fetchDiscrepancies,
+    fetchCounts,
+  };
+
   useEffect(() => {
     fetchDiscrepancies();
     return () => { abortRef.current?.abort(); };
   }, [fetchDiscrepancies]);
+
+  // 3.47 — org-scoped realtime refresh (debounced; detection/sync can insert many rows)
+  useEffect(() => {
+    if (!orgId) return;
+
+    const channel = supabase
+      .channel(`discrepancy-reviews:${orgId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'discrepancy_reviews',
+          filter: `organization_id=eq.${orgId}`,
+        },
+        () => {
+          if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+          realtimeDebounceRef.current = setTimeout(() => {
+            void fetchHandlersRef.current.fetchCounts();
+            void fetchHandlersRef.current.fetchRows();
+          }, 1500);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      void supabase.removeChannel(channel).catch((err) => {
+        if (import.meta.env.DEV) {
+          console.warn('[useDiscrepancies] removeChannel failed', err);
+        }
+      });
+    };
+  }, [orgId]);
 
   const updateStatus = useCallback(
     async (
@@ -148,9 +210,9 @@ export function useDiscrepancies() {
 
       // Optimistic local update instead of full re-fetch
       setRows((prev) => {
-        const isActionable = status === 'pending' || status === 'reviewed';
-        if (!isActionable) {
-          // Row leaves the actionable set — remove it
+        const staysInQueue =
+          status === 'pending' || status === 'reviewed' || status === 'escalated';
+        if (!staysInQueue) {
           return prev.filter((r) => r.id !== id);
         }
         // Row stays visible — update it in place
@@ -163,21 +225,29 @@ export function useDiscrepancies() {
             ...(extra?.review_notes !== undefined ? { review_notes: extra.review_notes || null } : {}),
             ...(extra?.dismiss_reason !== undefined ? { dismiss_reason: extra.dismiss_reason || null } : {}),
           };
-          // Only pending → reviewed keeps the row in this list; other actions remove it.
-          if (status === 'reviewed') {
+          if (status === 'reviewed' || status === 'escalated') {
             next.reviewed_at = now;
             next.reviewed_by = userId;
+          }
+          if (status === 'escalated') {
+            next.escalated_at = now;
           }
           return next;
         });
       });
 
-      // Update counts optimistically
+      if (status === 'reviewed' && rows.find((r) => r.id === id)?.status === 'pending') {
+        setPendingCount((prev) => Math.max(0, prev - 1));
+      }
+      if (status === 'escalated') {
+        setEscalatedCount((prev) => prev + 1);
+      }
+
       setCounts((prev) => {
         const row = rows.find((r) => r.id === id);
         if (!row) return prev;
         const sev = row.severity as DiscrepancySeverity;
-        const isLeaving = status !== 'pending' && status !== 'reviewed';
+        const isLeaving = status === 'dismissed' || status === 'resolved';
         if (isLeaving && prev[sev] > 0) {
           return { ...prev, [sev]: prev[sev] - 1 };
         }
@@ -185,7 +255,7 @@ export function useDiscrepancies() {
       });
 
       setTotalCount((prev) => {
-        const isLeaving = status !== 'pending' && status !== 'reviewed';
+        const isLeaving = status === 'dismissed' || status === 'resolved';
         return isLeaving ? Math.max(0, prev - 1) : prev;
       });
 
@@ -210,5 +280,76 @@ export function useDiscrepancies() {
     [log, rows, userId],
   );
 
-  return { rows, loading, error, counts, totalCount, refetch: fetchDiscrepancies, updateStatus };
+  const bulkMarkReviewed = useCallback(
+    async (ids: string[]) => {
+      if (!userId) {
+        return 'Sign in to record who performed this review action';
+      }
+      const pendingIds = ids.filter((id) => {
+        const row = rows.find((r) => r.id === id);
+        return row?.status === 'pending';
+      });
+      if (pendingIds.length === 0) {
+        return 'No pending discrepancies selected';
+      }
+
+      const now = new Date().toISOString();
+      const { error: updateErr } = await supabase
+        .from('discrepancy_reviews')
+        .update({
+          status: 'reviewed',
+          reviewed_at: now,
+          reviewed_by: userId,
+          updated_at: now,
+        })
+        .in('id', pendingIds)
+        .eq('status', 'pending');
+
+      if (updateErr) {
+        return updateErr.message;
+      }
+
+      setRows((prev) =>
+        prev.map((r) =>
+          pendingIds.includes(r.id)
+            ? {
+                ...r,
+                status: 'reviewed' as const,
+                reviewed_at: now,
+                reviewed_by: userId,
+                updated_at: now,
+              }
+            : r,
+        ),
+      );
+
+      setPendingCount((prev) => Math.max(0, prev - pendingIds.length));
+
+      log(
+        'discrepancy_reviewed',
+        {
+          bulk: true,
+          count: pendingIds.length,
+          discrepancy_ids: pendingIds.slice(0, 25),
+        },
+        { module: 'external_data', tableName: 'discrepancy_reviews' },
+      );
+
+      return null;
+    },
+    [log, rows, userId],
+  );
+
+  return {
+    rows,
+    loading,
+    error,
+    counts,
+    pendingCount,
+    escalatedCount,
+    totalCount,
+    refetch: fetchDiscrepancies,
+    updateStatus,
+    bulkMarkReviewed,
+  };
 }

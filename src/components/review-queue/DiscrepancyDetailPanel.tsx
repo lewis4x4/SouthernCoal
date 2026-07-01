@@ -27,6 +27,7 @@ const DISMISS_REASONS = [
 
 interface Props {
   discrepancy: DiscrepancyRow;
+  reviewerNames?: Record<string, string>;
   onClose: () => void;
   onAction: (
     id: string,
@@ -35,7 +36,7 @@ interface Props {
   ) => Promise<string | null>;
 }
 
-export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Props) {
+export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose, onAction }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
   const canTriage = can('verify');
@@ -44,6 +45,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, onClose, onAction }: Pr
     d.reviewed_by,
     user?.id ?? null,
     selfReviewDisplayNameFromProfile(profile),
+    reviewerNames,
   );
   const [notes, setNotes] = useState(d.review_notes || '');
   const [dismissReason, setDismissReason] = useState('');

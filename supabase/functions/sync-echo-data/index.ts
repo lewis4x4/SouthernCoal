@@ -65,11 +65,14 @@ async function validateAuth(
     return { authorized: true, userId: null, orgId: null, role: "system" };
   }
 
-  // Path 2: Service role JWT (pg_net, admin scripts)
-  // Verify via Supabase auth — never trust decoded payload without signature check
   const authHeader = req.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
+
+    // Path 2: Service role key (pg_cron / pg_net)
+    if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
+      return { authorized: true, userId: null, orgId: null, role: "system" };
+    }
 
     // Path 3: User JWT (frontend "Sync Now") — verify signature via Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -385,6 +388,8 @@ serve(async (req) => {
   let dryRun = false;
   let runTag: string | null = null;
   let targetNpdesIds: string[] = [];
+  let staleDays = 0;
+  let staleOnly = false;
   try {
     const body = await req.json();
     syncType = body.sync_type || "manual";
@@ -399,8 +404,20 @@ serve(async (req) => {
         .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
         .map((v: string) => v.trim().toUpperCase())
       : [];
+    if (typeof body.stale_days === "number" && body.stale_days > 0) {
+      staleDays = Math.floor(body.stale_days);
+    }
+    if (body.stale_only === true) staleOnly = true;
+    if (body.stale_only === false) staleOnly = false;
   } catch {
     // No body is fine — defaults to manual, no limit, offset 0
+  }
+
+  if (syncType === "scheduled") {
+    if (staleDays <= 0) staleDays = 7;
+    if (!staleOnly) staleOnly = true;
+    if (limit <= 0) limit = 5;
+    if (!runTag) runTag = "cron-weekly-echo";
   }
 
   // -----------------------------------------------------------------------
@@ -502,9 +519,42 @@ serve(async (req) => {
     console.log(`Applied ${overridesApplied} NPDES ID overrides (${overrideRows.length} total in table)`);
   }
 
-  const eligiblePermits = Array.from(permitMap.values()).sort((a, b) =>
+  let eligiblePermits = Array.from(permitMap.values()).sort((a, b) =>
     a.npdes_id.localeCompare(b.npdes_id),
   );
+
+  let stalePermitsSkipped = 0;
+  if (staleOnly && staleDays > 0 && targetNpdesIds.length === 0) {
+    const npdesIds = eligiblePermits.map((p) => p.npdes_id);
+    const syncedAtByNpdes = new Map<string, string>();
+    const BATCH = 200;
+    for (let i = 0; i < npdesIds.length; i += BATCH) {
+      const chunk = npdesIds.slice(i, i + BATCH);
+      const { data: facilityRows, error: facilityErr } = await supabase
+        .from("external_echo_facilities")
+        .select("npdes_id, synced_at")
+        .in("npdes_id", chunk);
+      if (facilityErr) {
+        console.error("Stale permit filter query failed:", facilityErr.message);
+        break;
+      }
+      for (const row of facilityRows || []) {
+        if (row.synced_at) syncedAtByNpdes.set(row.npdes_id, row.synced_at);
+      }
+    }
+
+    const cutoffMs = Date.now() - staleDays * 86_400_000;
+    const before = eligiblePermits.length;
+    eligiblePermits = eligiblePermits.filter((p) => {
+      const syncedAt = syncedAtByNpdes.get(p.npdes_id);
+      if (!syncedAt) return true;
+      return new Date(syncedAt).getTime() < cutoffMs;
+    });
+    stalePermitsSkipped = before - eligiblePermits.length;
+    console.log(
+      `Stale filter (${staleDays}d): ${eligiblePermits.length} to sync, ${stalePermitsSkipped} skipped as fresh`,
+    );
+  }
 
   const targetSet = new Set(targetNpdesIds);
   const selectedPermitPool = targetSet.size > 0
@@ -536,6 +586,9 @@ serve(async (req) => {
         overrides_applied: overridesApplied,
         selected_npdes_ids: permits.map((p) => p.npdes_id),
         run_tag: runTag,
+        stale_days: staleDays > 0 ? staleDays : undefined,
+        stale_only: staleOnly || undefined,
+        stale_permits_skipped: stalePermitsSkipped > 0 ? stalePermitsSkipped : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -770,6 +823,9 @@ serve(async (req) => {
         target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : null,
         run_tag: runTag,
         triggered_by: auth.userId || "system",
+        stale_days: staleDays > 0 ? staleDays : null,
+        stale_only: staleOnly,
+        stale_permits_skipped: stalePermitsSkipped,
       },
     })
     .eq("id", syncLog.id);
@@ -854,6 +910,9 @@ serve(async (req) => {
       nextOffset: hasMore ? offset + permits.length : null,
       target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : undefined,
       run_tag: runTag ?? undefined,
+      stale_days: staleDays > 0 ? staleDays : undefined,
+      stale_only: staleOnly || undefined,
+      stale_permits_skipped: stalePermitsSkipped > 0 ? stalePermitsSkipped : undefined,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );

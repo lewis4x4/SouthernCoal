@@ -1,5 +1,6 @@
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
+import { cn } from '@/lib/cn';
 import { AlertTriangle, AlertCircle, Info, ChevronDown } from 'lucide-react';
 
 interface SeverityCounts {
@@ -43,31 +44,58 @@ const CARDS = [
 interface Props {
   counts: SeverityCounts;
   loading?: boolean;
+  activeSeverity?: string;
+  onSeverityClick?: (severity: keyof SeverityCounts) => void;
 }
 
-export function DiscrepancySummaryCards({ counts, loading }: Props) {
+export function DiscrepancySummaryCards({
+  counts,
+  loading,
+  activeSeverity,
+  onSeverityClick,
+}: Props) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {CARDS.map(({ key, label, icon: Icon, spotlightColor, valueColor }) => (
-        <SpotlightCard key={key} spotlightColor={spotlightColor} className="p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                {label}
-              </p>
-              {loading ? (
-                <div className="mt-1 h-8 w-16 animate-pulse rounded bg-white/[0.06]" />
-              ) : (
-                <AnimatedCounter
-                  value={counts[key]}
-                  className={`text-2xl font-semibold ${valueColor} mt-1 block`}
-                />
-              )}
+      {CARDS.map(({ key, label, icon: Icon, spotlightColor, valueColor }) => {
+        const card = (
+          <SpotlightCard spotlightColor={spotlightColor} className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  {label}
+                </p>
+                {loading ? (
+                  <div className="mt-1 h-8 w-16 animate-pulse rounded bg-white/[0.06]" />
+                ) : (
+                  <AnimatedCounter
+                    value={counts[key]}
+                    className={`text-2xl font-semibold ${valueColor} mt-1 block`}
+                  />
+                )}
+              </div>
+              <Icon size={20} className="text-text-muted" />
             </div>
-            <Icon size={20} className="text-text-muted" />
-          </div>
-        </SpotlightCard>
-      ))}
+          </SpotlightCard>
+        );
+
+        if (!onSeverityClick) {
+          return <div key={key}>{card}</div>;
+        }
+
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSeverityClick(key)}
+            className={cn(
+              'text-left rounded-2xl transition-colors',
+              activeSeverity === key && 'ring-1 ring-cyan-500/40',
+            )}
+          >
+            {card}
+          </button>
+        );
+      })}
     </div>
   );
 }
