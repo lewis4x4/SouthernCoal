@@ -36,6 +36,12 @@ export const COMPLIANCE_ADVANCED_ROLES: Role[] = [
   'coo', 'compliance_reviewer',
 ];
 
+/** Counsel + compliance advanced — defensible-miss packets and counsel-facing evidence */
+export const COUNSEL_EVIDENCE_ROLES: Role[] = [
+  ...COMPLIANCE_ADVANCED_ROLES,
+  'chief_counsel',
+];
+
 export const CORRECTIVE_ACTION_ROLES: Role[] = [
   'admin', 'executive', 'environmental_manager', 'site_manager', 'safety_manager', 'field_sampler',
   'coo', 'wv_supervisor', 'compliance_reviewer', 'maintenance_owner',

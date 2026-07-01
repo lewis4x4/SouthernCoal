@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { GAP_REVIEW_STATUS_LABELS } from '@/lib/samplingGapSeverity';
@@ -93,6 +95,16 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
         <p className="text-xs text-text-secondary">
           <span className="text-text-muted">Skip reason:</span> {row.skip_reason}
         </p>
+      )}
+
+      {row.gap_kind === 'missed' && (
+        <Link
+          to={`/compliance/defensible-miss?gapId=${row.id}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-[11px] font-medium text-purple-300 hover:bg-purple-500/15"
+        >
+          <FileText size={12} />
+          Open defensible-miss packet
+        </Link>
       )}
 
       <div>
