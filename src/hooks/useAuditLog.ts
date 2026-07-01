@@ -75,6 +75,9 @@ type AuditAction =
   | 'echo_sync_stale_trigger'
   | 'compliance_alert_dispatched'
   | 'exceedance_alert_dispatched'
+  // Lane C QW1 — calendar gap detection
+  | 'sampling_gap_detection_manual'
+  | 'sampling_gap_review_updated'
   // Report Engine
   | 'report_generated'
   | 'report_template_created'
