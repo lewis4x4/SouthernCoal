@@ -15,6 +15,7 @@ type AuditAction =
   | 'staging_clear_all'
   | 'command_palette_action'
   | 'filter_change'
+  | 'upload_smoke_runtime_run'
   | 'obligation_generation'
   | 'deadline_alert_sent'
   | 'coverage_export_csv'

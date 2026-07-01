@@ -5,6 +5,7 @@ import { ProcessingQueue } from '@/components/dashboard/ProcessingQueue';
 import { ComplianceMatrix } from '@/components/dashboard/ComplianceMatrix';
 import { PriorityGuide } from '@/components/dashboard/PriorityGuide';
 import { CommandPalette } from '@/components/dashboard/CommandPalette';
+import { UploadDashboardSmokePanel } from '@/components/dashboard/UploadDashboardSmokePanel';
 
 /**
  * Full Upload Dashboard page.
@@ -25,6 +26,8 @@ export function UploadDashboard() {
 
         {/* Summary stats */}
         <SummaryStats />
+
+        <UploadDashboardSmokePanel />
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
