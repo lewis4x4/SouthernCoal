@@ -28,6 +28,7 @@
     "qa:msha": "node scripts/msha-preflight.mjs",
     "qa:penalty-ledger": "node scripts/penalty-ledger-preflight.mjs",
     "qa:obligation-ledger": "node scripts/obligation-ledger-preflight.mjs",
+    "qa:schema-72": "node scripts/schema-72-preflight.mjs",
     "qa:parameter-aliases": "node scripts/parameter-aliases-preflight.mjs",
     "qa:va-tn-enrichment": "node scripts/va-tn-enrichment-preflight.mjs",
     "validate:parameter-aliases": "node scripts/validate-parameter-aliases.mjs",

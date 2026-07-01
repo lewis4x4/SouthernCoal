@@ -6,6 +6,8 @@ export interface PenaltyLedgerSource {
   amount: number;
   event_count: number;
   confidence: PenaltyLedgerConfidence;
+  citation?: string;
+  verification_status?: 'draft' | 'verified' | 'disputed';
 }
 
 export interface PenaltyLedgerSummary {
