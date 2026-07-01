@@ -61,8 +61,13 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
     },
     {
       id: 'summary_stats_accuracy',
-      path: 'hooks/useComplianceMatrix.ts',
-      patterns: [/totalPermits/, /totalOutfalls/, /totalLimits/, /awaitingReview/],
+      path: 'hooks/useUploadDashboardDomainStats.ts',
+      patterns: [
+        /get_upload_dashboard_domain_stats/,
+        /totalPermits/,
+        /totalOutfalls/,
+        /totalLimits/,
+      ],
     },
     {
       id: 'matrix_cell_filtering',

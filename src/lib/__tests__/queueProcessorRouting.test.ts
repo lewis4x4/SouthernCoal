@@ -116,4 +116,18 @@ describe('resolveQueueParser', () => {
       false,
     );
   });
+
+  it('routes archive categories to process-compliance-archive', () => {
+    for (const category of [
+      'field_inspection',
+      'quarterly_report',
+      'audit_report',
+      'enforcement',
+    ] as const) {
+      const route = resolveQueueParser(entry({ file_category: category, file_name: 'doc.pdf' }));
+      expect(route.kind).toBe('compliance_archive');
+      expect(route.functionName).toBe('process-compliance-archive');
+      expect(canProcessQueueEntry(entry({ file_category: category }))).toBe(true);
+    }
+  });
 });

@@ -10,6 +10,7 @@ import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useParameterSheetProcessing } from '@/hooks/useParameterSheetProcessing';
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useDmrProcessing } from '@/hooks/useDmrProcessing';
+import { useArchiveDocumentProcessing } from '@/hooks/useArchiveDocumentProcessing';
 import { useQueueStore } from '@/stores/queue';
 
 /**
@@ -21,6 +22,8 @@ export function useQueueProcessing() {
     useParameterSheetProcessing();
   const { processLabData, processAllQueuedLabData } = useLabDataProcessing();
   const { processDmr, processAllQueuedDmrs } = useDmrProcessing();
+  const { processArchiveDocument, processAllQueuedArchiveDocuments } =
+    useArchiveDocumentProcessing();
 
   const processEntry = useCallback(
     async (queueId: string) => {
@@ -40,6 +43,8 @@ export function useQueueProcessing() {
           return processLabData(queueId);
         case 'netdmr_bundle':
           return processDmr(queueId);
+        case 'compliance_archive':
+          return processArchiveDocument(queueId);
         default: {
           const categoryLabel =
             CATEGORY_BY_DB_KEY[entry.file_category]?.label ?? entry.file_category;
@@ -49,7 +54,7 @@ export function useQueueProcessing() {
         }
       }
     },
-    [processPermit, processParameterSheet, processLabData, processDmr],
+    [processPermit, processParameterSheet, processLabData, processDmr, processArchiveDocument],
   );
 
   const retryFailed = useCallback(
@@ -66,6 +71,7 @@ export function useQueueProcessing() {
     processAllParameterSheets,
     processAllQueuedLabData,
     processAllQueuedDmrs,
+    processAllQueuedArchiveDocuments,
     canProcessQueueEntry,
     isParameterSheetFile,
     resolveQueueParser,

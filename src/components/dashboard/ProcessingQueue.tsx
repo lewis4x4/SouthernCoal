@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, RefreshCw, Play, AlertTriangle, RotateCcw } from 'lucide-react';
+import { FileText, RefreshCw, Play, AlertTriangle, RotateCcw, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueueStore, filterEntries } from '@/stores/queue';
 import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useQueueProcessing } from '@/hooks/useQueueProcessing';
-import { isParameterSheetFile } from '@/lib/queueProcessorRouting';
+import { useBulkQueueImport } from '@/hooks/useBulkQueueImport';
+import { isArchiveDocumentCategory, isParameterSheetFile } from '@/lib/queueProcessorRouting';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ErrorForensics } from '@/components/ui/ErrorForensics';
 import { ExtractionPanel } from '@/components/dashboard/queue/ExtractionPanel';
@@ -33,8 +34,14 @@ export function ProcessingQueue() {
     processAllParameterSheets,
     processAllQueuedLabData,
     processAllQueuedDmrs,
+    processAllQueuedArchiveDocuments,
     retryFailed,
   } = useQueueProcessing();
+  const {
+    importAllParsed,
+    totalParsedImportable,
+    isImporting: bulkImportRunning,
+  } = useBulkQueueImport();
   const { log } = useAuditLog();
   const [retryingFailed, setRetryingFailed] = useState(false);
 
@@ -72,6 +79,10 @@ export function ProcessingQueue() {
 
   const queuedDmrCount = allEntries.filter(
     (e) => e.file_category === 'dmr' && e.status === 'queued',
+  ).length;
+
+  const queuedArchiveCount = allEntries.filter(
+    (e) => e.status === 'queued' && isArchiveDocumentCategory(e.file_category),
   ).length;
 
   const expandedEntry = expandedRowId
@@ -164,6 +175,27 @@ export function ProcessingQueue() {
             >
               <Play size={10} className="inline mr-1" />
               Process Lab Data ({queuedLabDataCount})
+            </button>
+          )}
+          {queuedArchiveCount > 0 && can('bulk_process') && (
+            <button
+              onClick={() => processAllQueuedArchiveDocuments()}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
+              title={`Index ${queuedArchiveCount} archive document${queuedArchiveCount !== 1 ? 's' : ''} for search`}
+            >
+              <Play size={10} className="inline mr-1" />
+              Archive Docs ({queuedArchiveCount})
+            </button>
+          )}
+          {totalParsedImportable > 0 && can('process') && (
+            <button
+              onClick={() => void importAllParsed()}
+              disabled={bulkImportRunning}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+              title={`Import ${totalParsedImportable} parsed file${totalParsedImportable !== 1 ? 's' : ''} to domain tables`}
+            >
+              <Upload size={10} className="inline mr-1" />
+              {bulkImportRunning ? 'Importing…' : `Import Parsed (${totalParsedImportable})`}
             </button>
           )}
           <button

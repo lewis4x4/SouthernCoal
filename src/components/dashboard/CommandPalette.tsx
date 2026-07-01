@@ -5,6 +5,7 @@ import { useQueueStore } from '@/stores/queue';
 import { useStagingStore } from '@/stores/staging';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useQueueProcessing } from '@/hooks/useQueueProcessing';
+import { useBulkQueueImport } from '@/hooks/useBulkQueueImport';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES, CATEGORIES } from '@/lib/constants';
 import {
@@ -15,6 +16,7 @@ import {
   Download,
   Trash2,
   Search,
+  Database,
 } from 'lucide-react';
 
 /**
@@ -32,9 +34,11 @@ export function CommandPalette() {
     processAllParameterSheets,
     processAllQueuedLabData,
     processAllQueuedDmrs,
+    processAllQueuedArchiveDocuments,
     retryFailed,
     canProcessQueueEntry,
   } = useQueueProcessing();
+  const { importAllParsed, totalParsedImportable } = useBulkQueueImport();
   const entries = useQueueStore((s) => s.entries);
   const { log } = useAuditLog();
 
@@ -214,6 +218,30 @@ export function CommandPalette() {
                 >
                   <Play size={12} />
                   Process all queued DMR exports
+                </Command.Item>
+              )}
+              {can('bulk_process') && (
+                <Command.Item
+                  value="process all archive documents"
+                  onSelect={() =>
+                    runAction('bulk_process_archive', () => processAllQueuedArchiveDocuments())
+                  }
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
+                >
+                  <Play size={12} />
+                  Process all archive documents
+                </Command.Item>
+              )}
+              {can('process') && totalParsedImportable > 0 && (
+                <Command.Item
+                  value="import all parsed to database"
+                  onSelect={() =>
+                    runAction('bulk_import_parsed', () => void importAllParsed())
+                  }
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
+                >
+                  <Database size={12} />
+                  Import all parsed to database ({totalParsedImportable})
                 </Command.Item>
               )}
               {can('retry') && (

@@ -152,5 +152,53 @@ export function useDmrImport() {
     [importingIds],
   );
 
-  return { importNetDmr, isImporting };
+  const importAllParsedNetDmrs = useCallback(async () => {
+    const idsToImport = useQueueStore
+      .getState()
+      .entries.filter(
+        (e) =>
+          e.status === 'parsed' &&
+          e.file_category === 'dmr' &&
+          (e.extracted_data as Record<string, unknown> | null)?.document_type === 'netdmr_bundle',
+      )
+      .map((e) => e.id);
+
+    if (idsToImport.length === 0) {
+      toast.info('No parsed DMR exports to import.');
+      return;
+    }
+
+    toast.info(
+      `Importing ${idsToImport.length} parsed DMR export${idsToImport.length > 1 ? 's' : ''}...`,
+    );
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const id of idsToImport) {
+      const freshEntry = useQueueStore.getState().entries.find((e) => e.id === id);
+      if (!freshEntry || freshEntry.status !== 'parsed') continue;
+
+      try {
+        await importNetDmr(id);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    if (failCount === 0) {
+      toast.success(`Successfully imported ${successCount} DMR export${successCount === 1 ? '' : 's'}.`);
+    } else {
+      toast.warning(`Imported ${successCount}, failed ${failCount}.`);
+    }
+  }, [importNetDmr]);
+
+  return {
+    importNetDmr,
+    importAllParsedNetDmrs,
+    isImporting,
+    isAnyImporting: importingIds.size > 0,
+  };
 }

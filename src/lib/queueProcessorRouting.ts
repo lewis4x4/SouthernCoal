@@ -1,5 +1,17 @@
 import type { QueueEntry } from '@/types/queue';
 
+/** Categories indexed for search — no structured domain import. */
+export const ARCHIVE_DOCUMENT_CATEGORIES = new Set([
+  'field_inspection',
+  'quarterly_report',
+  'audit_report',
+  'enforcement',
+]);
+
+export function isArchiveDocumentCategory(category: string): boolean {
+  return ARCHIVE_DOCUMENT_CATEGORIES.has(category);
+}
+
 /** Edge Function invoked for a queue entry. */
 export type QueueParserKind =
   | 'permit_pdf'
@@ -9,6 +21,7 @@ export type QueueParserKind =
   | 'osmre_monitoring'
   | 'al_lab_data'
   | 'netdmr_bundle'
+  | 'compliance_archive'
   | 'unsupported';
 
 export interface QueueParserRoute {
@@ -125,6 +138,15 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
         kind: 'netdmr_bundle',
         functionName: 'parse-netdmr-bundle',
         label: 'NetDMR bundle',
+      };
+    case 'field_inspection':
+    case 'quarterly_report':
+    case 'audit_report':
+    case 'enforcement':
+      return {
+        kind: 'compliance_archive',
+        functionName: 'process-compliance-archive',
+        label: 'Compliance archive',
       };
     default:
       return {

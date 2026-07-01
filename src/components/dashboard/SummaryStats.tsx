@@ -1,6 +1,7 @@
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { useComplianceMatrix } from '@/hooks/useComplianceMatrix';
+import { useUploadDashboardDomainStats } from '@/hooks/useUploadDashboardDomainStats';
 import { FileText, GitBranch, Ruler, AlertCircle } from 'lucide-react';
 
 const CARDS = [
@@ -35,7 +36,15 @@ const CARDS = [
  * Animated counters transition from old → new values.
  */
 export function SummaryStats() {
-  const { stats } = useComplianceMatrix();
+  const { stats: queueStats } = useComplianceMatrix();
+  const domainStats = useUploadDashboardDomainStats();
+
+  const stats = {
+    totalPermits: domainStats.totalPermits,
+    totalOutfalls: domainStats.totalOutfalls,
+    totalLimits: domainStats.totalLimits,
+    awaitingReview: queueStats.awaitingReview,
+  };
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
