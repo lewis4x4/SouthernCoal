@@ -11,6 +11,7 @@ const EMPTY: DiscrepancyReadinessCounts = {
   exceedances: 0,
   dmrSubmissions: 0,
   dmrLineItems: 0,
+  mshaOpenCitations: 0,
 };
 
 describe('discrepancyDetectionReadiness', () => {
@@ -40,10 +41,12 @@ describe('discrepancyDetectionReadiness', () => {
       exceedances: 42,
       dmrSubmissions: 80,
       dmrLineItems: 640,
+      mshaOpenCitations: 0,
     });
     expect(result.overall).toBe('ready');
     expect(result.canRunMeaningfulDetection).toBe(true);
-    expect(result.gates.every((g) => g.status === 'ready')).toBe(true);
+    expect(result.gates.find((g) => g.id === 'msha_abatement')?.status).toBe('blocked');
+    expect(result.gates.filter((g) => g.id !== 'msha_abatement').every((g) => g.status === 'ready')).toBe(true);
   });
 
   it('partial when permits exist but exceedances missing', () => {
@@ -54,9 +57,20 @@ describe('discrepancyDetectionReadiness', () => {
       exceedances: 0,
       dmrSubmissions: 0,
       dmrLineItems: 0,
+      mshaOpenCitations: 0,
     });
     expect(result.overall).toBe('partial');
     expect(result.canRunMeaningfulDetection).toBe(false);
     expect(result.gates.find((g) => g.id === 'rule2')?.status).toBe('degraded');
+  });
+
+  it('enables MSHA detection when open citations exist', () => {
+    const result = assessDiscrepancyDetectionReadiness({
+      ...EMPTY,
+      echoFacilities: 10,
+      mshaOpenCitations: 2,
+    });
+    expect(result.canRunMshaDetection).toBe(true);
+    expect(result.gates.find((g) => g.id === 'msha_abatement')?.status).toBe('ready');
   });
 });

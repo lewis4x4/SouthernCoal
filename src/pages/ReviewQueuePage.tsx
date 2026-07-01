@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useReviewerProfiles } from '@/hooks/useReviewerProfiles';
-import { ShieldAlert, RefreshCw, Loader2, ListFilter, CheckCheck, Bell } from 'lucide-react';
+import { ShieldAlert, RefreshCw, Loader2, ListFilter, CheckCheck, Bell, HardHat } from 'lucide-react';
 import { toast } from 'sonner';
 import { DiscrepancySummaryCards } from '@/components/review-queue/DiscrepancySummaryCards';
 import { DiscrepancyTable } from '@/components/review-queue/DiscrepancyTable';
@@ -57,10 +57,10 @@ export function ReviewQueuePage() {
       .map((r) => r.id);
   }, [rows, filters]);
 
-  async function handleRunDetection() {
-    const result = await runDetection();
+  async function handleRunDetection(source: 'echo' | 'msha' = 'echo') {
+    const result = await runDetection(source);
     if (result?.success) {
-      setFilters({ status: 'pending' });
+      setFilters({ status: 'pending', source: source === 'msha' ? 'msha' : undefined });
       await refetch();
       await refetchReadiness();
     }
@@ -164,7 +164,7 @@ export function ReviewQueuePage() {
 
           <button
             type="button"
-            onClick={() => void handleRunDetection()}
+            onClick={() => void handleRunDetection('echo')}
             disabled={detecting || !canRunEchoSync}
             title={
               !canRunEchoSync
@@ -174,7 +174,24 @@ export function ReviewQueuePage() {
             className="flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] disabled:opacity-40"
           >
             {detecting ? <Loader2 size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
-            Run Detection
+            Run ECHO
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleRunDetection('msha')}
+            disabled={detecting || !canRunEchoSync || !detectionReadiness?.canRunMshaDetection}
+            title={
+              !canRunEchoSync
+                ? 'Requires bulk_process permission'
+                : detectionReadiness?.canRunMshaDetection
+                  ? 'Queue overdue / due-soon MSHA abatement citations'
+                  : 'Sync MSHA violations first — no open citations'
+            }
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-40"
+          >
+            {detecting ? <Loader2 size={14} className="animate-spin" /> : <HardHat size={14} />}
+            Run MSHA
           </button>
 
           {canRunEchoSync && (

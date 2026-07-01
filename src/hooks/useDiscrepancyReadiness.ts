@@ -14,6 +14,7 @@ const EMPTY_COUNTS: DiscrepancyReadinessCounts = {
   exceedances: 0,
   dmrSubmissions: 0,
   dmrLineItems: 0,
+  mshaOpenCitations: 0,
 };
 
 async function headCount(table: string, orgId: string): Promise<number> {
@@ -36,6 +37,7 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
     exceedances,
     dmrSubmissions,
     dmrLineItemsResult,
+    mshaOpenCitations,
   ] = await Promise.all([
     headCount('external_echo_facilities', orgId),
     supabase
@@ -50,6 +52,11 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
       .from('dmr_line_items')
       .select('id, dmr_submissions!inner(organization_id)', { count: 'exact', head: true })
       .eq('dmr_submissions.organization_id', orgId),
+    supabase
+      .from('external_msha_inspections')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .is('termination_date', null),
   ]);
 
   const echoViolations = echoViolationsResult.error
@@ -66,6 +73,13 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
       })()
     : (dmrLineItemsResult.count ?? 0);
 
+  const mshaCount = mshaOpenCitations.error
+    ? (() => {
+        console.error('[discrepancy-readiness] msha citations count error:', mshaOpenCitations.error.message);
+        return 0;
+      })()
+    : (mshaOpenCitations.count ?? 0);
+
   return {
     echoFacilities,
     echoViolations,
@@ -73,6 +87,7 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
     exceedances,
     dmrSubmissions,
     dmrLineItems,
+    mshaOpenCitations: mshaCount,
   };
 }
 

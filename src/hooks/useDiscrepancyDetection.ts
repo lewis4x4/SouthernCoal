@@ -30,7 +30,7 @@ export function useDiscrepancyDetection() {
     }
 
     setRunning(true);
-    toast.info('Running discrepancy detection...');
+    toast.info(`Running ${source === 'msha' ? 'MSHA' : 'ECHO'} discrepancy detection...`);
 
     try {
       const { data, error } = await supabase.functions.invoke('detect-discrepancies', {

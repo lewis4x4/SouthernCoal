@@ -10,6 +10,7 @@ export interface DiscrepancyReadinessCounts {
   exceedances: number;
   dmrSubmissions: number;
   dmrLineItems: number;
+  mshaOpenCitations: number;
 }
 
 export type DiscrepancyReadinessLevel = 'blocked' | 'echo_only' | 'partial' | 'ready';
@@ -17,7 +18,7 @@ export type DiscrepancyReadinessLevel = 'blocked' | 'echo_only' | 'partial' | 'r
 export type DiscrepancyRuleStatus = 'blocked' | 'degraded' | 'ready';
 
 export interface DiscrepancyRuleGate {
-  id: 'echo_sync' | 'rule1' | 'rule2' | 'rule3';
+  id: 'echo_sync' | 'rule1' | 'rule2' | 'rule3' | 'msha_abatement';
   label: string;
   status: DiscrepancyRuleStatus;
   summary: string;
@@ -29,6 +30,8 @@ export interface DiscrepancyReadinessAssessment {
   gates: DiscrepancyRuleGate[];
   /** True when Rule 1+2 or Rule 3 can produce actionable (not all missing_internal) results. */
   canRunMeaningfulDetection: boolean;
+  /** True when open MSHA citations exist for abatement discrepancy rules. */
+  canRunMshaDetection: boolean;
   headline: string;
 }
 
@@ -114,6 +117,23 @@ export function assessDiscrepancyDetectionReadiness(
         : 'Import NetDMR CSV or Justice EDD → DMR pipeline via /compliance',
   });
 
+  const mshaStatus: DiscrepancyRuleStatus =
+    counts.mshaOpenCitations > 0 ? 'ready' : 'blocked';
+
+  gates.push({
+    id: 'msha_abatement',
+    label: 'MSHA — Abatement at risk',
+    status: mshaStatus,
+    summary:
+      counts.mshaOpenCitations > 0
+        ? `${counts.mshaOpenCitations.toLocaleString()} open MSHA citations for abatement rules`
+        : 'No open MSHA citations — sync violations on External Data first',
+    recommendation:
+      counts.mshaOpenCitations > 0
+        ? 'Run MSHA detection to queue overdue / due-soon abatement rows'
+        : 'Sync MSHA violations or seed UAT citations for smoke testing',
+  });
+
   const rule1Ready = rule1Status === 'ready';
   const rule2Ready = rule2Status === 'ready';
   const rule3Ready = rule3Status === 'ready';
@@ -127,6 +147,7 @@ export function assessDiscrepancyDetectionReadiness(
         : 'echo_only';
 
   const canRunMeaningfulDetection = rule1Ready && (rule2Ready || rule3Ready);
+  const canRunMshaDetection = counts.mshaOpenCitations > 0;
 
   const headline =
     overall === 'ready'
@@ -137,5 +158,5 @@ export function assessDiscrepancyDetectionReadiness(
           ? 'ECHO-only — Run Detection works but compares against empty internal tables'
           : 'Sync ECHO data before running detection';
 
-  return { overall, gates, canRunMeaningfulDetection, headline };
+  return { overall, gates, canRunMeaningfulDetection, canRunMshaDetection, headline };
 }
