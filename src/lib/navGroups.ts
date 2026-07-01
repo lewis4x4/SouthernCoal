@@ -33,12 +33,14 @@ import {
   CloudRain,
   Archive,
   FolderInput,
+  BookOpen,
 } from 'lucide-react';
 import type { Role } from '@/types/auth';
 import {
   ALL_ROLES,
   COMPLIANCE_UPLOAD_ROLES,
   COMPLIANCE_FULL_ROLES,
+  ALIAS_REGISTRY_ROLES,
   COMPLIANCE_ADVANCED_ROLES,
   COUNSEL_EVIDENCE_ROLES,
   PENALTY_LEDGER_ROLES,
@@ -137,6 +139,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Defensible Miss', href: '/compliance/defensible-miss', icon: Shield, roles: COUNSEL_EVIDENCE_ROLES },
       { label: 'Review', href: '/compliance/review-queue', icon: ShieldAlert, roles: COMPLIANCE_ADVANCED_ROLES },
       { label: 'ECHO Data', href: '/compliance/external-data', icon: Satellite, roles: COMPLIANCE_ADVANCED_ROLES },
+      { label: 'Alias Registry', href: '/compliance/aliases', icon: BookOpen, roles: ALIAS_REGISTRY_ROLES },
       { label: 'Incidents', href: '/incidents', icon: AlertOctagon, roles: INCIDENT_ROLES },
       { label: 'Actions', href: '/corrective-actions', icon: ClipboardCheck, roles: CORRECTIVE_ACTION_ROLES },
       { label: 'CA Analytics', href: '/corrective-actions/analytics', icon: BarChart3, roles: CA_ANALYTICS_ROLES },

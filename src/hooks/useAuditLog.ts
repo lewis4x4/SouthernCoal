@@ -166,6 +166,7 @@ type AuditAction =
   | 'npdes_federal_mapping_saved'
   | 'npdes_federal_mapping_removed'
   | 'bulk_npdes_mapping_import'
+  | 'outfall_alias_created'
   | 'legal_hold_placed'
   | 'legal_hold_released'
   // Phase 9 — Compliance Reporting & Analytics

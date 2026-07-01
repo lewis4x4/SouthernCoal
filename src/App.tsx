@@ -14,6 +14,7 @@ import {
   COMPLIANCE_UPLOAD_ROLES,
   COMPLIANCE_FULL_ROLES,
   COMPLIANCE_ADVANCED_ROLES,
+  ALIAS_REGISTRY_ROLES,
   COUNSEL_EVIDENCE_ROLES,
   PENALTY_LEDGER_ROLES,
   CORRECTIVE_ACTION_ROLES,
@@ -78,6 +79,7 @@ const LateIncompleteEddPage = lazyRoute(() => import('@/pages/LateIncompleteEddP
 const PenaltyLedgerPage = lazyRoute(() => import('@/pages/PenaltyLedgerPage'), 'PenaltyLedgerPage');
 const DefensibleMissPage = lazyRoute(() => import('@/pages/DefensibleMissPage'), 'DefensibleMissPage');
 const ExternalDataPage = lazyRoute(() => import('@/pages/ExternalDataPage'), 'ExternalDataPage');
+const AliasRegistryPage = lazyRoute(() => import('@/pages/AliasRegistryPage'), 'AliasRegistryPage');
 const AdminReportsPage = lazyRoute(() => import('@/pages/AdminReportsPage'), 'AdminReportsPage');
 const FieldSchedulePage = lazyRoute(() => import('@/pages/FieldSchedulePage'), 'FieldSchedulePage');
 const FieldDispatchPage = lazyRoute(() => import('@/pages/FieldDispatchPage'), 'FieldDispatchPage');
@@ -153,6 +155,7 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/compliance/penalty-ledger',   element: <PenaltyLedgerPage />,        roles: PENALTY_LEDGER_ROLES,       guardScope: 'global',     shell: 'app' },
   { path: '/compliance/review-queue',      element: <ReviewQueuePage />,            roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
   { path: '/compliance/external-data',     element: <ExternalDataPage />,           roles: COMPLIANCE_ADVANCED_ROLES,  guardScope: 'global',     shell: 'app' },
+  { path: '/compliance/aliases',           element: <AliasRegistryPage />,          roles: ALIAS_REGISTRY_ROLES,       guardScope: 'global',     shell: 'app' },
   { path: '/field/schedule',               element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment', shell: 'app' },
   { path: '/sampling',                     element: <FieldSchedulePage />,          roles: FIELD_SCHEDULE_ROLES,       guardScope: 'assignment', shell: 'app' },
   { path: '/field/dispatch',               element: <FieldDispatchPage />,          roles: FIELD_ROUTE_ROLES,          guardScope: 'assignment', shell: 'field' },

@@ -31,6 +31,9 @@ export const COMPLIANCE_FULL_ROLES: Role[] = [
   'coo', 'compliance_reviewer',
 ];
 
+/** Parameter/outfall alias registry — parser normalization reference (2.62/2.63). */
+export const ALIAS_REGISTRY_ROLES: Role[] = COMPLIANCE_FULL_ROLES;
+
 export const COMPLIANCE_ADVANCED_ROLES: Role[] = [
   'admin', 'executive', 'environmental_manager',
   'coo', 'compliance_reviewer',
