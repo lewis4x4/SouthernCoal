@@ -7,6 +7,7 @@ export type QueueParserKind =
   | 'lab_data'
   | 'va_lab_csv'
   | 'osmre_monitoring'
+  | 'al_lab_data'
   | 'netdmr_bundle'
   | 'unsupported';
 
@@ -24,6 +25,7 @@ const CSV_EXT = /\.csv$/i;
 
 const OSMRE_FILENAME = /osmre|monitoring.?report|quarterly.?monitor|sme-90|tn.?monitor/i;
 const VA_LAB_FILENAME = /va.?lab|vpdes.?lab|dmlr.?lab|fixed.?width/i;
+const AL_LAB_FILENAME = /lrs|waypoint|hmr|hydrologic|alabama.?lab|adem/i;
 
 const STATE_FROM_PATH = /(?:^|\/)(AL|KY|TN|VA|WV)(?:\/|$)/i;
 
@@ -58,6 +60,14 @@ export function isVaLabCsvFile(entry: Pick<QueueEntry, 'file_name' | 'storage_pa
   return VA_LAB_FILENAME.test(entry.file_name) || VA_LAB_FILENAME.test(entry.storage_path);
 }
 
+export function isAlLabDataFile(entry: Pick<QueueEntry, 'file_name' | 'storage_path' | 'state_code'>): boolean {
+  const state = inferQueueState(entry);
+  const isTabular = CSV_EXT.test(entry.file_name) || EXCEL_EXT.test(entry.file_name);
+  if (!isTabular) return false;
+  if (state === 'AL') return true;
+  return AL_LAB_FILENAME.test(entry.file_name) || AL_LAB_FILENAME.test(entry.storage_path);
+}
+
 /**
  * Resolve which parser pipeline applies to a queue row.
  * Single source of truth for Upload Dashboard Process / Retry routing.
@@ -90,6 +100,13 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
           kind: 'va_lab_csv',
           functionName: 'parse-va-lab-csv',
           label: 'VA lab CSV',
+        };
+      }
+      if (isAlLabDataFile(entry)) {
+        return {
+          kind: 'al_lab_data',
+          functionName: 'parse-al-lab-data',
+          label: 'AL lab data',
         };
       }
       return {

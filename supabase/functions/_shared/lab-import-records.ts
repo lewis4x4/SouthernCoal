@@ -3,7 +3,7 @@
  * Used by parse-lab-data-edd, parse-va-lab-csv, and parse-osmre-monitoring.
  */
 
-export type LabDocumentType = "lab_data_edd" | "va_lab_csv" | "osmre_monitoring";
+export type LabDocumentType = "lab_data_edd" | "va_lab_csv" | "osmre_monitoring" | "al_lab_data";
 
 export interface LabImportRecord {
   row_number: number;
@@ -130,6 +130,14 @@ export const PARAMETER_MAP: Record<string, string> = {
   aluminum: "Aluminum",
   "aluminum (total)": "Aluminum",
   "01106": "Aluminum",
+  zinc: "Zinc",
+  "zinc (total)": "Zinc",
+  "01090": "Zinc",
+  copper: "Copper",
+  "copper (total)": "Copper",
+  "01040": "Copper",
+  "sp cond": "Conductivity",
+  "conductance, specific": "Conductivity",
 };
 
 const BELOW_DETECTION_QUALIFIERS = new Set(["u", "j", "<", "b", "nd", "n/d"]);

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useQueueStore } from '@/stores/queue';
-import { isOsmreMonitoringFile, resolveQueueParser } from '@/lib/queueProcessorRouting';
+import { isAlLabDataFile, isOsmreMonitoringFile, resolveQueueParser } from '@/lib/queueProcessorRouting';
 import type { QueueEntry } from '@/types/queue';
 
 /** EDD marker columns — if a row contains all three, it's likely an EDD header row. */
@@ -217,7 +217,7 @@ export function useLabDataProcessing() {
         // Small file → state-specific or standard EDD parse pipeline
         let preParsePayload: Record<string, unknown> = {};
         const isExcel = /\.xlsx?$/i.test(entry.file_name);
-        if (isExcel && isOsmreMonitoringFile(entry)) {
+        if (isExcel && (isOsmreMonitoringFile(entry) || isAlLabDataFile(entry))) {
           toast.info(`Preparing ${entry.file_name}...`);
           const parsed = await clientSideParseOsmreWorkbook(entry);
           if (parsed) preParsePayload = parsed;
@@ -338,12 +338,12 @@ export function useLabDataProcessing() {
           // Small file → state-specific or standard EDD parse pipeline
           let preParsePayload: Record<string, unknown> = {};
           const isExcel = /\.xlsx?$/i.test(entry.file_name);
-          if (isExcel && isOsmreMonitoringFile(entry)) {
+          if (isExcel && (isOsmreMonitoringFile(entry) || isAlLabDataFile(entry))) {
             try {
               const parsed = await clientSideParseOsmreWorkbook(entry);
               if (parsed) preParsePayload = parsed;
             } catch (parseErr) {
-              console.error(`[lab-data] OSMRE client-side parse failed for ${entry.file_name}:`, parseErr);
+              console.error(`[lab-data] Multi-sheet client-side parse failed for ${entry.file_name}:`, parseErr);
             }
           } else if (isExcel && route.kind === 'lab_data') {
             try {

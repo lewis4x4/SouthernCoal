@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canProcessQueueEntry,
+  isAlLabDataFile,
   isOsmreMonitoringFile,
   isParameterSheetFile,
   isVaLabCsvFile,
@@ -77,6 +78,24 @@ describe('resolveQueueParser', () => {
       file_name: 'lab_results.csv',
       storage_path: 'VA/lab_results.csv',
       state_code: 'VA',
+    })).toBe(true);
+  });
+
+  it('routes AL lab data to parse-al-lab-data', () => {
+    const route = resolveQueueParser(
+      entry({
+        file_category: 'lab_data',
+        file_name: 'Q1_HMR.xlsx',
+        storage_path: 'AL/Q1_HMR.xlsx',
+        state_code: 'AL',
+      }),
+    );
+    expect(route.kind).toBe('al_lab_data');
+    expect(route.functionName).toBe('parse-al-lab-data');
+    expect(isAlLabDataFile({
+      file_name: 'waypoint_results.csv',
+      storage_path: 'AL/waypoint_results.csv',
+      state_code: 'AL',
     })).toBe(true);
   });
 
