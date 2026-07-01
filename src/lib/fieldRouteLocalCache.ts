@@ -135,7 +135,9 @@ export async function loadFieldRouteCacheFromIdbMatching(
     return null;
   }
   if (!fieldRouteCacheMatchesView(payload, routeDate, scope, viewerUserId, organizationId)) {
-    await clearFieldRouteCacheFromIdb();
+    if (routeCacheRequiresPurge(payload, viewerUserId, organizationId)) {
+      await clearFieldRouteCacheFromIdb();
+    }
     return null;
   }
   return payload;
@@ -192,6 +194,16 @@ export async function clearFieldRouteCacheFromIdb(): Promise<void> {
 
 function hasRouteCacheAuthContext(viewerUserId: string | null, organizationId: string | null): boolean {
   return Boolean(viewerUserId && organizationId);
+}
+
+/** Purge stored snapshots only on tenant/viewer mismatch — not when the date picker differs. */
+function routeCacheRequiresPurge(
+  payload: FieldRouteCachePayload,
+  viewerUserId: string | null,
+  organizationId: string | null,
+): boolean {
+  if (!hasRouteCacheAuthContext(viewerUserId, organizationId)) return false;
+  return payload.organizationId !== organizationId || payload.viewerUserId !== viewerUserId;
 }
 
 /** True when snapshot matches the route date, scope, organization, and viewer. */
@@ -261,7 +273,9 @@ export function loadFieldRouteCacheMatching(
     return null;
   }
   if (!fieldRouteCacheMatchesView(p, routeDate, scope, viewerUserId, organizationId)) {
-    clearFieldRouteCache();
+    if (routeCacheRequiresPurge(p, viewerUserId, organizationId)) {
+      clearFieldRouteCache();
+    }
     return null;
   }
   return p;

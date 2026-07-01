@@ -4,7 +4,10 @@ import {
   clearAllFieldVisitCaches,
   type FieldVisitCacheScope,
   loadFieldVisitCache,
+  loadFieldVisitCacheAsync,
+  loadFieldVisitCacheFromIdb,
   saveFieldVisitCache,
+  saveFieldVisitCacheDual,
 } from '../fieldVisitLocalCache';
 import type { FieldVisitDetails, FieldVisitListItem } from '@/types';
 
@@ -200,5 +203,18 @@ describe('fieldVisitLocalCache', () => {
       ),
     ).toBe(false);
     expect(localStorage.getItem('scc.fieldVisitCache.v1.v1')).toBeNull();
+  });
+
+  it('loadFieldVisitCacheAsync hydrates from IndexedDB when localStorage entry is missing', async () => {
+    if (typeof indexedDB === 'undefined') return;
+    const detail = minimalDetail();
+    const { ok } = await saveFieldVisitCacheDual(detail, scope());
+    expect(ok).toBe(true);
+    localStorage.removeItem('scc.fieldVisitCache.v1.v1');
+    expect(loadFieldVisitCache('v1', scope())).toBeNull();
+    const fromIdb = await loadFieldVisitCacheFromIdb('v1', scope());
+    expect(fromIdb?.visit.id).toBe('v1');
+    const fromAsync = await loadFieldVisitCacheAsync('v1', scope());
+    expect(fromAsync?.visit.id).toBe('v1');
   });
 });
