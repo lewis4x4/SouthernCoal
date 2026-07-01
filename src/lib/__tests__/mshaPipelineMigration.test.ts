@@ -14,4 +14,15 @@ describe('msha pipeline migration', () => {
     expect(sql).toContain('sync-msha-weekly');
     expect(sql).toContain('external_msha_inspections_org_mine_violation_key');
   });
+
+  it('defines self-healing mine org map tables', () => {
+    const sql = readFileSync(
+      resolve(import.meta.dirname, '../../../supabase/migrations/20260701180000_msha_mine_org_map.sql'),
+      'utf8',
+    );
+
+    expect(sql).toContain('msha_mine_org_map');
+    expect(sql).toContain('msha_mine_org_override');
+    expect(sql).toContain('refresh-msha-mine-map');
+  });
 });
