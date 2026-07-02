@@ -47,7 +47,7 @@ async function main() {
     p_organization_id: SCC_ORG,
   });
 
-  const { funnel, mirror_keys, pending_missing_internal, permits_without_federal_override, top_permits_missing_limits } =
+  const { funnel, mirror_keys, pending_missing_internal, permits_without_federal_override, synthetic_echo_limits, top_permits_missing_limits } =
     report;
 
   console.log('Slice 1 activation funnel:');
@@ -64,6 +64,7 @@ async function main() {
 | Stage | Count |
 |-------|------:|
 | Violation keys | ${funnel.distinct_violation_keys} |
+| No registry permit | ${funnel.no_permit} |
 | Has permit | ${funnel.has_permit} |
 | Has outfall | ${funnel.has_outfall} |
 | Has parameter | ${funnel.has_parameter} |
@@ -76,6 +77,7 @@ async function main() {
 | \`slice1_echo_mirror_keys\` | ${mirror_keys} |
 | Pending \`missing_internal\` | ${pending_missing_internal} |
 | Permits without federal override | ${permits_without_federal_override} |
+| SYNTHETIC ECHO limits | ${synthetic_echo_limits} |
 
 ## Interpretation
 

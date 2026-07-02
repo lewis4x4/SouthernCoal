@@ -6,6 +6,7 @@ import { ComplianceMatrix } from '@/components/dashboard/ComplianceMatrix';
 import { PriorityGuide } from '@/components/dashboard/PriorityGuide';
 import { CommandPalette } from '@/components/dashboard/CommandPalette';
 import { UploadDashboardSmokePanel } from '@/components/dashboard/UploadDashboardSmokePanel';
+import { Slice1UploadPriorityBanner } from '@/components/dashboard/Slice1UploadPriorityBanner';
 
 /**
  * Full Upload Dashboard page.
@@ -26,6 +27,8 @@ export function UploadDashboard() {
 
         {/* Summary stats */}
         <SummaryStats />
+
+        <Slice1UploadPriorityBanner />
 
         <UploadDashboardSmokePanel />
 

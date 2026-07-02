@@ -81,6 +81,7 @@ export function Slice1ActivationFunnelPanel({ gaps, loading, error, onRefresh }:
             <table className="w-full">
               <tbody>
                 <FunnelRow label="Distinct violation keys" value={gaps.funnel.distinct_violation_keys} />
+                <FunnelRow label="No registry permit" value={gaps.funnel.no_permit} hint="Map VA federal IDs" />
                 <FunnelRow label="Has permit" value={gaps.funnel.has_permit} />
                 <FunnelRow label="Has outfall" value={gaps.funnel.has_outfall} />
                 <FunnelRow label="Has parameter" value={gaps.funnel.has_parameter} />
@@ -98,6 +99,11 @@ export function Slice1ActivationFunnelPanel({ gaps, loading, error, onRefresh }:
                 <FunnelRow
                   label="Permits without federal override"
                   value={gaps.permits_without_federal_override}
+                />
+                <FunnelRow
+                  label="SYNTHETIC ECHO limits"
+                  value={gaps.synthetic_echo_limits}
+                  hint="Verify vs permit PDF"
                 />
               </tbody>
             </table>

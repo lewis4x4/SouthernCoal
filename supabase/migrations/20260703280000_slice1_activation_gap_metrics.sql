@@ -1,4 +1,4 @@
--- Slice 1 — read-only activation funnel for ECHO violation → internal exceedance path.
+-- Slice 1 — extend activation gap report with no-permit and synthetic limit counts.
 
 CREATE OR REPLACE FUNCTION public.report_slice1_activation_gaps(
   p_organization_id uuid
@@ -101,6 +101,13 @@ BEGIN
         NULLIF(trim(np.metadata->>'federal_npdes_id_override'), ''),
         ''
       ) = ''
+  ),
+  synthetic_limits AS (
+    SELECT COUNT(*)::int AS synthetic_echo_limits
+    FROM permit_limits pl
+    JOIN npdes_permits np ON np.id = pl.permit_id
+    WHERE np.organization_id = p_organization_id
+      AND pl.condition_notes LIKE '%SYNTHETIC_UAT_SLICE1%'
   )
   SELECT jsonb_build_object(
     'organization_id', p_organization_id,
@@ -108,6 +115,7 @@ BEGIN
     'mirror_keys', (SELECT m.mirror_keys FROM mirrored m),
     'pending_missing_internal', (SELECT p.pending_missing_internal FROM pending p),
     'permits_without_federal_override', (SELECT rg.permits_without_federal_override FROM registry_gaps rg),
+    'synthetic_echo_limits', (SELECT sl.synthetic_echo_limits FROM synthetic_limits sl),
     'top_permits_missing_limits', COALESCE(
       (SELECT jsonb_agg(to_jsonb(ml.*)) FROM missing_limits ml),
       '[]'::jsonb
@@ -117,7 +125,3 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-REVOKE ALL ON FUNCTION public.report_slice1_activation_gaps(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.report_slice1_activation_gaps(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.report_slice1_activation_gaps(uuid) TO authenticated;

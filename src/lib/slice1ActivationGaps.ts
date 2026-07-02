@@ -1,6 +1,7 @@
 export interface Slice1ActivationGapsReport {
   funnel: {
     distinct_violation_keys: number;
+    no_permit: number;
     has_permit: number;
     has_outfall: number;
     has_parameter: number;
@@ -9,6 +10,7 @@ export interface Slice1ActivationGapsReport {
   mirror_keys: number;
   pending_missing_internal: number;
   permits_without_federal_override: number;
+  synthetic_echo_limits: number;
   top_permits_missing_limits: Array<{
     permit_number: string;
     npdes_id: string;

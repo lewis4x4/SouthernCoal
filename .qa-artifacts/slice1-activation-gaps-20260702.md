@@ -1,7 +1,7 @@
 # Slice 1 — activation gap report
 
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`  
-**Generated:** 2026-07-02T23:00:28.589Z
+**Generated:** 2026-07-02T23:07:30.535Z
 
 ## Funnel (distinct npdes:outfall:parameter keys)
 
@@ -46,6 +46,7 @@
 ```json
 {
   "funnel": {
+    "no_permit": 4383,
     "has_permit": 8816,
     "has_outfall": 4365,
     "has_parameter": 3442,
@@ -54,6 +55,7 @@
   },
   "mirror_keys": 15179,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
+  "synthetic_echo_limits": 301,
   "pending_missing_internal": 144649,
   "top_permits_missing_limits": [
     {

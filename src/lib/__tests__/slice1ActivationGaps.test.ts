@@ -4,6 +4,7 @@ import { formatSlice1ActivationSummary, buildLimitGapsCsv, type Slice1Activation
 const SAMPLE: Slice1ActivationGapsReport = {
   funnel: {
     distinct_violation_keys: 13199,
+    no_permit: 4383,
     has_permit: 8816,
     has_outfall: 4365,
     has_parameter: 3442,
@@ -12,6 +13,7 @@ const SAMPLE: Slice1ActivationGapsReport = {
   mirror_keys: 13069,
   pending_missing_internal: 148227,
   permits_without_federal_override: 32,
+  synthetic_echo_limits: 301,
   top_permits_missing_limits: [
     { permit_number: 'KYGE40869', npdes_id: 'KYGE40869', missing_limit_keys: 256 },
   ],
