@@ -107,7 +107,13 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
   it('logs compliance archive processing with dedicated audit action', () => {
     expect(assertSourceContains('hooks/useArchiveDocumentProcessing.ts', [
       /compliance_archive_processed/,
-      /getUploadPostProcessFollowUp/,
+      /showArchiveSuccessToast/,
+    ])).toBe(true);
+  });
+
+  it('adds DMR import toast follow-up to submissions list', () => {
+    expect(assertSourceContains('hooks/useDmrImport.ts', [
+      /showPostProcessFollowUpToast/,
     ])).toBe(true);
   });
 

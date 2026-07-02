@@ -4,10 +4,7 @@ import { toast } from 'sonner';
 import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { isArchiveDocumentCategory } from '@/lib/queueProcessorRouting';
-import {
-  getArchiveSuccessMessage,
-  getUploadPostProcessFollowUp,
-} from '@/lib/uploadPostProcessLinks';
+import { showArchiveSuccessToast } from '@/lib/uploadPostProcessLinks';
 import { useQueueStore } from '@/stores/queue';
 
 const ARCHIVE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-compliance-archive`;
@@ -16,24 +13,6 @@ const UPLOAD_AUDIT_ENTITY = {
   module: 'upload_dashboard',
   tableName: 'file_processing_queue',
 } as const;
-
-function showArchiveSuccessToast(fileCategory: string, fileName: string, navigate: (path: string) => void) {
-  const followUp = getUploadPostProcessFollowUp(fileCategory);
-  const message = getArchiveSuccessMessage(fileCategory, fileName);
-
-  if (followUp) {
-    toast.success(message, {
-      description: followUp.panelNote,
-      action: {
-        label: followUp.actionLabel,
-        onClick: () => navigate(followUp.href),
-      },
-    });
-    return;
-  }
-
-  toast.success(message);
-}
 
 async function invokeArchiveProcessor(queueId: string): Promise<void> {
   const token = await getFreshToken();

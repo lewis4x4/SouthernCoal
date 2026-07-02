@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { edgeFunctionFetchHeaders, getFreshToken, supabase } from '@/lib/supabase';
+import { showPostProcessFollowUpToast } from '@/lib/uploadPostProcessLinks';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { QueueEntry } from '@/types/queue';
@@ -12,6 +14,7 @@ import type { QueueEntry } from '@/types/queue';
 export function useDmrImport() {
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
   const { log } = useAuditLog();
+  const navigate = useNavigate();
 
   const importNetDmr = useCallback(
     async (queueId: string) => {
@@ -95,9 +98,11 @@ export function useDmrImport() {
             { module: 'upload_dashboard', tableName: 'dmr_submissions' },
           );
 
-          toast.success(
+          showPostProcessFollowUpToast(
             `Imported ${result.line_items_created} DMR line items ` +
               `(${result.submissions_created} submissions) from ${entry.file_name}`,
+            'dmr',
+            navigate,
           );
 
           const { data: freshEntry } = await supabase
@@ -144,7 +149,7 @@ export function useDmrImport() {
         });
       }
     },
-    [log],
+    [log, navigate],
   );
 
   const isImporting = useCallback(
@@ -189,11 +194,15 @@ export function useDmrImport() {
     }
 
     if (failCount === 0) {
-      toast.success(`Successfully imported ${successCount} DMR export${successCount === 1 ? '' : 's'}.`);
+      showPostProcessFollowUpToast(
+        `Successfully imported ${successCount} DMR export${successCount === 1 ? '' : 's'}.`,
+        'dmr',
+        navigate,
+      );
     } else {
       toast.warning(`Imported ${successCount}, failed ${failCount}.`);
     }
-  }, [importNetDmr]);
+  }, [importNetDmr, navigate]);
 
   return {
     importNetDmr,

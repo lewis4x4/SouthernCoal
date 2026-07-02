@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { CATEGORY_BY_DB_KEY } from '@/lib/constants';
 
 export interface UploadPostProcessFollowUp {
@@ -18,6 +19,11 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     actionLabel: 'Review obligations',
     panelNote: 'Link obligation evidence after counsel confirms CD appendix rates.',
   },
+  dmr: {
+    href: '/dmr',
+    actionLabel: 'Open DMR Submissions',
+    panelNote: 'Review draft submissions created from this import before regulatory submit.',
+  },
 };
 
 export function getUploadPostProcessFollowUp(fileCategory: string): UploadPostProcessFollowUp | null {
@@ -31,4 +37,33 @@ export function getArchiveSuccessMessage(fileCategory: string, fileName: string)
     return `Indexed ${fileName} (${label})`;
   }
   return `Indexed ${fileName} for search`;
+}
+
+export function showPostProcessFollowUpToast(
+  message: string,
+  fileCategory: string,
+  navigate: (path: string) => void,
+  options?: { description?: string },
+): void {
+  const followUp = getUploadPostProcessFollowUp(fileCategory);
+  if (followUp) {
+    toast.success(message, {
+      description: options?.description ?? followUp.panelNote,
+      action: {
+        label: followUp.actionLabel,
+        onClick: () => navigate(followUp.href),
+      },
+    });
+    return;
+  }
+
+  toast.success(message);
+}
+
+export function showArchiveSuccessToast(
+  fileCategory: string,
+  fileName: string,
+  navigate: (path: string) => void,
+): void {
+  showPostProcessFollowUpToast(getArchiveSuccessMessage(fileCategory, fileName), fileCategory, navigate);
 }
