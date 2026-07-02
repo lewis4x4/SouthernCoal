@@ -30,6 +30,7 @@ export interface SamplingGapRecord {
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_notes: string | null;
+  work_order_id: string | null;
   outfalls?: { outfall_number: string | null; description: string | null } | null;
   parameters?: { short_name: string | null; name: string | null } | null;
 }

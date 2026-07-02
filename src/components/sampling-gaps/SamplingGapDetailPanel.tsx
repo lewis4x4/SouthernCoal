@@ -120,6 +120,15 @@ export function SamplingGapDetailPanel({
         </Link>
       )}
 
+      {row.work_order_id && (
+        <Link
+          to={`/work-orders?highlight=${row.work_order_id}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-black/[0.12] bg-black/[0.03] px-3 py-2 text-[11px] font-medium text-qo-accent hover:bg-black/[0.05]"
+        >
+          View coupled work order
+        </Link>
+      )}
+
       {onStatutoryAck && (
         <div className="rounded-lg border border-black/[0.06] bg-black/[0.02] px-3 py-2">
           <p className="text-[10px] text-text-muted mb-2">Statutory acknowledgment (separate from triage)</p>

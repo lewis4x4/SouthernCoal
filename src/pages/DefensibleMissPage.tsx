@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Download, FileText, Loader2, Shield } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Download, FileText, Loader2, Shield, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSamplingGaps } from '@/hooks/useSamplingGaps';
 import { useDefensibleMiss } from '@/hooks/useDefensibleMiss';
+import { useEquipment } from '@/hooks/useEquipment';
 import { formatDefensibleMissMarkdown, type DefensibleMissPacket } from '@/lib/defensibleMiss';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
@@ -36,7 +37,13 @@ export function DefensibleMissPage() {
     fetchStoredPackets,
     getStoredPacketUrl,
   } = useDefensibleMiss();
+  const { maintenanceAlerts, maintenanceDue } = useEquipment();
   const { log } = useAuditLog();
+
+  const overdueGear = useMemo(
+    () => maintenanceDue.filter((item) => item.days_until_due !== null && item.days_until_due < 0),
+    [maintenanceDue],
+  );
 
   const missedRows = useMemo(
     () => rows.filter((r) => r.gap_kind === 'missed'),
@@ -128,6 +135,45 @@ export function DefensibleMissPage() {
         </div>
       )}
 
+      {(overdueGear.length > 0 || maintenanceAlerts.length > 0) && (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] px-4 py-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs text-amber-200">
+              <Wrench size={14} />
+              <span>
+                QW4 field gear context — {overdueGear.length} overdue · {maintenanceAlerts.length} open PM alert
+                {maintenanceAlerts.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <Link
+              to="/admin/equipment"
+              className="text-[10px] font-medium text-qo-accent hover:underline"
+            >
+              Equipment admin →
+            </Link>
+          </div>
+          {maintenanceAlerts.slice(0, 4).map((alert) => (
+            <p key={alert.id} className="text-[10px] text-text-muted">
+              {alert.equipment_name} — {alert.urgency.replace('_', ' ')}
+              {alert.work_order_id ? (
+                <>
+                  {' · '}
+                  <Link
+                    to={`/work-orders?highlight=${alert.work_order_id}`}
+                    className="text-qo-accent hover:underline"
+                  >
+                    work order
+                  </Link>
+                </>
+              ) : null}
+            </p>
+          ))}
+          <p className="text-[10px] text-text-muted italic">
+            Uncalibrated or unmaintained gear may explain misses — include in counsel packet context.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-black/[0.08] p-4 space-y-3">
           <h3 className="text-sm font-semibold text-text-primary">Missed events (from QW1 queue)</h3>
@@ -150,6 +196,7 @@ export function DefensibleMissPage() {
                     </span>
                     <span className="block text-text-muted mt-0.5">
                       Expected {row.scheduled_date} · {row.days_late}d late
+                      {row.work_order_id ? ' · work order open' : ''}
                     </span>
                   </button>
                 </li>
