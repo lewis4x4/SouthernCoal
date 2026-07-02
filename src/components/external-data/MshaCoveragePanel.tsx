@@ -1,4 +1,5 @@
 import { AlertTriangle, HardHat, Loader2, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { MshaStatusPanel } from '@/components/external-data/MshaStatusPanel';
@@ -10,7 +11,7 @@ import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 
 export function MshaCoveragePanel() {
   const { status, drift, reviewMines, loading, refreshing, error, refreshMap } = useMshaMapStatus();
-  const { rows, loading: abatementLoading, refetch: refetchAbatement } = useMshaAbatement();
+  const { rows, alerts, loading: abatementLoading, detecting, refetch: refetchAbatement, runAbatementDetection } = useMshaAbatement();
   const statutoryAcks = useStatutoryAlertAcks();
   const { syncing, triggerMshaSync } = useSyncTrigger();
   const isSyncing = syncing.msha ?? false;
@@ -56,6 +57,15 @@ export function MshaCoveragePanel() {
           >
             {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Sync violations
+          </button>
+          <button
+            type="button"
+            onClick={() => void runAbatementDetection()}
+            disabled={detecting}
+            className="flex items-center gap-1.5 rounded-lg border border-black/[0.12] px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.05] disabled:opacity-40"
+          >
+            {detecting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Run abatement detection
           </button>
         </div>
       </div>
@@ -111,6 +121,37 @@ export function MshaCoveragePanel() {
             <AlertTriangle size={16} className="text-qo-ochre-text" />
             <h3 className="text-sm font-semibold text-text-primary">Abatement at risk</h3>
           </div>
+          {alerts.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-text-muted">
+                Open alerts ({alerts.length}) — coupled work orders
+              </p>
+              {alerts.slice(0, 6).map((alert) => (
+                <div
+                  key={alert.id}
+                  className="flex items-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-text-primary">
+                      Mine {alert.mine_id} · {alert.violation_number}
+                    </p>
+                    <p className="text-[10px] text-text-muted">
+                      Due {new Date(alert.abatement_due_date).toLocaleDateString()}
+                      {alert.significant_substantial ? ' · S&S' : ''}
+                    </p>
+                  </div>
+                  {alert.work_order_id && (
+                    <Link
+                      to={`/work-orders?highlight=${alert.work_order_id}`}
+                      className="shrink-0 text-[10px] font-medium text-qo-accent hover:underline"
+                    >
+                      Work order
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {abatementLoading ? (
             <Loader2 className="mx-auto animate-spin text-text-muted" size={18} />
           ) : rows.length === 0 ? (

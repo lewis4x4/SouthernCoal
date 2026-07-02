@@ -125,6 +125,7 @@ type AuditAction =
   | 'equipment_assigned'
   | 'equipment_returned'
   | 'equipment_maintenance_detection_run'
+  | 'msha_abatement_detection_run'
   | 'calibration_logged'
   | 'maintenance_logged'
   | 'daily_readiness_completed'
