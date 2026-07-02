@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { EDD_REVIEW_STATUS_LABELS } from '@/lib/eddParagraph49';
@@ -210,6 +211,19 @@ export function LateIncompleteEddPage() {
                   <dt className="text-text-muted">Exceedance params</dt>
                   <dd className="text-text-primary tabular-nums">{selected.exceedance_parameter_count}</dd>
                 </div>
+                {selected.work_order_id && (
+                  <div>
+                    <dt className="text-text-muted">Coupled work order</dt>
+                    <dd>
+                      <Link
+                        to={`/work-orders?highlight=${selected.work_order_id}`}
+                        className="text-qo-accent hover:underline"
+                      >
+                        View work order
+                      </Link>
+                    </dd>
+                  </div>
+                )}
               </dl>
               <StatutoryAckButton
                 needsAck={statutoryAcks.isUnacknowledged('edd_paragraph49', selected.id)}

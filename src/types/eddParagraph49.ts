@@ -22,6 +22,7 @@ export interface EddParagraph49Evaluation {
   review_notes: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  work_order_id: string | null;
   created_at: string;
   updated_at: string;
 }
