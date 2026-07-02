@@ -151,7 +151,7 @@ export function assessDiscrepancyDetectionReadiness(
 
   const headline =
     overall === 'ready'
-      ? 'Ready for full discrepancy re-run (3.35) with real internal comparisons'
+      ? 'Detection complete — triage pending rows; status_mismatch rows warrant human review first'
       : overall === 'partial'
         ? 'Partial internal data — detection runs but most Rule 2 rows stay missing_internal'
         : overall === 'echo_only'

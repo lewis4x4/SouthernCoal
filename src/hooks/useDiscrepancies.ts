@@ -399,6 +399,52 @@ export function useDiscrepancies() {
     [log, rows, userId],
   );
 
+  const bulkMarkReviewedFiltered = useCallback(
+    async (limit = 5000) => {
+      if (!userId) {
+        return 'Sign in to record who performed this review action';
+      }
+      if (!orgId) {
+        return 'Organization context required';
+      }
+
+      const { data, error: rpcErr } = await supabase.rpc('bulk_mark_discrepancies_reviewed', {
+        p_severity: filters.severity ?? null,
+        p_source: filters.source ?? null,
+        p_discrepancy_type: filters.type ?? null,
+        p_limit: limit,
+      });
+
+      if (rpcErr) {
+        return rpcErr.message;
+      }
+
+      const marked = Number(data ?? 0);
+      if (marked === 0) {
+        return 'No pending discrepancies matched the current filters';
+      }
+
+      log(
+        'discrepancy_reviewed',
+        {
+          bulk: true,
+          server_filtered: true,
+          count: marked,
+          filters: {
+            severity: filters.severity ?? null,
+            source: filters.source ?? null,
+            type: filters.type ?? null,
+          },
+        },
+        { module: 'external_data', tableName: 'discrepancy_reviews' },
+      );
+
+      await fetchDiscrepancies();
+      return null;
+    },
+    [fetchDiscrepancies, filters, log, orgId, userId],
+  );
+
   return {
     rows,
     loading,
@@ -413,5 +459,6 @@ export function useDiscrepancies() {
     refetch: fetchDiscrepancies,
     updateStatus,
     bulkMarkReviewed,
+    bulkMarkReviewedFiltered,
   };
 }

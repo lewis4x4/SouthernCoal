@@ -70,7 +70,7 @@ export function DiscrepancyReadinessPanel({
             >
               {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
-            <h2 className="text-sm font-semibold text-text-primary">Detection readiness (3.35)</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Detection readiness</h2>
             <span className={cn('text-[10px] font-medium uppercase tracking-wide', style.text)}>
               {style.label}
             </span>

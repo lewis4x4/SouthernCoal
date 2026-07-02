@@ -30,6 +30,7 @@ export function ReviewQueuePage() {
     refetch,
     updateStatus,
     bulkMarkReviewed,
+    bulkMarkReviewedFiltered,
   } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { running: detecting, runDetection } = useDiscrepancyDetection();
@@ -102,6 +103,30 @@ export function ReviewQueuePage() {
     }
   }
 
+  async function handleBulkReviewServerBatch() {
+    if (!canTriage) return;
+    const batchSize = Math.min(filteredTotal, 5000);
+    if (batchSize === 0) {
+      toast.info('No pending discrepancies match the current filters');
+      return;
+    }
+    const label = batchSize.toLocaleString();
+    if (
+      filteredTotal > 100 &&
+      !window.confirm(
+        `Mark up to ${label} pending rows matching current filters as reviewed? This runs server-side and is audit-logged.`,
+      )
+    ) {
+      return;
+    }
+    const err = await bulkMarkReviewedFiltered(batchSize);
+    if (err) {
+      toast.error(err);
+    } else {
+      toast.success(`Server batch reviewed up to ${label} pending rows`);
+    }
+  }
+
   const selectedRow = selectedId ? rows.find((r) => r.id === selectedId) : null;
   // Triage progress from org-wide server counts (not the capped local rows):
   // share of the active queue that has been reviewed or escalated.
@@ -140,11 +165,24 @@ export function ReviewQueuePage() {
               type="button"
               onClick={() => void handleBulkReviewVisible()}
               disabled={loading}
-              title="Mark all pending rows matching current filters as reviewed"
+              title="Mark pending rows in the loaded table (max 2,000) as reviewed"
               className="flex items-center gap-1.5 rounded-lg border border-qo-accent/20 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
             >
               <CheckCheck size={14} />
-              Review visible ({filteredPendingIds.length})
+              Review loaded ({filteredPendingIds.length})
+            </button>
+          )}
+
+          {canTriage && filteredTotal > 0 && filters.status !== 'reviewed' && (
+            <button
+              type="button"
+              onClick={() => void handleBulkReviewServerBatch()}
+              disabled={loading}
+              title="Server-side batch triage — up to 5,000 pending rows matching filters"
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
+            >
+              <CheckCheck size={14} />
+              Review batch ({Math.min(filteredTotal, 5000).toLocaleString()})
             </button>
           )}
 
@@ -274,8 +312,10 @@ export function ReviewQueuePage() {
 
       {truncated && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-text-secondary">
-          Showing {rows.length.toLocaleString()} of {filteredTotal.toLocaleString()} matching rows.
-          Add severity, source, or type filters to narrow the queue, or change status to reviewed/escalated.
+          Showing {rows.length.toLocaleString()} of {filteredTotal.toLocaleString()} matching pending rows.
+          Add severity, source, or type filters to narrow the queue — use{' '}
+          <span className="font-semibold text-text-primary">Review batch</span> for server-side triage
+          up to 5,000 rows per click.
         </div>
       )}
 

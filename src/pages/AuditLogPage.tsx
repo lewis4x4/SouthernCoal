@@ -158,6 +158,10 @@ const PRESET_EXTERNAL_DATA_AUDIT_ACTIONS = [
   'npdes_federal_mapping_removed',
   'bulk_npdes_mapping_import',
   'coverage_export_csv',
+  'discrepancy_reviewed',
+  'discrepancy_dismissed',
+  'discrepancy_escalated',
+  'discrepancy_resolved',
 ] as const;
 
 export function AuditLogPage() {
