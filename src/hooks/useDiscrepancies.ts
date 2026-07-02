@@ -30,6 +30,7 @@ export function useDiscrepancies() {
   const [filteredTotal, setFilteredTotal] = useState(0);
   const [counts, setCounts] = useState<SeverityCounts>({ critical: 0, high: 0, medium: 0, low: 0 });
   const [pendingCount, setPendingCount] = useState(0);
+  const [reviewedCount, setReviewedCount] = useState(0);
   const [escalatedCount, setEscalatedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const { user } = useAuth();
@@ -68,16 +69,26 @@ export function useDiscrepancies() {
       .from('discrepancy_reviews')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'pending');
+    let reviewedQ = supabase
+      .from('discrepancy_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'reviewed');
     let escalatedQ = supabase
       .from('discrepancy_reviews')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'escalated');
     if (orgId) {
       pendingQ = pendingQ.eq('organization_id', orgId);
+      reviewedQ = reviewedQ.eq('organization_id', orgId);
       escalatedQ = escalatedQ.eq('organization_id', orgId);
     }
-    const [{ count: pending }, { count: escalated }] = await Promise.all([pendingQ, escalatedQ]);
+    const [{ count: pending }, { count: reviewed }, { count: escalated }] = await Promise.all([
+      pendingQ,
+      reviewedQ,
+      escalatedQ,
+    ]);
     setPendingCount(pending ?? 0);
+    setReviewedCount(reviewed ?? 0);
     setEscalatedCount(escalated ?? 0);
   }, [orgId]);
 
@@ -187,7 +198,8 @@ export function useDiscrepancies() {
         () => {
           if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
           realtimeDebounceRef.current = setTimeout(() => {
-            void fetchHandlersRef.current.fetchCounts();
+            // fetchRows already refreshes counts at the end — calling fetchCounts
+            // here too doubled the count queries on every realtime burst.
             void fetchHandlersRef.current.fetchRows();
           }, 1500);
         },
@@ -283,6 +295,7 @@ export function useDiscrepancies() {
 
       if (status === 'reviewed' && rows.find((r) => r.id === id)?.status === 'pending') {
         setPendingCount((prev) => Math.max(0, prev - 1));
+        setReviewedCount((prev) => prev + 1);
       }
       if (status === 'escalated') {
         setEscalatedCount((prev) => prev + 1);
@@ -369,6 +382,7 @@ export function useDiscrepancies() {
       );
 
       setPendingCount((prev) => Math.max(0, prev - pendingIds.length));
+      setReviewedCount((prev) => prev + pendingIds.length);
 
       log(
         'discrepancy_reviewed',
@@ -391,6 +405,7 @@ export function useDiscrepancies() {
     error,
     counts,
     pendingCount,
+    reviewedCount,
     escalatedCount,
     totalCount,
     filteredTotal,

@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unzip } from "https://esm.sh/unzipit@1.4.0";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
   isWithinLookback,
   mapMshaViolationRow,
@@ -9,6 +9,7 @@ import {
   parseMshaViolationLine,
   stripField,
 } from "../_shared/msha-violations.ts";
+import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -43,8 +44,7 @@ async function validateAuth(
   req: Request,
   supabase: ReturnType<typeof createClient>,
 ): Promise<AuthResult> {
-  const secret = req.headers.get("x-internal-secret");
-  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+  if (verifyInternalSecret(req)) {
     return { authorized: true, userId: null };
   }
 
@@ -115,6 +115,36 @@ function parseMineIdMap(raw: string): Record<string, string> {
     normalized[stripField(mineId)] = stripField(orgId);
   }
   return normalized;
+}
+
+// Bounded fetch with timeout + exponential backoff. MSHA's data portal is slow
+// and occasionally 5xx/hangs; a bare fetch() can stall an Edge Function until it
+// is killed with no diagnostic.
+async function fetchWithRetry(
+  url: string,
+  opts: { attempts?: number; timeoutMs?: number } = {},
+): Promise<Response> {
+  const attempts = opts.attempts ?? 3;
+  const timeoutMs = opts.timeoutMs ?? 90_000;
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (resp.ok) return resp;
+      if (resp.status < 500) throw new Error(`HTTP ${resp.status}`); // don't retry 4xx
+      lastErr = new Error(`HTTP ${resp.status}`);
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err;
+    }
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, 2 ** i * 1000));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 async function flushBatch(
@@ -250,6 +280,7 @@ Deno.serve(async (req) => {
   }
 
   const syncType = body.sync_type ?? "manual";
+  const jobRunId = readJobRunId(body);
   const lookbackYears = body.lookback_years ?? DEFAULT_LOOKBACK_YEARS;
   const runTag = body.run_tag ?? (syncType === "scheduled" ? "cron-weekly-msha" : "manual-msha");
 
@@ -267,6 +298,12 @@ Deno.serve(async (req) => {
       error_details: { reason: "No active MSHA mine mappings", run_tag: runTag },
     });
 
+    await completeJobRun(supabase, jobRunId, "failed", {
+      rowsScanned: 0,
+      rowsAffected: 0,
+      errorDetail: "No active MSHA mine mappings",
+    });
+
     return new Response(
       JSON.stringify({
         success: false,
@@ -281,6 +318,7 @@ Deno.serve(async (req) => {
   const primaryOrgId = orgIds[0] ?? null;
 
   if (body.dry_run) {
+    await completeJobRun(supabase, jobRunId, "succeeded", { rowsScanned: 0, rowsAffected: 0 });
     return new Response(
       JSON.stringify({
         success: true,
@@ -325,7 +363,10 @@ Deno.serve(async (req) => {
 
   try {
     console.log(`[sync-msha] downloading ${MSHA_VIOLATIONS_ZIP_URL}`);
-    const downloadResp = await fetch(MSHA_VIOLATIONS_ZIP_URL);
+    const downloadResp = await fetchWithRetry(MSHA_VIOLATIONS_ZIP_URL, {
+      attempts: 3,
+      timeoutMs: 90_000,
+    });
     if (!downloadResp.ok) {
       throw new Error(`MSHA download failed: HTTP ${downloadResp.status}`);
     }
@@ -353,7 +394,13 @@ Deno.serve(async (req) => {
     console.error("[sync-msha]", message);
   }
 
-  const finalStatus = errors.length > 0 && recordsSynced === 0 ? "failed" : "completed";
+  // Truthful status: partial batch failures must not read as a clean completion.
+  const finalStatus =
+    errors.length === 0 && recordsFailed === 0
+      ? "completed"
+      : recordsSynced === 0
+        ? "failed"
+        : "partial";
 
   await supabase
     .from("external_sync_log")
@@ -392,6 +439,13 @@ Deno.serve(async (req) => {
       rows_scanned: rowsScanned,
       rows_matched: rowsMatched,
     }),
+  });
+
+  // Report truthful terminal status to the job_runs ledger row (cron wrapper).
+  await completeJobRun(supabase, jobRunId, finalStatus === "failed" ? "failed" : "succeeded", {
+    rowsScanned: rowsScanned,
+    rowsAffected: recordsSynced,
+    errorDetail: errors.length > 0 ? `${errors.join("; ")} (status=${finalStatus})` : null,
   });
 
   // Trigger MSHA discrepancy detection for each org with mapped mines (non-fatal)

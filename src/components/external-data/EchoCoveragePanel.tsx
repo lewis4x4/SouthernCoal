@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2, AlertTriangle, Database, Shield, Link2, Save, Trash2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
@@ -33,6 +34,9 @@ import type { CoverageFacility, StateCoverage } from '@/hooks/useEchoCoverage';
 
 type SortKey = 'npdes_id' | 'facility_name' | 'state_code' | 'compliance_status' | 'dmr_count' | 'synced_at';
 type SortDir = 'asc' | 'desc';
+
+/** Approx height of a single facility row (py-2.5 + single-line cells). */
+const FACILITY_ROW_HEIGHT_PX = 41;
 
 type SaveOverrideFn = (
   sourceId: string,
@@ -167,6 +171,26 @@ export function EchoCoveragePanel() {
   }, [overrides]);
 
   const showRegistryColumn = registryByFederalNpdes.size > 0;
+  const facilityColSpan = showRegistryColumn ? 7 : 6;
+
+  // Virtualize the facility body so large coverage sets (hundreds+ of permits)
+  // don't mount every row at once.
+  const facilityScrollRef = useRef<HTMLDivElement>(null);
+  const facilityVirtualizer = useVirtualizer({
+    count: sortedFacilities.length,
+    getScrollElement: () => facilityScrollRef.current,
+    estimateSize: () => FACILITY_ROW_HEIGHT_PX,
+    overscan: 12,
+  });
+  const facilityVirtualItems = facilityVirtualizer.getVirtualItems();
+  const facilityFirstItem = facilityVirtualItems[0];
+  const facilityLastItem = facilityVirtualItems.length > 0
+    ? facilityVirtualItems[facilityVirtualItems.length - 1]
+    : undefined;
+  const facilityPaddingTop = facilityFirstItem?.start ?? 0;
+  const facilityPaddingBottom = facilityLastItem
+    ? facilityVirtualizer.getTotalSize() - facilityLastItem.end
+    : 0;
 
   function exportMappingSnapshot() {
     const lines = [
@@ -333,61 +357,81 @@ export function EchoCoveragePanel() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table — virtualized body for large coverage sets */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-text-muted border-b border-black/[0.06]">
-                <th
-                  onClick={() => handleSort('npdes_id')}
-                  className="text-left py-2 px-3 font-medium cursor-pointer hover:text-text-secondary transition-colors"
-                >
-                  NPDES ID
-                  {sortKey === 'npdes_id' && (
-                    <span className="ml-1">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
-                  )}
-                </th>
-                {showRegistryColumn ? (
-                  <th className="text-left py-2 px-3 font-medium text-text-muted">Registry Permit</th>
-                ) : null}
-                {([
-                  ['facility_name', 'Facility'],
-                  ['state_code', 'State'],
-                  ['compliance_status', 'Compliance'],
-                  ['dmr_count', 'DMRs'],
-                  ['synced_at', 'Last Synced'],
-                ] as [SortKey, string][]).map(([key, label]) => (
+          <div
+            ref={facilityScrollRef}
+            className="max-h-[min(70vh,640px)] overflow-y-auto"
+            role="region"
+            aria-label="ECHO facility coverage list"
+          >
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-[1] bg-qo-nested">
+                <tr className="text-text-muted border-b border-black/[0.06]">
                   <th
-                    key={key}
-                    onClick={() => handleSort(key)}
+                    onClick={() => handleSort('npdes_id')}
                     className="text-left py-2 px-3 font-medium cursor-pointer hover:text-text-secondary transition-colors"
                   >
-                    {label}
-                    {sortKey === key && (
+                    NPDES ID
+                    {sortKey === 'npdes_id' && (
                       <span className="ml-1">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
                     )}
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedFacilities.map((f) => (
-                <FacilityRow
-                  key={f.id}
-                  facility={f}
-                  registryPermit={registryByFederalNpdes.get(f.npdes_id.toUpperCase())}
-                  showRegistryColumn={showRegistryColumn}
-                />
-              ))}
-              {sortedFacilities.length === 0 && (
-                <tr>
-                  <td colSpan={showRegistryColumn ? 7 : 6} className="py-8 text-center text-text-muted">
-                    No facilities found
-                  </td>
+                  {showRegistryColumn ? (
+                    <th className="text-left py-2 px-3 font-medium text-text-muted">Registry Permit</th>
+                  ) : null}
+                  {([
+                    ['facility_name', 'Facility'],
+                    ['state_code', 'State'],
+                    ['compliance_status', 'Compliance'],
+                    ['dmr_count', 'DMRs'],
+                    ['synced_at', 'Last Synced'],
+                  ] as [SortKey, string][]).map(([key, label]) => (
+                    <th
+                      key={key}
+                      onClick={() => handleSort(key)}
+                      className="text-left py-2 px-3 font-medium cursor-pointer hover:text-text-secondary transition-colors"
+                    >
+                      {label}
+                      {sortKey === key && (
+                        <span className="ml-1">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
+                      )}
+                    </th>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortedFacilities.length === 0 && (
+                  <tr>
+                    <td colSpan={facilityColSpan} className="py-8 text-center text-text-muted">
+                      No facilities found
+                    </td>
+                  </tr>
+                )}
+                {sortedFacilities.length > 0 && facilityPaddingTop > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={facilityColSpan} className="p-0 border-0" style={{ height: facilityPaddingTop, lineHeight: 0 }} />
+                  </tr>
+                )}
+                {facilityVirtualItems.map((vRow) => {
+                  const f = sortedFacilities[vRow.index]!;
+                  return (
+                    <FacilityRow
+                      key={f.id}
+                      facility={f}
+                      registryPermit={registryByFederalNpdes.get(f.npdes_id.toUpperCase())}
+                      showRegistryColumn={showRegistryColumn}
+                    />
+                  );
+                })}
+                {sortedFacilities.length > 0 && facilityPaddingBottom > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={facilityColSpan} className="p-0 border-0" style={{ height: facilityPaddingBottom, lineHeight: 0 }} />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

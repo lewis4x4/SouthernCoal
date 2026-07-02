@@ -41,6 +41,12 @@ export interface RegistryFederalMappingGap {
   issuing_agency: string | null;
 }
 
+interface PermitLookupRow {
+  id: string;
+  permit_number: string;
+  metadata: unknown;
+}
+
 export function useNpdesOverrides() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
@@ -61,20 +67,33 @@ export function useNpdesOverrides() {
         basis?: NpdesConfirmationBasis | null;
         reference?: string | null;
       },
+      // Bulk callers pass a preloaded permit index to avoid an N+1 full-table
+      // scan per candidate (see bulkImportMappings). Single callers omit it and
+      // get a targeted lookup instead of loading every org permit.
+      preloadedPermits?: PermitLookupRow[],
     ) => {
       if (!orgId) return { error: 'No organization' };
       const permitKey = sourcePermitId.trim().toUpperCase();
 
-      const { data: permits, error: lookupError } = await supabase
-        .from('npdes_permits')
-        .select('id, permit_number, metadata')
-        .eq('organization_id', orgId);
+      let permit: PermitLookupRow | null;
+      if (preloadedPermits) {
+        permit =
+          preloadedPermits.find((row) => row.permit_number.trim().toUpperCase() === permitKey) ??
+          null;
+      } else {
+        const { data: permits, error: lookupError } = await supabase
+          .from('npdes_permits')
+          .select('id, permit_number, metadata')
+          .eq('organization_id', orgId)
+          .ilike('permit_number', sourcePermitId.trim());
 
-      if (lookupError) return { error: lookupError.message };
+        if (lookupError) return { error: lookupError.message };
 
-      const permit = (permits || []).find(
-        (row) => row.permit_number.trim().toUpperCase() === permitKey,
-      );
+        permit =
+          (permits as PermitLookupRow[] | null)?.find(
+            (row) => row.permit_number.trim().toUpperCase() === permitKey,
+          ) ?? null;
+      }
       if (!permit) {
         return { error: null, skipped: true as const };
       }
@@ -319,7 +338,19 @@ export function useNpdesOverrides() {
 
       setSaving(true);
 
-      const overridePayloads = candidates.map((c) => ({
+      // Validate BEFORE writing anything so invalid federal IDs never land in
+      // npdes_id_overrides (which feeds ECHO sync). Previously overrides were
+      // upserted first and validation only gated the metadata pass, leaving bad
+      // rows persisted.
+      const validCandidates = candidates.filter((c) => validateFederalNpdesId(c.npdes_id).valid);
+      const invalidCount = candidates.length - validCandidates.length;
+
+      if (validCandidates.length === 0) {
+        setSaving(false);
+        return { error: `All ${candidates.length} rows have invalid federal NPDES IDs`, imported: 0 };
+      }
+
+      const overridePayloads = validCandidates.map((c) => ({
         organization_id: orgId,
         state_code: c.state_code,
         source_permit_id: c.permit_number,
@@ -343,13 +374,30 @@ export function useNpdesOverrides() {
         overrideOk += batch.length;
       }
 
+      // Load every org permit ONCE and reuse the index for all metadata writes,
+      // instead of re-scanning the whole table per candidate (N+1).
+      const { data: permitIndexData, error: permitIndexError } = await supabase
+        .from('npdes_permits')
+        .select('id, permit_number, metadata')
+        .eq('organization_id', orgId);
+      if (permitIndexError) {
+        setSaving(false);
+        return {
+          error: `${overrideOk} overrides saved; permit lookup failed: ${permitIndexError.message}`,
+          imported: 0,
+        };
+      }
+      const permitIndex = (permitIndexData || []) as PermitLookupRow[];
+
       let metadataOk = 0;
       const metadataErrors: string[] = [];
-      for (const c of candidates) {
-        const validation = validateFederalNpdesId(c.npdes_id);
-        if (!validation.valid) continue;
-
-        const metaResult = await syncPermitFederalMetadata(c.permit_number, c.npdes_id);
+      for (const c of validCandidates) {
+        const metaResult = await syncPermitFederalMetadata(
+          c.permit_number,
+          c.npdes_id,
+          undefined,
+          permitIndex,
+        );
         if (metaResult.error) {
           metadataErrors.push(`${c.permit_number}: ${metaResult.error}`);
         } else if (!metaResult.skipped) {
@@ -363,6 +411,7 @@ export function useNpdesOverrides() {
           imported_count: metadataOk,
           override_upserted: overrideOk,
           source: UI_BULK_IMPORT_SOURCE,
+          invalid_skipped: invalidCount,
           metadata_errors: metadataErrors.length,
         },
         { module: 'external_data', tableName: 'npdes_id_overrides' },
@@ -371,11 +420,11 @@ export function useNpdesOverrides() {
       setSaving(false);
       await fetchOverrides();
 
-      if (metadataErrors.length > 0) {
-        return {
-          error: `${overrideOk} overrides saved; ${metadataErrors.length} registry metadata update(s) failed`,
-          imported: metadataOk,
-        };
+      if (metadataErrors.length > 0 || invalidCount > 0) {
+        const parts: string[] = [`${overrideOk} overrides saved`];
+        if (metadataErrors.length > 0) parts.push(`${metadataErrors.length} registry metadata update(s) failed`);
+        if (invalidCount > 0) parts.push(`${invalidCount} invalid row(s) skipped`);
+        return { error: parts.join('; '), imported: metadataOk };
       }
 
       return { error: null, imported: metadataOk };

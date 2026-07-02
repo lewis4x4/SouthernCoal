@@ -49,6 +49,33 @@ export function isPrivilegedOrAnonymousJwt(token: string): boolean {
   return false;
 }
 
+/** Constant-time string comparison to avoid timing side-channels when checking secrets. */
+export function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+/**
+ * Verify the internal server-to-server secret header (cron / pg_net dispatch path).
+ *
+ * Single source of truth for the `x-internal-secret` check — previously each
+ * sync/dispatch function carried its own copy and they had drifted (different
+ * casing, non-constant-time comparisons). Reads EMBEDDING_INTERNAL_SECRET from
+ * env; returns false when the secret is unset or the header is missing/wrong.
+ * Header lookup is case-insensitive (Fetch Headers normalizes names).
+ */
+export function verifyInternalSecret(req: Request): boolean {
+  const expected = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
+  if (!expected) return false;
+  const provided = req.headers.get("x-internal-secret") ?? "";
+  if (!provided) return false;
+  return timingSafeEqual(provided, expected);
+}
+
 /** Extract user JWT from Authorization header; rejects anon/service_role/malformed (SEC-003). */
 export function extractUserBearerToken(req: Request): string | null {
   const authHeader = req.headers.get("Authorization");

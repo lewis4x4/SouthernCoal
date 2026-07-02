@@ -23,6 +23,7 @@ export function ReviewQueuePage() {
     error,
     counts,
     pendingCount,
+    reviewedCount,
     escalatedCount,
     filteredTotal,
     truncated,
@@ -102,9 +103,12 @@ export function ReviewQueuePage() {
   }
 
   const selectedRow = selectedId ? rows.find((r) => r.id === selectedId) : null;
+  // Triage progress from org-wide server counts (not the capped local rows):
+  // share of the active queue that has been reviewed or escalated.
+  const activeQueueTotal = pendingCount + reviewedCount + escalatedCount;
   const triagePct =
-    pendingCount + rows.length > 0
-      ? Math.round(((rows.length - pendingCount) / Math.max(rows.length, 1)) * 100)
+    activeQueueTotal > 0
+      ? Math.round(((reviewedCount + escalatedCount) / activeQueueTotal) * 100)
       : 100;
 
   return (

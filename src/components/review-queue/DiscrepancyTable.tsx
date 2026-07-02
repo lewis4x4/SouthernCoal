@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -59,14 +59,19 @@ export function DiscrepancyTable({ rows, reviewerNames, onSelect, onQuickReview 
   const selfName = selfReviewDisplayNameFromProfile(profile);
   const { filters, setFilters } = useReviewQueueStore();
 
-  // Apply filters
-  const filtered = rows.filter((r) => {
-    if (filters.severity && r.severity !== filters.severity) return false;
-    if (filters.status && r.status !== filters.status) return false;
-    if (filters.source && r.source !== filters.source) return false;
-    if (filters.type && r.discrepancy_type !== filters.type) return false;
-    return true;
-  });
+  // Apply filters — memoized so unrelated re-renders (hover, selection) don't
+  // re-scan the full row set, and so the virtualizer's `count` stays stable.
+  const filtered = useMemo(
+    () =>
+      rows.filter((r) => {
+        if (filters.severity && r.severity !== filters.severity) return false;
+        if (filters.status && r.status !== filters.status) return false;
+        if (filters.source && r.source !== filters.source) return false;
+        if (filters.type && r.discrepancy_type !== filters.type) return false;
+        return true;
+      }),
+    [rows, filters.severity, filters.status, filters.source, filters.type],
+  );
 
   function toggleFilter<K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) {
     setFilters({ ...filters, [key]: filters[key] === value ? undefined : value });

@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
   evaluateExceedanceAlert,
   tallyExceedanceSeverities,
@@ -15,7 +15,6 @@ import {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 const _frontendEnv = Deno.env.get("FRONTEND_URL");
 const FRONTEND_URL = (_frontendEnv ?? (
   (Deno.env.get("SUPABASE_URL") ?? "").includes("localhost") ? "http://localhost:5173" : ""
@@ -47,8 +46,7 @@ async function validateAuth(
   req: Request,
   supabase: ReturnType<typeof createClient>,
 ): Promise<{ ok: boolean; userId: string | null }> {
-  const secret = req.headers.get("x-internal-secret");
-  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+  if (verifyInternalSecret(req)) {
     return { ok: true, userId: null };
   }
 

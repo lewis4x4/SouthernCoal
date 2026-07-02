@@ -77,7 +77,17 @@ export function useArchiveDocumentProcessing() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Processing failed';
       toast.error(`Failed to process ${entry.file_name}: ${message}`);
-      useQueueStore.getState().upsertEntry({ ...entry, status: entry.status });
+
+      // The client fetch failed (often a 30s timeout), but the Edge Function
+      // may have already advanced the row server-side. Re-read the row by id so
+      // the UI reflects reality instead of resurrecting the pre-processing copy.
+      const { data: refetched } = await supabase
+        .from('file_processing_queue')
+        .select('*')
+        .eq('id', queueId)
+        .single();
+
+      useQueueStore.getState().upsertEntry(refetched ?? { ...entry });
     }
   }, [log]);
 

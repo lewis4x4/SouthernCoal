@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
   buildDmrDateChunks,
   buildEffluentChartUrl,
   resolveDmrChunkMonths,
 } from "../_shared/echo-dmr-sync.ts";
+import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -65,9 +66,8 @@ async function validateAuth(
 ): Promise<AuthResult> {
   const denied: AuthResult = { authorized: false, userId: null, orgId: null, role: null };
 
-  // Path 1: Internal secret (cron, server-to-server)
-  const secret = req.headers.get("x-internal-secret");
-  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+  // Path 1: Internal secret (cron, server-to-server) — shared, constant-time.
+  if (verifyInternalSecret(req)) {
     return { authorized: true, userId: null, orgId: null, role: "system" };
   }
 
@@ -322,9 +322,13 @@ function parseDmrData(data: Record<string, unknown>, npdesId: string): DmrRecord
       for (const param of params) {
         const paramCode = String(param.ParameterCode || "");
         const paramDesc = String(param.ParameterDesc || "");
-        const statBase = param.StatisticalBaseCode
-          ? String(param.MonitoringLocationDesc || "")
-          : null;
+        // statistical_base is part of the dmr upsert conflict key — it must come
+        // from the statistical base fields, never the monitoring-location text.
+        const statBase = param.StatisticalBaseDesc
+          ? String(param.StatisticalBaseDesc)
+          : param.StatisticalBaseCode
+            ? String(param.StatisticalBaseCode)
+            : null;
 
         const dmrs = param.DischargeMonitoringReports as Array<Record<string, unknown>> | undefined;
         if (!Array.isArray(dmrs)) continue;
@@ -517,6 +521,12 @@ serve(async (req) => {
     });
   }
 
+  // Tenant isolation: internal secret / service role (userId null) may sync all
+  // orgs (cron). A JWT user is pinned to their own org — every permit, override,
+  // and freshness check below is filtered to callerOrgId in that case.
+  const isPrivileged = auth.userId === null;
+  const callerOrgId = auth.orgId;
+
   // Parse optional body
   let syncType = "manual";
   let limit = 0; // 0 = no limit
@@ -530,8 +540,10 @@ serve(async (req) => {
   let dmrChunkIndex: number | null = null;
   let skipFacility = false;
   let dmrOnly = false;
+  let jobRunId: string | null = null;
   try {
     const body = await req.json();
+    jobRunId = readJobRunId(body);
     syncType = body.sync_type || "manual";
     limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 0;
     offset = typeof body.offset === "number" && body.offset >= 0 ? body.offset : 0;
@@ -572,20 +584,43 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   // 1. Build permit → org map from file_processing_queue
   // -----------------------------------------------------------------------
-  const { data: permitRows, error: permitError } = await supabase
-    .from("file_processing_queue")
-    .select("uploaded_by, state_code, extracted_data")
-    // Permit rows can be post-parse statuses (embedded/imported) in current pipeline.
-    .in("status", ["parsed", "embedded", "imported"])
-    .eq("file_category", "npdes_permit")
-    .not("extracted_data->permit_number", "is", null);
+  // Paginate — PostgREST caps a single response at 1000 rows, which would
+  // silently drop permits once the queue grows past that. Loop until drained.
+  const permitRows: Array<{ uploaded_by: string | null; state_code: string | null; extracted_data: Record<string, unknown> | null }> = [];
+  {
+    const QUEUE_PAGE = 1000;
+    let qOffset = 0;
+    let qMore = true;
+    let qIterations = 0;
+    const QUEUE_MAX_ITERATIONS = 500;
+    while (qMore && qIterations < QUEUE_MAX_ITERATIONS) {
+      const { data: qPage, error: permitError } = await supabase
+        .from("file_processing_queue")
+        .select("uploaded_by, state_code, extracted_data")
+        // Permit rows can be post-parse statuses (embedded/imported) in current pipeline.
+        .in("status", ["parsed", "embedded", "imported"])
+        .eq("file_category", "npdes_permit")
+        .not("extracted_data->permit_number", "is", null)
+        .order("id")
+        .range(qOffset, qOffset + QUEUE_PAGE - 1);
 
-  if (permitError) {
-    console.error("Error querying permits:", permitError);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to query permit data" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+      if (permitError) {
+        console.error("Error querying permits:", permitError);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to query permit data" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const rows = (qPage || []) as typeof permitRows;
+      permitRows.push(...rows);
+      qMore = rows.length === QUEUE_PAGE;
+      qOffset += QUEUE_PAGE;
+      qIterations++;
+    }
+    if (qIterations >= QUEUE_MAX_ITERATIONS) {
+      console.warn(`file_processing_queue pagination hit safety cap (${QUEUE_MAX_ITERATIONS} pages)`);
+    }
   }
 
   // Resolve org IDs for uploaders
@@ -620,6 +655,11 @@ serve(async (req) => {
       continue;
     }
 
+    // JWT users may only sync their own org's permits.
+    if (!isPrivileged && orgMap[row.uploaded_by] !== callerOrgId) {
+      continue;
+    }
+
     const normalized = normalizeNpdesId(rawPermit, row.state_code ?? null);
     if (!normalized.normalized) {
       permitsSkippedInvalidSet.add(rawPermit.trim().toUpperCase());
@@ -643,14 +683,21 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   // 1b. Apply NPDES ID overrides (e.g., VA DMLR → federal NPDES mapping)
   // -----------------------------------------------------------------------
-  const { data: overrideRows } = await supabase
+  let overrideQuery = supabase
     .from("npdes_id_overrides")
     .select("organization_id, state_code, source_permit_id, npdes_id");
+  if (!isPrivileged) {
+    overrideQuery = overrideQuery.eq("organization_id", callerOrgId);
+  }
+  const { data: overrideRows } = await overrideQuery;
 
   let overridesApplied = 0;
   if (overrideRows && overrideRows.length > 0) {
     for (const ov of overrideRows) {
       const sourceKey = ov.source_permit_id.trim().toUpperCase();
+
+      // Defense in depth even if RLS/query filter changes.
+      if (!isPrivileged && ov.organization_id !== callerOrgId) continue;
 
       // If the source permit ID was in our raw set but failed normalization
       // or wasn't in the map, add it now with the override NPDES ID
@@ -679,10 +726,14 @@ serve(async (req) => {
     const BATCH = 200;
     for (let i = 0; i < npdesIds.length; i += BATCH) {
       const chunk = npdesIds.slice(i, i + BATCH);
-      const { data: facilityRows, error: facilityErr } = await supabase
+      let facilityQuery = supabase
         .from("external_echo_facilities")
         .select("npdes_id, synced_at")
         .in("npdes_id", chunk);
+      if (!isPrivileged) {
+        facilityQuery = facilityQuery.eq("organization_id", callerOrgId);
+      }
+      const { data: facilityRows, error: facilityErr } = await facilityQuery;
       if (facilityErr) {
         console.error("Stale permit filter query failed:", facilityErr.message);
         break;
@@ -875,10 +926,15 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   // 4. Update sync log
   // -----------------------------------------------------------------------
+  // Truthful status: nothing synced + errors → failed; something synced but
+  // some chunks/permits errored → partial (so cron/stale logic doesn't treat a
+  // gap-filled sync as complete); otherwise completed.
   const finalStatus =
-    dmrsInserted === 0 && facilitiesSynced === 0 && errors.length > 0
-      ? "failed"
-      : "completed";
+    errors.length === 0
+      ? "completed"
+      : dmrsInserted === 0 && facilitiesSynced === 0
+        ? "failed"
+        : "partial";
   await supabase
     .from("external_sync_log")
     .update({
@@ -970,6 +1026,14 @@ serve(async (req) => {
   }
 
   console.log(`Sync complete: ${facilitiesSynced} facilities, ${dmrsInserted} DMRs, ${errors.length} errors`);
+
+  // Report the truthful terminal status to the job_runs ledger row opened by
+  // the cron wrapper (mirrors finalStatus computed for external_sync_log).
+  await completeJobRun(supabase, jobRunId, finalStatus === "failed" ? "failed" : "succeeded", {
+    rowsScanned: facilitiesSynced,
+    rowsAffected: dmrsInserted,
+    errorDetail: errors.length > 0 ? `${errors.length} errors; status=${finalStatus}` : null,
+  });
 
   return new Response(
     JSON.stringify({

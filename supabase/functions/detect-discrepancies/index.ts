@@ -1,16 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
 import { evaluateMshaCitations, type MshaCitationInput } from "../_shared/msha-discrepancy-rules.ts";
+import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 
 // Safety cap: max rows fetched per paginated loop (500 pages × 1000 rows = 500K)
 const MAX_PAGINATION_ITERATIONS = 500;
@@ -32,8 +32,7 @@ async function validateAuth(
 ): Promise<AuthResult> {
   const denied: AuthResult = { authorized: false, userId: null, orgId: null };
 
-  const secret = req.headers.get("x-internal-secret");
-  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
+  if (verifyInternalSecret(req)) {
     return { authorized: true, userId: null, orgId: null };
   }
 
@@ -144,6 +143,7 @@ async function detectEchoDiscrepancies(
   targetNpdesIds?: string[],
 ): Promise<Discrepancy[]> {
   const discrepancies: Discrepancy[] = [];
+  const PAGE_SIZE = 1000; // PostgREST max-rows default
   const targetSet = targetNpdesIds?.length
     ? new Set(targetNpdesIds.map((id) => id.trim().toUpperCase()))
     : null;
@@ -192,15 +192,53 @@ async function detectEchoDiscrepancies(
     }
   }
 
-  // 1c. Batch-fetch exceedance counts per npdes_id for SNC check
-  const { data: exceedanceCounts } = await supabase
-    .from("exceedances")
-    .select("npdes_id")
-    .eq("organization_id", orgId);
-
+  // 1c. Build internal exceedance sets. `exceedances` has NO npdes_id column —
+  //     resolve NPDES via outfall → npdes_permits (honoring federal override),
+  //     and parameter → storet_code. Produces two structures:
+  //       • npdesWithExceedances  — for the SNC "tracked internally?" check
+  //       • internalExceedanceKeys — npdes:outfall:storet:YYYY-MM, for Rule 2 dedup
   const npdesWithExceedances = new Set<string>();
-  for (const e of exceedanceCounts || []) {
-    if (e.npdes_id) npdesWithExceedances.add(String(e.npdes_id).toUpperCase());
+  const internalExceedanceKeys = new Set<string>();
+  {
+    let excOffset = 0;
+    let hasMoreExc = true;
+    let excIterations = 0;
+    while (hasMoreExc && excIterations < MAX_PAGINATION_ITERATIONS) {
+      const { data: excPage, error: excErr } = await supabase
+        .from("exceedances")
+        .select(
+          "id, sample_date, outfalls!inner(outfall_number, npdes_permits!inner(permit_number, metadata)), parameters(storet_code)",
+        )
+        .eq("organization_id", orgId)
+        .order("id")
+        .range(excOffset, excOffset + PAGE_SIZE - 1);
+      if (excErr) {
+        console.error(
+          `Exceedance load failed — SNC/Rule 2 dedup degraded: ${excErr.message}`,
+        );
+        break;
+      }
+      const rows = (excPage || []) as Array<Record<string, unknown>>;
+      for (const row of rows) {
+        const outfall = row.outfalls as Record<string, unknown> | null;
+        const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+        const meta = permit?.metadata as Record<string, unknown> | null;
+        const federalOverride = (meta?.federal_npdes_id_override as string | undefined)
+          ?.trim()
+          .toUpperCase();
+        const npdesId = federalOverride || String(permit?.permit_number || "").toUpperCase();
+        if (!npdesId) continue;
+        npdesWithExceedances.add(npdesId);
+        const param = row.parameters as Record<string, unknown> | null;
+        const storet = String(param?.storet_code || "").trim();
+        const outfallNum = String(outfall?.outfall_number || "").trim();
+        const period = String(row.sample_date || "").slice(0, 7); // YYYY-MM
+        internalExceedanceKeys.add(`${npdesId}:${outfallNum}:${storet}:${period}`);
+      }
+      hasMoreExc = rows.length === PAGE_SIZE;
+      excOffset += PAGE_SIZE;
+      excIterations++;
+    }
   }
 
   // 1d. Compare in-memory
@@ -264,9 +302,9 @@ async function detectEchoDiscrepancies(
 
   // -----------------------------------------------------------------------
   // Rule 2: ECHO violation not tracked internally
-  // Paginated fetch — PostgREST defaults to 1000 rows without explicit limit
+  // Only flag when there is NO matching internal exceedance (npdes:outfall:
+  // storet:YYYY-MM). Paginated — PostgREST defaults to 1000 rows.
   // -----------------------------------------------------------------------
-  const PAGE_SIZE = 1000; // PostgREST max-rows default
   let violOffset = 0;
   let hasMoreViolations = true;
   let violIterations = 0;
@@ -287,6 +325,13 @@ async function detectEchoDiscrepancies(
     const rows = echoDmrsWithViolations || [];
     for (const dmr of rows) {
       if (!matchesTarget(dmr.npdes_id)) continue;
+
+      // Skip violations we already track internally as an exceedance.
+      const npdesUpper = String(dmr.npdes_id || "").toUpperCase();
+      const period = String(dmr.monitoring_period_end || "").slice(0, 7); // YYYY-MM
+      const internalKey = `${npdesUpper}:${dmr.outfall || ""}:${dmr.parameter_code || ""}:${period}`;
+      if (internalExceedanceKeys.has(internalKey)) continue;
+
       discrepancies.push({
         organization_id: orgId,
         npdes_id: dmr.npdes_id,
@@ -315,90 +360,57 @@ async function detectEchoDiscrepancies(
 
   // -----------------------------------------------------------------------
   // Rule 3: DMR value mismatch >10%
-  // Compare external_echo_dmrs vs dmr_line_items (modern + CMS prod schemas)
+  // Compare external_echo_dmrs vs internal dmr_line_items. dmr_line_items has
+  // no npdes/storet columns — resolve via parameter→storet_code, outfall, and
+  // submission→permit joins (honoring the federal override in permit metadata).
+  // ECHO parameter_code values ARE STORET codes, so they key against storet_code.
   // -----------------------------------------------------------------------
-  const { count: dmrCountModern } = await supabase
-    .from("dmr_submissions")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", orgId);
-
-  let hasInternalDmrs = (dmrCountModern ?? 0) > 0;
-  if (!hasInternalDmrs) {
-    const { count: dmrCountCms } = await supabase
-      .from("dmr_submissions")
-      .select("id, npdes_permits!inner(organization_id)", { count: "exact", head: true })
-      .eq("npdes_permits.organization_id", orgId);
-    hasInternalDmrs = (dmrCountCms ?? 0) > 0;
-  }
-
-  if (hasInternalDmrs) {
-    const intDmrMap = new Map<string, { id: string; reported_value: number }>();
+  const intDmrMap = new Map<string, { id: string; reported_value: number }>();
+  {
     let intOffset = 0;
     let hasMoreInt = true;
     let intIterations = 0;
-
-    const loadInternalDmrPage = async (modern: boolean) => {
-      if (modern) {
-        return supabase
-          .from("dmr_line_items")
-          .select(`
-            id,
-            measured_value,
-            storet_code,
-            outfalls!inner(outfall_number),
-            dmr_submissions!inner(
-              monitoring_period_end,
-              organization_id,
-              npdes_permits!inner(permit_number, metadata)
-            )
-          `)
-          .eq("dmr_submissions.organization_id", orgId)
-          .not("measured_value", "is", null)
-          .order("id")
-          .range(intOffset, intOffset + PAGE_SIZE - 1);
-      }
-      return supabase
+    while (hasMoreInt && intIterations < MAX_PAGINATION_ITERATIONS) {
+      const { data: intPage, error: intErr } = await supabase
         .from("dmr_line_items")
         .select(`
           id,
           concentration_max,
-          storet_code,
+          quantity_max,
+          parameters!inner(storet_code),
           outfalls!inner(outfall_number),
           dmr_submissions!inner(
             reporting_period_end,
-            permit_id,
             npdes_permits!inner(permit_number, metadata, organization_id)
           )
         `)
         .eq("dmr_submissions.npdes_permits.organization_id", orgId)
-        .not("concentration_max", "is", null)
         .order("id")
         .range(intOffset, intOffset + PAGE_SIZE - 1);
-    };
-
-    const useModernSchema = (dmrCountModern ?? 0) > 0;
-
-    while (hasMoreInt && intIterations < MAX_PAGINATION_ITERATIONS) {
-      const { data: intPage } = await loadInternalDmrPage(useModernSchema);
+      if (intErr) {
+        console.error(`Internal DMR load failed — Rule 3 skipped: ${intErr.message}`);
+        break;
+      }
       const intRows = (intPage || []) as Array<Record<string, unknown>>;
       for (const row of intRows) {
         const sub = row.dmr_submissions as Record<string, unknown> | null;
         const permit = sub?.npdes_permits as Record<string, unknown> | null;
         const outfall = row.outfalls as Record<string, unknown> | null;
+        const param = row.parameters as Record<string, unknown> | null;
         const meta = permit?.metadata as Record<string, unknown> | null;
         const federalOverride = (meta?.federal_npdes_id_override as string | undefined)
           ?.trim()
           .toUpperCase();
         const npdesId = federalOverride ||
           String(permit?.permit_number || "").toUpperCase();
-        const storetCode = String(row.storet_code || "").trim();
+        const storetCode = String(param?.storet_code || "").trim();
         const outfallNum = String(outfall?.outfall_number || "").trim();
-        const periodEnd = String(
-          sub?.monitoring_period_end || sub?.reporting_period_end || "",
-        );
-        const reportedValue = useModernSchema
-          ? row.measured_value as number
-          : row.concentration_max as number;
+        const periodEnd = String(sub?.reporting_period_end || "");
+        const reportedValue = row.concentration_max != null
+          ? Number(row.concentration_max)
+          : row.quantity_max != null
+            ? Number(row.quantity_max)
+            : null;
 
         if (!npdesId || !storetCode || reportedValue == null) continue;
 
@@ -414,7 +426,9 @@ async function detectEchoDiscrepancies(
     if (intIterations >= MAX_PAGINATION_ITERATIONS) {
       console.warn(`Internal DMR pagination hit safety cap (${MAX_PAGINATION_ITERATIONS} iterations)`);
     }
+  }
 
+  if (intDmrMap.size > 0) {
     // Paginate external DMRs with values
     let extOffset = 0;
     let hasMoreExt = true;
@@ -565,17 +579,23 @@ serve(async (req) => {
     });
   }
 
+  // Internal secret / service role → both null. JWT user → both set.
+  const isPrivileged = auth.userId === null;
+
   let source = "echo";
   let orgId: string | null = auth.orgId;
   let syncLogId: string | null = null;
   let triggeredBy: string | null = auth.userId;
   let targetNpdesIds: string[] = [];
+  let bodyOrgId: string | null = null;
+  let jobRunId: string | null = null;
 
   try {
     const body = await req.json();
     if (typeof body.source === "string") source = body.source;
-    if (typeof body.organization_id === "string") orgId = body.organization_id;
+    if (typeof body.organization_id === "string") bodyOrgId = body.organization_id;
     if (typeof body.sync_log_id === "string") syncLogId = body.sync_log_id;
+    jobRunId = readJobRunId(body);
     if (typeof body.triggered_by === "string") triggeredBy = body.triggered_by;
     if (Array.isArray(body.target_npdes_ids)) {
       targetNpdesIds = body.target_npdes_ids
@@ -586,8 +606,22 @@ serve(async (req) => {
     // Defaults on parse failure
   }
 
-  // If no org specified, infer from synced external data for the requested source
-  if (!orgId) {
+  // Tenant isolation: only privileged callers (internal secret / service role)
+  // may target an org via the request body. A JWT user is pinned to their own
+  // org; a mismatching body.organization_id is rejected, not silently honored.
+  if (bodyOrgId) {
+    if (isPrivileged) {
+      orgId = bodyOrgId;
+    } else if (bodyOrgId !== auth.orgId) {
+      return new Response(
+        JSON.stringify({ error: "organization_id does not match caller" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // Privileged caller with no org specified: infer from synced external data.
+  if (!orgId && isPrivileged) {
     const table = source === "msha" ? "external_msha_inspections" : "external_echo_facilities";
     const { data: orgs } = await supabase
       .from(table)
@@ -598,6 +632,7 @@ serve(async (req) => {
   }
 
   if (!orgId) {
+    await completeJobRun(supabase, jobRunId, "succeeded", { rowsScanned: 0, rowsAffected: 0 });
     return new Response(
       JSON.stringify({ success: true, message: "No external data found to compare", detected: 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -687,6 +722,16 @@ serve(async (req) => {
   } catch (err) {
     console.error("dispatch-compliance-alerts invoke error:", err);
   }
+
+  // Truthful ledger: report terminal status back to the job_runs row the cron
+  // wrapper opened. insertErrors>0 with zero inserts means the run did not do
+  // its job, so it must not read as a clean success.
+  const jobStatus = insertErrors > 0 && inserted === 0 ? "failed" : "succeeded";
+  await completeJobRun(supabase, jobRunId, jobStatus, {
+    rowsScanned: discrepancies.length,
+    rowsAffected: inserted,
+    errorDetail: insertErrors > 0 ? `${insertErrors} insert errors` : null,
+  });
 
   return new Response(
     JSON.stringify({

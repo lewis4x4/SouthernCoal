@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -53,10 +53,8 @@ async function validateAuth(
 ): Promise<AuthResult> {
   const denied: AuthResult = { authorized: false, userId: null, orgId: null, role: null };
 
-  // Path 1: Internal secret header (cron, server-to-server)
-  const internalSecret = req.headers.get("x-internal-secret");
-  const expectedSecret = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
-  if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
+  // Path 1: Internal secret header (cron, server-to-server) — shared, constant-time.
+  if (verifyInternalSecret(req)) {
     return { authorized: true, userId: null, orgId: null, role: "system" };
   }
 

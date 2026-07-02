@@ -78,6 +78,7 @@ const TYPES_WITH_LIMITS = ['original_permit', 'renewal', 'draft_permit', 'tsmp_p
 export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const { can } = usePermissions();
   const { generateDMRSchedule, generating } = useObligationGeneration();
+  const { importPermitLimits, isImporting: isPermitImporting } = usePermitLimitsImport();
   const verificationStatus = useVerificationStore((s) => s.getStatus(entry.id));
   const setStatus = useVerificationStore((s) => s.setStatus);
   const markOpened = useVerificationStore((s) => s.markOpened);
@@ -140,7 +141,6 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
   const docLabel = DOCUMENT_TYPE_LABELS[docType] ?? docType;
   const hasLimits = TYPES_WITH_LIMITS.includes(docType);
   const limits = data.limits ?? [];
-  const { importPermitLimits, isImporting: isPermitImporting } = usePermitLimitsImport();
   const canImportPermit = hasLimits && limits.length > 0 && !!data.permit_number;
 
   return (
