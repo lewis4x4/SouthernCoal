@@ -44,22 +44,6 @@ export const OBLIGATION_DOMAIN_LABELS: Record<ObligationDomain | 'all', string> 
   msha: 'MSHA',
 };
 
-
-export interface SamplingObligationRow {
-  calendar_id: string;
-  scheduled_date: string;
-  effective_due: string;
-  calendar_status: string | null;
-  dispatch_status: string | null;
-  outfall_number: string | null;
-  parameter_short_name: string | null;
-  permit_number: string | null;
-  schedule_source: string | null;
-  frequency_code: string | null;
-  obligation_status: ObligationStatus;
-  days_late: number;
-}
-
 export interface SamplingObligationLedger {
   organization_id?: string;
   computed_at?: string;

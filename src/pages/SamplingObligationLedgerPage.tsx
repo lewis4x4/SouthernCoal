@@ -116,6 +116,11 @@ export function SamplingObligationLedgerPage() {
           <p className="mt-1 text-xs text-text-muted">
             {counts?.missed ?? 0} missed · {counts?.at_risk ?? 0} at risk
           </p>
+          {!loading && ((counts?.missed ?? 0) > 0 || (counts?.at_risk ?? 0) > 0) && (
+            <Link to="/compliance/missed-at-risk" className="mt-2 inline-flex text-xs text-qo-accent hover:underline">
+              Open gap queue →
+            </Link>
+          )}
         </div>
         <div className="rounded-xl border border-black/[0.08] bg-white p-4 shadow-sm">
           <p className="text-[10px] uppercase tracking-wide text-text-muted">Fulfilled</p>
@@ -172,18 +177,19 @@ export function SamplingObligationLedgerPage() {
               <th className="px-4 py-3">Detail</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Source</th>
+              <th className="px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-text-muted">
+                <td colSpan={7} className="px-4 py-8 text-center text-text-muted">
                   <Loader2 className="mx-auto animate-spin" size={18} />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-text-muted">
+                <td colSpan={7} className="px-4 py-8 text-center text-text-muted">
                   No obligations for this filter — populate schedules via Upload Dashboard or refresh MSHA/SMCRA clocks.
                 </td>
               </tr>
@@ -214,6 +220,24 @@ export function SamplingObligationLedgerPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-text-muted">{row.schedule_source ?? '—'}</td>
+                      <td className="px-4 py-2.5">
+                        {(row.obligation_status === 'missed' || row.obligation_status === 'at_risk') && (
+                          <Link
+                            to="/compliance/missed-at-risk"
+                            className="text-qo-accent hover:underline"
+                          >
+                            Gap queue
+                          </Link>
+                        )}
+                        {row.obligation_status === 'missed' && (
+                          <Link
+                            to="/compliance/defensible-miss"
+                            className="ml-2 text-purple-300 hover:underline"
+                          >
+                            Packet
+                          </Link>
+                        )}
+                      </td>
                     </tr>
                   );
                 }
@@ -242,11 +266,18 @@ export function SamplingObligationLedgerPage() {
                     </td>
                     <td className="px-4 py-2.5 text-text-muted">
                       {row.domain === 'msha' ? (
-                        <Link to="/external-data" className="text-qo-accent hover:underline">
+                        <Link to="/compliance/external-data" className="text-qo-accent hover:underline">
                           MSHA sync
                         </Link>
                       ) : (
                         'draft metadata'
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {row.domain === 'msha' && (row.obligation_status === 'missed' || row.obligation_status === 'at_risk') && (
+                        <Link to="/compliance/external-data" className="text-qo-accent hover:underline">
+                          Abatement
+                        </Link>
                       )}
                     </td>
                   </tr>

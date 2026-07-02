@@ -2,6 +2,7 @@ import { cn } from '@/lib/cn';
 import { GAP_REVIEW_STATUS_LABELS } from '@/lib/samplingGapSeverity';
 import { GapKindBadge, GapSeverityBadge } from '@/components/sampling-gaps/SamplingGapSummaryCards';
 import type { SamplingGapRecord, SamplingGapReviewStatus } from '@/types/samplingGaps';
+import { Link } from 'react-router-dom';
 
 const STATUS_COLORS: Record<SamplingGapReviewStatus, string> = {
   pending: 'bg-black/[0.03] text-text-secondary border-black/[0.08]',
@@ -51,6 +52,7 @@ export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Pro
               <th className="px-3 py-2 font-medium">Dispatch</th>
               <th className="px-3 py-2 font-medium">Field Outcome</th>
               <th className="px-3 py-2 font-medium">Status</th>
+              <th className="px-3 py-2 font-medium">WO</th>
             </tr>
           </thead>
           <tbody>
@@ -88,6 +90,19 @@ export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Pro
                   >
                     {GAP_REVIEW_STATUS_LABELS[row.review_status] ?? row.review_status}
                   </span>
+                </td>
+                <td className="px-3 py-2.5">
+                  {row.work_order_id ? (
+                    <Link
+                      to={`/work-orders?highlight=${row.work_order_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-qo-accent hover:underline"
+                    >
+                      Open
+                    </Link>
+                  ) : (
+                    <span className="text-text-muted">—</span>
+                  )}
                 </td>
               </tr>
             ))}
