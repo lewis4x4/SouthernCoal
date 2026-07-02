@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
+import { useJobHealth } from '@/hooks/useJobHealth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   buildHealthExportRows,
@@ -15,7 +16,7 @@ import {
 } from '@/lib/systemHealth';
 import type { DataIntegrityCheck, IntegrityCheckResult } from '@/types/database';
 
-type Tab = 'integrity' | 'retention' | 'health';
+type Tab = 'integrity' | 'retention' | 'health' | 'jobs';
 
 const STATUS_ICON: Record<string, { icon: typeof CheckCircle2; color: string }> = {
   passed: { icon: CheckCircle2, color: 'text-green-400' },
@@ -36,6 +37,7 @@ export function SystemHealthPage() {
     loading, runningCheck, capturingSnapshot, runningRetentionAudit, fetchError,
     runIntegrityCheck, captureHealthSnapshot, runRetentionAudit, updateRetentionPolicy,
   } = useSystemHealth();
+  const { jobs: scheduledJobs, generatedAt: jobsGeneratedAt, loading: jobsLoading, error: jobsError, refetch: refetchJobs } = useJobHealth();
   const { log } = useAuditLog();
 
   const [tab, setTab] = useState<Tab>('integrity');
@@ -217,6 +219,7 @@ export function SystemHealthPage() {
           { key: 'integrity' as Tab, label: 'Data Integrity' },
           { key: 'retention' as Tab, label: 'Retention Policies' },
           { key: 'health' as Tab, label: 'Health Logs' },
+          { key: 'jobs' as Tab, label: 'Scheduled Jobs' },
         ]).map(t => (
           <button
             key={t.key}
@@ -304,6 +307,85 @@ export function SystemHealthPage() {
               </div>
             </SpotlightCard>
           ))}
+        </div>
+      )}
+
+      {/* Scheduled Jobs (§7.2 r4) */}
+      {tab === 'jobs' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-secondary">
+              Cron entrypoints wrapped in job_runs — failures write audit_log entries.
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetchJobs()}
+              disabled={jobsLoading}
+              className="px-3 py-1.5 text-xs bg-qo-nested border border-black/[0.08] rounded-lg hover:bg-black/[0.06] text-text-secondary disabled:opacity-50"
+            >
+              {jobsLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+          {jobsError && (
+            <p className="text-xs text-qo-risk py-4 text-center">{jobsError}</p>
+          )}
+          {!jobsError && jobsLoading && scheduledJobs.length === 0 && (
+            <div className="flex items-center justify-center py-8 text-text-muted text-sm">Loading job health…</div>
+          )}
+          {!jobsError && !jobsLoading && scheduledJobs.length === 0 && (
+            <p className="text-center text-text-secondary text-sm py-8">No scheduled jobs registered yet.</p>
+          )}
+          {scheduledJobs.map((job) => (
+            <SpotlightCard
+              key={job.job_name}
+              className={`p-4 ${job.is_stale || job.presumed_failed ? 'border-amber-500/25' : ''} ${job.last_status === 'failed' ? 'border-red-500/25' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary">{job.display_name}</h3>
+                  <p className="text-[10px] text-text-muted font-mono mt-0.5">{job.job_name}</p>
+                </div>
+                <div className="text-right text-xs">
+                  {job.last_status ? (
+                    <span className={
+                      job.last_status === 'succeeded' ? 'text-green-400'
+                        : job.last_status === 'failed' ? 'text-qo-risk'
+                          : 'text-qo-accent'
+                    }>
+                      {job.presumed_failed ? 'Presumed failed' : job.last_status}
+                    </span>
+                  ) : (
+                    <span className="text-text-muted">Never run</span>
+                  )}
+                  {job.is_stale && !job.presumed_failed && (
+                    <p className="text-[10px] text-qo-ochre-text mt-1">Stale</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-text-secondary">
+                {job.last_started_at && (
+                  <span>Started {new Date(job.last_started_at).toLocaleString()}</span>
+                )}
+                {job.last_finished_at && (
+                  <span>Finished {new Date(job.last_finished_at).toLocaleString()}</span>
+                )}
+                {job.hours_since_last_run != null && (
+                  <span>{Math.round(job.hours_since_last_run)}h ago</span>
+                )}
+                {job.rows_affected != null && (
+                  <span>{job.rows_affected} affected</span>
+                )}
+              </div>
+              {job.error_detail && (
+                <p className="mt-2 text-[10px] text-qo-risk border-t border-black/[0.06] pt-2">{job.error_detail}</p>
+              )}
+            </SpotlightCard>
+          ))}
+          {jobsGeneratedAt && (
+            <p className="text-[10px] text-text-muted text-center pt-2">
+              Generated {new Date(jobsGeneratedAt).toLocaleString()}
+            </p>
+          )}
         </div>
       )}
 

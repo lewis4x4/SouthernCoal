@@ -5,6 +5,7 @@ import { SamplingGapDetailPanel } from '@/components/sampling-gaps/SamplingGapDe
 import { SamplingGapSummaryCards } from '@/components/sampling-gaps/SamplingGapSummaryCards';
 import { SamplingGapTable } from '@/components/sampling-gaps/SamplingGapTable';
 import { useSamplingGaps } from '@/hooks/useSamplingGaps';
+import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { SamplingGapKind } from '@/lib/samplingGapSeverity';
 
@@ -18,6 +19,7 @@ export function MissedAtRiskPage() {
     runDetection,
     updateReviewStatus,
   } = useSamplingGaps();
+  const statutoryAcks = useStatutoryAlertAcks();
   const { can } = usePermissions();
   const canTriage = can('verify');
   const canRunDetection = can('bulk_process');
@@ -110,6 +112,22 @@ export function MissedAtRiskPage() {
               row={selectedRow}
               onUpdate={updateReviewStatus}
               canTriage={canTriage}
+              needsStatutoryAck={
+                selectedRow
+                  ? statutoryAcks.isUnacknowledged('sampling_gap', selectedRow.id)
+                  : false
+              }
+              onStatutoryAck={
+                selectedRow
+                  ? () => statutoryAcks.acknowledge('sampling_gap', selectedRow.id)
+                  : undefined
+              }
+              statutoryAckBusy={
+                selectedRow
+                  ? statutoryAcks.isAcknowledging('sampling_gap', selectedRow.id)
+                  : false
+              }
+              statutoryAckLoading={statutoryAcks.loading}
             />
           </div>
         </div>

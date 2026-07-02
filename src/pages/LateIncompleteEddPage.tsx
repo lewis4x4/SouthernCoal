@@ -3,7 +3,9 @@ import { Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { EDD_REVIEW_STATUS_LABELS } from '@/lib/eddParagraph49';
 import { useEddParagraph49Flags } from '@/hooks/useEddParagraph49Flags';
+import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { usePermissions } from '@/hooks/usePermissions';
+import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 import type { EddParagraph49ReviewStatus } from '@/lib/eddParagraph49';
 import type { EddParagraph49Evaluation } from '@/types/eddParagraph49';
 
@@ -38,6 +40,7 @@ function FlagBadges({ row }: { row: EddParagraph49Evaluation }) {
 
 export function LateIncompleteEddPage() {
   const { rows, loading, error, counts, updateReviewStatus } = useEddParagraph49Flags();
+  const statutoryAcks = useStatutoryAlertAcks();
   const { can } = usePermissions();
   const canTriage = can('verify');
 
@@ -208,6 +211,12 @@ export function LateIncompleteEddPage() {
                   <dd className="text-text-primary tabular-nums">{selected.exceedance_parameter_count}</dd>
                 </div>
               </dl>
+              <StatutoryAckButton
+                needsAck={statutoryAcks.isUnacknowledged('edd_paragraph49', selected.id)}
+                onAck={() => statutoryAcks.acknowledge('edd_paragraph49', selected.id)}
+                acknowledging={statutoryAcks.isAcknowledging('edd_paragraph49', selected.id)}
+                loading={statutoryAcks.loading}
+              />
               {canTriage && (
                 <>
                   <textarea

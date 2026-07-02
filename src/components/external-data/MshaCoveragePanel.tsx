@@ -3,12 +3,15 @@ import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { MshaStatusPanel } from '@/components/external-data/MshaStatusPanel';
 import { useMshaAbatement } from '@/hooks/useMshaAbatement';
+import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { useMshaMapStatus } from '@/hooks/useMshaMapStatus';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
+import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 
 export function MshaCoveragePanel() {
   const { status, drift, reviewMines, loading, refreshing, error, refreshMap } = useMshaMapStatus();
   const { rows, loading: abatementLoading, refetch: refetchAbatement } = useMshaAbatement();
+  const statutoryAcks = useStatutoryAlertAcks();
   const { syncing, triggerMshaSync } = useSyncTrigger();
   const isSyncing = syncing.msha ?? false;
 
@@ -136,6 +139,15 @@ export function MshaCoveragePanel() {
                     Violation {row.violation_number ?? '—'} · Abate by{' '}
                     {new Date(row.abatement_due_date).toLocaleDateString()}
                   </p>
+                  <div className="mt-2">
+                    <StatutoryAckButton
+                      needsAck={statutoryAcks.isUnacknowledged('msha_abatement', row.id)}
+                      onAck={() => statutoryAcks.acknowledge('msha_abatement', row.id)}
+                      acknowledging={statutoryAcks.isAcknowledging('msha_abatement', row.id)}
+                      loading={statutoryAcks.loading}
+                      compact
+                    />
+                  </div>
                 </div>
               ))}
             </div>

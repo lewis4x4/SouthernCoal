@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { GAP_REVIEW_STATUS_LABELS } from '@/lib/samplingGapSeverity';
 import { GapKindBadge, GapSeverityBadge } from '@/components/sampling-gaps/SamplingGapSummaryCards';
+import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 import type { SamplingGapRecord, SamplingGapReviewStatus } from '@/types/samplingGaps';
 
 const TRIAGE_OPTIONS: SamplingGapReviewStatus[] = [
@@ -18,9 +19,21 @@ interface Props {
   row: SamplingGapRecord | null;
   onUpdate: (gapId: string, status: SamplingGapReviewStatus, notes?: string) => Promise<string | null>;
   canTriage: boolean;
+  needsStatutoryAck?: boolean;
+  onStatutoryAck?: () => void | Promise<unknown>;
+  statutoryAckBusy?: boolean;
+  statutoryAckLoading?: boolean;
 }
 
-export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
+export function SamplingGapDetailPanel({
+  row,
+  onUpdate,
+  canTriage,
+  needsStatutoryAck = false,
+  onStatutoryAck,
+  statutoryAckBusy = false,
+  statutoryAckLoading = false,
+}: Props) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -105,6 +118,19 @@ export function SamplingGapDetailPanel({ row, onUpdate, canTriage }: Props) {
           <FileText size={12} />
           Open defensible-miss packet
         </Link>
+      )}
+
+      {onStatutoryAck && (
+        <div className="rounded-lg border border-black/[0.06] bg-black/[0.02] px-3 py-2">
+          <p className="text-[10px] text-text-muted mb-2">Statutory acknowledgment (separate from triage)</p>
+          <StatutoryAckButton
+            needsAck={needsStatutoryAck}
+            onAck={onStatutoryAck}
+            acknowledging={statutoryAckBusy}
+            loading={statutoryAckLoading}
+            compact
+          />
+        </div>
       )}
 
       <div>
