@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom';
 import {
   Upload, ClipboardList, FileText, Activity, DollarSign,
-  MapPin, ClipboardCheck, CloudRain,
+  MapPin, ClipboardCheck, CloudRain, AlertTriangle, Scale, Shield,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
-import { COMPLIANCE_UPLOAD_ROLES } from '@/lib/rbac';
+import {
+  COMPLIANCE_UPLOAD_ROLES,
+  COMPLIANCE_ADVANCED_ROLES,
+  PENALTY_LEDGER_ROLES,
+  COUNSEL_EVIDENCE_ROLES,
+} from '@/lib/rbac';
 import type { Role } from '@/types/auth';
 
 type Tile = {
@@ -80,6 +85,30 @@ const TILES: Tile[] = [
     icon: CloudRain,
     accent: 'bg-qo-ochre',
     roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'wv_supervisor', 'coo'],
+  },
+  {
+    title: 'Missed Sampling',
+    description: 'Calendar-gap detection and at-risk events',
+    href: '/compliance/missed-at-risk',
+    icon: AlertTriangle,
+    accent: 'bg-qo-ochre',
+    roles: COMPLIANCE_ADVANCED_ROLES,
+  },
+  {
+    title: 'Penalty Ledger',
+    description: 'Draft stipulated-penalty exposure by source',
+    href: '/compliance/penalty-ledger',
+    icon: Scale,
+    accent: 'bg-qo-risk',
+    roles: PENALTY_LEDGER_ROLES,
+  },
+  {
+    title: 'Defensible Miss',
+    description: 'Counsel review packets for missed events',
+    href: '/compliance/defensible-miss',
+    icon: Shield,
+    accent: 'bg-qo-accent',
+    roles: COUNSEL_EVIDENCE_ROLES,
   },
 ];
 

@@ -27,6 +27,16 @@ const ACTION_COLORS: Record<string, string> = {
   correction_rejected: 'bg-red-500/10 text-qo-risk border-red-500/20',
   roadmap_status_change: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   obligation_generation: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  obligation_ledger_export_csv: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  obligation_ledger_clocks_refreshed: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  sampling_gap_detection_manual: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  sampling_gap_review_updated: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  equipment_maintenance_detection_run: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  msha_abatement_detection_run: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  edd_paragraph49_review_updated: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  defensible_miss_packet_generated: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  defensible_miss_packet_exported: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  defensible_miss_packet_pdf_generated: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   // Field / WV route (client audit)
   field_sync_manual_refresh: 'bg-qo-accent/10 text-qo-accent border-qo-accent/20',
   field_visit_completed: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
@@ -38,6 +48,16 @@ const ACTION_COLORS: Record<string, string> = {
 
 /** Short labels for dense table cells and filter dropdowns (raw action still the filter value). */
 const ACTION_LABELS: Record<string, string> = {
+  sampling_gap_detection_manual: 'Gap detection (manual)',
+  sampling_gap_review_updated: 'Gap triage updated',
+  equipment_maintenance_detection_run: 'PM detection run',
+  msha_abatement_detection_run: 'MSHA abatement detection',
+  edd_paragraph49_review_updated: '¶49 EDD triage',
+  defensible_miss_packet_generated: 'Defensible-miss packet',
+  defensible_miss_packet_exported: 'Defensible-miss export',
+  defensible_miss_packet_pdf_generated: 'Defensible-miss PDF',
+  obligation_ledger_export_csv: 'Obligation ledger CSV',
+  obligation_ledger_clocks_refreshed: 'Obligation clocks refresh',
   field_sync_manual_refresh: 'Field: manual refresh',
   field_visit_completed: 'Field: visit completed',
   field_visit_completion_queued: 'Field: completion queued',
@@ -61,6 +81,8 @@ const PRESET_AUDIT_MODULES = [
   'field_operations',
   /** Legacy client audits before module name unified with queue/refresh */
   'field_ops',
+  'environmental_compliance',
+  'equipment',
   'frontend',
   'handoff',
   'roadmap',

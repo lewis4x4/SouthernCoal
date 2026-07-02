@@ -91,7 +91,7 @@ export function DiscrepancyReadinessPanel({
             Upload Dashboard
           </Link>
           <Link
-            to="/external-data"
+            to="/compliance/external-data"
             className="text-[10px] px-2 py-1 rounded border border-black/[0.08] text-text-secondary hover:text-text-primary"
           >
             ECHO sync

@@ -263,6 +263,34 @@ export function useWorkOrders() {
     [profile],
   );
 
+  // ── Fetch single work order (direct detail links) ───────────────────────
+  const fetchWorkOrderById = useCallback(async (id: string) => {
+    const { data, error } = await supabase
+      .from('work_orders')
+      .select(`
+        *,
+        site:sites(name),
+        outfall:outfalls(outfall_number),
+        assignee:user_profiles!work_orders_assigned_to_fkey(first_name, last_name)
+      `)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('[work_orders] fetch by id error:', error?.message);
+      return null;
+    }
+
+    return {
+      ...data,
+      site_name: (data.site as Record<string, string> | null)?.name ?? null,
+      outfall_display: (data.outfall as Record<string, string> | null)?.outfall_number ?? null,
+      assigned_to_name: data.assignee
+        ? `${(data.assignee as Record<string, string>).first_name ?? ''} ${(data.assignee as Record<string, string>).last_name ?? ''}`.trim()
+        : null,
+    } as WorkOrderWithRelations;
+  }, []);
+
   // ── Fetch Events ────────────────────────────────────────────────────────
   const fetchEvents = useCallback(async (workOrderId: string) => {
     const { data, error } = await supabase
@@ -304,6 +332,7 @@ export function useWorkOrders() {
     updatePriority,
     addNote,
     fetchEvents,
+    fetchWorkOrderById,
     refresh: fetchWorkOrders,
   };
 }

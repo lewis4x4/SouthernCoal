@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useWorkOrders } from '@/hooks/useWorkOrders';
 import { useHumanOverrides } from '@/hooks/useHumanOverrides';
+import type { WorkOrderWithRelations } from '@/types/database';
 import {
   ArrowLeft,
   Clock,
@@ -61,15 +62,17 @@ const EVENT_ICONS: Record<string, typeof Clock> = {
 
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { workOrders, loading, updateStatus, addNote, fetchEvents } = useWorkOrders();
+  const { workOrders, loading, updateStatus, addNote, fetchEvents, fetchWorkOrderById } = useWorkOrders();
   const { hasActiveHold, placeLegalHold, legalHolds } = useHumanOverrides();
   const [events, setEvents] = useState<WorkOrderEvent[]>([]);
+  const [directWo, setDirectWo] = useState<WorkOrderWithRelations | null>(null);
+  const [directLoading, setDirectLoading] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [statusNotes, setStatusNotes] = useState('');
   const [showHoldForm, setShowHoldForm] = useState(false);
   const [holdReason, setHoldReason] = useState('');
 
-  const wo = workOrders.find((w) => w.id === id);
+  const wo = workOrders.find((w) => w.id === id) ?? directWo;
   const isHeld = id ? hasActiveHold('work_order', id) : false;
   const activeHold = legalHolds.find(
     (h) => h.entity_type === 'work_order' && h.entity_id === id && h.is_active,
@@ -85,6 +88,15 @@ export function WorkOrderDetailPage() {
     loadEvents();
   }, [loadEvents]);
 
+  useEffect(() => {
+    if (!id || loading || wo) return;
+    setDirectLoading(true);
+    void fetchWorkOrderById(id).then((row) => {
+      setDirectWo(row);
+      setDirectLoading(false);
+    });
+  }, [fetchWorkOrderById, id, loading, wo]);
+
   const isOverdue =
     wo?.due_date &&
     new Date(wo.due_date) < new Date() &&
@@ -94,6 +106,10 @@ export function WorkOrderDetailPage() {
     if (!id || isHeld) return;
     await updateStatus(id, newStatus, statusNotes || undefined);
     setStatusNotes('');
+    if (directWo) {
+      const refreshed = await fetchWorkOrderById(id);
+      setDirectWo(refreshed);
+    }
     loadEvents();
   };
 
@@ -115,7 +131,7 @@ export function WorkOrderDetailPage() {
     setShowHoldForm(false);
   };
 
-  if (loading) {
+  if (loading || directLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin h-8 w-8 border-2 border-amber-400 border-t-transparent rounded-full" />
