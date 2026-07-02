@@ -14,14 +14,32 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES } from '@/lib/constants';
 import {
   classifyRegistryPermitId,
+  confirmationBasisLabel,
+  NPDES_CONFIRMATION_BASIS,
   registryGapHint,
+  suggestedConfirmationBases,
+  validateConfirmationBasis,
   validateFederalNpdesId,
+  type NpdesConfirmationBasis,
 } from '@/lib/npdesMapping';
+import type {
+  NpdesOverride,
+  RegistryFederalMappingGap,
+  SaveOverrideOptions,
+  UnmatchedPermit,
+} from '@/hooks/useNpdesOverrides';
+
 import type { CoverageFacility, StateCoverage } from '@/hooks/useEchoCoverage';
-import type { NpdesOverride, RegistryFederalMappingGap, UnmatchedPermit } from '@/hooks/useNpdesOverrides';
 
 type SortKey = 'npdes_id' | 'facility_name' | 'state_code' | 'compliance_status' | 'dmr_count' | 'synced_at';
 type SortDir = 'asc' | 'desc';
+
+type SaveOverrideFn = (
+  sourceId: string,
+  npdesId: string,
+  stateCode: string,
+  options?: SaveOverrideOptions,
+) => Promise<{ error: string | null }>;
 
 function ComplianceBadge({ status }: { status: string | null }) {
   if (!status) return <span className="text-[10px] text-text-muted">-</span>;
@@ -490,11 +508,15 @@ function RegistryGapRow({
   gap: RegistryFederalMappingGap;
   saving: boolean;
   canMap: boolean;
-  onSave: (sourceId: string, npdesId: string, stateCode: string, notes?: string) => Promise<{ error: string | null }>;
+  onSave: SaveOverrideFn;
 }) {
   const [npdesId, setNpdesId] = useState('');
+  const [confirmationBasis, setConfirmationBasis] = useState<NpdesConfirmationBasis | ''>('');
+  const [confirmationReference, setConfirmationReference] = useState('');
   const kind = classifyRegistryPermitId(gap.permit_number, gap.state_code);
   const hint = registryGapHint(gap.permit_number, gap.state_code);
+  const suggested = suggestedConfirmationBases(kind);
+  const requiresConfirmation = gap.state_code === 'VA' || gap.state_code === '—';
 
   async function handleSave() {
     const validation = validateFederalNpdesId(npdesId);
@@ -502,18 +524,30 @@ function RegistryGapRow({
       toast.error(validation.message ?? 'Invalid NPDES ID');
       return;
     }
-    const federalId = npdesId.trim().toUpperCase();
-    const { error } = await onSave(
-      gap.permit_number,
-      federalId,
-      gap.state_code === '—' ? 'VA' : gap.state_code,
-      kind === 'dmlr_mining' ? 'DMLR → federal crosswalk' : undefined,
+    const basisValidation = validateConfirmationBasis(
+      confirmationBasis || null,
+      confirmationReference,
+      { required: requiresConfirmation },
     );
+    if (!basisValidation.valid) {
+      toast.error(basisValidation.message ?? 'Invalid confirmation basis');
+      return;
+    }
+    const federalId = npdesId.trim().toUpperCase();
+    const stateCode = gap.state_code === '—' ? 'VA' : gap.state_code;
+    const { error } = await onSave(gap.permit_number, federalId, stateCode, {
+      confirmationBasis: confirmationBasis || undefined,
+      confirmationReference: confirmationReference.trim() || undefined,
+      requireConfirmationBasis: requiresConfirmation,
+      notes: kind === 'dmlr_mining' ? 'DMLR → federal crosswalk' : undefined,
+    });
     if (error) {
       toast.error(`Save failed: ${error}`);
     } else {
       toast.success(`Mapped ${gap.permit_number} → ${federalId} (registry + ECHO override)`);
       setNpdesId('');
+      setConfirmationBasis('');
+      setConfirmationReference('');
     }
   }
 
@@ -538,24 +572,62 @@ function RegistryGapRow({
       </div>
       {hint && <p className="mt-1.5 text-[11px] text-text-muted leading-snug">{hint}</p>}
       {canMap && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-text-muted">&rarr;</span>
-          <input
-            type="text"
-            value={npdesId}
-            onChange={(e) => setNpdesId(e.target.value)}
-            placeholder="Federal NPDES ID (e.g. VA0081742)"
-            className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 w-44"
-          />
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !npdesId.trim()}
-            className="flex items-center gap-1 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
-          >
-            <Save size={10} />
-            Map
-          </button>
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-text-muted">&rarr;</span>
+            <input
+              type="text"
+              value={npdesId}
+              onChange={(e) => setNpdesId(e.target.value)}
+              placeholder="Federal NPDES ID (e.g. VA0081742)"
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 w-44"
+            />
+            <select
+              value={confirmationBasis}
+              onChange={(e) => setConfirmationBasis(e.target.value as NpdesConfirmationBasis | '')}
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-qo-accent/50 max-w-[11rem]"
+              aria-label="Confirmation basis"
+            >
+              <option value="">
+                {requiresConfirmation ? 'Confirmation basis *' : 'Confirmation basis (optional)'}
+              </option>
+              {NPDES_CONFIRMATION_BASIS.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {suggested.includes(b.value) ? `${b.label} ★` : b.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={confirmationReference}
+              onChange={(e) => setConfirmationReference(e.target.value)}
+              placeholder={
+                confirmationBasis === 'other'
+                  ? 'Reference (required)'
+                  : 'CEDS ID / PDF cite (optional)'
+              }
+              className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 flex-1 min-w-[10rem]"
+            />
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={
+                saving ||
+                !npdesId.trim() ||
+                (requiresConfirmation && !confirmationBasis) ||
+                (confirmationBasis === 'other' && !confirmationReference.trim())
+              }
+              className="flex items-center gap-1 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
+            >
+              <Save size={10} />
+              Map
+            </button>
+          </div>
+          {requiresConfirmation && (
+            <p className="text-[10px] text-text-muted">
+              VA mappings require confirmation basis (VPDES PDF, CEDS, CD Attachment F, etc.) — audit-logged with your user ID.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -583,6 +655,12 @@ function OverrideRow({
       <span className="font-mono text-text-primary w-32">{ov.source_permit_id}</span>
       <span className="text-text-muted">&rarr;</span>
       <span className="font-mono text-qo-accent w-32">{ov.npdes_id}</span>
+      {ov.confirmation_basis && (
+        <span className="text-[10px] text-qo-ochre-text truncate max-w-[140px]" title={ov.confirmation_reference ?? undefined}>
+          {confirmationBasisLabel(ov.confirmation_basis)}
+          {ov.confirmation_reference ? ` · ${ov.confirmation_reference}` : ''}
+        </span>
+      )}
       {ov.notes && <span className="text-text-muted truncate max-w-[200px]">{ov.notes}</span>}
       {canDelete && (
         <button
@@ -604,7 +682,7 @@ function UnmatchedPermitRow({
 }: {
   permit: UnmatchedPermit;
   saving: boolean;
-  onSave: (sourceId: string, npdesId: string, stateCode: string, notes?: string) => Promise<{ error: string | null }>;
+  onSave: SaveOverrideFn;
 }) {
   const [npdesId, setNpdesId] = useState('');
 

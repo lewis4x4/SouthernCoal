@@ -83,3 +83,66 @@ export function registryGapHint(
         : null;
   }
 }
+
+/** Litigation-grade confirmation basis for VA DMLR → federal NPDES overrides (Slice 6). */
+export const NPDES_CONFIRMATION_BASIS = [
+  { value: 'vpdes_pdf', label: 'VPDES permit PDF' },
+  { value: 'va_deq_ceds', label: 'VA DEQ CEDS record' },
+  { value: 'cd_attachment_f', label: 'Consent Decree Attachment F' },
+  { value: 'operator_deq_signoff', label: 'Operator / DEQ sign-off' },
+  { value: 'identity_match', label: 'Twin permit identity match' },
+  { value: 'other', label: 'Other (reference required)' },
+] as const;
+
+export type NpdesConfirmationBasis = (typeof NPDES_CONFIRMATION_BASIS)[number]['value'];
+
+const CONFIRMATION_BASIS_SET = new Set<string>(
+  NPDES_CONFIRMATION_BASIS.map((b) => b.value),
+);
+
+export interface ConfirmationBasisValidation {
+  valid: boolean;
+  message?: string;
+}
+
+export function validateConfirmationBasis(
+  basis: string | null | undefined,
+  reference?: string | null,
+  { required = false }: { required?: boolean } = {},
+): ConfirmationBasisValidation {
+  if (!basis || !basis.trim()) {
+    if (required) {
+      return { valid: false, message: 'Confirmation basis is required for VA mappings.' };
+    }
+    return { valid: true };
+  }
+  const normalized = basis.trim();
+  if (!CONFIRMATION_BASIS_SET.has(normalized)) {
+    return { valid: false, message: 'Invalid confirmation basis.' };
+  }
+  if (normalized === 'other') {
+    const ref = reference?.trim();
+    if (!ref) {
+      return { valid: false, message: 'Reference is required when basis is Other.' };
+    }
+  }
+  return { valid: true };
+}
+
+export function confirmationBasisLabel(basis: string | null | undefined): string | null {
+  if (!basis) return null;
+  return NPDES_CONFIRMATION_BASIS.find((b) => b.value === basis)?.label ?? basis;
+}
+
+export function suggestedConfirmationBases(
+  kind: RegistryPermitIdKind,
+): NpdesConfirmationBasis[] {
+  switch (kind) {
+    case 'dmlr_mining':
+      return ['cd_attachment_f', 'va_deq_ceds', 'vpdes_pdf'];
+    case 'pseudo_va_npdes':
+      return ['vpdes_pdf', 'va_deq_ceds', 'operator_deq_signoff'];
+    default:
+      return ['operator_deq_signoff', 'va_deq_ceds', 'vpdes_pdf'];
+  }
+}

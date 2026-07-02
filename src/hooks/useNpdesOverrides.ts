@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { validateFederalNpdesId } from '@/lib/npdesMapping';
+import { validateFederalNpdesId, validateConfirmationBasis, type NpdesConfirmationBasis } from '@/lib/npdesMapping';
 import type { NpdesMappingImportCandidate } from '@/lib/npdesMappingImport';
 
 const UI_BULK_IMPORT_SOURCE = 'ui_bulk_import_npdes_mapping';
@@ -15,6 +15,9 @@ export interface NpdesOverride {
   source_permit_id: string;
   npdes_id: string;
   notes: string | null;
+  confirmation_basis: string | null;
+  confirmation_reference: string | null;
+  confirmed_at: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -25,6 +28,13 @@ export interface UnmatchedPermit {
 }
 
 /** Active registry row with no federal_npdes_id_override in metadata (post-import cleanup queue). */
+export interface SaveOverrideOptions {
+  notes?: string;
+  confirmationBasis?: NpdesConfirmationBasis;
+  confirmationReference?: string;
+  requireConfirmationBasis?: boolean;
+}
+
 export interface RegistryFederalMappingGap {
   permit_number: string;
   state_code: string;
@@ -44,7 +54,14 @@ export function useNpdesOverrides() {
   const orgId = profile?.organization_id;
 
   const syncPermitFederalMetadata = useCallback(
-    async (sourcePermitId: string, npdesId: string | null) => {
+    async (
+      sourcePermitId: string,
+      npdesId: string | null,
+      confirmation?: {
+        basis?: NpdesConfirmationBasis | null;
+        reference?: string | null;
+      },
+    ) => {
       if (!orgId) return { error: 'No organization' };
       const permitKey = sourcePermitId.trim().toUpperCase();
 
@@ -72,11 +89,20 @@ export function useNpdesOverrides() {
         nextMetadata.federal_npdes_id_override = npdesId;
         nextMetadata.federal_npdes_id_override_updated_at = new Date().toISOString();
         nextMetadata.federal_npdes_id_override_source = 'manual_echo_coverage';
+        if (confirmation?.basis) {
+          nextMetadata.federal_npdes_confirmation_basis = confirmation.basis;
+          nextMetadata.federal_npdes_confirmation_reference =
+            confirmation.reference?.trim() || null;
+          nextMetadata.federal_npdes_confirmed_at = new Date().toISOString();
+        }
       } else {
         delete nextMetadata.federal_npdes_id_override;
         delete nextMetadata.federal_npdes_id_override_updated_at;
         delete nextMetadata.federal_npdes_id_override_source;
         delete nextMetadata.federal_npdes_mapping_confidence;
+        delete nextMetadata.federal_npdes_confirmation_basis;
+        delete nextMetadata.federal_npdes_confirmation_reference;
+        delete nextMetadata.federal_npdes_confirmed_at;
       }
 
       const { error: updateError } = await supabase
@@ -181,7 +207,12 @@ export function useNpdesOverrides() {
   }, [fetchOverrides]);
 
   const saveOverride = useCallback(
-    async (sourcePermitId: string, npdesId: string, stateCode: string, notes?: string) => {
+    async (
+      sourcePermitId: string,
+      npdesId: string,
+      stateCode: string,
+      options?: SaveOverrideOptions,
+    ) => {
       if (!orgId || !user) return { error: 'Not authenticated' };
 
       const validation = validateFederalNpdesId(npdesId);
@@ -189,7 +220,19 @@ export function useNpdesOverrides() {
         return { error: validation.message ?? 'Invalid federal NPDES ID' };
       }
 
+      const basisValidation = validateConfirmationBasis(
+        options?.confirmationBasis,
+        options?.confirmationReference,
+        { required: options?.requireConfirmationBasis ?? false },
+      );
+      if (!basisValidation.valid) {
+        return { error: basisValidation.message ?? 'Invalid confirmation basis' };
+      }
+
       setSaving(true);
+
+      const confirmedAt =
+        options?.confirmationBasis ? new Date().toISOString() : null;
 
       const { error } = await supabase
         .from('npdes_id_overrides')
@@ -199,7 +242,10 @@ export function useNpdesOverrides() {
             state_code: stateCode,
             source_permit_id: sourcePermitId.trim().toUpperCase(),
             npdes_id: npdesId.trim().toUpperCase(),
-            notes: notes || null,
+            notes: options?.notes || null,
+            confirmation_basis: options?.confirmationBasis ?? null,
+            confirmation_reference: options?.confirmationReference?.trim() || null,
+            confirmed_at: confirmedAt,
             created_by: user.id,
             updated_at: new Date().toISOString(),
           },
@@ -211,7 +257,10 @@ export function useNpdesOverrides() {
       if (error) return { error: error.message };
 
       const normalizedNpdes = npdesId.trim().toUpperCase();
-      const metaResult = await syncPermitFederalMetadata(sourcePermitId, normalizedNpdes);
+      const metaResult = await syncPermitFederalMetadata(sourcePermitId, normalizedNpdes, {
+        basis: options?.confirmationBasis ?? null,
+        reference: options?.confirmationReference ?? null,
+      });
       if (metaResult.error) {
         return {
           error: `Override saved but registry metadata update failed: ${metaResult.error}`,
@@ -224,6 +273,9 @@ export function useNpdesOverrides() {
           source_permit_id: sourcePermitId.trim().toUpperCase(),
           npdes_id: normalizedNpdes,
           state_code: stateCode,
+          confirmation_basis: options?.confirmationBasis ?? null,
+          confirmation_reference: options?.confirmationReference?.trim() || null,
+          actor_user_id: user.id,
         },
         { module: 'external_data', tableName: 'npdes_id_overrides' },
       );

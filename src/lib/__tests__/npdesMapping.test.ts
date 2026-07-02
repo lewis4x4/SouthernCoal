@@ -4,6 +4,8 @@ import {
   isLikelyDmlrMiningId,
   isValidFederalNpdesId,
   registryGapHint,
+  suggestedConfirmationBases,
+  validateConfirmationBasis,
   validateFederalNpdesId,
 } from '@/lib/npdesMapping';
 
@@ -26,5 +28,13 @@ describe('npdesMapping', () => {
   it('returns operator hints for registry gaps', () => {
     expect(registryGapHint('1101916', 'VA')).toContain('DMLR');
     expect(registryGapHint('VA1101916', 'VA')).toContain('pseudo-NPDES');
+  });
+
+  it('validates confirmation basis for VA overrides', () => {
+    expect(validateConfirmationBasis(null, null, { required: true }).valid).toBe(false);
+    expect(validateConfirmationBasis('va_deq_ceds', null).valid).toBe(true);
+    expect(validateConfirmationBasis('other', null).valid).toBe(false);
+    expect(validateConfirmationBasis('other', 'CEDS-12345').valid).toBe(true);
+    expect(suggestedConfirmationBases('dmlr_mining')).toContain('cd_attachment_f');
   });
 });

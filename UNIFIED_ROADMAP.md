@@ -290,7 +290,7 @@ Evidence capture for portal submissions, change log UI, access control hardening
 | **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **PARTIAL** — batched per-permit detect shipped; full org loop pending |
 | **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | in_progress |
 | **3.37** | ECHO sync coverage panel | — | AI | not_started |
-| **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | not_started |
+| **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | **in_progress** — confirmation basis UI + audit (Slice 6) |
 | **3.39** | Obtain MSHA mine ID mapping | — | Brian | **BLOCKED** |
 | 3.40 | Implement sync-msha-data pipeline | 3.39 | AI | not_started |
 | 3.41 | MSHA detection rules (Rules 4-6) | 3.40 | AI | not_started |
