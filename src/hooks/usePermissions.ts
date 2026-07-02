@@ -20,7 +20,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'governance_review', 'governance_decide', 'classify_records',
   ],
   safety_manager: [
-    'view', 'upload', 'command_palette', 'search',
+    'view', 'upload', 'export', 'command_palette', 'search',
     'ca_view',
   ],
   field_sampler: [

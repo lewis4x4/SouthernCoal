@@ -152,10 +152,12 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         </h4>
         <div className="flex items-center gap-2">
           <VerificationBadge status={verificationStatus} />
-          {can('verify') && verificationStatus !== 'verified' && (
+          {verificationStatus !== 'verified' && (
             <button
-              onClick={() => setStatus(entry.id, 'verified')}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all"
+              onClick={() => can('verify') && setStatus(entry.id, 'verified')}
+              disabled={!can('verify')}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={can('verify') ? 'Mark extraction as verified' : 'Permission required to verify extraction'}
             >
               <CheckCircle2 size={10} className="inline mr-1" />
               Mark Verified
@@ -217,9 +219,7 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
                   <th className="text-left py-1.5 pr-3 font-medium">Value</th>
                   <th className="text-left py-1.5 pr-3 font-medium">Unit</th>
                   <th className="text-left py-1.5 pr-3 font-medium">Frequency</th>
-                  {can('verify') && (
-                    <th className="text-right py-1.5 font-medium">Action</th>
-                  )}
+                  <th className="text-right py-1.5 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,22 +233,33 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
                     <td className="py-1.5 pr-3 font-mono">{limit.value ?? '—'}</td>
                     <td className="py-1.5 pr-3">{limit.unit ?? '—'}</td>
                     <td className="py-1.5 pr-3">{limit.frequency ?? '—'}</td>
-                    {can('verify') && (
-                      <td className="py-1.5 text-right">
-                        <button
-                          onClick={() => setStatus(entry.id, 'disputed')}
-                          className="p-1 rounded text-text-muted hover:text-verification-disputed transition-colors"
-                          title="Flag issue with this row"
-                        >
-                          <Flag size={12} />
-                        </button>
-                      </td>
-                    )}
+                    <td className="py-1.5 text-right">
+                      <button
+                        onClick={() => can('verify') && setStatus(entry.id, 'disputed')}
+                        disabled={!can('verify')}
+                        className="p-1 rounded text-text-muted hover:text-verification-disputed transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={can('verify') ? 'Flag issue with this row' : 'Permission required to flag extraction issues'}
+                      >
+                        <Flag size={12} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {verificationStatus !== 'verified' && (
+            <button
+              type="button"
+              onClick={() => can('verify') && setStatus(entry.id, 'verified')}
+              disabled={!can('verify')}
+              className="mt-2 px-3 py-1.5 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={can('verify') ? 'Mark all extracted limits as verified' : 'Permission required to verify extraction'}
+            >
+              <CheckCircle2 size={10} className="inline mr-1" />
+              Mark All Verified
+            </button>
+          )}
         </div>
       )}
 
@@ -257,11 +268,11 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         data.effective_date &&
         data.expiration_date &&
         data.permit_number &&
-        data.state &&
-        can('process') && (
+        data.state && (
           <div className="mt-4 pt-3 border-t border-black/[0.06]">
             <button
               onClick={async () => {
+                if (!can('process')) return;
                 const result = await generateDMRSchedule({
                   queueId: entry.id,
                   permitNumber: data.permit_number!,
@@ -275,8 +286,9 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
                   toast.success(`Generated ${result.generated} DMR obligations`);
                 }
               }}
-              disabled={generating}
+              disabled={!can('process') || generating}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-purple-500/15 text-purple-300 border border-purple-500/20 hover:bg-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={can('process') ? undefined : 'Permission required to generate DMR schedule'}
             >
               <CalendarPlus size={12} className="inline mr-1.5" />
               {generating ? 'Generating...' : 'Generate DMR Schedule'}
@@ -288,17 +300,18 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         )}
 
       {/* Approve & Import — parsed permit PDF → domain tables */}
-      {entry.status === 'parsed' && canImportPermit && can('process') && (
+      {entry.status === 'parsed' && canImportPermit && (
         <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
-            onClick={() => importPermitLimits(entry.id)}
-            disabled={isPermitImporting(entry.id)}
+            onClick={() => can('process') && importPermitLimits(entry.id)}
+            disabled={!can('process') || isPermitImporting(entry.id)}
             className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={
               isPermitImporting(entry.id)
                 ? 'Importing permit data...'
                 : 'Approve and import permit data to database'
             }
+            title={can('process') ? undefined : 'Permission required to import parsed files'}
           >
             {isPermitImporting(entry.id) ? (
               <>
@@ -433,10 +446,12 @@ function NetDmrExtractionPanel({
         <h4 className="text-xs font-semibold text-text-primary">NetDMR Bundle Extraction</h4>
         <div className="flex items-center gap-2">
           <VerificationBadge status={verificationStatus} />
-          {canVerify && verificationStatus !== 'verified' && (
+          {verificationStatus !== 'verified' && (
             <button
-              onClick={onVerify}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all"
+              onClick={() => canVerify && onVerify()}
+              disabled={!canVerify}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={canVerify ? 'Mark extraction as verified' : 'Permission required to verify extraction'}
             >
               <CheckCircle2 size={10} className="inline mr-1" />
               Mark Verified
@@ -466,12 +481,12 @@ function NetDmrExtractionPanel({
         </div>
       )}
 
-      {entry.status === 'parsed' && can('process') && (
+      {entry.status === 'parsed' && (
         <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
             type="button"
-            onClick={() => importNetDmr(entry.id)}
-            disabled={isImporting(entry.id)}
+            onClick={() => can('process') && importNetDmr(entry.id)}
+            disabled={!can('process') || isImporting(entry.id)}
             aria-busy={isImporting(entry.id)}
             aria-label={
               isImporting(entry.id)
@@ -479,6 +494,7 @@ function NetDmrExtractionPanel({
                 : 'Approve and import DMR data to database'
             }
             className="px-4 py-2 text-xs font-medium rounded-lg bg-green-500/15 text-green-300 border border-green-500/20 hover:bg-green-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title={can('process') ? undefined : 'Permission required to import parsed files'}
           >
             {isImporting(entry.id) ? (
               <>
@@ -575,10 +591,12 @@ function LabDataExtractionPanel({
         </h4>
         <div className="flex items-center gap-2">
           <VerificationBadge status={verificationStatus} />
-          {canVerify && verificationStatus !== 'verified' && (
+          {verificationStatus !== 'verified' && (
             <button
-              onClick={onVerify}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all"
+              onClick={() => canVerify && onVerify()}
+              disabled={!canVerify}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={canVerify ? 'Mark extraction as verified' : 'Permission required to verify extraction'}
             >
               <CheckCircle2 size={10} className="inline mr-1" />
               Mark Verified
@@ -639,9 +657,7 @@ function LabDataExtractionPanel({
                   <th className="text-left py-1.5 pr-3 font-medium">Parameter</th>
                   <th className="text-right py-1.5 pr-3 font-medium">Samples</th>
                   <th className="text-right py-1.5 pr-3 font-medium">Below Detection</th>
-                  {canVerify && (
-                    <th className="text-right py-1.5 font-medium">Action</th>
-                  )}
+                  <th className="text-right py-1.5 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -659,22 +675,33 @@ function LabDataExtractionPanel({
                         '0'
                       )}
                     </td>
-                    {canVerify && (
-                      <td className="py-1.5 text-right">
-                        <button
-                          onClick={onDispute}
-                          className="p-1 rounded text-text-muted hover:text-verification-disputed transition-colors"
-                          title="Flag issue with this parameter"
-                        >
-                          <Flag size={12} />
-                        </button>
-                      </td>
-                    )}
+                    <td className="py-1.5 text-right">
+                      <button
+                        onClick={() => canVerify && onDispute()}
+                        disabled={!canVerify}
+                        className="p-1 rounded text-text-muted hover:text-verification-disputed transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={canVerify ? 'Flag issue with this parameter' : 'Permission required to flag extraction issues'}
+                      >
+                        <Flag size={12} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {verificationStatus !== 'verified' && (
+            <button
+              type="button"
+              onClick={() => canVerify && onVerify()}
+              disabled={!canVerify}
+              className="mt-2 px-3 py-1.5 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={canVerify ? 'Mark all extracted parameters as verified' : 'Permission required to verify extraction'}
+            >
+              <CheckCircle2 size={10} className="inline mr-1" />
+              Mark All Verified
+            </button>
+          )}
         </div>
       )}
 
@@ -783,15 +810,16 @@ function LabDataExtractionPanel({
       )}
 
       {/* Approve & Import — moves parsed data to domain tables */}
-      {entry.status === 'parsed' && can('process') && (
+      {entry.status === 'parsed' && (
         <div className="mt-4 pt-3 border-t border-black/[0.06]">
           <button
             type="button"
-            onClick={() => importLabData(entry.id)}
-            disabled={isImporting(entry.id)}
+            onClick={() => can('process') && importLabData(entry.id)}
+            disabled={!can('process') || isImporting(entry.id)}
             aria-busy={isImporting(entry.id)}
             aria-label={isImporting(entry.id) ? 'Importing lab data...' : 'Approve and import lab data to database'}
             className="px-4 py-2 text-xs font-medium rounded-lg bg-green-500/15 text-green-300 border border-green-500/20 hover:bg-green-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title={can('process') ? undefined : 'Permission required to import parsed files'}
           >
             {isImporting(entry.id) ? (
               <>

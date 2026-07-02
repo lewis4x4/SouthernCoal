@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase, getFreshToken } from '@/lib/supabase';
-import { useUploadStore } from '@/stores/upload';
+import { useUploadStore, UPLOAD_CONCURRENCY } from '@/stores/upload';
 import { useStagingStore } from '@/stores/staging';
 import { useQueueStore } from '@/stores/queue';
 import { useUserProfile } from './useUserProfile';
@@ -13,6 +13,19 @@ import {
 } from '@/lib/uploadDedup';
 import type { StagedFile } from '@/types/upload';
 import type { QueueEntry } from '@/types/queue';
+
+const SLOT_POLL_MS = 150;
+
+async function waitForUploadSlot(): Promise<void> {
+  while (!useUploadStore.getState().canStartUpload()) {
+    await new Promise((r) => setTimeout(r, SLOT_POLL_MS));
+  }
+}
+
+interface UploadFileOptions {
+  /** When true, wait for a concurrency slot instead of bailing (batch uploads). */
+  waitForSlot?: boolean;
+}
 
 /**
  * Upload orchestrator — handles the full pipeline:
@@ -110,7 +123,7 @@ export function useFileUpload() {
    * Upload a single staged file.
    */
   const uploadFile = useCallback(
-    async (stagedFile: StagedFile) => {
+    async (stagedFile: StagedFile, options?: UploadFileOptions) => {
       // Use hook profile directly — no fallback query to avoid pool exhaustion
       if (!profile) {
         toast.error('Profile not loaded yet. Please wait a moment and try again.');
@@ -125,8 +138,12 @@ export function useFileUpload() {
 
       const uploadStore = useUploadStore.getState();
       if (!uploadStore.canStartUpload()) {
-        toast.info(`Upload queue is full. Waiting for a slot...`);
-        return;
+        if (options?.waitForSlot) {
+          await waitForUploadSlot();
+        } else {
+          toast.info(`Upload queue is full. Waiting for a slot...`);
+          return;
+        }
       }
 
       const effectiveCategory = stagedFile.manualOverride?.category ?? stagedFile.autoClassification?.category ?? 'other';
@@ -280,7 +297,7 @@ export function useFileUpload() {
   );
 
   /**
-   * Upload all ready files in the staging area — sequentially, one at a time.
+   * Upload all ready files — parallel worker pool capped at UPLOAD_CONCURRENCY.
    */
   const uploadAll = useCallback(async () => {
     const readyFiles = useStagingStore.getState().getReadyFiles();
@@ -289,13 +306,25 @@ export function useFileUpload() {
       return;
     }
 
-    toast.info(`Uploading ${readyFiles.length} file${readyFiles.length > 1 ? 's' : ''} sequentially...`);
+    toast.info(
+      `Uploading ${readyFiles.length} file${readyFiles.length > 1 ? 's' : ''} ` +
+      `(up to ${UPLOAD_CONCURRENCY} concurrent)...`,
+    );
 
-    for (const file of readyFiles) {
-      await uploadFile(file);
-      // Small delay between sequential uploads
-      await new Promise((r) => setTimeout(r, 300));
-    }
+    let nextIndex = 0;
+    const workerCount = Math.min(UPLOAD_CONCURRENCY, readyFiles.length);
+
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (nextIndex < readyFiles.length) {
+        const fileIndex = nextIndex;
+        nextIndex += 1;
+        const file = readyFiles[fileIndex];
+        if (!file) continue;
+        await uploadFile(file, { waitForSlot: true });
+      }
+    });
+
+    await Promise.all(workers);
   }, [uploadFile]);
 
   return { uploadFile, uploadAll };

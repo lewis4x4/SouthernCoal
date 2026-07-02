@@ -13,6 +13,7 @@ interface UnacknowledgedPayload {
   msha_abatement?: Array<{ alert_ref_id: string }>;
   edd_paragraph49?: Array<{ alert_ref_id: string }>;
   sampling_gap?: Array<{ alert_ref_id: string }>;
+  exceedance_digest?: Array<{ alert_ref_id: string }>;
   counts?: { total?: number };
 }
 
@@ -55,6 +56,9 @@ export function useStatutoryAlertAcks() {
       }
       for (const row of payload.sampling_gap ?? []) {
         ids.add(ackKey('sampling_gap', row.alert_ref_id));
+      }
+      for (const row of payload.exceedance_digest ?? []) {
+        ids.add(ackKey('exceedance_digest', row.alert_ref_id));
       }
       setUnacknowledgedIds(ids);
     }

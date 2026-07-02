@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
-import { mapDmrLineItemRow, mapDmrSubmissionRow, type DmrSubmissionWithPermit } from '@/lib/dmrSchema';
+import { mapDmrLineItemRow, mapDmrLineItemUpdatesToDb, mapDmrSubmissionRow, type DmrSubmissionWithPermit } from '@/lib/dmrSchema';
 import type {
   DmrSubmission,
   DmrSubmissionType,
@@ -296,14 +296,49 @@ export function useDmrSubmissions() {
   const updateLineItem = useCallback(async (
     lineItemId: string,
     updates: Partial<Pick<DmrLineItem, 'measured_value' | 'measured_unit' | 'nodi_code' | 'qualifier' | 'comments'>>,
+    cmsSchema = true,
   ): Promise<{ error: string | null }> => {
+    const dbUpdates = mapDmrLineItemUpdatesToDb(updates, cmsSchema);
     const { error } = await supabase
       .from('dmr_line_items')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', lineItemId);
 
     if (error) return { error: error.message };
     return { error: null };
+  }, []);
+
+  const createLineItem = useCallback(async (
+    submissionId: string,
+    payload: { outfall_id: string; parameter_id: string; measured_value?: number | null; nodi_code?: string | null },
+    cmsSchema = true,
+  ): Promise<{ error: string | null; id?: string }> => {
+    const insertPayload: Record<string, unknown> = cmsSchema
+      ? {
+          dmr_submission_id: submissionId,
+          outfall_id: payload.outfall_id,
+          parameter_id: payload.parameter_id,
+          concentration_max: payload.measured_value ?? null,
+          nodi_code: payload.nodi_code ?? null,
+          calculation_warnings: [],
+        }
+      : {
+          submission_id: submissionId,
+          outfall_id: payload.outfall_id,
+          parameter_id: payload.parameter_id,
+          measured_value: payload.measured_value ?? null,
+          nodi_code: payload.nodi_code ?? null,
+          calculation_warnings: [],
+        };
+
+    const { data, error } = await supabase
+      .from('dmr_line_items')
+      .insert(insertPayload)
+      .select('id')
+      .single();
+
+    if (error) return { error: error.message };
+    return { error: null, id: data?.id as string };
   }, []);
 
   // -------------------------------------------------------------------------
@@ -322,6 +357,9 @@ export function useDmrSubmissions() {
     }
 
     const result = data as DmrCalculationResult;
+    await supabase.rpc('apply_dmr_mass_loading_for_submission', {
+      p_submission_id: submissionId,
+    });
     if (result.populated && result.populated > 0) {
       toast.success(`Populated ${result.populated} of ${result.line_count} line items`);
       if (result.conversion_warnings && result.conversion_warnings > 0) {
@@ -388,6 +426,7 @@ export function useDmrSubmissions() {
     fetchSubmissionById,
     fetchLineItems,
     updateLineItem,
+    createLineItem,
     autoPopulate,
     validateSubmission,
     refetch: fetchSubmissions,

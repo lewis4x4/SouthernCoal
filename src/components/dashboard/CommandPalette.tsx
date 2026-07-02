@@ -156,134 +156,149 @@ export function CommandPalette() {
                 <Search size={12} />
                 Search compliance data
               </Command.Item>
-              {can('upload') && (
-                <Command.Item
-                  value="upload files drag drop"
-                  onSelect={() =>
-                    runAction('upload_hint', () => {
-                      setOpen(false);
-                    })
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Upload size={12} />
-                  Upload files (drag & drop anywhere)
-                </Command.Item>
-              )}
-              {can('bulk_process') && (
-                <Command.Item
-                  value="process all queued permits pdf"
-                  onSelect={() =>
-                    runAction('bulk_process_permits', () => processAllPermitPdfs())
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Play size={12} />
-                  Process all queued permit PDFs
-                </Command.Item>
-              )}
-              {can('bulk_process') && (
-                <Command.Item
-                  value="process all parameter sheets"
-                  onSelect={() =>
-                    runAction('bulk_process_parameter_sheets', () =>
-                      processAllParameterSheets(),
-                    )
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Play size={12} />
-                  Process all parameter sheets
-                </Command.Item>
-              )}
-              {can('bulk_process') && (
-                <Command.Item
-                  value="process all lab data"
-                  onSelect={() =>
-                    runAction('bulk_process_lab_data', () => processAllQueuedLabData())
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Play size={12} />
-                  Process all queued lab data
-                </Command.Item>
-              )}
-              {can('bulk_process') && (
-                <Command.Item
-                  value="process all dmrs netdmr"
-                  onSelect={() =>
-                    runAction('bulk_process_dmrs', () => processAllQueuedDmrs())
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Play size={12} />
-                  Process all queued DMR exports
-                </Command.Item>
-              )}
-              {can('bulk_process') && (
-                <Command.Item
-                  value="process all archive documents"
-                  onSelect={() =>
-                    runAction('bulk_process_archive', () => processAllQueuedArchiveDocuments())
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Play size={12} />
-                  Process all archive documents
-                </Command.Item>
-              )}
-              {can('process') && totalParsedImportable > 0 && (
-                <Command.Item
-                  value="import all parsed to database"
-                  onSelect={() =>
-                    runAction('bulk_import_parsed', () => void importAllParsed())
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Database size={12} />
-                  Import all parsed to database ({totalParsedImportable})
-                </Command.Item>
-              )}
-              {can('retry') && (
-                <Command.Item
-                  value="retry all failed"
-                  onSelect={() =>
-                    runAction('retry_all_failed', () => {
-                      const failed = entries.filter(
-                        (e) => e.status === 'failed' && canProcessQueueEntry(e),
+              <Command.Item
+                value="upload files drag drop"
+                disabled={!can('upload')}
+                onSelect={() => {
+                  if (!can('upload')) return;
+                  runAction('upload_hint', () => {
+                    setOpen(false);
+                  });
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('upload') ? undefined : 'Requires upload permission'}
+              >
+                <Upload size={12} />
+                Upload files (drag & drop anywhere)
+              </Command.Item>
+              <Command.Item
+                value="process all queued permits pdf"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_permits', () => processAllPermitPdfs());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all queued permit PDFs
+              </Command.Item>
+              <Command.Item
+                value="process all parameter sheets"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_parameter_sheets', () =>
+                    processAllParameterSheets(),
+                  );
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all parameter sheets
+              </Command.Item>
+              <Command.Item
+                value="process all lab data"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_lab_data', () => processAllQueuedLabData());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all queued lab data
+              </Command.Item>
+              <Command.Item
+                value="process all dmrs netdmr"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_dmrs', () => processAllQueuedDmrs());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all queued DMR exports
+              </Command.Item>
+              <Command.Item
+                value="process all archive documents"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_archive', () => processAllQueuedArchiveDocuments());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all archive documents
+              </Command.Item>
+              <Command.Item
+                value="import all parsed to database"
+                disabled={!can('process') || totalParsedImportable === 0}
+                onSelect={() => {
+                  if (!can('process') || totalParsedImportable === 0) return;
+                  runAction('bulk_import_parsed', () => void importAllParsed());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={
+                  can('process')
+                    ? totalParsedImportable === 0
+                      ? 'No parsed files ready to import'
+                      : undefined
+                    : 'Permission required to import parsed files'
+                }
+              >
+                <Database size={12} />
+                Import all parsed to database ({totalParsedImportable})
+              </Command.Item>
+              <Command.Item
+                value="retry all failed"
+                disabled={!can('retry')}
+                onSelect={() => {
+                  if (!can('retry')) return;
+                  runAction('retry_all_failed', () => {
+                    const failed = entries.filter(
+                      (e) => e.status === 'failed' && canProcessQueueEntry(e),
+                    );
+                    if (failed.length > 0) {
+                      log(
+                        'bulk_retry',
+                        { count: failed.length, source: 'command_palette' },
+                        { module: 'upload_dashboard', tableName: 'file_processing_queue' },
                       );
-                      if (failed.length > 0) {
-                        log(
-                          'bulk_retry',
-                          { count: failed.length, source: 'command_palette' },
-                          { module: 'upload_dashboard', tableName: 'file_processing_queue' },
-                        );
-                      }
-                      for (const entry of failed) {
-                        void retryFailed(entry.id);
-                      }
-                    })
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <RefreshCw size={12} />
-                  Retry all failed
-                </Command.Item>
-              )}
-              {can('export') && (
-                <Command.Item
-                  value="export matrix csv"
-                  onSelect={() =>
-                    runAction('export_matrix_csv', () => {
-                      document.dispatchEvent(new CustomEvent('export-matrix-csv'));
-                    })
-                  }
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
-                >
-                  <Download size={12} />
-                  Export matrix as CSV
-                </Command.Item>
-              )}
+                    }
+                    for (const entry of failed) {
+                      void retryFailed(entry.id);
+                    }
+                  });
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('retry') ? undefined : 'Permission required to retry failed files'}
+              >
+                <RefreshCw size={12} />
+                Retry all failed
+              </Command.Item>
+              <Command.Item
+                value="export matrix csv"
+                disabled={!can('export')}
+                onSelect={() => {
+                  if (!can('export')) return;
+                  runAction('export_matrix_csv', () => {
+                    document.dispatchEvent(new CustomEvent('export-matrix-csv'));
+                  });
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('export') ? undefined : 'Permission required to export matrix'}
+              >
+                <Download size={12} />
+                Export matrix as CSV
+              </Command.Item>
               <Command.Item
                 value="clear staging area"
                 onSelect={() =>

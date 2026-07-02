@@ -4,6 +4,7 @@ import {
   MapPin, ClipboardCheck, CloudRain,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { COMPLIANCE_UPLOAD_ROLES } from '@/lib/rbac';
 import type { Role } from '@/types/auth';
 
 type Tile = {
@@ -22,7 +23,7 @@ const TILES: Tile[] = [
     href: '/compliance',
     icon: Upload,
     accent: 'bg-qo-accent',
-    roles: ['admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech'],
+    roles: COMPLIANCE_UPLOAD_ROLES,
   },
   {
     title: 'View Obligations',

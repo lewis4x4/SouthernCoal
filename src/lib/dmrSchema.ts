@@ -83,6 +83,30 @@ export function mapDmrSubmissionRow(
   } as DmrSubmissionWithPermit;
 }
 
+export function mapDmrLineItemUpdatesToDb(
+  updates: Partial<Pick<DmrLineItem, 'measured_value' | 'measured_unit' | 'nodi_code' | 'qualifier' | 'comments'>>,
+  cms: boolean,
+): Record<string, unknown> {
+  const dbUpdates: Record<string, unknown> = { ...updates };
+
+  if (cms) {
+    if ('measured_value' in updates) {
+      dbUpdates.concentration_max = updates.measured_value;
+      delete dbUpdates.measured_value;
+    }
+    if ('measured_unit' in updates) {
+      dbUpdates.concentration_units = updates.measured_unit;
+      delete dbUpdates.measured_unit;
+    }
+    if ('comments' in updates) {
+      dbUpdates.exemption_notes = updates.comments;
+      delete dbUpdates.comments;
+    }
+  }
+
+  return dbUpdates;
+}
+
 export function mapDmrLineItemRow(row: Record<string, unknown>): DmrLineItemWithRelations & {
   calculation_warnings?: DmrCalculationWarning[];
 } {

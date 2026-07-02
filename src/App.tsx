@@ -40,6 +40,7 @@ import {
   EMERGENCY_ROLES,
   SYSTEM_HEALTH_ROLES,
   GO_LIVE_ROLES,
+  STATE_REGULATORY_ADMIN_ROLES,
   RAIN_EVENT_CONFIG_ROLES,
   RAIN_EVENT_ALERT_ROLES,
   RAIN_EVENT_VIEW_ROLES,
@@ -94,6 +95,10 @@ const SyncQueuePage = lazyRoute(() => import('@/pages/SyncQueuePage'), 'SyncQueu
 const NotificationPreferencesPage = lazyRoute(() => import('@/pages/NotificationPreferencesPage'), 'NotificationPreferencesPage');
 const TrainingAdminPage = lazyRoute(() => import('@/pages/TrainingAdminPage'), 'TrainingAdminPage');
 const EquipmentAdminPage = lazyRoute(() => import('@/pages/EquipmentAdminPage'), 'EquipmentAdminPage');
+const StateRegulatoryConfigPage = lazyRoute(
+  () => import('@/pages/StateRegulatoryConfigPage'),
+  'StateRegulatoryConfigPage',
+);
 const ProfileCertificationsPage = lazyRoute(() => import('@/pages/ProfileCertificationsPage'), 'ProfileCertificationsPage');
 const IncidentsPage = lazyRoute(() => import('@/pages/IncidentsPage'), 'IncidentsPage');
 const IncidentDetailPage = lazyRoute(() => import('@/pages/IncidentDetailPage'), 'IncidentDetailPage');
@@ -146,6 +151,7 @@ const APP_ROUTES: RouteConfig[] = [
   { path: '/admin/notifications',          element: <NotificationPreferencesPage />, roles: NOTIFICATION_ADMIN_ROLES,   guardScope: 'global',     shell: 'app' },
   { path: '/admin/training',               element: <TrainingAdminPage />,           roles: TRAINING_ADMIN_ROLES,       guardScope: 'global',     shell: 'app' },
   { path: '/admin/equipment',              element: <EquipmentAdminPage />,          roles: EQUIPMENT_ADMIN_ROLES,      guardScope: 'global',     shell: 'app' },
+  { path: '/admin/state-regulatory-config', element: <StateRegulatoryConfigPage />, roles: STATE_REGULATORY_ADMIN_ROLES, guardScope: 'global',     shell: 'app' },
   { path: '/profile/certifications',       element: <ProfileCertificationsPage />,   roles: PROFILE_ROLES,              guardScope: 'assignment', shell: 'app' },
   { path: '/incidents',                    element: <IncidentsPage />,              roles: INCIDENT_ROLES,             guardScope: 'global',     shell: 'app' },
   { path: '/incidents/:id',                element: <IncidentDetailPage />,         roles: INCIDENT_ROLES,             guardScope: 'global',     shell: 'app' },

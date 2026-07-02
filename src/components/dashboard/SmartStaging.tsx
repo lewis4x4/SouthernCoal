@@ -192,11 +192,12 @@ export function SmartStaging() {
 
               {/* Upload / Remove buttons */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                {!hasErrors && can('upload') && (
+                {!hasErrors && (
                   <button
-                    onClick={() => uploadFile(file)}
-                    disabled={isUploading}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-status-queued/15 text-status-queued border border-status-queued/20 hover:bg-status-queued/25 disabled:opacity-50 transition-all"
+                    onClick={() => can('upload') && uploadFile(file)}
+                    disabled={isUploading || !can('upload')}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-status-queued/15 text-status-queued border border-status-queued/20 hover:bg-status-queued/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    title={can('upload') ? undefined : 'Requires upload permission'}
                   >
                     {isUploading ? 'Uploading...' : 'Upload'}
                   </button>

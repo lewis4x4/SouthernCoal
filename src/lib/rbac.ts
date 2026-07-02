@@ -23,6 +23,7 @@ export const ALL_ROLES: Role[] = [
 
 export const COMPLIANCE_UPLOAD_ROLES: Role[] = [
   'admin', 'executive', 'environmental_manager', 'site_manager', 'lab_tech',
+  'field_sampler', 'safety_manager', 'read_only',
   'coo', 'compliance_reviewer', 'lab_liaison',
 ];
 
@@ -68,6 +69,8 @@ export const REPORTING_ROLES: Role[] = [
 export const ADMIN_ROLES: Role[] = ['admin', 'executive', 'coo'];
 
 export const ADMIN_ONLY_ROLES: Role[] = ['admin'];
+
+export const STATE_REGULATORY_ADMIN_ROLES: Role[] = ['admin'];
 
 export const FIELD_ROUTE_ROLES: Role[] = [
   'field_sampler', 'site_manager', 'environmental_manager', 'executive', 'admin',

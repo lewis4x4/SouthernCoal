@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { UploadProgress } from '@/types/upload';
 
-const UPLOAD_CONCURRENCY = 10;
+export const UPLOAD_CONCURRENCY = 10;
 const HASH_CONCURRENCY = 2;
 
 interface UploadStore {

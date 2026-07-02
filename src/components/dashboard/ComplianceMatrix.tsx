@@ -121,26 +121,26 @@ export function ComplianceMatrix() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
         <h3 className="text-sm font-semibold text-text-primary">Compliance Matrix</h3>
-        {can('export') && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => exportMatrix('csv')}
-              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
-              title="Export as CSV"
-            >
-              <Download size={10} className="inline mr-0.5" />
-              CSV
-            </button>
-            <button
-              onClick={() => exportMatrix('markdown')}
-              className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors"
-              title="Export as Markdown"
-            >
-              <Download size={10} className="inline mr-0.5" />
-              MD
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => can('export') && exportMatrix('csv')}
+            disabled={!can('export')}
+            className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={can('export') ? 'Export as CSV' : 'Permission required to export matrix'}
+          >
+            <Download size={10} className="inline mr-0.5" />
+            CSV
+          </button>
+          <button
+            onClick={() => can('export') && exportMatrix('markdown')}
+            disabled={!can('export')}
+            className="px-2 py-1 text-[10px] font-medium rounded text-text-muted hover:text-text-secondary hover:bg-black/[0.04] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={can('export') ? 'Export as Markdown' : 'Permission required to export matrix'}
+          >
+            <Download size={10} className="inline mr-0.5" />
+            MD
+          </button>
+        </div>
       </div>
 
       {/* Matrix grid */}
@@ -160,9 +160,7 @@ export function ComplianceMatrix() {
                 </th>
               ))}
               <th className="text-center py-1 px-1 font-medium w-14">Progress</th>
-              {can('set_expected') && (
-                <th className="text-center py-1 px-1 font-medium w-14">Expected</th>
-              )}
+              <th className="text-center py-1 px-1 font-medium w-14">Expected</th>
             </tr>
           </thead>
           <tbody>
@@ -210,19 +208,19 @@ export function ComplianceMatrix() {
                     </span>
                   </div>
                 </td>
-                {can('set_expected') && (
-                  <td className="py-1.5 px-1">
-                    <input
-                      type="number"
-                      min={0}
-                      value={expectedCounts[state.code] ?? ''}
-                      onChange={(e) => handleExpectedChange(state.code, e.target.value)}
-                      aria-label={`Expected count for ${state.code}`}
-                      className="w-full h-7 rounded bg-qo-nested border border-black/[0.08] text-center text-text-secondary text-[10px] font-mono focus:outline-none focus:border-status-queued/50"
-                      placeholder="—"
-                    />
-                  </td>
-                )}
+                <td className="py-1.5 px-1">
+                  <input
+                    type="number"
+                    min={0}
+                    value={expectedCounts[state.code] ?? ''}
+                    onChange={(e) => can('set_expected') && handleExpectedChange(state.code, e.target.value)}
+                    disabled={!can('set_expected')}
+                    aria-label={`Expected count for ${state.code}`}
+                    className="w-full h-7 rounded bg-qo-nested border border-black/[0.08] text-center text-text-secondary text-[10px] font-mono focus:outline-none focus:border-status-queued/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="—"
+                    title={can('set_expected') ? `Expected document count for ${state.code}` : 'Permission required to set expected counts'}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

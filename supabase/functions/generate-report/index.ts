@@ -964,6 +964,47 @@ async function rptInspectionPrep(
   return { columns, rows, flags: {} };
 }
 
+// ── Tier 2–5 stub reports (A2 — registered so unlocked keys never 400) ───────
+async function rptPrerequisiteStub(
+  _sb: ReturnType<typeof createClient>,
+  _orgIds: string[],
+  _cfg: Config,
+  reportTitle: string,
+): Promise<Result> {
+  return {
+    columns: ['status', 'message'],
+    rows: [['DRAFT', `${reportTitle} — prerequisite data partial; internal advisory only`]],
+    flags: { draft: true },
+  };
+}
+
+const rptLabResultsSummary = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Lab Results Summary');
+const rptWaterQualityTrends = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Water Quality Trend Analysis');
+const rptExceedanceDetection = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Exceedance Detection Report');
+const rptSamplingCompleteness = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Sampling Completeness Report');
+const rptDmrPreparation = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'DMR Preparation Report');
+const rptExceedanceTrendAnalysis = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Exceedance Trend & Pattern Analysis');
+const rptStipulatedPenaltyExposure = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Stipulated Penalty Exposure Report');
+const rptFiveDayNotification = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, '5-Day Written Notification Report');
+const rptCorrectiveActionStatus = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Corrective Action Status Report');
+const rptQuarterlyConsentDecree = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Quarterly Consent Decree Report');
+const rptAnnualComplianceSummary = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Annual Compliance Summary');
+const rptSeleniumMonitoringKy = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Selenium Monitoring Report (Kentucky)');
+const rptConductivityTdsWv = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
+  rptPrerequisiteStub(sb, orgIds, cfg, 'Conductivity/TDS Analysis (West Virginia)');
+
 // ── Report Registry ──────────────────────────────────────────────────────────
 const REGISTRY: Record<string, ReportFn> = {
   permit_inventory: rptPermitInventory,
@@ -983,6 +1024,19 @@ const REGISTRY: Record<string, ReportFn> = {
   external_sync_health: rptSyncHealth,
   executive_dashboard_summary: rptExecutiveSummary,
   inspection_prep_package: rptInspectionPrep,
+  lab_results_summary: rptLabResultsSummary,
+  water_quality_trends: rptWaterQualityTrends,
+  exceedance_detection: rptExceedanceDetection,
+  sampling_completeness: rptSamplingCompleteness,
+  dmr_preparation: rptDmrPreparation,
+  exceedance_trend_analysis: rptExceedanceTrendAnalysis,
+  stipulated_penalty_exposure: rptStipulatedPenaltyExposure,
+  five_day_notification: rptFiveDayNotification,
+  corrective_action_status: rptCorrectiveActionStatus,
+  quarterly_consent_decree: rptQuarterlyConsentDecree,
+  annual_compliance_summary: rptAnnualComplianceSummary,
+  selenium_monitoring_ky: rptSeleniumMonitoringKy,
+  conductivity_tds_wv: rptConductivityTdsWv,
 };
 
 // ── Main Handler ─────────────────────────────────────────────────────────────

@@ -219,7 +219,12 @@ type AuditAction =
   | 'rain_event_dismissed'
   | 'rain_event_manual_declared'
   | 'precipitation_reading_manual'
-  | 'precipitation_data_export_csv';
+  | 'precipitation_data_export_csv'
+  // State regulatory config admin
+  | 'state_regulatory_config_updated'
+  | 'regulatory_contact_created'
+  | 'regulatory_contact_updated'
+  | 'regulatory_contact_deleted';
 
 export type { AuditAction };
 

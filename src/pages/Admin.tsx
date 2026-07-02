@@ -78,10 +78,10 @@ const ADMIN_CARDS = [
   {
     label: 'State Regulatory Config',
     description: 'Agency contacts, DMR system settings, and state-specific rules.',
-    href: '/admin',
+    href: '/admin/state-regulatory-config',
     icon: MapPin,
     color: 'rgba(16, 185, 129, 0.08)',
-    ready: false,
+    ready: true,
   },
 ] as const;
 

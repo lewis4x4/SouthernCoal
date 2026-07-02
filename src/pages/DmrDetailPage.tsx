@@ -9,9 +9,11 @@ import {
   RefreshCw,
   Shield,
   Send,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import { useDmrSubmissions } from '@/hooks/useDmrSubmissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
@@ -55,6 +57,7 @@ export function DmrDetailPage() {
     fetchSubmissionById,
     fetchLineItems,
     updateLineItem,
+    createLineItem,
     updateSubmission,
     autoPopulate,
     validateSubmission,
@@ -71,6 +74,12 @@ export function DmrDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmNumber, setConfirmNumber] = useState('');
   const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [showAddLineItem, setShowAddLineItem] = useState(false);
+  const [addOutfallId, setAddOutfallId] = useState('');
+  const [addParameterId, setAddParameterId] = useState('');
+  const [addMeasuredValue, setAddMeasuredValue] = useState('');
+  const [addNodi, setAddNodi] = useState<NodiCode | ''>('');
+  const [permitLimits, setPermitLimits] = useState<Array<{ outfall_id: string; parameter_id: string; label: string }>>([]);
 
   // Find submission and load line items
   const loadDetail = useCallback(async () => {
@@ -88,6 +97,68 @@ export function DmrDetailPage() {
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    async function loadLimits() {
+      if (!submission?.permit_id) return;
+      const { data: outfalls } = await supabase
+        .from('outfalls')
+        .select('id')
+        .eq('permit_id', submission.permit_id);
+      const outfallIds = (outfalls ?? []).map((o) => o.id);
+      if (outfallIds.length === 0) return;
+
+      const { data } = await supabase
+        .from('permit_limits')
+        .select('outfall_id, parameter_id, outfall:outfalls(outfall_number), parameter:parameters(name)')
+        .eq('is_active', true)
+        .in('outfall_id', outfallIds);
+
+      setPermitLimits(
+        (data ?? []).map((row) => {
+          const outfall = row.outfall as { outfall_number?: string } | null;
+          const parameter = row.parameter as { name?: string } | null;
+          return {
+            outfall_id: row.outfall_id as string,
+            parameter_id: row.parameter_id as string,
+            label: `${outfall?.outfall_number ?? '?'} — ${parameter?.name ?? 'Parameter'}`,
+          };
+        }),
+      );
+    }
+    void loadLimits();
+  }, [submission?.permit_id]);
+
+  async function handleAddLineItem() {
+    if (!id || !addOutfallId || !addParameterId) {
+      toast.error('Select outfall and parameter');
+      return;
+    }
+    const measured = addMeasuredValue.trim() ? Number(addMeasuredValue) : null;
+    const { error } = await createLineItem(id, {
+      outfall_id: addOutfallId,
+      parameter_id: addParameterId,
+      measured_value: measured,
+      nodi_code: addNodi || null,
+    });
+    if (error) {
+      toast.error(`Failed to add line item: ${error}`);
+      return;
+    }
+    toast.success('Line item added');
+    setShowAddLineItem(false);
+    setAddOutfallId('');
+    setAddParameterId('');
+    setAddMeasuredValue('');
+    setAddNodi('');
+    const items = await fetchLineItems(id);
+    setLineItems(items);
+    log('report_generated', { type: 'dmr_line_item_added', submission_id: id, outfall_id: addOutfallId, parameter_id: addParameterId }, {
+      module: 'dmr',
+      tableName: 'dmr_line_items',
+      recordId: id,
+    });
+  }
 
   // Auto-populate from lab data
   async function handleAutoPopulate() {
@@ -421,6 +492,65 @@ export function DmrDetailPage() {
             <span className="text-qo-ochre-text">{conversionWarningCount} unit conversion warning(s)</span>
           )}
           <span>{outfallGroups.size} outfalls</span>
+        </div>
+      )}
+
+      {isEditable && (
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setShowAddLineItem((v) => !v)}
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-text-secondary hover:bg-white/5"
+          >
+            <Plus size={14} />
+            Add line item manually
+          </button>
+          {showAddLineItem && (
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3 max-w-xl">
+              <select
+                value={addOutfallId && addParameterId ? `${addOutfallId}:${addParameterId}` : ''}
+                onChange={(e) => {
+                  const [o, p] = e.target.value.split(':');
+                  setAddOutfallId(o ?? '');
+                  setAddParameterId(p ?? '');
+                }}
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+              >
+                <option value="">Select outfall / parameter…</option>
+                {permitLimits.map((pl) => (
+                  <option key={`${pl.outfall_id}:${pl.parameter_id}`} value={`${pl.outfall_id}:${pl.parameter_id}`}>
+                    {pl.label}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Measured value (optional)"
+                  value={addMeasuredValue}
+                  onChange={(e) => setAddMeasuredValue(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                />
+                <select
+                  value={addNodi}
+                  onChange={(e) => setAddNodi(e.target.value as NodiCode | '')}
+                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                >
+                  <option value="">NODI…</option>
+                  {Object.keys(NODI_LABELS).map((code) => (
+                    <option key={code} value={code}>{code} — {NODI_LABELS[code as NodiCode]}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleAddLineItem()}
+                className="rounded-lg bg-blue-500/15 px-4 py-2 text-sm text-blue-300 hover:bg-blue-500/25"
+              >
+                Add line item
+              </button>
+            </div>
+          )}
         </div>
       )}
 

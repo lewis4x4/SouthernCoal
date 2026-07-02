@@ -137,62 +137,91 @@ export function ProcessingQueue() {
           </span>
         </h3>
         <div className="flex items-center gap-2">
-          {queuedPermitPdfCount > 0 && can('bulk_process') && (
+          {queuedPermitPdfCount > 0 && (
             <button
-              onClick={() => processAllPermitPdfs()}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Process ${queuedPermitPdfCount} queued permit PDF${queuedPermitPdfCount !== 1 ? 's' : ''} sequentially`}
+              onClick={() => can('bulk_process') && processAllPermitPdfs()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Process ${queuedPermitPdfCount} queued permit PDF${queuedPermitPdfCount !== 1 ? 's' : ''} sequentially`
+                  : 'Permission required for bulk processing'
+              }
             >
               <Play size={10} className="inline mr-1" />
               Process Permits ({queuedPermitPdfCount})
             </button>
           )}
-          {queuedParameterSheetCount > 0 && can('bulk_process') && (
+          {queuedParameterSheetCount > 0 && (
             <button
-              onClick={() => processAllParameterSheets()}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Process ${queuedParameterSheetCount} WV parameter sheet${queuedParameterSheetCount !== 1 ? 's' : ''}`}
+              onClick={() => can('bulk_process') && processAllParameterSheets()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Process ${queuedParameterSheetCount} WV parameter sheet${queuedParameterSheetCount !== 1 ? 's' : ''}`
+                  : 'Permission required for bulk processing'
+              }
             >
               <Play size={10} className="inline mr-1" />
               Parameter Sheets ({queuedParameterSheetCount})
             </button>
           )}
-          {queuedDmrCount > 0 && can('bulk_process') && (
+          {queuedDmrCount > 0 && (
             <button
-              onClick={() => processAllQueuedDmrs()}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Process ${queuedDmrCount} NetDMR export${queuedDmrCount !== 1 ? 's' : ''}`}
+              onClick={() => can('bulk_process') && processAllQueuedDmrs()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Process ${queuedDmrCount} NetDMR export${queuedDmrCount !== 1 ? 's' : ''}`
+                  : 'Permission required for bulk processing'
+              }
             >
               <Play size={10} className="inline mr-1" />
               Process DMRs ({queuedDmrCount})
             </button>
           )}
-          {queuedLabDataCount > 0 && can('bulk_process') && (
+          {queuedLabDataCount > 0 && (
             <button
-              onClick={() => processAllQueuedLabData()}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Process ${queuedLabDataCount} queued lab data file${queuedLabDataCount !== 1 ? 's' : ''} sequentially`}
+              onClick={() => can('bulk_process') && processAllQueuedLabData()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Process ${queuedLabDataCount} queued lab data file${queuedLabDataCount !== 1 ? 's' : ''} sequentially`
+                  : 'Permission required for bulk processing'
+              }
             >
               <Play size={10} className="inline mr-1" />
               Process Lab Data ({queuedLabDataCount})
             </button>
           )}
-          {queuedArchiveCount > 0 && can('bulk_process') && (
+          {queuedArchiveCount > 0 && (
             <button
-              onClick={() => processAllQueuedArchiveDocuments()}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all"
-              title={`Index ${queuedArchiveCount} archive document${queuedArchiveCount !== 1 ? 's' : ''} for search`}
+              onClick={() => can('bulk_process') && processAllQueuedArchiveDocuments()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Index ${queuedArchiveCount} archive document${queuedArchiveCount !== 1 ? 's' : ''} for search`
+                  : 'Permission required for bulk processing'
+              }
             >
               <Play size={10} className="inline mr-1" />
               Archive Docs ({queuedArchiveCount})
             </button>
           )}
-          {totalParsedImportable > 0 && can('process') && (
+          {totalParsedImportable > 0 && (
             <button
-              onClick={() => void importAllParsed()}
-              disabled={bulkImportRunning}
-              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25 transition-all disabled:opacity-50"
-              title={`Import ${totalParsedImportable} parsed file${totalParsedImportable !== 1 ? 's' : ''} to domain tables`}
+              onClick={() => can('process') && void importAllParsed()}
+              disabled={!can('process') || bulkImportRunning}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('process')
+                  ? `Import ${totalParsedImportable} parsed file${totalParsedImportable !== 1 ? 's' : ''} to domain tables`
+                  : 'Permission required to import parsed files'
+              }
             >
               <Upload size={10} className="inline mr-1" />
               {bulkImportRunning ? 'Importing…' : `Import Parsed (${totalParsedImportable})`}
@@ -219,12 +248,13 @@ export function ProcessingQueue() {
               — parser or import errors need review. Expand a row for forensics.
             </span>
           </div>
-          {can('retry') && (
+          {failedEntries.length > 0 && (
             <button
               type="button"
-              onClick={() => void handleRetryAllFailed()}
-              disabled={retryingFailed}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+              onClick={() => can('retry') && void handleRetryAllFailed()}
+              disabled={!can('retry') || retryingFailed}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={can('retry') ? 'Retry all failed queue entries' : 'Permission required to retry failed files'}
             >
               <RotateCcw size={12} className={retryingFailed ? 'animate-spin' : ''} />
               {retryingFailed ? 'Retrying…' : `Retry all failed (${failedEntries.length})`}

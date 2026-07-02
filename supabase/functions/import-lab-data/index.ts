@@ -668,6 +668,12 @@ serve(async (req: Request) => {
         });
         if (p49Error) {
           console.error("[import-lab-data] ¶49 evaluation failed:", p49Error.message);
+          await supabase.rpc("log_edd_paragraph49_evaluation_failure", {
+            p_organization_id: organizationId,
+            p_import_id: importId,
+            p_error_message: p49Error.message,
+            p_source_file_id: queueId,
+          });
         }
       } catch (err) {
         console.error("[import-lab-data] ¶49 evaluation failed:", err);
