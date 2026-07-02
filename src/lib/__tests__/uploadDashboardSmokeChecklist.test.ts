@@ -129,6 +129,19 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
     expect(assertSourceContains('hooks/usePermitLimitsImport.ts', [/permit_limits_imported/])).toBe(true);
   });
 
+  it('surfaces upload dashboard actions in audit log presets', () => {
+    expect(assertSourceContains('pages/AuditLogPage.tsx', [
+      /PRESET_UPLOAD_AUDIT_ACTIONS/,
+      /lab_data_imported/,
+    ])).toBe(true);
+  });
+
+  it('disables command palette retry when no failed entries', () => {
+    expect(assertSourceContains('components/dashboard/CommandPalette.tsx', [
+      /retryableFailedCount/,
+    ])).toBe(true);
+  });
+
   it('renders compliance archive branch in ExtractionPanel', () => {
     expect(assertSourceContains('components/dashboard/queue/ExtractionPanel.tsx', [
       /compliance_archive/,

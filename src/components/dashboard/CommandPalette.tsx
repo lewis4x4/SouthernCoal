@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
+import { toast } from 'sonner';
 import { useQueueStore } from '@/stores/queue';
 import { useStagingStore } from '@/stores/staging';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -41,6 +42,9 @@ export function CommandPalette() {
   const { importAllParsed, totalParsedImportable } = useBulkQueueImport();
   const entries = useQueueStore((s) => s.entries);
   const { log } = useAuditLog();
+  const retryableFailedCount = entries.filter(
+    (e) => e.status === 'failed' && canProcessQueueEntry(e),
+  ).length;
 
   // Cmd+K listener
   useEffect(() => {
@@ -260,30 +264,39 @@ export function CommandPalette() {
               </Command.Item>
               <Command.Item
                 value="retry all failed"
-                disabled={!can('retry')}
+                disabled={!can('retry') || retryableFailedCount === 0}
                 onSelect={() => {
-                  if (!can('retry')) return;
+                  if (!can('retry') || retryableFailedCount === 0) return;
                   runAction('retry_all_failed', () => {
                     const failed = entries.filter(
                       (e) => e.status === 'failed' && canProcessQueueEntry(e),
                     );
-                    if (failed.length > 0) {
-                      log(
-                        'bulk_retry',
-                        { count: failed.length, source: 'command_palette' },
-                        { module: 'upload_dashboard', tableName: 'file_processing_queue' },
-                      );
+                    if (failed.length === 0) {
+                      toast.info('No failed files to retry.');
+                      return;
                     }
+                    log(
+                      'bulk_retry',
+                      { count: failed.length, source: 'command_palette' },
+                      { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+                    );
                     for (const entry of failed) {
                       void retryFailed(entry.id);
                     }
+                    toast.info(`Retrying ${failed.length} failed file${failed.length === 1 ? '' : 's'}…`);
                   });
                 }}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
-                title={can('retry') ? undefined : 'Permission required to retry failed files'}
+                title={
+                  can('retry')
+                    ? retryableFailedCount === 0
+                      ? 'No failed files to retry'
+                      : undefined
+                    : 'Permission required to retry failed files'
+                }
               >
                 <RefreshCw size={12} />
-                Retry all failed
+                Retry all failed ({retryableFailedCount})
               </Command.Item>
               <Command.Item
                 value="export matrix csv"

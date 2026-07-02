@@ -119,6 +119,21 @@ const PRESET_FIELD_AUDIT_ACTIONS = [
   'field_outbound_conflict_hold',
 ] as const;
 
+/** Upload Dashboard actions — always in the action filter for compliance reviewers. */
+const PRESET_UPLOAD_AUDIT_ACTIONS = [
+  'process_queued',
+  'retry_queued',
+  'compliance_archive_processed',
+  'lab_data_imported',
+  'permit_limits_imported',
+  'netdmr_dmr_imported',
+  'bulk_retry',
+  'matrix_export_csv',
+  'matrix_export_markdown',
+  'staging_clear_all',
+  'command_palette_action',
+] as const;
+
 export function AuditLogPage() {
   const { hasAllowedRole, loading: permissionsLoading } = usePermissions();
   const { log } = useAuditLog();
@@ -168,7 +183,7 @@ export function AuditLogPage() {
   }, [entries]);
 
   const actions = useMemo(() => {
-    const set = new Set<string>(PRESET_FIELD_AUDIT_ACTIONS);
+    const set = new Set<string>([...PRESET_FIELD_AUDIT_ACTIONS, ...PRESET_UPLOAD_AUDIT_ACTIONS]);
     for (const e of entries) set.add(e.action);
     return Array.from(set).sort();
   }, [entries]);
