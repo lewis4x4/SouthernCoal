@@ -113,6 +113,7 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
     window.addEventListener('drop', handleDrop);
 
     return () => {
+      dragCountRef.current = 0;
       window.removeEventListener('dragenter', handleDragEnter);
       window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('dragover', handleDragOver);

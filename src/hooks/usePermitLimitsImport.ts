@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { edgeFunctionFetchHeaders, getFreshToken, supabase } from '@/lib/supabase';
+import { showPostProcessFollowUpToast } from '@/lib/uploadPostProcessLinks';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { QueueEntry } from '@/types/queue';
@@ -13,6 +15,7 @@ import type { QueueEntry } from '@/types/queue';
 export function usePermitLimitsImport() {
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
   const { log } = useAuditLog();
+  const navigate = useNavigate();
 
   /**
    * Import a single parsed permit limits file to domain tables.
@@ -92,8 +95,10 @@ export function usePermitLimitsImport() {
             import_batch_id: result.import_batch_id,
           });
 
-          toast.success(
+          showPostProcessFollowUpToast(
             `Imported ${result.limits_created} permit limits from ${entry.file_name}`,
+            'npdes_permit',
+            navigate,
           );
 
           // Refresh entry from database to get final status
@@ -143,7 +148,7 @@ export function usePermitLimitsImport() {
         });
       }
     },
-    [log],
+    [log, navigate],
   );
 
   /**
@@ -207,7 +212,11 @@ export function usePermitLimitsImport() {
     }
 
     if (failCount === 0 && skippedCount === 0) {
-      toast.success(`Successfully imported ${successCount} permit files.`);
+      showPostProcessFollowUpToast(
+        `Successfully imported ${successCount} permit file${successCount === 1 ? '' : 's'}.`,
+        'npdes_permit',
+        navigate,
+      );
     } else {
       toast.warning(
         `Imported ${successCount}, failed ${failCount}, skipped ${skippedCount}. Check entries for details.`,
@@ -223,7 +232,7 @@ export function usePermitLimitsImport() {
     if (freshEntries) {
       useQueueStore.getState().setEntries(freshEntries as QueueEntry[]);
     }
-  }, [importPermitLimits]);
+  }, [importPermitLimits, navigate]);
 
   /**
    * Check if a specific entry is currently being imported.

@@ -29,6 +29,11 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     actionLabel: 'Open Monitoring',
     panelNote: 'Review imported lab results and exceedances before relying on them for compliance decisions.',
   },
+  npdes_permit: {
+    href: '/monitoring',
+    actionLabel: 'Open Monitoring',
+    panelNote: 'Review imported permit limits and outfalls before using them for exceedance or DMR calculations.',
+  },
 };
 
 export function getUploadPostProcessFollowUp(fileCategory: string): UploadPostProcessFollowUp | null {

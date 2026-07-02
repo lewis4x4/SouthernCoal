@@ -10,6 +10,7 @@ describe('uploadPostProcessLinks', () => {
     expect(getUploadPostProcessFollowUp('consent_decree')?.href).toBe('/obligations');
     expect(getUploadPostProcessFollowUp('dmr')?.href).toBe('/dmr');
     expect(getUploadPostProcessFollowUp('lab_data')?.href).toBe('/monitoring');
+    expect(getUploadPostProcessFollowUp('npdes_permit')?.href).toBe('/monitoring');
     expect(getUploadPostProcessFollowUp('field_inspection')).toBeNull();
   });
 

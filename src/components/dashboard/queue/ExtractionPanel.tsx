@@ -357,9 +357,24 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
       )}
 
       {entry.status === 'imported' && canImportPermit && (
-        <div className="mt-4 pt-3 border-t border-black/[0.06] flex items-center gap-2 text-xs text-emerald-300">
-          <CheckCircle2 size={14} />
-          <span>Permit data successfully imported to domain tables</span>
+        <div className="mt-4 pt-3 border-t border-black/[0.06] space-y-2">
+          <div className="flex items-center gap-2 text-xs text-emerald-300">
+            <CheckCircle2 size={14} />
+            <span>Permit data successfully imported to domain tables</span>
+          </div>
+          {(() => {
+            const followUp = getUploadPostProcessFollowUp('npdes_permit');
+            if (!followUp) return null;
+            return (
+              <p className="text-[10px] text-text-muted">
+                Open{' '}
+                <Link to={followUp.href} className="text-qo-accent hover:text-qo-accent">
+                  {followUp.actionLabel}
+                </Link>{' '}
+                to review imported limits and outfalls.
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
