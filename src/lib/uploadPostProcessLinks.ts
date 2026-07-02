@@ -12,7 +12,7 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     href: '/field/schedule',
     actionLabel: 'Open Field Schedule',
     panelNote:
-      'Calendar row import is manual until matrix parser ships — review scheduled events on Field Schedule.',
+      'Review parsed schedule rows and import matched rows into sampling_schedules before relying on QW1 gap detection.',
   },
   consent_decree: {
     href: '/obligations',

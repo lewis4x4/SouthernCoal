@@ -11,8 +11,15 @@ export const ARCHIVE_DOCUMENT_CATEGORIES = new Set([
   'enforcement',
 ]);
 
-export function isArchiveDocumentCategory(category: string): boolean {
-  return ARCHIVE_DOCUMENT_CATEGORIES.has(category);
+export function isArchiveDocumentCategory(
+  category: string,
+  entry?: Pick<QueueEntry, 'file_name'>,
+): boolean {
+  if (!ARCHIVE_DOCUMENT_CATEGORIES.has(category)) return false;
+  if (category === 'sampling_matrix' && entry && isSamplingMatrixTabularFile(entry)) {
+    return false;
+  }
+  return true;
 }
 
 /** Edge Function invoked for a queue entry. */
@@ -24,6 +31,7 @@ export type QueueParserKind =
   | 'osmre_monitoring'
   | 'al_lab_data'
   | 'netdmr_bundle'
+  | 'sampling_matrix'
   | 'compliance_archive'
   | 'unsupported';
 
@@ -60,6 +68,10 @@ export function isParameterSheetFile(entry: Pick<QueueEntry, 'file_name'>): bool
 
 export function isNetDmrBundleFile(entry: Pick<QueueEntry, 'file_name'>): boolean {
   return ZIP_EXT.test(entry.file_name) || CSV_EXT.test(entry.file_name) || /\.txt$/i.test(entry.file_name);
+}
+
+export function isSamplingMatrixTabularFile(entry: Pick<QueueEntry, 'file_name'>): boolean {
+  return EXCEL_EXT.test(entry.file_name) || CSV_EXT.test(entry.file_name);
 }
 
 export function isOsmreMonitoringFile(entry: Pick<QueueEntry, 'file_name' | 'storage_path' | 'state_code'>): boolean {
@@ -145,10 +157,22 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
     case 'field_inspection':
     case 'water_monitoring':
     case 'consent_decree':
-    case 'sampling_matrix':
     case 'quarterly_report':
     case 'audit_report':
     case 'enforcement':
+      return {
+        kind: 'compliance_archive',
+        functionName: 'process-compliance-archive',
+        label: 'Compliance archive',
+      };
+    case 'sampling_matrix':
+      if (isSamplingMatrixTabularFile(entry)) {
+        return {
+          kind: 'sampling_matrix',
+          functionName: 'parse-sampling-matrix',
+          label: 'Sampling matrix',
+        };
+      }
       return {
         kind: 'compliance_archive',
         functionName: 'process-compliance-archive',

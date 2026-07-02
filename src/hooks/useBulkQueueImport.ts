@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { usePermitLimitsImport } from '@/hooks/usePermitLimitsImport';
 import { useLabDataImport } from '@/hooks/useLabDataImport';
 import { useDmrImport } from '@/hooks/useDmrImport';
+import { useSamplingMatrixImport } from '@/hooks/useSamplingMatrixImport';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
@@ -13,6 +14,8 @@ export function useBulkQueueImport() {
   const { importAllParsedPermits, isAnyImporting: permitsImporting } = usePermitLimitsImport();
   const { importAllParsedLabData, isAnyImporting: labImporting } = useLabDataImport();
   const { importAllParsedNetDmrs, isAnyImporting: dmrImporting } = useDmrImport();
+  const { importAllParsedSamplingMatrices, isAnyImporting: matrixImporting } =
+    useSamplingMatrixImport();
   const { log } = useAuditLog();
   const [batchRunning, setBatchRunning] = useState(false);
 
@@ -45,7 +48,19 @@ export function useBulkQueueImport() {
     [entries],
   );
 
-  const totalParsedImportable = parsedPermitCount + parsedLabCount + parsedDmrCount;
+  const parsedMatrixCount = useMemo(
+    () =>
+      entries.filter(
+        (e) =>
+          e.status === 'parsed' &&
+          e.file_category === 'sampling_matrix' &&
+          (e.extracted_data as Record<string, unknown> | null)?.document_type ===
+            'sampling_matrix',
+      ).length,
+    [entries],
+  );
+
+  const totalParsedImportable = parsedPermitCount + parsedLabCount + parsedDmrCount + parsedMatrixCount;
 
   const importAllParsed = useCallback(async () => {
     if (totalParsedImportable === 0) {
@@ -58,6 +73,7 @@ export function useBulkQueueImport() {
       if (parsedPermitCount > 0) await importAllParsedPermits();
       if (parsedLabCount > 0) await importAllParsedLabData();
       if (parsedDmrCount > 0) await importAllParsedNetDmrs();
+      if (parsedMatrixCount > 0) await importAllParsedSamplingMatrices();
 
       log(
         'bulk_process',
@@ -66,6 +82,7 @@ export function useBulkQueueImport() {
           permits: parsedPermitCount,
           lab_data: parsedLabCount,
           dmrs: parsedDmrCount,
+          sampling_matrix: parsedMatrixCount,
         },
         { module: 'upload_dashboard', tableName: 'file_processing_queue' },
       );
@@ -77,9 +94,11 @@ export function useBulkQueueImport() {
     parsedPermitCount,
     parsedLabCount,
     parsedDmrCount,
+    parsedMatrixCount,
     importAllParsedPermits,
     importAllParsedLabData,
     importAllParsedNetDmrs,
+    importAllParsedSamplingMatrices,
     log,
   ]);
 
@@ -88,7 +107,8 @@ export function useBulkQueueImport() {
     parsedPermitCount,
     parsedLabCount,
     parsedDmrCount,
+    parsedMatrixCount,
     totalParsedImportable,
-    isImporting: batchRunning || permitsImporting || labImporting || dmrImporting,
+    isImporting: batchRunning || permitsImporting || labImporting || dmrImporting || matrixImporting,
   };
 }

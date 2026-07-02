@@ -18,6 +18,7 @@ type AuditAction =
   | 'lab_data_imported'
   | 'permit_limits_imported'
   | 'netdmr_dmr_imported'
+  | 'sampling_matrix_imported'
   | 'matrix_expected_count_changed'
   | 'staging_clear_all'
   | 'command_palette_action'

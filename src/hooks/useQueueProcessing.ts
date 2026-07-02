@@ -12,6 +12,7 @@ import { useParameterSheetProcessing } from '@/hooks/useParameterSheetProcessing
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
 import { useDmrProcessing } from '@/hooks/useDmrProcessing';
 import { useArchiveDocumentProcessing } from '@/hooks/useArchiveDocumentProcessing';
+import { useSamplingMatrixProcessing } from '@/hooks/useSamplingMatrixProcessing';
 import { useQueueStore } from '@/stores/queue';
 
 const UPLOAD_AUDIT_ENTITY = {
@@ -31,6 +32,8 @@ export function useQueueProcessing() {
   const { processDmr, processAllQueuedDmrs } = useDmrProcessing();
   const { processArchiveDocument, processAllQueuedArchiveDocuments } =
     useArchiveDocumentProcessing();
+  const { processSamplingMatrix, processAllQueuedSamplingMatrices } =
+    useSamplingMatrixProcessing();
 
   const runProcess = useCallback(
     async (queueId: string, auditAction: 'process_queued' | 'retry_queued') => {
@@ -64,6 +67,8 @@ export function useQueueProcessing() {
           return processDmr(queueId);
         case 'compliance_archive':
           return processArchiveDocument(queueId);
+        case 'sampling_matrix':
+          return processSamplingMatrix(queueId);
         default: {
           const categoryLabel =
             CATEGORY_BY_DB_KEY[entry.file_category]?.label ?? entry.file_category;
@@ -80,6 +85,7 @@ export function useQueueProcessing() {
       processLabData,
       processDmr,
       processArchiveDocument,
+      processSamplingMatrix,
     ],
   );
 
@@ -101,6 +107,7 @@ export function useQueueProcessing() {
     processAllQueuedLabData,
     processAllQueuedDmrs,
     processAllQueuedArchiveDocuments,
+    processAllQueuedSamplingMatrices,
     canProcessQueueEntry,
     isParameterSheetFile,
     resolveQueueParser,

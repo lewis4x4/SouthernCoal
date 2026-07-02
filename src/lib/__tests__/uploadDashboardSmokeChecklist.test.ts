@@ -148,4 +148,24 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
       /ArchiveExtractionPanel/,
     ])).toBe(true);
   });
+
+  it('wires sampling matrix parse/import pipeline', () => {
+    expect(assertSourceContains('hooks/useQueueProcessing.ts', [
+      /case 'sampling_matrix'/,
+      /processSamplingMatrix/,
+    ])).toBe(true);
+    expect(assertSourceContains('hooks/useSamplingMatrixProcessing.ts', [
+      /parse-sampling-matrix/,
+    ])).toBe(true);
+    expect(assertSourceContains('hooks/useSamplingMatrixImport.ts', [
+      /import-sampling-matrix/,
+      /sampling_matrix_imported/,
+    ])).toBe(true);
+    expect(assertSourceContains('components/dashboard/queue/SamplingMatrixExtractionPanel.tsx', [
+      /SamplingMatrixExtractedPreview/,
+    ])).toBe(true);
+    expect(assertSourceContains('components/dashboard/CommandPalette.tsx', [
+      /process all sampling matrix files/,
+    ])).toBe(true);
+  });
 });

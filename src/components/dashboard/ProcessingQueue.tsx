@@ -8,7 +8,7 @@ import { useRealtimeQueue } from '@/hooks/useRealtimeQueue';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useQueueProcessing } from '@/hooks/useQueueProcessing';
 import { useBulkQueueImport } from '@/hooks/useBulkQueueImport';
-import { isArchiveDocumentCategory, isParameterSheetFile } from '@/lib/queueProcessorRouting';
+import { isArchiveDocumentCategory, isParameterSheetFile, isSamplingMatrixTabularFile } from '@/lib/queueProcessorRouting';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ErrorForensics } from '@/components/ui/ErrorForensics';
 import { ExtractionPanel } from '@/components/dashboard/queue/ExtractionPanel';
@@ -35,6 +35,7 @@ export function ProcessingQueue() {
     processAllQueuedLabData,
     processAllQueuedDmrs,
     processAllQueuedArchiveDocuments,
+    processAllQueuedSamplingMatrices,
     retryFailed,
   } = useQueueProcessing();
   const {
@@ -82,7 +83,14 @@ export function ProcessingQueue() {
   ).length;
 
   const queuedArchiveCount = allEntries.filter(
-    (e) => e.status === 'queued' && isArchiveDocumentCategory(e.file_category),
+    (e) => e.status === 'queued' && isArchiveDocumentCategory(e.file_category, e),
+  ).length;
+
+  const queuedSamplingMatrixCount = allEntries.filter(
+    (e) =>
+      e.status === 'queued' &&
+      e.file_category === 'sampling_matrix' &&
+      isSamplingMatrixTabularFile(e),
   ).length;
 
   const expandedEntry = expandedRowId
@@ -195,6 +203,21 @@ export function ProcessingQueue() {
             >
               <Play size={10} className="inline mr-1" />
               Process Lab Data ({queuedLabDataCount})
+            </button>
+          )}
+          {queuedSamplingMatrixCount > 0 && (
+            <button
+              onClick={() => can('bulk_process') && processAllQueuedSamplingMatrices()}
+              disabled={!can('bulk_process')}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-status-imported/15 text-status-imported border border-status-imported/20 hover:bg-status-imported/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                can('bulk_process')
+                  ? `Parse ${queuedSamplingMatrixCount} sampling matrix file${queuedSamplingMatrixCount !== 1 ? 's' : ''}`
+                  : 'Permission required for bulk processing'
+              }
+            >
+              <Play size={10} className="inline mr-1" />
+              Sampling Matrix ({queuedSamplingMatrixCount})
             </button>
           )}
           {queuedArchiveCount > 0 && (

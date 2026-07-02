@@ -52,7 +52,7 @@ export function useArchiveDocumentProcessing() {
     const entry = useQueueStore.getState().entries.find((e) => e.id === queueId);
     if (!entry) return;
 
-    if (!isArchiveDocumentCategory(entry.file_category)) {
+    if (!isArchiveDocumentCategory(entry.file_category, entry)) {
       toast.error('Not an archive document category');
       return;
     }
@@ -105,7 +105,7 @@ export function useArchiveDocumentProcessing() {
 
   const processAllQueuedArchiveDocuments = useCallback(async () => {
     const queued = useQueueStore.getState().entries.filter(
-      (e) => e.status === 'queued' && isArchiveDocumentCategory(e.file_category),
+      (e) => e.status === 'queued' && isArchiveDocumentCategory(e.file_category, e),
     );
 
     if (queued.length === 0) {

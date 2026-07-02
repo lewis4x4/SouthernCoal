@@ -87,21 +87,34 @@ describe('upload dashboard category mapping', () => {
     expect(canProcessQueueEntry(entry)).toBe(true);
   });
 
-  it('maps consent_decree and sampling_matrix to archive pipeline', () => {
+  it('routes tabular sampling_matrix to parse-sampling-matrix and PDF to archive', () => {
     expect(CATEGORY_BY_DB_KEY.consent_decree?.bucket).toBe('audit-reports');
     expect(CATEGORY_BY_DB_KEY.sampling_matrix?.bucket).toBe('other');
 
-    for (const fileCategory of ['consent_decree', 'sampling_matrix'] as const) {
-      const entry = queueEntry({
-        file_category: fileCategory,
-        storage_bucket: CATEGORY_BY_DB_KEY[fileCategory]!.bucket,
-        file_name: fileCategory === 'consent_decree' ? 'Consent_Decree_7-16-cv-00462.pdf' : 'Sampling_Matrix_Q3.xlsx',
-      });
-      const route = resolveQueueParser(entry);
-      expect(route.kind).toBe('compliance_archive');
-      expect(route.functionName).toBe('process-compliance-archive');
-      expect(canProcessQueueEntry(entry)).toBe(true);
-    }
+    const decreeEntry = queueEntry({
+      file_category: 'consent_decree',
+      storage_bucket: CATEGORY_BY_DB_KEY.consent_decree!.bucket,
+      file_name: 'Consent_Decree_7-16-cv-00462.pdf',
+    });
+    expect(resolveQueueParser(decreeEntry).kind).toBe('compliance_archive');
+    expect(resolveQueueParser(decreeEntry).functionName).toBe('process-compliance-archive');
+
+    const matrixCsv = queueEntry({
+      file_category: 'sampling_matrix',
+      storage_bucket: CATEGORY_BY_DB_KEY.sampling_matrix!.bucket,
+      file_name: 'Sampling_Matrix_Q3.csv',
+    });
+    expect(resolveQueueParser(matrixCsv).kind).toBe('sampling_matrix');
+    expect(resolveQueueParser(matrixCsv).functionName).toBe('parse-sampling-matrix');
+    expect(isArchiveDocumentCategory('sampling_matrix', matrixCsv)).toBe(false);
+
+    const matrixPdf = queueEntry({
+      file_category: 'sampling_matrix',
+      storage_bucket: CATEGORY_BY_DB_KEY.sampling_matrix!.bucket,
+      file_name: 'Sampling_Matrix_Q3.pdf',
+    });
+    expect(resolveQueueParser(matrixPdf).kind).toBe('compliance_archive');
+    expect(isArchiveDocumentCategory('sampling_matrix', matrixPdf)).toBe(true);
   });
 
   it('includes outreach document categories in canonical CATEGORIES list', () => {
@@ -111,12 +124,11 @@ describe('upload dashboard category mapping', () => {
     expect(CATEGORIES.length).toBeGreaterThanOrEqual(11);
   });
 
-  it('treats all archive-routed categories as archive documents', () => {
+  it('treats archive-routed categories as archive documents', () => {
     for (const fileCategory of [
       'field_inspection',
       'water_monitoring',
       'consent_decree',
-      'sampling_matrix',
       'quarterly_report',
       'audit_report',
       'enforcement',
@@ -128,6 +140,14 @@ describe('upload dashboard category mapping', () => {
       });
       expect(resolveQueueParser(entry).kind).toBe('compliance_archive');
     }
+
+    expect(isArchiveDocumentCategory('sampling_matrix')).toBe(true);
+    const tabularMatrix = queueEntry({
+      file_category: 'sampling_matrix',
+      file_name: 'matrix.xlsx',
+    });
+    expect(isArchiveDocumentCategory('sampling_matrix', tabularMatrix)).toBe(false);
+    expect(resolveQueueParser(tabularMatrix).kind).toBe('sampling_matrix');
   });
 });
 

@@ -9,6 +9,8 @@ import { useDmrImport } from '@/hooks/useDmrImport';
 import { usePermitLimitsImport } from '@/hooks/usePermitLimitsImport';
 import { VerificationBadge } from './VerificationBadge';
 import { ParameterSheetExtractionPanel } from './ParameterSheetExtractionPanel';
+import { SamplingMatrixExtractionPanel } from './SamplingMatrixExtractionPanel';
+import type { SamplingMatrixExtractedPreview } from '@/lib/samplingMatrixParse';
 import {
   getLabExtractionMeta,
   isLabExtractionDocumentType,
@@ -144,6 +146,19 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
         onDispute={() => setStatus(entry.id, 'disputed')}
+        canVerify={can('verify')}
+      />
+    );
+  }
+
+  // Sampling matrix — tabular Q14 stub (CSV/XLSX)
+  if (data.document_type === 'sampling_matrix') {
+    return (
+      <SamplingMatrixExtractionPanel
+        entry={entry}
+        data={data as unknown as SamplingMatrixExtractedPreview}
+        verificationStatus={verificationStatus}
+        onVerify={() => setStatus(entry.id, 'verified')}
         canVerify={can('verify')}
       />
     );

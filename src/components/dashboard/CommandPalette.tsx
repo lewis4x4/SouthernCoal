@@ -36,6 +36,7 @@ export function CommandPalette() {
     processAllQueuedLabData,
     processAllQueuedDmrs,
     processAllQueuedArchiveDocuments,
+    processAllQueuedSamplingMatrices,
     retryFailed,
     canProcessQueueEntry,
   } = useQueueProcessing();
@@ -229,6 +230,21 @@ export function CommandPalette() {
               >
                 <Play size={12} />
                 Process all queued DMR exports
+              </Command.Item>
+              <Command.Item
+                value="process all sampling matrix files"
+                disabled={!can('bulk_process')}
+                onSelect={() => {
+                  if (!can('bulk_process')) return;
+                  runAction('bulk_process_sampling_matrix', () =>
+                    processAllQueuedSamplingMatrices(),
+                  );
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('bulk_process') ? undefined : 'Permission required for bulk processing'}
+              >
+                <Play size={12} />
+                Process all sampling matrix files
               </Command.Item>
               <Command.Item
                 value="process all archive documents"
