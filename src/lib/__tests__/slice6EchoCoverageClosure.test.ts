@@ -34,6 +34,7 @@ describe('slice6 / task 3.37 — ECHO sync coverage panel wiring', () => {
     const source = readSrc('components/external-data/EchoCoveragePanel.tsx');
     expect(source).toContain('SyncHealthPanel');
     expect(source).toContain('Slice1ActivationFunnelPanel');
+    expect(source).toContain('SyntheticLimitReviewPanel');
     expect(source).toContain('Registry Mapping Gaps');
     expect(source).toContain('downloadRegistryGapsCsv');
     expect(source).toContain('useVirtualizer');

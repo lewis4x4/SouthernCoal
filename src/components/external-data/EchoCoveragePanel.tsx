@@ -10,6 +10,7 @@ import { useNpdesOverrides } from '@/hooks/useNpdesOverrides';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
 import { SyncHealthPanel } from '@/components/external-data/SyncHealthPanel';
 import { Slice1ActivationFunnelPanel } from '@/components/external-data/Slice1ActivationFunnelPanel';
+import { SyntheticLimitReviewPanel } from '@/components/external-data/SyntheticLimitReviewPanel';
 import { useSlice1ActivationGaps } from '@/hooks/useSlice1ActivationGaps';
 import { NpdesMappingImportPanel } from '@/components/external-data/NpdesMappingImportPanel';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -278,6 +279,8 @@ export function EchoCoveragePanel() {
         error={activationGapsError}
         onRefresh={() => void refetchActivationGaps()}
       />
+
+      <SyntheticLimitReviewPanel count={activationGaps?.synthetic_echo_limits ?? 0} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
