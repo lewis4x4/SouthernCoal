@@ -287,7 +287,7 @@ Evidence capture for portal submissions, change log UI, access control hardening
 | **3.32** | Justice EDD parser Edge Function | 1.24, 2.62, 2.63 | AI | not_started |
 | **3.33** | DMR submission pipeline (dmr_submissions + dmr_line_items) | 3.32, 1.29 | AI | not_started |
 | **3.34** | Wire parsers into Upload Dashboard flow | 3.01, 3.32 | AI | not_started |
-| **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **PARTIAL** — batched per-permit detect shipped; full org loop pending |
+| **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **PARTIAL** — batch detect script + RPC shipped; 149-permit run pending |
 | **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | in_progress |
 | **3.37** | ECHO sync coverage panel | — | AI | not_started |
 | **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | **in_progress** — confirmation basis UI + audit (Slice 6) |

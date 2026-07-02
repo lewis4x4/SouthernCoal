@@ -48,3 +48,19 @@ describe('slice3 echo discrepancy rerun migration', () => {
     expect(sql).toContain('detect-discrepancies');
   });
 });
+
+describe('slice3 echo batch detect migration', () => {
+  it('defines batch job wrapper for per-NPDES loop', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const sql = readFileSync(
+      resolve(
+        import.meta.dirname,
+        '../../../supabase/migrations/20260703070000_slice3_echo_batch_detect.sql',
+      ),
+      'utf8',
+    );
+    expect(sql).toContain('run_detect_discrepancies_echo_batch_job');
+    expect(sql).toContain('detect-discrepancies-echo-batch');
+  });
+});
