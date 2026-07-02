@@ -21,6 +21,7 @@ import type {
   NodiCode,
 } from '@/types/database';
 import type { DmrSubmissionWithPermit, DmrValidationResult } from '@/hooks/useDmrSubmissions';
+import type { DmrCalculationWarning } from '@/lib/dmrSchema';
 
 // ─── Constants ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<DmrSubmissionStatus, { label: string; bg: string; text: string; border: string }> = {
@@ -221,6 +222,12 @@ export function DmrDetailPage() {
   const exceedanceCount = lineItems.filter((i) => i.is_exceedance).length;
   const missingCount = lineItems.filter((i) => i.measured_value === null && i.nodi_code === null).length;
 
+  const conversionWarningCount = lineItems.reduce((count, item) => {
+    const warnings = (item as DmrLineItemWithRelations & { calculation_warnings?: DmrCalculationWarning[] })
+      .calculation_warnings;
+    return count + (warnings?.length ?? 0);
+  }, 0);
+
   // Group line items by outfall
   const outfallGroups = new Map<string, DmrLineItemWithRelations[]>();
   for (const item of lineItems) {
@@ -410,6 +417,9 @@ export function DmrDetailPage() {
           <span>{lineItems.length} line items</span>
           {exceedanceCount > 0 && <span className="text-qo-risk">{exceedanceCount} exceedances</span>}
           {missingCount > 0 && <span className="text-qo-ochre-text">{missingCount} missing values</span>}
+          {conversionWarningCount > 0 && (
+            <span className="text-qo-ochre-text">{conversionWarningCount} unit conversion warning(s)</span>
+          )}
           <span>{outfallGroups.size} outfalls</span>
         </div>
       )}
@@ -451,12 +461,17 @@ export function DmrDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.03]">
-                    {items.map((item) => (
+                    {items.map((item) => {
+                      const itemWarnings =
+                        (item as DmrLineItemWithRelations & { calculation_warnings?: DmrCalculationWarning[] })
+                          .calculation_warnings ?? [];
+                      return (
                       <tr
                         key={item.id}
                         className={cn(
                           'hover:bg-qo-nested',
                           item.is_exceedance && 'bg-red-500/[0.03]',
+                          itemWarnings.length > 0 && 'bg-amber-500/[0.03]',
                         )}
                       >
                         <td className="px-3 py-2 text-text-secondary font-medium">
@@ -522,6 +537,14 @@ export function DmrDetailPage() {
                               <AlertTriangle size={12} />
                               {item.exceedance_pct != null ? `+${item.exceedance_pct}%` : 'EXCEED'}
                             </span>
+                          ) : itemWarnings.length > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-qo-ochre-text"
+                              title={itemWarnings.map((w) => w.message).join(' · ')}
+                            >
+                              <AlertTriangle size={12} />
+                              Unit conversion
+                            </span>
                           ) : item.measured_value != null ? (
                             <span className="text-qo-sage-text">✓</span>
                           ) : item.nodi_code ? (
@@ -531,7 +554,7 @@ export function DmrDetailPage() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    );})}
                   </tbody>
                 </table>
               </div>

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
+import { mapDmrLineItemRow, mapDmrSubmissionRow, type DmrSubmissionWithPermit } from '@/lib/dmrSchema';
 import type {
   DmrSubmission,
   DmrSubmissionType,
@@ -11,27 +12,7 @@ import type {
   DmrLineItemWithRelations,
 } from '@/types/database';
 
-// ---------------------------------------------------------------------------
-// Interfaces
-// ---------------------------------------------------------------------------
-export interface DmrSubmissionWithPermit extends DmrSubmission {
-  permit_number?: string;
-  federal_npdes_id?: string | null;
-  site_name?: string;
-}
-
-function mapSubmissionRow(row: Record<string, unknown>): DmrSubmissionWithPermit {
-  const permit = row.permit as Record<string, unknown> | null;
-  const site = permit?.site as Record<string, unknown> | null;
-  const meta = permit?.metadata as Record<string, unknown> | null;
-  const federal = (meta?.federal_npdes_id_override as string | undefined)?.trim() || null;
-  return {
-    ...row,
-    permit_number: (permit?.permit_number as string) ?? undefined,
-    federal_npdes_id: federal,
-    site_name: (site?.name as string) ?? undefined,
-  } as DmrSubmissionWithPermit;
-}
+export type { DmrSubmissionWithPermit };
 
 export interface DmrValidationResult {
   valid: boolean;
@@ -49,6 +30,7 @@ export interface DmrCalculationResult {
   populated?: number;
   missing?: number;
   exceedances?: number;
+  conversion_warnings?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,15 +50,26 @@ export function useDmrSubmissions() {
   const fetchSubmissions = useCallback(async () => {
     if (!orgId) return;
 
-    const { data, error } = await supabase
-      .from('dmr_submissions')
-      .select(`
+    const baseSelect = `
         *,
-        permit:npdes_permits(permit_number, metadata, site:sites(name))
-      `)
-      .eq('organization_id', orgId)
-      .order('monitoring_period_end', { ascending: false })
+        permit:npdes_permits!inner(organization_id, permit_number, metadata, site:sites(name))
+      `;
+
+    let { data, error } = await supabase
+      .from('dmr_submissions')
+      .select(baseSelect)
+      .eq('permit.organization_id', orgId)
+      .order('created_at', { ascending: false })
       .limit(200);
+
+    if (error) {
+      ({ data, error } = await supabase
+        .from('dmr_submissions')
+        .select(baseSelect)
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(200));
+    }
 
     if (error) {
       console.error('[dmr] fetch failed:', error.message);
@@ -84,7 +77,11 @@ export function useDmrSubmissions() {
       return;
     }
 
-    setSubmissions((data ?? []).map(mapSubmissionRow));
+    setSubmissions(
+      (data ?? []).map((row) =>
+        mapDmrSubmissionRow(row as Record<string, unknown>),
+      ),
+    );
   }, [orgId]);
 
   const fetchSubmissionById = useCallback(
@@ -93,7 +90,7 @@ export function useDmrSubmissions() {
         .from('dmr_submissions')
         .select(`
           *,
-          permit:npdes_permits(permit_number, metadata, site:sites(name))
+          permit:npdes_permits(organization_id, permit_number, metadata, site:sites(name))
         `)
         .eq('id', submissionId)
         .maybeSingle();
@@ -103,7 +100,7 @@ export function useDmrSubmissions() {
         return null;
       }
       if (!data) return null;
-      return mapSubmissionRow(data as Record<string, unknown>);
+      return mapDmrSubmissionRow(data as Record<string, unknown>);
     },
     [],
   );
@@ -265,33 +262,32 @@ export function useDmrSubmissions() {
   const fetchLineItems = useCallback(async (
     submissionId: string,
   ): Promise<DmrLineItemWithRelations[]> => {
-    const { data, error } = await supabase
-      .from('dmr_line_items')
-      .select(`
+    const select = `
         *,
         outfall:outfalls(outfall_number, permit_id),
         parameter:parameters(name, short_name, storet_code)
-      `)
+      `;
+
+    let { data, error } = await supabase
+      .from('dmr_line_items')
+      .select(select)
       .eq('submission_id', submissionId)
       .order('outfall_id', { ascending: true });
+
+    if (error?.message?.includes('submission_id')) {
+      ({ data, error } = await supabase
+        .from('dmr_line_items')
+        .select(select)
+        .eq('dmr_submission_id', submissionId)
+        .order('outfall_id', { ascending: true }));
+    }
 
     if (error) {
       console.error('[dmr] line items fetch failed:', error.message);
       return [];
     }
 
-    return (data ?? []).map((row: Record<string, unknown>) => {
-      const outfall = row.outfall as Record<string, unknown> | null;
-      return {
-        ...row,
-        outfall: outfall
-          ? {
-              outfall_number: outfall.outfall_number as string,
-              permit_id: outfall.permit_id as string,
-            }
-          : null,
-      } as DmrLineItemWithRelations;
-    });
+    return (data ?? []).map((row) => mapDmrLineItemRow(row as Record<string, unknown>));
   }, []);
 
   // -------------------------------------------------------------------------
@@ -328,6 +324,11 @@ export function useDmrSubmissions() {
     const result = data as DmrCalculationResult;
     if (result.populated && result.populated > 0) {
       toast.success(`Populated ${result.populated} of ${result.line_count} line items`);
+      if (result.conversion_warnings && result.conversion_warnings > 0) {
+        toast.warning(
+          `${result.conversion_warnings} line item(s) have missing unit conversions — review before submit`,
+        );
+      }
     } else if (result.status === 'no_discharge') {
       toast.info('No Discharge selected — no calculations needed');
     } else {
