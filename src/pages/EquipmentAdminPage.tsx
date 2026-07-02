@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Wrench, Plus, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wrench, Plus, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -12,7 +13,7 @@ import type { EquipmentType } from '@/types/equipment';
 const EQUIPMENT_TYPES: EquipmentType[] = ['tablet', 'meter', 'gps', 'cooler', 'vehicle', 'probe', 'sampler', 'other'];
 
 export function EquipmentAdminPage() {
-  const { equipment, calibrationsDue, maintenanceDue, loading, addEquipment } = useEquipment();
+  const { equipment, calibrationsDue, maintenanceDue, maintenanceAlerts, detectingMaintenance, loading, addEquipment, runMaintenanceDetection } = useEquipment();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<EquipmentType>('meter');
@@ -325,7 +326,53 @@ export function EquipmentAdminPage() {
 
       {/* Overdue gear tab */}
       {activeTab === 'maintenance' && (
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-text-muted">
+              QW4 PM detector — coupled work orders open automatically on nightly cron
+            </p>
+            <button
+              type="button"
+              onClick={() => void runMaintenanceDetection()}
+              disabled={detectingMaintenance}
+              className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-black/[0.03] px-3 py-2 text-xs font-medium text-text-primary hover:bg-white/[0.06] disabled:opacity-50"
+            >
+              {detectingMaintenance ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              Run PM detection
+            </button>
+          </div>
+
+          {maintenanceAlerts.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Open alerts ({maintenanceAlerts.length})
+              </h3>
+              {maintenanceAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.03] px-4 py-3"
+                >
+                  <AlertTriangle size={16} className="text-qo-risk shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium text-text-primary">{alert.equipment_name}</span>
+                    <p className="text-[11px] text-text-muted mt-0.5 uppercase">{alert.urgency}</p>
+                  </div>
+                  <div className="text-right text-xs">
+                    {alert.work_order_id && (
+                      <Link
+                        to={`/work-orders?highlight=${alert.work_order_id}`}
+                        className="text-qo-accent hover:underline"
+                      >
+                        Work order
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
           {maintenanceDue.length === 0 ? (
             <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] px-6 py-8 text-sm text-emerald-300">
               <CheckCircle2 size={18} />
@@ -391,6 +438,7 @@ export function EquipmentAdminPage() {
           <p className="text-[10px] uppercase tracking-wide text-text-muted pt-2">
             Field-sampling gear only — advisory PM due list, not heavy-equipment CMMS
           </p>
+          </div>
         </div>
       )}
     </div>

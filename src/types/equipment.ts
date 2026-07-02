@@ -123,6 +123,19 @@ export interface MaintenanceDueItem {
   assigned_to_name: string | null;
 }
 
+export interface EquipmentMaintenanceAlert {
+  id: string;
+  organization_id: string;
+  equipment_id: string;
+  equipment_name: string;
+  next_maintenance_due: string | null;
+  days_until_due: number | null;
+  urgency: 'overdue' | 'due_soon' | 'unknown';
+  review_status: string;
+  work_order_id: string | null;
+  created_at: string;
+}
+
 export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
   tablet: 'Tablet',
   meter: 'Meter',

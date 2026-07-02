@@ -9,6 +9,7 @@ import type {
   EquipmentAssignment,
   CalibrationDueItem,
   MaintenanceDueItem,
+  EquipmentMaintenanceAlert,
 } from '@/types/equipment';
 
 export function useEquipment() {
@@ -19,6 +20,8 @@ export function useEquipment() {
   const [assignments, setAssignments] = useState<EquipmentAssignment[]>([]);
   const [calibrationsDue, setCalibrationsDue] = useState<CalibrationDueItem[]>([]);
   const [maintenanceDue, setMaintenanceDue] = useState<MaintenanceDueItem[]>([]);
+  const [maintenanceAlerts, setMaintenanceAlerts] = useState<EquipmentMaintenanceAlert[]>([]);
+  const [detectingMaintenance, setDetectingMaintenance] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const orgId = profile?.organization_id ?? null;
@@ -94,6 +97,47 @@ export function useEquipment() {
     setMaintenanceDue((data ?? []) as MaintenanceDueItem[]);
   }, [orgId]);
 
+  const fetchMaintenanceAlerts = useCallback(async () => {
+    if (!orgId) return;
+    const { data, error } = await supabase
+      .from('equipment_maintenance_alerts')
+      .select('id, organization_id, equipment_id, equipment_name, next_maintenance_due, days_until_due, urgency, review_status, work_order_id, created_at')
+      .eq('organization_id', orgId)
+      .eq('review_status', 'pending')
+      .order('next_maintenance_due', { ascending: true });
+
+    if (error) {
+      console.error('[equipment] maintenance alerts fetch failed:', error.message);
+      return;
+    }
+    setMaintenanceAlerts((data ?? []) as EquipmentMaintenanceAlert[]);
+  }, [orgId]);
+
+  const runMaintenanceDetection = useCallback(async () => {
+    if (!orgId) return { error: 'No org', opened: 0 };
+    setDetectingMaintenance(true);
+    const { data, error } = await supabase.rpc('detect_equipment_maintenance_gaps', {
+      p_organization_id: orgId,
+      p_within_days: 14,
+      p_source: 'manual',
+    });
+    setDetectingMaintenance(false);
+
+    if (error) {
+      toast.error('PM detection failed');
+      return { error: error.message, opened: 0 };
+    }
+
+    const opened = (data as { opened?: number })?.opened ?? 0;
+    toast.success(`PM detection complete — ${opened} alert(s) opened`);
+    log('equipment_maintenance_detection_run', { opened }, {
+      module: 'equipment',
+      tableName: 'equipment_maintenance_alerts',
+    });
+    await Promise.all([fetchMaintenanceDue(), fetchMaintenanceAlerts()]);
+    return { error: null, opened };
+  }, [fetchMaintenanceAlerts, fetchMaintenanceDue, log, orgId]);
+
   useEffect(() => {
     if (!orgId) {
       setLoading(false);
@@ -104,8 +148,9 @@ export function useEquipment() {
       fetchAssignments(),
       fetchCalibrationsDue(),
       fetchMaintenanceDue(),
+      fetchMaintenanceAlerts(),
     ]).then(() => setLoading(false));
-  }, [fetchEquipment, fetchAssignments, fetchCalibrationsDue, fetchMaintenanceDue, orgId]);
+  }, [fetchEquipment, fetchAssignments, fetchCalibrationsDue, fetchMaintenanceDue, fetchMaintenanceAlerts, orgId]);
 
   const addEquipment = useCallback(
     async (item: {
@@ -225,16 +270,20 @@ export function useEquipment() {
     assignments,
     calibrationsDue,
     maintenanceDue,
+    maintenanceAlerts,
+    detectingMaintenance,
     loading,
     addEquipment,
     assignEquipment,
     logCalibration,
+    runMaintenanceDetection,
     refresh: () =>
       Promise.all([
         fetchEquipment(),
         fetchAssignments(),
         fetchCalibrationsDue(),
         fetchMaintenanceDue(),
+        fetchMaintenanceAlerts(),
       ]),
   };
 }

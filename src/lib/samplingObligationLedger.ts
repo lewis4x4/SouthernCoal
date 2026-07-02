@@ -15,6 +15,51 @@ export interface SamplingObligationRow {
   days_late: number;
 }
 
+export type ObligationDomain = 'npdes' | 'smcra' | 'msha';
+
+export interface CrossDomainObligationRow {
+  id?: string;
+  domain: ObligationDomain;
+  clock_key: string;
+  label: string;
+  due_date: string | null;
+  window_end?: string | null;
+  obligation_status: ObligationStatus;
+  severity?: string;
+  metadata?: Record<string, unknown>;
+  source_table?: string | null;
+  source_id?: string | null;
+}
+
+export type UnifiedObligationRow = SamplingObligationRow | CrossDomainObligationRow;
+
+export function isNpdesObligationRow(row: UnifiedObligationRow): row is SamplingObligationRow {
+  return 'calendar_id' in row && typeof row.calendar_id === 'string';
+}
+
+export const OBLIGATION_DOMAIN_LABELS: Record<ObligationDomain | 'all', string> = {
+  all: 'All domains',
+  npdes: 'NPDES water',
+  smcra: 'SMCRA',
+  msha: 'MSHA',
+};
+
+
+export interface SamplingObligationRow {
+  calendar_id: string;
+  scheduled_date: string;
+  effective_due: string;
+  calendar_status: string | null;
+  dispatch_status: string | null;
+  outfall_number: string | null;
+  parameter_short_name: string | null;
+  permit_number: string | null;
+  schedule_source: string | null;
+  frequency_code: string | null;
+  obligation_status: ObligationStatus;
+  days_late: number;
+}
+
 export interface SamplingObligationLedger {
   organization_id?: string;
   computed_at?: string;
@@ -28,7 +73,9 @@ export interface SamplingObligationLedger {
     matrix_loaded: boolean;
   };
   status_counts: Record<ObligationStatus, number>;
-  rows: SamplingObligationRow[];
+  rows: UnifiedObligationRow[];
+  cross_domain_rows?: CrossDomainObligationRow[];
+  domain_filter?: ObligationDomain | null;
   error?: string;
 }
 
@@ -68,7 +115,10 @@ export function parseSamplingObligationLedger(raw: unknown): SamplingObligationL
     };
   }
 
-  const coverage = (obj.coverage as SamplingObligationLedger['coverage']) ?? {
+  const npdesPayload = obj.npdes as Record<string, unknown> | undefined;
+
+  const coverage = (obj.coverage as SamplingObligationLedger['coverage']) ??
+    (npdesPayload?.coverage as SamplingObligationLedger['coverage']) ?? {
     active_schedules: 0,
     distinct_outfalls: 0,
     distinct_parameters: 0,
@@ -77,7 +127,10 @@ export function parseSamplingObligationLedger(raw: unknown): SamplingObligationL
     matrix_loaded: false,
   };
 
-  const statusRaw = (obj.status_counts as Record<string, number>) ?? {};
+  const statusRaw =
+    (obj.status_counts as Record<string, number>) ??
+    (npdesPayload?.status_counts as Record<string, number>) ??
+    {};
   const status_counts: SamplingObligationLedger['status_counts'] = {
     fulfilled: statusRaw.fulfilled ?? 0,
     excused: statusRaw.excused ?? 0,
@@ -86,17 +139,23 @@ export function parseSamplingObligationLedger(raw: unknown): SamplingObligationL
     upcoming: statusRaw.upcoming ?? 0,
   };
 
-  const rows = Array.isArray(obj.rows) ? (obj.rows as SamplingObligationRow[]) : [];
+  const rows = Array.isArray(obj.rows) ? (obj.rows as UnifiedObligationRow[]) : [];
+  const cross_domain_rows = Array.isArray(obj.cross_domain_rows)
+    ? (obj.cross_domain_rows as CrossDomainObligationRow[])
+    : undefined;
 
   return {
     organization_id: obj.organization_id as string | undefined,
     computed_at: obj.computed_at as string | undefined,
     disclaimer: String(
       obj.disclaimer ??
+        npdesPayload?.disclaimer ??
         'DRAFT — partial obligation calendar; fills incrementally as Sampling Matrix and Upload Dashboard populate permits/outfalls',
     ),
     coverage,
     status_counts,
     rows,
+    cross_domain_rows,
+    domain_filter: (obj.domain_filter as ObligationDomain | null) ?? undefined,
   };
 }

@@ -109,6 +109,7 @@ export function mapDmrLineItemUpdatesToDb(
 
 export function mapDmrLineItemRow(row: Record<string, unknown>): DmrLineItemWithRelations & {
   calculation_warnings?: DmrCalculationWarning[];
+  mass_loading_lbs_day?: number | null;
 } {
   const outfall = row.outfall as Record<string, unknown> | null;
   const parameter = row.parameter as Record<string, unknown> | null;
@@ -166,6 +167,7 @@ export function mapDmrLineItemRow(row: Record<string, unknown>): DmrLineItemWith
   return {
     ...base,
     calculation_warnings: calculationWarnings,
+    mass_loading_lbs_day: (row.mass_loading_lbs_day as number | null) ?? null,
     submission: null,
     outfall: outfall
       ? {

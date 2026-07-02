@@ -298,6 +298,10 @@ export function DmrDetailPage() {
       .calculation_warnings;
     return count + (warnings?.length ?? 0);
   }, 0);
+  const showMassLoading = lineItems.some(
+    (item) =>
+      (item as DmrLineItemWithRelations & { mass_loading_lbs_day?: number | null }).mass_loading_lbs_day != null,
+  );
 
   // Group line items by outfall
   const outfallGroups = new Map<string, DmrLineItemWithRelations[]>();
@@ -585,6 +589,9 @@ export function DmrDetailPage() {
                       <th className="px-3 py-2 text-left text-text-muted font-medium">Stat Base</th>
                       <th className="px-3 py-2 text-right text-text-muted font-medium">Limit</th>
                       <th className="px-3 py-2 text-right text-text-muted font-medium">Measured</th>
+                      {showMassLoading && (
+                        <th className="px-3 py-2 text-right text-text-muted font-medium">Mass load</th>
+                      )}
                       <th className="px-3 py-2 text-center text-text-muted font-medium">NODI</th>
                       <th className="px-3 py-2 text-center text-text-muted font-medium">Samples</th>
                       <th className="px-3 py-2 text-left text-text-muted font-medium">Status</th>
@@ -595,6 +602,9 @@ export function DmrDetailPage() {
                       const itemWarnings =
                         (item as DmrLineItemWithRelations & { calculation_warnings?: DmrCalculationWarning[] })
                           .calculation_warnings ?? [];
+                      const massLoading =
+                        (item as DmrLineItemWithRelations & { mass_loading_lbs_day?: number | null })
+                          .mass_loading_lbs_day;
                       return (
                       <tr
                         key={item.id}
@@ -639,6 +649,11 @@ export function DmrDetailPage() {
                             </span>
                           )}
                         </td>
+                        {showMassLoading && (
+                          <td className="px-3 py-2 text-right font-mono text-text-muted">
+                            {massLoading != null ? `${massLoading} lbs/day` : '—'}
+                          </td>
+                        )}
                         <td className="px-3 py-2 text-center">
                           {isEditable ? (
                             <select
