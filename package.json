@@ -33,6 +33,7 @@
     "qa:slice1-seed-exceedances": "node scripts/slice1-seed-exceedances.mjs",
     "qa:slice1-reconcile": "node scripts/slice1-reconcile.mjs",
     "qa:slice2-dmr": "node scripts/slice2-dmr-preflight.mjs",
+    "qa:slice4-status-mismatch": "node scripts/slice4-status-mismatch-export.mjs",
     "qa:slice3-echo-rerun": "node scripts/slice3-echo-rerun.mjs",
     "qa:slice3-echo-batch-detect": "node scripts/slice3-echo-batch-detect.mjs",
     "qa:parameter-aliases": "node scripts/parameter-aliases-preflight.mjs",
