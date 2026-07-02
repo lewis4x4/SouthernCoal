@@ -542,7 +542,11 @@ function ArchiveExtractionPanel({
           </>
         ) : (
           <p className="text-[10px] text-text-muted">
-            Use global search to find this document after embedding completes.
+            Indexed for search — open{' '}
+            <Link to="/search" className="text-qo-accent hover:underline">
+              Search
+            </Link>{' '}
+            after embedding completes.
           </p>
         )}
       </div>

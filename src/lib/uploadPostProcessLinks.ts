@@ -39,6 +39,26 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     actionLabel: 'Open Monitoring',
     panelNote: 'Review imported permit limits and outfalls before using them for exceedance or DMR calculations.',
   },
+  field_inspection: {
+    href: '/search',
+    actionLabel: 'Open Search',
+    panelNote: 'Find inspection records alongside permits and lab data in org-scoped search.',
+  },
+  quarterly_report: {
+    href: '/search',
+    actionLabel: 'Open Search',
+    panelNote: 'Retrieve quarterly reports from org-scoped search after embedding completes.',
+  },
+  audit_report: {
+    href: '/search',
+    actionLabel: 'Open Search',
+    panelNote: 'Retrieve audit reports from org-scoped search after embedding completes.',
+  },
+  enforcement: {
+    href: '/search',
+    actionLabel: 'Open Search',
+    panelNote: 'Find enforcement documents in org-scoped search for counsel and compliance review.',
+  },
 };
 
 export function getUploadPostProcessFollowUp(fileCategory: string): UploadPostProcessFollowUp | null {
