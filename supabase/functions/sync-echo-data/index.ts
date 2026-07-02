@@ -2,6 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import {
+  buildDmrDateChunks,
+  buildEffluentChartUrl,
+  resolveDmrChunkMonths,
+} from "../_shared/echo-dmr-sync.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -165,7 +170,7 @@ async function fetchWithRetry(
     try {
       const resp = await fetch(url, { signal: controller.signal });
       if (resp.ok) return resp;
-      if (resp.status === 429 || resp.status === 503) {
+      if (resp.status === 429 || resp.status === 503 || resp.status === 502 || resp.status === 504) {
         const backoff = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
         console.log(`ECHO API ${resp.status}, backing off ${backoff}ms (attempt ${attempt + 1})`);
         await sleep(backoff);
@@ -364,6 +369,135 @@ function parseDmrData(data: Record<string, unknown>, npdesId: string): DmrRecord
   }
 }
 
+function dedupeDmrRecords(records: DmrRecord[]): DmrRecord[] {
+  const dedupMap = new Map<string, DmrRecord>();
+  for (const dmr of records) {
+    const key = `${dmr.outfall}|${dmr.parameter_code}|${dmr.statistical_base}|${dmr.monitoring_period_end}`;
+    dedupMap.set(key, dmr);
+  }
+  return Array.from(dedupMap.values());
+}
+
+async function upsertDmrBatch(
+  supabase: ReturnType<typeof createClient>,
+  permit: PermitMapping,
+  uniqueDmrs: DmrRecord[],
+  errors: string[],
+): Promise<number> {
+  if (uniqueDmrs.length === 0) return 0;
+
+  const { data: facility } = await supabase
+    .from("external_echo_facilities")
+    .select("id")
+    .eq("organization_id", permit.organization_id)
+    .eq("npdes_id", permit.npdes_id)
+    .single();
+
+  let inserted = 0;
+  for (let i = 0; i < uniqueDmrs.length; i += 50) {
+    const batch = uniqueDmrs.slice(i, i + 50).map((dmr) => ({
+      organization_id: permit.organization_id,
+      facility_id: facility?.id || null,
+      npdes_id: dmr.npdes_id,
+      outfall: dmr.outfall,
+      parameter_code: dmr.parameter_code,
+      parameter_desc: dmr.parameter_desc,
+      statistical_base: dmr.statistical_base,
+      monitoring_period_start: dmr.monitoring_period_start,
+      monitoring_period_end: dmr.monitoring_period_end,
+      limit_value: dmr.limit_value,
+      limit_unit: dmr.limit_unit,
+      dmr_value: dmr.dmr_value,
+      dmr_unit: dmr.dmr_unit,
+      nodi_code: dmr.nodi_code,
+      violation_code: dmr.violation_code,
+      violation_desc: dmr.violation_desc,
+      exceedance_pct: dmr.exceedance_pct,
+      raw_response: null,
+      synced_at: new Date().toISOString(),
+    }));
+
+    const { error: dmrErr, count } = await supabase
+      .from("external_echo_dmrs")
+      .upsert(batch, {
+        onConflict: "organization_id,npdes_id,outfall,parameter_code,statistical_base,monitoring_period_end",
+        count: "exact",
+      });
+
+    if (dmrErr) {
+      errors.push(`${permit.npdes_id}: DMR upsert batch failed — ${dmrErr.message}`);
+    } else {
+      inserted += count || batch.length;
+    }
+  }
+  return inserted;
+}
+
+async function syncPermitDmrData(
+  supabase: ReturnType<typeof createClient>,
+  permit: PermitMapping,
+  chunkMonths: number,
+  errors: string[],
+  dmrChunkIndex?: number | null,
+): Promise<{
+  inserted: number;
+  emptyResponses: number;
+  chunksFetched: number;
+  totalChunks: number;
+  chunkIndex: number | null;
+}> {
+  const allChunks = buildDmrDateChunks(BACKFILL_YEARS, chunkMonths);
+  const chunks =
+    typeof dmrChunkIndex === "number" && dmrChunkIndex >= 0 && dmrChunkIndex < allChunks.length
+      ? [allChunks[dmrChunkIndex]]
+      : allChunks;
+  const aggregated: DmrRecord[] = [];
+  let emptyResponses = 0;
+
+  for (const chunk of chunks) {
+    const dmrUrl = buildEffluentChartUrl(ECHO_BASE, permit.npdes_id, chunk.start, chunk.end);
+    const dmrResp = await fetchWithRetry(dmrUrl, MAX_RETRIES, 120_000);
+
+    if (!dmrResp) {
+      errors.push(
+        `${permit.npdes_id}: DMR fetch failed for ${chunk.start.toISOString().slice(0, 10)}–${chunk.end.toISOString().slice(0, 10)}`,
+      );
+      await sleep(RATE_LIMIT_MS);
+      continue;
+    }
+
+    const dmrJson = await dmrResp.json() as Record<string, unknown>;
+    const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
+    if (dmrRecords.length === 0) {
+      emptyResponses++;
+      const topLevelKeys = Object.keys(dmrJson || {});
+      const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
+      console.log(
+        `${permit.npdes_id}: DMR chunk ${chunk.start.toISOString().slice(0, 10)}–${chunk.end.toISOString().slice(0, 10)} returned 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
+      );
+    } else {
+      aggregated.push(...dmrRecords);
+    }
+
+    await sleep(RATE_LIMIT_MS);
+  }
+
+  const uniqueDmrs = dedupeDmrRecords(aggregated);
+  const dedupDropped = aggregated.length - uniqueDmrs.length;
+  if (dedupDropped > 0) {
+    console.log(`${permit.npdes_id}: deduped ${dedupDropped} duplicate DMR rows (${aggregated.length} → ${uniqueDmrs.length})`);
+  }
+
+  const inserted = await upsertDmrBatch(supabase, permit, uniqueDmrs, errors);
+  return {
+    inserted,
+    emptyResponses: emptyResponses === chunks.length ? 1 : 0,
+    chunksFetched: chunks.length,
+    totalChunks: allChunks.length,
+    chunkIndex: typeof dmrChunkIndex === "number" ? dmrChunkIndex : null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
@@ -392,6 +526,10 @@ serve(async (req) => {
   let targetNpdesIds: string[] = [];
   let staleDays = 0;
   let staleOnly = false;
+  let dmrChunkMonths = 0;
+  let dmrChunkIndex: number | null = null;
+  let skipFacility = false;
+  let dmrOnly = false;
   try {
     const body = await req.json();
     syncType = body.sync_type || "manual";
@@ -411,6 +549,15 @@ serve(async (req) => {
     }
     if (body.stale_only === true) staleOnly = true;
     if (body.stale_only === false) staleOnly = false;
+    if (typeof body.dmr_chunk_months === "number" && body.dmr_chunk_months > 0) {
+      dmrChunkMonths = Math.floor(body.dmr_chunk_months);
+    }
+    if (typeof body.dmr_chunk_index === "number" && body.dmr_chunk_index >= 0) {
+      dmrChunkIndex = Math.floor(body.dmr_chunk_index);
+    }
+    skipFacility = body.skip_facility === true;
+    dmrOnly = body.dmr_only === true;
+    if (dmrOnly) skipFacility = true;
   } catch {
     // No body is fine — defaults to manual, no limit, offset 0
   }
@@ -645,152 +792,81 @@ serve(async (req) => {
   let dmrsInserted = 0;
   let facilityEmptyResponses = 0;
   let dmrEmptyResponses = 0;
+  let dmrChunksFetched = 0;
   const errors: string[] = [];
 
-  // Backfill date range
+  // Backfill date range (used for logging; DMR fetch uses chunked windows)
   const backfillStart = new Date();
   backfillStart.setFullYear(backfillStart.getFullYear() - BACKFILL_YEARS);
-  const startDateStr = `${String(backfillStart.getMonth() + 1).padStart(2, "0")}/${String(backfillStart.getDate()).padStart(2, "0")}/${backfillStart.getFullYear()}`;
 
   for (const permit of permits) {
     try {
       // 3a. Facility info via DFR (Detailed Facility Report)
-      const facilityUrl = `${ECHO_BASE}/dfr_rest_services.get_dfr?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON`;
-      const facilityResp = await fetchWithRetry(facilityUrl);
+      if (!skipFacility) {
+        const facilityUrl = `${ECHO_BASE}/dfr_rest_services.get_dfr?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON`;
+        const facilityResp = await fetchWithRetry(facilityUrl);
 
-      if (!facilityResp) {
-        errors.push(`${permit.npdes_id}: facility fetch failed`);
-        await sleep(RATE_LIMIT_MS);
-        continue;
-      }
-
-      const facilityJson = await facilityResp.json() as Record<string, unknown>;
-      const parsed = parseFacilityInfo(facilityJson, permit.npdes_id);
-
-      if (!parsed) {
-        facilityEmptyResponses++;
-        // Include diagnostic info in errors for debugging
-        const topKeys = Object.keys((facilityJson?.Results as Record<string, unknown>) || facilityJson || {});
-        const resultsObj = facilityJson?.Results as Record<string, unknown> | undefined;
-        const permitsArr = (resultsObj?.Permits as unknown[]) || [];
-        const msg = resultsObj?.Message || "no message";
-        const fetchStatus = facilityResp.status;
-        errors.push(`${permit.npdes_id}: parse returned null (status=${fetchStatus}, msg=${msg}, keys=[${topKeys.slice(0, 5).join(",")}], permits=${permitsArr.length})`);
-      }
-
-      if (parsed) {
-        const { error: upsertErr } = await supabase
-          .from("external_echo_facilities")
-          .upsert(
-            {
-              organization_id: permit.organization_id,
-              npdes_id: permit.npdes_id,
-              state_code: permit.state_code,
-              ...parsed,
-              raw_response: facilityJson,
-              synced_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "organization_id,npdes_id" },
-          );
-
-        if (upsertErr) {
-          errors.push(`${permit.npdes_id}: facility upsert failed — ${upsertErr.message}`);
+        if (!facilityResp) {
+          errors.push(`${permit.npdes_id}: facility fetch failed (continuing to DMR sync)`);
         } else {
-          facilitiesSynced++;
-        }
-      } else {
-        // KY general permits (KYGE40xxx) may have limited ECHO coverage
-        console.log(`${permit.npdes_id}: no facility data in ECHO (may be general permit)`);
-      }
+          const facilityJson = await facilityResp.json() as Record<string, unknown>;
+          const parsed = parseFacilityInfo(facilityJson, permit.npdes_id);
 
-      await sleep(RATE_LIMIT_MS);
+          if (!parsed) {
+            facilityEmptyResponses++;
+            const topKeys = Object.keys((facilityJson?.Results as Record<string, unknown>) || facilityJson || {});
+            const resultsObj = facilityJson?.Results as Record<string, unknown> | undefined;
+            const permitsArr = (resultsObj?.Permits as unknown[]) || [];
+            const msg = resultsObj?.Message || "no message";
+            const fetchStatus = facilityResp.status;
+            errors.push(`${permit.npdes_id}: parse returned null (status=${fetchStatus}, msg=${msg}, keys=[${topKeys.slice(0, 5).join(",")}], permits=${permitsArr.length})`);
+          }
 
-      // 3b. DMR / effluent data
-      const dmrUrl = `${ECHO_BASE}/eff_rest_services.get_effluent_chart?p_id=${encodeURIComponent(permit.npdes_id)}&output=JSON&p_start_date=${startDateStr}`; // same path, just new base URL
-      const dmrResp = await fetchWithRetry(dmrUrl);
+          if (parsed) {
+            const { error: upsertErr } = await supabase
+              .from("external_echo_facilities")
+              .upsert(
+                {
+                  organization_id: permit.organization_id,
+                  npdes_id: permit.npdes_id,
+                  state_code: permit.state_code,
+                  ...parsed,
+                  raw_response: facilityJson,
+                  synced_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "organization_id,npdes_id" },
+              );
 
-      if (!dmrResp) {
-        errors.push(`${permit.npdes_id}: DMR fetch failed`);
-        await sleep(RATE_LIMIT_MS);
-        continue;
-      }
-
-      const dmrJson = await dmrResp.json() as Record<string, unknown>;
-      const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
-
-      if (dmrRecords.length === 0) {
-        dmrEmptyResponses++;
-        const topLevelKeys = Object.keys(dmrJson || {});
-        const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
-        console.log(
-          `${permit.npdes_id}: DMR parse found 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
-        );
-      }
-
-      if (dmrRecords.length > 0) {
-        // Deduplicate DMR records by conflict key before batching.
-        // ECHO can return duplicate rows (same outfall + parameter + stat base + period end)
-        // which causes "ON CONFLICT DO UPDATE cannot affect row a second time" errors.
-        const dedupMap = new Map<string, DmrRecord>();
-        for (const dmr of dmrRecords) {
-          const key = `${dmr.outfall}|${dmr.parameter_code}|${dmr.statistical_base}|${dmr.monitoring_period_end}`;
-          dedupMap.set(key, dmr); // last write wins
-        }
-        const uniqueDmrs = Array.from(dedupMap.values());
-        const dedupDropped = dmrRecords.length - uniqueDmrs.length;
-        if (dedupDropped > 0) {
-          console.log(`${permit.npdes_id}: deduped ${dedupDropped} duplicate DMR rows (${dmrRecords.length} → ${uniqueDmrs.length})`);
-        }
-
-        // Look up facility ID for FK
-        const { data: facility } = await supabase
-          .from("external_echo_facilities")
-          .select("id")
-          .eq("organization_id", permit.organization_id)
-          .eq("npdes_id", permit.npdes_id)
-          .single();
-
-        // Batch upsert in chunks of 50
-        for (let i = 0; i < uniqueDmrs.length; i += 50) {
-          const batch = uniqueDmrs.slice(i, i + 50).map((dmr) => ({
-            organization_id: permit.organization_id,
-            facility_id: facility?.id || null,
-            npdes_id: dmr.npdes_id,
-            outfall: dmr.outfall,
-            parameter_code: dmr.parameter_code,
-            parameter_desc: dmr.parameter_desc,
-            statistical_base: dmr.statistical_base,
-            monitoring_period_start: dmr.monitoring_period_start,
-            monitoring_period_end: dmr.monitoring_period_end,
-            limit_value: dmr.limit_value,
-            limit_unit: dmr.limit_unit,
-            dmr_value: dmr.dmr_value,
-            dmr_unit: dmr.dmr_unit,
-            nodi_code: dmr.nodi_code,
-            violation_code: dmr.violation_code,
-            violation_desc: dmr.violation_desc,
-            exceedance_pct: dmr.exceedance_pct,
-            raw_response: null, // Skip raw per-row to save space
-            synced_at: new Date().toISOString(),
-          }));
-
-          const { error: dmrErr, count } = await supabase
-            .from("external_echo_dmrs")
-            .upsert(batch, {
-              onConflict: "organization_id,npdes_id,outfall,parameter_code,statistical_base,monitoring_period_end",
-              count: "exact",
-            });
-
-          if (dmrErr) {
-            errors.push(`${permit.npdes_id}: DMR upsert batch failed — ${dmrErr.message}`);
+            if (upsertErr) {
+              errors.push(`${permit.npdes_id}: facility upsert failed — ${upsertErr.message}`);
+            } else {
+              facilitiesSynced++;
+            }
           } else {
-            dmrsInserted += count || batch.length;
+            console.log(`${permit.npdes_id}: no facility data in ECHO (may be general permit)`);
           }
         }
+
+        await sleep(RATE_LIMIT_MS);
       }
 
-      await sleep(RATE_LIMIT_MS);
+      // 3b. DMR / effluent data — date-range chunked (p_start_date + p_end_date)
+      const chunkMonths = resolveDmrChunkMonths(permit.npdes_id, dmrChunkMonths || undefined);
+      const dmrResult = await syncPermitDmrData(
+        supabase,
+        permit,
+        chunkMonths,
+        errors,
+        dmrChunkIndex,
+      );
+      dmrsInserted += dmrResult.inserted;
+      dmrEmptyResponses += dmrResult.emptyResponses;
+      dmrChunksFetched += dmrResult.chunksFetched;
+
+      if (dmrResult.inserted === 0 && dmrResult.emptyResponses > 0) {
+        console.log(`${permit.npdes_id}: no DMR rows synced across ${dmrResult.chunksFetched} date chunks`);
+      }
     } catch (err) {
       errors.push(`${permit.npdes_id}: unexpected error — ${String(err)}`);
     }
@@ -799,7 +875,10 @@ serve(async (req) => {
   // -----------------------------------------------------------------------
   // 4. Update sync log
   // -----------------------------------------------------------------------
-  const finalStatus = errors.length === permits.length ? "failed" : "completed";
+  const finalStatus =
+    dmrsInserted === 0 && facilitiesSynced === 0 && errors.length > 0
+      ? "failed"
+      : "completed";
   await supabase
     .from("external_sync_log")
     .update({
@@ -819,6 +898,7 @@ serve(async (req) => {
         overrides_applied: overridesApplied,
         facility_empty_responses: facilityEmptyResponses,
         dmr_empty_responses: dmrEmptyResponses,
+        dmr_chunks_fetched: dmrChunksFetched,
         offset,
         has_more: hasMore,
         next_offset: hasMore ? offset + permits.length : null,
@@ -871,6 +951,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         "x-internal-secret": SYNC_INTERNAL_SECRET,
       },
       body: JSON.stringify({

@@ -41,6 +41,10 @@ async function validateAuth(
   if (!authHeader?.startsWith("Bearer ")) return denied;
 
   const token = authHeader.replace("Bearer ", "").trim();
+
+  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
+    return { authorized: true, userId: null, orgId: null };
+  }
   if (isPrivilegedOrAnonymousJwt(token)) return denied;
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -137,8 +141,14 @@ function assignSeverity(type: string, context: Record<string, unknown>): string 
 async function detectEchoDiscrepancies(
   supabase: ReturnType<typeof createClient>,
   orgId: string,
+  targetNpdesIds?: string[],
 ): Promise<Discrepancy[]> {
   const discrepancies: Discrepancy[] = [];
+  const targetSet = targetNpdesIds?.length
+    ? new Set(targetNpdesIds.map((id) => id.trim().toUpperCase()))
+    : null;
+  const matchesTarget = (npdesId: string | null | undefined): boolean =>
+    !targetSet || (npdesId != null && targetSet.has(String(npdesId).toUpperCase()));
 
   // -----------------------------------------------------------------------
   // Rule 1: Permit status mismatch
@@ -194,7 +204,8 @@ async function detectEchoDiscrepancies(
   }
 
   // 1d. Compare in-memory
-  for (const facility of echoFacilities) {
+    for (const facility of echoFacilities) {
+      if (!matchesTarget(facility.npdes_id)) continue;
     const internalPermit = permitByNpdes.get(String(facility.npdes_id).toUpperCase());
 
     if (internalPermit && facility.permit_status) {
@@ -261,16 +272,21 @@ async function detectEchoDiscrepancies(
   let violIterations = 0;
 
   while (hasMoreViolations && violIterations < MAX_PAGINATION_ITERATIONS) {
-    const { data: echoDmrsWithViolations } = await supabase
+    let violQuery = supabase
       .from("external_echo_dmrs")
       .select("id, npdes_id, outfall, parameter_code, parameter_desc, violation_code, violation_desc, monitoring_period_end, exceedance_pct, dmr_value, limit_value")
       .eq("organization_id", orgId)
       .not("violation_code", "is", null)
       .order("id")
       .range(violOffset, violOffset + PAGE_SIZE - 1);
+    if (targetSet) {
+      violQuery = violQuery.in("npdes_id", Array.from(targetSet));
+    }
+    const { data: echoDmrsWithViolations } = await violQuery;
 
     const rows = echoDmrsWithViolations || [];
     for (const dmr of rows) {
+      if (!matchesTarget(dmr.npdes_id)) continue;
       discrepancies.push({
         organization_id: orgId,
         npdes_id: dmr.npdes_id,
@@ -299,39 +315,71 @@ async function detectEchoDiscrepancies(
 
   // -----------------------------------------------------------------------
   // Rule 3: DMR value mismatch >10%
-  // Compare external_echo_dmrs vs dmr_line_items (if populated)
-  // Batch-fetch internal DMRs to avoid N+1 queries
+  // Compare external_echo_dmrs vs dmr_line_items (modern + CMS prod schemas)
   // -----------------------------------------------------------------------
-  const { count: dmrCount } = await supabase
+  const { count: dmrCountModern } = await supabase
     .from("dmr_submissions")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId);
 
-  if ((dmrCount ?? 0) > 0) {
-    // Pre-fetch internal DMR line items (NetDMR import / DMR pipeline schema).
-    // Key: "npdes_id:outfall:storet_code:period_end" — npdes_id prefers federal override.
+  let hasInternalDmrs = (dmrCountModern ?? 0) > 0;
+  if (!hasInternalDmrs) {
+    const { count: dmrCountCms } = await supabase
+      .from("dmr_submissions")
+      .select("id, npdes_permits!inner(organization_id)", { count: "exact", head: true })
+      .eq("npdes_permits.organization_id", orgId);
+    hasInternalDmrs = (dmrCountCms ?? 0) > 0;
+  }
+
+  if (hasInternalDmrs) {
     const intDmrMap = new Map<string, { id: string; reported_value: number }>();
     let intOffset = 0;
     let hasMoreInt = true;
     let intIterations = 0;
-    while (hasMoreInt && intIterations < MAX_PAGINATION_ITERATIONS) {
-      const { data: intPage } = await supabase
+
+    const loadInternalDmrPage = async (modern: boolean) => {
+      if (modern) {
+        return supabase
+          .from("dmr_line_items")
+          .select(`
+            id,
+            measured_value,
+            storet_code,
+            outfalls!inner(outfall_number),
+            dmr_submissions!inner(
+              monitoring_period_end,
+              organization_id,
+              npdes_permits!inner(permit_number, metadata)
+            )
+          `)
+          .eq("dmr_submissions.organization_id", orgId)
+          .not("measured_value", "is", null)
+          .order("id")
+          .range(intOffset, intOffset + PAGE_SIZE - 1);
+      }
+      return supabase
         .from("dmr_line_items")
         .select(`
           id,
-          measured_value,
+          concentration_max,
           storet_code,
           outfalls!inner(outfall_number),
           dmr_submissions!inner(
-            monitoring_period_end,
-            organization_id,
-            npdes_permits!inner(permit_number, metadata)
+            reporting_period_end,
+            permit_id,
+            npdes_permits!inner(permit_number, metadata, organization_id)
           )
         `)
-        .eq("dmr_submissions.organization_id", orgId)
-        .not("measured_value", "is", null)
+        .eq("dmr_submissions.npdes_permits.organization_id", orgId)
+        .not("concentration_max", "is", null)
         .order("id")
         .range(intOffset, intOffset + PAGE_SIZE - 1);
+    };
+
+    const useModernSchema = (dmrCountModern ?? 0) > 0;
+
+    while (hasMoreInt && intIterations < MAX_PAGINATION_ITERATIONS) {
+      const { data: intPage } = await loadInternalDmrPage(useModernSchema);
       const intRows = (intPage || []) as Array<Record<string, unknown>>;
       for (const row of intRows) {
         const sub = row.dmr_submissions as Record<string, unknown> | null;
@@ -345,8 +393,12 @@ async function detectEchoDiscrepancies(
           String(permit?.permit_number || "").toUpperCase();
         const storetCode = String(row.storet_code || "").trim();
         const outfallNum = String(outfall?.outfall_number || "").trim();
-        const periodEnd = String(sub?.monitoring_period_end || "");
-        const reportedValue = row.measured_value as number;
+        const periodEnd = String(
+          sub?.monitoring_period_end || sub?.reporting_period_end || "",
+        );
+        const reportedValue = useModernSchema
+          ? row.measured_value as number
+          : row.concentration_max as number;
 
         if (!npdesId || !storetCode || reportedValue == null) continue;
 
@@ -368,13 +420,17 @@ async function detectEchoDiscrepancies(
     let hasMoreExt = true;
     let extIterations = 0;
     while (hasMoreExt && extIterations < MAX_PAGINATION_ITERATIONS) {
-      const { data: echoDmrs } = await supabase
+      let extQuery = supabase
         .from("external_echo_dmrs")
         .select("id, npdes_id, outfall, parameter_code, parameter_desc, monitoring_period_end, dmr_value, limit_value, limit_unit")
         .eq("organization_id", orgId)
         .not("dmr_value", "is", null)
         .order("id")
         .range(extOffset, extOffset + PAGE_SIZE - 1);
+      if (targetSet) {
+        extQuery = extQuery.in("npdes_id", Array.from(targetSet));
+      }
+      const { data: echoDmrs } = await extQuery;
 
       const extRows = echoDmrs || [];
       for (const ext of extRows) {
@@ -513,6 +569,7 @@ serve(async (req) => {
   let orgId: string | null = auth.orgId;
   let syncLogId: string | null = null;
   let triggeredBy: string | null = auth.userId;
+  let targetNpdesIds: string[] = [];
 
   try {
     const body = await req.json();
@@ -520,6 +577,11 @@ serve(async (req) => {
     if (typeof body.organization_id === "string") orgId = body.organization_id;
     if (typeof body.sync_log_id === "string") syncLogId = body.sync_log_id;
     if (typeof body.triggered_by === "string") triggeredBy = body.triggered_by;
+    if (Array.isArray(body.target_npdes_ids)) {
+      targetNpdesIds = body.target_npdes_ids
+        .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+        .map((v: string) => v.trim().toUpperCase());
+    }
   } catch {
     // Defaults on parse failure
   }
@@ -546,7 +608,11 @@ serve(async (req) => {
   let discrepancies: Discrepancy[] = [];
 
   if (source === "echo") {
-    discrepancies = await detectEchoDiscrepancies(supabase, orgId);
+    discrepancies = await detectEchoDiscrepancies(
+      supabase,
+      orgId,
+      targetNpdesIds.length > 0 ? targetNpdesIds : undefined,
+    );
   } else if (source === "msha") {
     discrepancies = await detectMshaDiscrepancies(supabase, orgId);
   }

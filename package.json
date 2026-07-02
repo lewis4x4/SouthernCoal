@@ -30,6 +30,7 @@
     "qa:obligation-ledger": "node scripts/obligation-ledger-preflight.mjs",
     "qa:schema-72": "node scripts/schema-72-preflight.mjs",
     "qa:slice1-domain": "node scripts/slice1-domain-preflight.mjs",
+    "qa:slice3-echo-rerun": "node scripts/slice3-echo-rerun.mjs",
     "qa:parameter-aliases": "node scripts/parameter-aliases-preflight.mjs",
     "qa:va-tn-enrichment": "node scripts/va-tn-enrichment-preflight.mjs",
     "validate:parameter-aliases": "node scripts/validate-parameter-aliases.mjs",
