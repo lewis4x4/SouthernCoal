@@ -79,6 +79,20 @@ export const CATEGORIES: CategoryConfig[] = [
     buildPath: stateScoped,
   },
   {
+    dbKey: 'water_monitoring',
+    bucket: 'field-inspections',
+    label: 'Water Monitoring',
+    matrixLabel: 'Water Mon.',
+    acceptedTypes: [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/pdf',
+    ],
+    priority: 3,
+    buildPath: stateScoped,
+  },
+  {
     dbKey: 'field_inspection',
     bucket: 'field-inspections',
     label: 'Field Inspections',

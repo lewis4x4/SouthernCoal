@@ -27,12 +27,13 @@ export function GlobalDropZone({ children }: GlobalDropZoneProps) {
   const handleDragEnter = useCallback(
     (e: DragEvent) => {
       e.preventDefault();
+      if (!can('upload')) return;
       dragCountRef.current++;
       if (dragCountRef.current === 1) {
         setIsDragging(true);
       }
     },
-    [],
+    [can],
   );
 
   const handleDragLeave = useCallback(

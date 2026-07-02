@@ -50,6 +50,7 @@ export function SmartStaging() {
           <button
             type="button"
             onClick={() => {
+              if (!can('upload')) return;
               const fileCount = files.length;
               clearAll();
               log(
@@ -58,7 +59,14 @@ export function SmartStaging() {
                 { module: 'upload_dashboard', tableName: 'upload_staging' },
               );
             }}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-text-muted hover:text-text-secondary hover:bg-black/[0.04] border border-black/[0.06] transition-colors"
+            disabled={!can('upload')}
+            title={can('upload') ? 'Remove all staged files' : 'Requires upload permission to clear staging'}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg border border-black/[0.06] transition-colors',
+              can('upload')
+                ? 'text-text-muted hover:text-text-secondary hover:bg-black/[0.04]'
+                : 'opacity-50 cursor-not-allowed text-text-muted',
+            )}
           >
             <Trash2 size={12} className="inline mr-1" />
             Clear All

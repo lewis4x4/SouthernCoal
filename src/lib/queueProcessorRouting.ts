@@ -3,6 +3,7 @@ import type { QueueEntry } from '@/types/queue';
 /** Categories indexed for search — no structured domain import. */
 export const ARCHIVE_DOCUMENT_CATEGORIES = new Set([
   'field_inspection',
+  'water_monitoring',
   'quarterly_report',
   'audit_report',
   'enforcement',
@@ -140,6 +141,7 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
         label: 'NetDMR bundle',
       };
     case 'field_inspection':
+    case 'water_monitoring':
     case 'quarterly_report':
     case 'audit_report':
     case 'enforcement':

@@ -226,6 +226,16 @@ export function QueueRow({ entry, can }: QueueRowProps) {
             Retry
           </button>
         )}
+        {entry.status === 'queued' && !canProcessQueueEntry(entry) && (
+          <button
+            disabled
+            className="px-2.5 py-1 text-[11px] font-medium rounded-md opacity-50 cursor-not-allowed bg-qo-nested text-text-muted border border-black/[0.06]"
+            title={`No automated parser for ${CATEGORY_BY_DB_KEY[entry.file_category]?.label ?? entry.file_category}`}
+          >
+            <Play size={10} className="inline mr-1" />
+            Process
+          </button>
+        )}
       </div>
 
       {/* Timestamp */}

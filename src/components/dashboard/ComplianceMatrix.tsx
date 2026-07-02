@@ -67,6 +67,11 @@ export function ComplianceMatrix() {
     if (!isNaN(num) && num >= 0) {
       setExpectedCount(stateCode, num);
       setExpectedCounts((prev) => ({ ...prev, [stateCode]: num }));
+      log(
+        'matrix_expected_count_changed',
+        { state_code: stateCode, expected_count: num },
+        { module: 'upload_dashboard', tableName: 'file_processing_queue' },
+      );
     }
   }
 
@@ -98,7 +103,11 @@ export function ComplianceMatrix() {
       content = [mdHeader, mdSep, ...mdRows, '', `> ${DISCLAIMER_EXPORT}`].join('\n');
     }
 
-    log(format === 'csv' ? 'matrix_export_csv' : 'matrix_export_markdown');
+    log(format === 'csv' ? 'matrix_export_csv' : 'matrix_export_markdown', {
+      format,
+      state_count: STATES.length,
+      category_count: CATEGORIES.length,
+    }, { module: 'upload_dashboard', tableName: 'file_processing_queue' });
 
     const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'text/markdown' });
     const url = URL.createObjectURL(blob);

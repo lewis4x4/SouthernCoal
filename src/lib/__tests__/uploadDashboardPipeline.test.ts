@@ -69,6 +69,24 @@ describe('upload dashboard permit pipeline (logic E2E)', () => {
   });
 });
 
+describe('upload dashboard category mapping', () => {
+  it('maps legacy water_monitoring DB key to matrix and archive routing', () => {
+    const category = CATEGORY_BY_DB_KEY.water_monitoring;
+    expect(category).toBeDefined();
+    expect(category!.label).toBe('Water Monitoring');
+    expect(category!.bucket).toBe('field-inspections');
+
+    const entry = queueEntry({
+      file_category: 'water_monitoring',
+      storage_bucket: 'field-inspections',
+      file_name: 'WV_monitoring.csv',
+    });
+    const route = resolveQueueParser(entry);
+    expect(route.kind).toBe('compliance_archive');
+    expect(canProcessQueueEntry(entry)).toBe(true);
+  });
+});
+
 describe('upload dashboard lab pipeline by state', () => {
   it('routes each state lab fixture to a processable parser', () => {
     const fixtures: Array<{ state: string; file: string; kind: string; fn: string }> = [

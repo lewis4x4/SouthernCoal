@@ -77,7 +77,7 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
     {
       id: 'export_audit_trail',
       path: 'components/dashboard/ComplianceMatrix.tsx',
-      patterns: [/matrix_export_csv/, /matrix_export_markdown/],
+      patterns: [/matrix_export_csv/, /matrix_export_markdown/, /module: 'upload_dashboard'/],
     },
     {
       id: 'failed_processing',

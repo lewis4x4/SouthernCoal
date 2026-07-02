@@ -105,6 +105,7 @@ export interface PermitLimitReviewFields {
 export type FileCategoryKey =
   | 'npdes_permit'
   | 'lab_data'
+  | 'water_monitoring'
   | 'field_inspection'
   | 'quarterly_report'
   | 'dmr'

@@ -6,6 +6,7 @@ import {
   isParameterSheetFile,
   resolveQueueParser,
 } from '@/lib/queueProcessorRouting';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePermitProcessing } from '@/hooks/usePermitProcessing';
 import { useParameterSheetProcessing } from '@/hooks/useParameterSheetProcessing';
 import { useLabDataProcessing } from '@/hooks/useLabDataProcessing';
@@ -13,10 +14,16 @@ import { useDmrProcessing } from '@/hooks/useDmrProcessing';
 import { useArchiveDocumentProcessing } from '@/hooks/useArchiveDocumentProcessing';
 import { useQueueStore } from '@/stores/queue';
 
+const UPLOAD_AUDIT_ENTITY = {
+  module: 'upload_dashboard',
+  tableName: 'file_processing_queue',
+} as const;
+
 /**
  * Unified Upload Dashboard processor — routes queue rows to the correct Edge Function.
  */
 export function useQueueProcessing() {
+  const { log } = useAuditLog();
   const { processPermit, processAllQueued: processAllPermitPdfs } = usePermitProcessing();
   const { processParameterSheet, processAllQueued: processAllParameterSheets } =
     useParameterSheetProcessing();
@@ -25,12 +32,24 @@ export function useQueueProcessing() {
   const { processArchiveDocument, processAllQueuedArchiveDocuments } =
     useArchiveDocumentProcessing();
 
-  const processEntry = useCallback(
-    async (queueId: string) => {
+  const runProcess = useCallback(
+    async (queueId: string, auditAction: 'process_queued' | 'retry_queued') => {
       const entry = useQueueStore.getState().entries.find((e) => e.id === queueId);
       if (!entry) return;
 
       const route = resolveQueueParser(entry);
+      log(
+        auditAction,
+        {
+          queue_id: queueId,
+          file_category: entry.file_category,
+          file_name: entry.file_name,
+          parser_kind: route.kind,
+          status: entry.status,
+        },
+        { ...UPLOAD_AUDIT_ENTITY, recordId: queueId },
+      );
+
       switch (route.kind) {
         case 'permit_pdf':
           return processPermit(queueId);
@@ -54,14 +73,24 @@ export function useQueueProcessing() {
         }
       }
     },
-    [processPermit, processParameterSheet, processLabData, processDmr, processArchiveDocument],
+    [
+      log,
+      processPermit,
+      processParameterSheet,
+      processLabData,
+      processDmr,
+      processArchiveDocument,
+    ],
+  );
+
+  const processEntry = useCallback(
+    (queueId: string) => runProcess(queueId, 'process_queued'),
+    [runProcess],
   );
 
   const retryFailed = useCallback(
-    async (queueId: string) => {
-      await processEntry(queueId);
-    },
-    [processEntry],
+    (queueId: string) => runProcess(queueId, 'retry_queued'),
+    [runProcess],
   );
 
   return {
