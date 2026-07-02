@@ -15,6 +15,8 @@ import {
   normalizeLabExtractionDisplay,
   type LabDataExtractionDisplay,
 } from '@/lib/labExtractionDisplay';
+import { CATEGORY_BY_DB_KEY } from '@/lib/constants';
+import { getUploadPostProcessFollowUp } from '@/lib/uploadPostProcessLinks';
 import { CheckCircle2, Flag, ChevronDown, ChevronRight, AlertTriangle, CalendarPlus, Upload, Loader2 } from 'lucide-react';
 import type { QueueEntry } from '@/types/queue';
 import type { VerificationStatus } from '@/stores/verification';
@@ -26,6 +28,11 @@ interface ExtractionPanelProps {
 
 interface ExtractedData {
   document_type?: string;
+  archive_category?: string;
+  file_name?: string;
+  storage_bucket?: string;
+  storage_path?: string;
+  indexed_at?: string;
   permit_number?: string;
   state?: string;
   effective_date?: string;
@@ -50,6 +57,11 @@ interface ExtractedData {
   monitoring_period?: string;
   summary?: string;
 }
+
+type ArchiveExtractedData = Pick<
+  ExtractedData,
+  'archive_category' | 'file_name' | 'state' | 'storage_bucket' | 'storage_path' | 'summary' | 'indexed_at'
+>;
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   original_permit: 'Original Permit',
@@ -132,6 +144,19 @@ export function ExtractionPanel({ entry }: ExtractionPanelProps) {
         verificationStatus={verificationStatus}
         onVerify={() => setStatus(entry.id, 'verified')}
         onDispute={() => setStatus(entry.id, 'disputed')}
+        canVerify={can('verify')}
+      />
+    );
+  }
+
+  // Compliance archive — indexed for search (field inspections, outreach docs, etc.)
+  if (data.document_type === 'compliance_archive') {
+    return (
+      <ArchiveExtractionPanel
+        entry={entry}
+        data={data as ArchiveExtractedData}
+        verificationStatus={verificationStatus}
+        onVerify={() => setStatus(entry.id, 'verified')}
         canVerify={can('verify')}
       />
     );
@@ -429,6 +454,90 @@ interface NetDmrExtractionPanelProps {
   onDispute: () => void;
   canVerify: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Compliance Archive Extraction Panel
+// ---------------------------------------------------------------------------
+
+interface ArchiveExtractionPanelProps {
+  entry: QueueEntry;
+  data: ArchiveExtractedData;
+  verificationStatus: VerificationStatus;
+  onVerify: () => void;
+  canVerify: boolean;
+}
+
+function ArchiveExtractionPanel({
+  entry,
+  data,
+  verificationStatus,
+  onVerify,
+  canVerify,
+}: ArchiveExtractionPanelProps) {
+  const categoryKey = data.archive_category ?? entry.file_category;
+  const categoryLabel = CATEGORY_BY_DB_KEY[categoryKey]?.label ?? categoryKey;
+  const followUp = getUploadPostProcessFollowUp(categoryKey);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-text-primary">Archive Index</h4>
+        <div className="flex items-center gap-2">
+          <VerificationBadge status={verificationStatus} />
+          {verificationStatus !== 'verified' && (
+            <button
+              onClick={() => canVerify && onVerify()}
+              disabled={!canVerify}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-verification-verified/15 text-verification-verified border border-verification-verified/20 hover:bg-verification-verified/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={canVerify ? 'Mark as reviewed' : 'Permission required to verify'}
+            >
+              <CheckCircle2 size={10} className="inline mr-1" />
+              Mark Reviewed
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <SummaryItem label="Category" value={categoryLabel} />
+        <SummaryItem label="State" value={data.state ?? entry.state_code ?? '—'} />
+        <SummaryItem label="Status" value={entry.status} />
+      </div>
+
+      {data.summary && (
+        <div className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2">
+          <p className="text-xs text-text-secondary">{data.summary}</p>
+        </div>
+      )}
+
+      <div className="pt-3 border-t border-black/[0.06] space-y-2">
+        <div className="flex items-center gap-2 text-xs text-green-300">
+          <CheckCircle2 size={14} />
+          <span>Indexed for org-scoped search</span>
+        </div>
+        {followUp ? (
+          <>
+            <p className="text-[10px] text-text-muted">{followUp.panelNote}</p>
+            <Link
+              to={followUp.href}
+              className="inline-flex text-xs font-medium text-qo-accent hover:underline"
+            >
+              {followUp.actionLabel} →
+            </Link>
+          </>
+        ) : (
+          <p className="text-[10px] text-text-muted">
+            Use global search to find this document after embedding completes.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NetDMR Extraction Panel
+// ---------------------------------------------------------------------------
 
 function NetDmrExtractionPanel({
   entry,

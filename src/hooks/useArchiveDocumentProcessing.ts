@@ -1,8 +1,13 @@
 import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase, getFreshToken, edgeFunctionFetchHeaders } from '@/lib/supabase';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { isArchiveDocumentCategory } from '@/lib/queueProcessorRouting';
+import {
+  getArchiveSuccessMessage,
+  getUploadPostProcessFollowUp,
+} from '@/lib/uploadPostProcessLinks';
 import { useQueueStore } from '@/stores/queue';
 
 const ARCHIVE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-compliance-archive`;
@@ -12,15 +17,22 @@ const UPLOAD_AUDIT_ENTITY = {
   tableName: 'file_processing_queue',
 } as const;
 
-function archiveSuccessMessage(fileCategory: string, fileName: string): string {
-  switch (fileCategory) {
-    case 'sampling_matrix':
-      return `Indexed ${fileName} — calendar row import is manual until matrix parser ships; review on Field Schedule.`;
-    case 'consent_decree':
-      return `Indexed ${fileName} — link obligations on the Consent Decree page after counsel review.`;
-    default:
-      return `Indexed ${fileName} for search`;
+function showArchiveSuccessToast(fileCategory: string, fileName: string, navigate: (path: string) => void) {
+  const followUp = getUploadPostProcessFollowUp(fileCategory);
+  const message = getArchiveSuccessMessage(fileCategory, fileName);
+
+  if (followUp) {
+    toast.success(message, {
+      description: followUp.panelNote,
+      action: {
+        label: followUp.actionLabel,
+        onClick: () => navigate(followUp.href),
+      },
+    });
+    return;
   }
+
+  toast.success(message);
 }
 
 async function invokeArchiveProcessor(queueId: string): Promise<void> {
@@ -55,6 +67,7 @@ async function invokeArchiveProcessor(queueId: string): Promise<void> {
  */
 export function useArchiveDocumentProcessing() {
   const { log } = useAuditLog();
+  const navigate = useNavigate();
 
   const processArchiveDocument = useCallback(async (queueId: string) => {
     const entry = useQueueStore.getState().entries.find((e) => e.id === queueId);
@@ -93,7 +106,7 @@ export function useArchiveDocumentProcessing() {
         useQueueStore.getState().upsertEntry(freshEntry);
       }
 
-      toast.success(archiveSuccessMessage(entry.file_category, entry.file_name));
+      showArchiveSuccessToast(entry.file_category, entry.file_name, navigate);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Processing failed';
       toast.error(`Failed to process ${entry.file_name}: ${message}`);
@@ -109,7 +122,7 @@ export function useArchiveDocumentProcessing() {
 
       useQueueStore.getState().upsertEntry(refetched ?? { ...entry });
     }
-  }, [log]);
+  }, [log, navigate]);
 
   const processAllQueuedArchiveDocuments = useCallback(async () => {
     const queued = useQueueStore.getState().entries.filter(

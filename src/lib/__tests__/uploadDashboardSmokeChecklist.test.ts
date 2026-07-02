@@ -107,6 +107,14 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
   it('logs compliance archive processing with dedicated audit action', () => {
     expect(assertSourceContains('hooks/useArchiveDocumentProcessing.ts', [
       /compliance_archive_processed/,
+      /getUploadPostProcessFollowUp/,
+    ])).toBe(true);
+  });
+
+  it('renders compliance archive branch in ExtractionPanel', () => {
+    expect(assertSourceContains('components/dashboard/queue/ExtractionPanel.tsx', [
+      /compliance_archive/,
+      /ArchiveExtractionPanel/,
     ])).toBe(true);
   });
 });
