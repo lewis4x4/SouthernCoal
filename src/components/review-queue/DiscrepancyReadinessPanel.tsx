@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Loader2, Refres
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import type { DiscrepancyRuleGate, DiscrepancyReadinessLevel } from '@/lib/discrepancyDetectionReadiness';
+import { formatSlice1ActivationSummary, type Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
 import { useState } from 'react';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   canRunMeaningfulDetection: boolean;
   loading: boolean;
   onRefresh: () => void;
+  activationGaps?: Slice1ActivationGapsReport | null;
 }
 
 const OVERALL_STYLE: Record<
@@ -53,6 +55,7 @@ export function DiscrepancyReadinessPanel({
   canRunMeaningfulDetection,
   loading,
   onRefresh,
+  activationGaps,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
   const style = OVERALL_STYLE[overall];
@@ -80,6 +83,11 @@ export function DiscrepancyReadinessPanel({
             <p className="text-[10px] text-text-muted pl-6 max-w-2xl">
               Run Detection is available, but upload internal permits, exceedances, and DMR line items
               before treating Rule 2 triage as complete.
+            </p>
+          )}
+          {activationGaps && (
+            <p className="text-[10px] text-text-muted pl-6 max-w-3xl">
+              Rule 2 activation funnel: {formatSlice1ActivationSummary(activationGaps)}
             </p>
           )}
         </div>

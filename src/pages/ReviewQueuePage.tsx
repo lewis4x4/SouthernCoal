@@ -34,8 +34,12 @@ export function ReviewQueuePage() {
   } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { running: detecting, runDetection } = useDiscrepancyDetection();
-  const { assessment: detectionReadiness, loading: readinessLoading, refetch: refetchReadiness } =
-    useDiscrepancyReadiness();
+  const {
+    assessment: detectionReadiness,
+    activationGaps,
+    loading: readinessLoading,
+    refetch: refetchReadiness,
+  } = useDiscrepancyReadiness();
   const { dispatching: alerting, dispatchDryRun, dispatchDigest } = useComplianceAlerts();
   const { selectedId, setSelectedId, filters, setFilters, clearFilters } = useReviewQueueStore();
   const { can } = usePermissions();
@@ -286,6 +290,7 @@ export function ReviewQueuePage() {
         canRunMeaningfulDetection={detectionReadiness.canRunMeaningfulDetection}
         loading={readinessLoading}
         onRefresh={() => void refetchReadiness()}
+        activationGaps={activationGaps}
       />
 
       {/* Triage progress */}
