@@ -242,8 +242,8 @@ Proof-of-submission evidence, state-specific DMR rules, unit normalization.
 
 | Task | Description | Depends On | Owner | Status |
 |------|-------------|-----------|-------|--------|
-| **2.62** | Build `parameter_aliases` table — maps parameter name variations to STORET codes | — | AI | not_started |
-| **2.63** | Build `outfall_aliases` table — maps outfall naming conventions across states | — | AI | not_started |
+| **2.62** | Build `parameter_aliases` table — maps parameter name variations to STORET codes | — | AI | **COMPLETE** — `20260217170001` + seed |
+| **2.63** | Build `outfall_aliases` table — maps outfall naming conventions across states | — | AI | **COMPLETE** — `20260217170002` |
 | **2.64** | Validate STORET code seed data against real lab/DMR data | 2.62 | AI | not_started |
 
 ---
@@ -284,8 +284,8 @@ Evidence capture for portal submissions, change log UI, access control hardening
 
 | Task | Description | Depends On | Owner | Status |
 |------|-------------|-----------|-------|--------|
-| **3.32** | Justice EDD parser Edge Function | 1.24, 2.62, 2.63 | AI | not_started |
-| **3.33** | DMR submission pipeline (dmr_submissions + dmr_line_items) | 3.32, 1.29 | AI | not_started |
+| **3.32** | Justice EDD parser Edge Function | 1.24, 2.62, 2.63 | AI | **COMPLETE** — `parse-lab-data-edd` v5 (26-col EDD, alias resolution) |
+| **3.33** | DMR submission pipeline (dmr_submissions + dmr_line_items) | 3.32, 1.29 | AI | **COMPLETE** — `import-netdmr-dmr` + `useDmrSubmissions` / DmrDetailPage |
 | **3.34** | Wire parsers into Upload Dashboard flow | 3.01, 3.32 | AI | not_started |
 | **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **COMPLETE** — 149/149 scoped detect via `run_detect_discrepancies_echo_job`; artifact `.qa-artifacts/slice3-echo-rerun-complete-20260702.md` |
 | **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | **COMPLETE** — server bulk triage RPC + Review batch UI at 181K volume |
