@@ -108,6 +108,49 @@ async function getSiteIds(sb: SB, orgIds: string[]): Promise<string[]> {
   return (data ?? []).map((s: Record<string, unknown>) => s.id as string);
 }
 
+async function getOutfallIdsForOrgs(sb: SB, orgIds: string[]): Promise<string[]> {
+  const { data: permits } = await sb
+    .from("npdes_permits")
+    .select("id")
+    .in("organization_id", orgIds);
+  const permitIds = (permits ?? []).map((p: Record<string, unknown>) => p.id as string);
+  if (!permitIds.length) return [];
+
+  const { data: outfalls } = await sb
+    .from("outfalls")
+    .select("id")
+    .in("permit_id", permitIds);
+  return (outfalls ?? []).map((o: Record<string, unknown>) => o.id as string);
+}
+
+async function getOutfallIdsForOrgStates(
+  sb: SB,
+  orgIds: string[],
+  stateCodes: string[],
+): Promise<string[]> {
+  const { data: permits } = await sb
+    .from("npdes_permits")
+    .select("id, sites(states(code))")
+    .in("organization_id", orgIds);
+
+  const permitIds = (permits ?? [])
+    .filter((p: Record<string, unknown>) => {
+      const site = p.sites as Record<string, unknown> | null;
+      const st = site?.states as Record<string, unknown> | null;
+      const code = st?.code ? String(st.code) : "";
+      return stateCodes.includes(code);
+    })
+    .map((p: Record<string, unknown>) => p.id as string);
+
+  if (!permitIds.length) return [];
+
+  const { data: outfalls } = await sb
+    .from("outfalls")
+    .select("id")
+    .in("permit_id", permitIds);
+  return (outfalls ?? []).map((o: Record<string, unknown>) => o.id as string);
+}
+
 function ninetyDaysAgo(): string {
   const d = new Date();
   d.setDate(d.getDate() - 90);
@@ -964,26 +1007,156 @@ async function rptInspectionPrep(
   return { columns, rows, flags: {} };
 }
 
-// ── Tier 2–5 stub reports (A2 — registered so unlocked keys never 400) ───────
-async function rptPrerequisiteStub(
-  _sb: ReturnType<typeof createClient>,
-  _orgIds: string[],
-  _cfg: Config,
-  reportTitle: string,
+// ── Tier 2–5 compliance reports (A2 — real data with draft flags when empty) ─
+
+async function rptLabResultsSummary(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
 ): Promise<Result> {
+  const dateFrom = cfg.date_from ?? ninetyDaysAgo();
+  const outfallIds = await getOutfallIdsForOrgs(sb, orgIds);
+  const columns = [
+    'Sample Date', 'Permit', 'Outfall', 'Parameter', 'STORET', 'Result',
+    'Unit', 'Non-Detect', 'Method', 'Analyzed Date', 'Lab',
+  ];
+
+  if (!outfallIds.length) {
+    return {
+      columns,
+      rows: [],
+      flags: { draft: true, message: 'No outfalls for org — populate permits via Upload Dashboard' },
+    };
+  }
+
+  const { data: events, error: evErr } = await sb
+    .from('sampling_events')
+    .select('id, sample_date, lab_name, outfall:outfalls(outfall_number, npdes_permits(permit_number))')
+    .in('outfall_id', outfallIds)
+    .gte('sample_date', dateFrom.slice(0, 10))
+    .order('sample_date', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (evErr) throw new Error(evErr.message);
+
+  const eventIds = (events ?? []).map((e: Record<string, unknown>) => e.id as string);
+  if (!eventIds.length) {
+    return { columns, rows: [], flags: { draft: true, message: 'No sampling events in range' } };
+  }
+
+  const eventMap = new Map<string, Record<string, unknown>>();
+  for (const ev of events ?? []) {
+    eventMap.set(String((ev as Record<string, unknown>).id), ev as Record<string, unknown>);
+  }
+
+  const { data: results, error } = await sb
+    .from('lab_results')
+    .select('sampling_event_id, result_value, result_text, unit, is_non_detect, method, analyzed_date, parameter:parameters(name, storet_code)')
+    .in('sampling_event_id', eventIds)
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (results ?? []).map((row: Record<string, unknown>) => {
+    const ev = eventMap.get(String(row.sampling_event_id));
+    const outfall = ev?.outfall as Record<string, unknown> | null;
+    const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+    const param = row.parameter as Record<string, unknown> | null;
+    const display = row.result_value ?? row.result_text ?? '';
+    return [
+      ev?.sample_date ?? '',
+      permit?.permit_number ?? '',
+      outfall?.outfall_number ?? '',
+      param?.name ?? '',
+      param?.storet_code ?? '',
+      display,
+      row.unit,
+      row.is_non_detect ? 'Y' : 'N',
+      row.method ?? '',
+      row.analyzed_date ?? '',
+      ev?.lab_name ?? '',
+    ];
+  });
+
+  return { columns, rows, flags: { draft: rows.length === 0, ...makeFlags(rows) } };
+}
+
+async function rptWaterQualityTrends(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  const base = await rptLabResultsSummary(sb, orgIds, cfg);
   return {
-    columns: ['status', 'message'],
-    rows: [['DRAFT', `${reportTitle} — prerequisite data partial; internal advisory only`]],
-    flags: { draft: true },
+    ...base,
+    columns: ['Sample Date', 'Parameter', 'STORET', 'Outfall', 'Result', 'Unit', 'Permit'],
+    rows: base.rows.map((r) => [r[0], r[3], r[4], r[2], r[5], r[6], r[1]]),
+    flags: { ...base.flags, trend_export: true },
   };
 }
 
-const rptLabResultsSummary = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Lab Results Summary');
-const rptWaterQualityTrends = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Water Quality Trend Analysis');
-const rptExceedanceDetection = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Exceedance Detection Report');
+async function rptExceedanceDetection(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  const dateFrom = cfg.date_from ?? ninetyDaysAgo();
+  let query = sb
+    .from('exceedances')
+    .select(
+      `sample_date, detected_at, severity, status, result_value, limit_value, limit_type, unit,
+       exceedance_pct, is_reportable,
+       outfall:outfalls(outfall_number, npdes_permits(permit_number)),
+       parameter:parameters(name, storet_code)`,
+    )
+    .in('organization_id', orgIds)
+    .gte('sample_date', dateFrom.slice(0, 10))
+    .order('sample_date', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (cfg.date_to) query = query.lte('sample_date', cfg.date_to.slice(0, 10));
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Sample Date', 'Detected At', 'Permit', 'Outfall', 'Parameter', 'STORET',
+    'Result', 'Limit', 'Limit Type', 'Unit', 'Exceedance %', 'Severity', 'Status', 'Reportable',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const outfall = row.outfall as Record<string, unknown> | null;
+    const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+    const param = row.parameter as Record<string, unknown> | null;
+    return [
+      row.sample_date,
+      row.detected_at,
+      permit?.permit_number ?? '',
+      outfall?.outfall_number ?? '',
+      param?.name ?? '',
+      param?.storet_code ?? '',
+      row.result_value,
+      row.limit_value,
+      row.limit_type,
+      row.unit,
+      row.exceedance_pct,
+      row.severity,
+      row.status,
+      row.is_reportable ? 'Y' : 'N',
+    ];
+  });
+
+  return {
+    columns,
+    rows,
+    flags: {
+      draft: rows.length === 0,
+      open_count: rows.filter((r) => r[12] !== 'resolved').length,
+      message: rows.length === 0 ? 'No exceedances in range' : undefined,
+    },
+  };
+}
+
 async function rptSamplingCompleteness(
   sb: SB,
   orgIds: string[],
@@ -1061,24 +1234,367 @@ async function rptSamplingCompleteness(
     },
   };
 }
-const rptDmrPreparation = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'DMR Preparation Report');
-const rptExceedanceTrendAnalysis = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Exceedance Trend & Pattern Analysis');
-const rptStipulatedPenaltyExposure = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Stipulated Penalty Exposure Report');
-const rptFiveDayNotification = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, '5-Day Written Notification Report');
-const rptCorrectiveActionStatus = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Corrective Action Status Report');
-const rptQuarterlyConsentDecree = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Quarterly Consent Decree Report');
-const rptAnnualComplianceSummary = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Annual Compliance Summary');
-const rptSeleniumMonitoringKy = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Selenium Monitoring Report (Kentucky)');
-const rptConductivityTdsWv = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Conductivity/TDS Analysis (West Virginia)');
+async function rptDmrPreparation(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  void cfg;
+  const { data, error } = await sb
+    .from('dmr_submissions')
+    .select(
+      `monitoring_period_start, monitoring_period_end, submission_type, status,
+       no_discharge, nodi_code, submitted_at,
+       permit:npdes_permits(permit_number),
+       dmr_line_items(count)`,
+    )
+    .in('organization_id', orgIds)
+    .order('monitoring_period_start', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Permit', 'Period Start', 'Period End', 'Type', 'Status',
+    'No Discharge', 'NODI', 'Line Items', 'Submitted At',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const permit = row.permit as Record<string, unknown> | null;
+    const lineItems = row.dmr_line_items as Array<{ count: number }> | null;
+    const count = Array.isArray(lineItems) && lineItems[0] ? lineItems[0].count : 0;
+    return [
+      permit?.permit_number ?? '',
+      row.monitoring_period_start,
+      row.monitoring_period_end,
+      row.submission_type,
+      row.status,
+      row.no_discharge ? 'Y' : 'N',
+      row.nodi_code ?? '',
+      count,
+      row.submitted_at ?? '',
+    ];
+  });
+
+  return {
+    columns,
+    rows,
+    flags: { draft: rows.length === 0, message: rows.length === 0 ? 'No DMR submissions yet' : undefined },
+  };
+}
+
+async function rptExceedanceTrendAnalysis(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  const base = await rptExceedanceDetection(sb, orgIds, cfg);
+  const columns = ['Month', 'Parameter', 'Outfall', 'Severity', 'Status', 'Exceedance %', 'Sample Date'];
+  const rows = base.rows.map((r) => {
+    const sampleDate = String(r[0] ?? '');
+    const month = sampleDate.length >= 7 ? sampleDate.slice(0, 7) : sampleDate;
+    return [month, r[4], r[3], r[11], r[12], r[10], r[0]];
+  });
+  return { columns, rows, flags: { ...base.flags, trend_analysis: true } };
+}
+
+async function rptStipulatedPenaltyExposure(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  void cfg;
+  const { data, error } = await sb
+    .from('penalty_exposure_lines')
+    .select(
+      'organization_id, source_key, label, amount, event_count, citation, verification_status, confidence, snapshot_at',
+    )
+    .in('organization_id', orgIds)
+    .is('valid_to', null)
+    .order('snapshot_at', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Source', 'Label', 'Amount', 'Events', 'Verification', 'Confidence', 'Citation', 'Snapshot At',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => [
+    row.source_key,
+    row.label,
+    row.amount,
+    row.event_count,
+    row.verification_status,
+    row.confidence,
+    row.citation,
+    row.snapshot_at,
+  ]);
+
+  const draftTotal = rows.reduce((sum, r) => sum + Number(r[2] ?? 0), 0);
+
+  return {
+    columns,
+    rows,
+    flags: {
+      draft: true,
+      draft_combined: draftTotal,
+      message: 'DRAFT — internal estimate; not verified for external or legal use',
+    },
+  };
+}
+
+async function rptFiveDayNotification(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  const dateFrom = cfg.date_from ?? ninetyDaysAgo();
+  const { data, error } = await sb
+    .from('exceedances')
+    .select(
+      `sample_date, detected_at, severity, status, exceedance_pct,
+       outfall:outfalls(outfall_number, npdes_permits(permit_number)),
+       parameter:parameters(name)`,
+    )
+    .in('organization_id', orgIds)
+    .eq('is_reportable', true)
+    .in('severity', ['major', 'critical'])
+    .in('status', ['open', 'acknowledged', 'investigating', 'corrective_action'])
+    .gte('sample_date', dateFrom.slice(0, 10))
+    .order('detected_at', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Sample Date', 'Detected At', 'Permit', 'Outfall', 'Parameter',
+    'Severity', 'Status', 'Exceedance %', 'Notice Status',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const outfall = row.outfall as Record<string, unknown> | null;
+    const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+    const param = row.parameter as Record<string, unknown> | null;
+    return [
+      row.sample_date,
+      row.detected_at,
+      permit?.permit_number ?? '',
+      outfall?.outfall_number ?? '',
+      param?.name ?? '',
+      row.severity,
+      row.status,
+      row.exceedance_pct,
+      'DRAFT — verify 5-day clock with counsel',
+    ];
+  });
+
+  return {
+    columns,
+    rows,
+    flags: {
+      draft: true,
+      candidate_count: rows.length,
+      message: rows.length === 0 ? 'No reportable major/critical exceedances pending notice' : undefined,
+    },
+  };
+}
+
+async function rptCorrectiveActionStatus(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  void cfg;
+  const { data, error } = await sb
+    .from('corrective_actions')
+    .select(
+      `title, status, workflow_step, priority, due_date, date_issued, state,
+       permit:npdes_permits(permit_number), site:sites(name)`,
+    )
+    .in('organization_id', orgIds)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Title', 'Status', 'Workflow Step', 'Priority', 'Due Date', 'Issued', 'State', 'Permit', 'Site',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const permit = row.permit as Record<string, unknown> | null;
+    const site = row.site as Record<string, unknown> | null;
+    return [
+      row.title,
+      row.status,
+      row.workflow_step,
+      row.priority,
+      row.due_date ?? '',
+      row.date_issued ?? '',
+      row.state ?? '',
+      permit?.permit_number ?? '',
+      site?.name ?? '',
+    ];
+  });
+
+  const overdue = rows.filter((r) => r[4] && String(r[4]) < new Date().toISOString().slice(0, 10)).length;
+
+  return {
+    columns,
+    rows,
+    flags: { draft: rows.length === 0, overdue_count: overdue },
+  };
+}
+
+async function rptQuarterlyConsentDecree(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  void orgIds;
+  void cfg;
+  const { data, error } = await sb
+    .from('consent_decree_obligations')
+    .select(
+      `paragraph_number, title, obligation_type, frequency, status,
+       next_due_date, days_at_risk, penalty_tier, accrued_penalty, responsible_role`,
+    )
+    .or('frequency.ilike.%quarter%,obligation_type.ilike.%quarter%')
+    .order('next_due_date', { ascending: true, nullsFirst: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Paragraph', 'Title', 'Type', 'Frequency', 'Status',
+    'Next Due', 'Days at Risk', 'Penalty Tier', 'Accrued Penalty', 'Responsible Role',
+  ];
+
+  const rows = (data ?? []).map((r: Record<string, unknown>) => [
+    r.paragraph_number, r.title, r.obligation_type, r.frequency, r.status,
+    r.next_due_date, r.days_at_risk, r.penalty_tier, r.accrued_penalty, r.responsible_role,
+  ]);
+
+  return { columns, rows, flags: makeFlags(rows) };
+}
+
+async function rptAnnualComplianceSummary(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  void cfg;
+  const columns = ['Metric', 'Count', 'Notes'];
+
+  const [
+    { count: permitCount },
+    { count: exceedanceCount },
+    { count: gapCount },
+    { count: violationCount },
+    { count: caOpenCount },
+  ] = await Promise.all([
+    sb.from('npdes_permits').select('id', { count: 'exact', head: true }).in('organization_id', orgIds),
+    sb.from('exceedances').select('id', { count: 'exact', head: true }).in('organization_id', orgIds).neq('status', 'resolved'),
+    sb.from('sampling_gap_records').select('id', { count: 'exact', head: true }).in('organization_id', orgIds).eq('gap_kind', 'missed').neq('review_status', 'resolved'),
+    sb.from('compliance_violations').select('id', { count: 'exact', head: true }).in('organization_id', orgIds).not('status', 'in', '("closed","resolved")'),
+    sb.from('corrective_actions').select('id', { count: 'exact', head: true }).in('organization_id', orgIds).neq('status', 'closed'),
+  ]);
+
+  const rows: unknown[][] = [
+    ['Active permits', permitCount ?? 0, ''],
+    ['Open exceedances', exceedanceCount ?? 0, ''],
+    ['Open missed sampling gaps', gapCount ?? 0, 'DRAFT estimate source'],
+    ['Open compliance violations', violationCount ?? 0, ''],
+    ['Open corrective actions', caOpenCount ?? 0, ''],
+  ];
+
+  return {
+    columns,
+    rows,
+    flags: { draft: true, message: 'Annual summary — counts only; not certification' },
+  };
+}
+
+async function rptStateParameterExceedances(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+  stateCode: string,
+  parameterPattern: RegExp,
+  reportLabel: string,
+): Promise<Result> {
+  const dateFrom = cfg.date_from ?? ninetyDaysAgo();
+  const outfallIds = await getOutfallIdsForOrgStates(sb, orgIds, [stateCode]);
+  const columns = [
+    'Sample Date', 'Permit', 'Outfall', 'Parameter', 'Result', 'Limit', 'Unit', 'Severity', 'Status',
+  ];
+
+  if (!outfallIds.length) {
+    return {
+      columns,
+      rows: [],
+      flags: { draft: true, message: `No ${stateCode} outfalls for org` },
+    };
+  }
+
+  const { data, error } = await sb
+    .from('exceedances')
+    .select(
+      `sample_date, result_value, limit_value, unit, severity, status,
+       outfall:outfalls(outfall_number, npdes_permits(permit_number)),
+       parameter:parameters(name, storet_code)`,
+    )
+    .in('outfall_id', outfallIds)
+    .gte('sample_date', dateFrom.slice(0, 10))
+    .order('sample_date', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? [])
+    .filter((row: Record<string, unknown>) => {
+      const param = row.parameter as Record<string, unknown> | null;
+      const name = String(param?.name ?? '');
+      const storet = String(param?.storet_code ?? '');
+      return parameterPattern.test(name) || parameterPattern.test(storet);
+    })
+    .map((row: Record<string, unknown>) => {
+      const outfall = row.outfall as Record<string, unknown> | null;
+      const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+      const param = row.parameter as Record<string, unknown> | null;
+      return [
+        row.sample_date,
+        permit?.permit_number ?? '',
+        outfall?.outfall_number ?? '',
+        param?.name ?? '',
+        row.result_value,
+        row.limit_value,
+        row.unit,
+        row.severity,
+        row.status,
+      ];
+    });
+
+  return {
+    columns,
+    rows,
+    flags: {
+      draft: rows.length === 0,
+      state: stateCode,
+      report: reportLabel,
+      message: rows.length === 0 ? `No ${reportLabel} exceedances in range` : undefined,
+    },
+  };
+}
+
+async function rptSeleniumMonitoringKy(sb: SB, orgIds: string[], cfg: Config): Promise<Result> {
+  return rptStateParameterExceedances(sb, orgIds, cfg, 'KY', /selenium/i, 'Selenium (KY)');
+}
+
+async function rptConductivityTdsWv(sb: SB, orgIds: string[], cfg: Config): Promise<Result> {
+  return rptStateParameterExceedances(sb, orgIds, cfg, 'WV', /conductivity|tds|total dissolved/i, 'Conductivity/TDS (WV)');
+}
 
 // ── Report Registry ──────────────────────────────────────────────────────────
 const REGISTRY: Record<string, ReportFn> = {
