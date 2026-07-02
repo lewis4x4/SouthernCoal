@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Loader2, RefreshCw, TrendingUp } from 'lucide-react';
+import { Download, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
-import type { Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
+import { downloadLimitGapsCsv, type Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
 
 interface Props {
   gaps: Slice1ActivationGapsReport | null;
@@ -50,6 +50,15 @@ export function Slice1ActivationFunnelPanel({ gaps, loading, error, onRefresh }:
           >
             Review Queue
           </Link>
+          <button
+            type="button"
+            onClick={() => gaps && downloadLimitGapsCsv(gaps)}
+            disabled={!gaps || (gaps.top_permits_missing_limits?.length ?? 0) === 0}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-black/[0.08] text-text-secondary hover:text-text-primary disabled:opacity-50"
+          >
+            <Download className="w-3 h-3" />
+            Export CSV
+          </button>
           <button
             type="button"
             onClick={() => onRefresh()}

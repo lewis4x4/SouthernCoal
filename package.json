@@ -36,6 +36,7 @@
     "qa:slice1-seed-permit-limits": "node scripts/slice1-seed-permit-limits.mjs",
     "qa:slice1-repair-stuck-keys": "node scripts/slice1-repair-stuck-keys.mjs",
     "qa:slice1-activate": "node scripts/slice1-activate.mjs",
+    "qa:slice1-export-limit-gaps": "node scripts/slice1-export-limit-gaps.mjs",
     "qa:slice2-dmr": "node scripts/slice2-dmr-preflight.mjs",
     "qa:slice4-status-mismatch": "node scripts/slice4-status-mismatch-export.mjs",
     "qa:slice3-echo-rerun": "node scripts/slice3-echo-rerun.mjs",

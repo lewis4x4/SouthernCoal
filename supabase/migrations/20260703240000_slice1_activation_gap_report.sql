@@ -42,8 +42,7 @@ BEGIN
       pl.id AS permit_limit_id
     FROM viol v
     LEFT JOIN npdes_permits p
-      ON p.organization_id = p_organization_id
-     AND upper(p.permit_number) = v.npdes_id
+      ON p.id = resolve_npdes_permit_id_for_echo(p_organization_id, v.npdes_id)
     LEFT JOIN outfalls o
       ON o.permit_id = p.id
      AND (

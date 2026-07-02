@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSlice1ActivationSummary, type Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
+import { formatSlice1ActivationSummary, buildLimitGapsCsv, type Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
 
 const SAMPLE: Slice1ActivationGapsReport = {
   funnel: {
@@ -24,5 +24,11 @@ describe('slice1ActivationGaps', () => {
     expect(text).toContain('2,140 resolvable');
     expect(text).toContain('148,227 pending');
     expect(text).toContain('KYGE40869 (256 keys)');
+  });
+
+  it('builds limit gaps CSV', () => {
+    const csv = buildLimitGapsCsv(SAMPLE);
+    expect(csv).toContain('permit_number,npdes_id,missing_limit_keys');
+    expect(csv).toContain('KYGE40869,KYGE40869,256');
   });
 });

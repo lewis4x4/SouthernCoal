@@ -90,7 +90,7 @@ BEGIN
       FROM external_echo_dmrs ed
       JOIN npdes_permits p
         ON p.organization_id = ed.organization_id
-       AND upper(p.permit_number) = upper(ed.npdes_id)
+       AND p.id = resolve_npdes_permit_id_for_echo(ed.organization_id, ed.npdes_id)
       JOIN outfalls o
         ON o.permit_id = p.id
        AND (

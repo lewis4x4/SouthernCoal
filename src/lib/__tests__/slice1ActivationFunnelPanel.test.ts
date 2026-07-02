@@ -11,6 +11,7 @@ describe('Slice1ActivationFunnelPanel', () => {
   it('links to Upload Dashboard and Review Queue', () => {
     expect(source).toContain('to="/compliance"');
     expect(source).toContain('to="/review-queue"');
+    expect(source).toContain('downloadLimitGapsCsv');
     expect(source).toContain('qa:slice1-activate');
   });
 
