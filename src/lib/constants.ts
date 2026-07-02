@@ -290,8 +290,8 @@ export const FILENAME_PATTERNS: ClassificationPattern[] = [
   { regex: /\btsmp\b|TNR\d{6}/i, field: 'category', value: 'npdes_permit' },
   { regex: /\bEKCL\b|KYGE\d{5}/i, field: 'category', value: 'npdes_permit' },
   { regex: /\bNPE\(|NPR\s*#/i, field: 'category', value: 'npdes_permit' },
-  { regex: /\bsampling.?matrix|obligation.?calendar|sample.?schedule\b/i, field: 'category', value: 'sampling_matrix' },
-  { regex: /\bconsent.?decree|7:16-cv-00462\b/i, field: 'category', value: 'consent_decree' },
+  { regex: /sampling[\W_]*matrix|obligation[\W_]*calendar|sample[\W_]*schedule/i, field: 'category', value: 'sampling_matrix' },
+  { regex: /consent[\W_]*decree|7:16-cv-00462/i, field: 'category', value: 'consent_decree' },
   { regex: /\blab|analytical|results|edd|scedd/i, field: 'category', value: 'lab_data' },
   // SCEDD files are always West Virginia
   { regex: /scedd/i, field: 'state', value: 'WV' },
