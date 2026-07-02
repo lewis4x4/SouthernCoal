@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildSyntheticLimitsCsv } from '@/lib/syntheticPermitLimits';
+import { buildSyntheticLimitsCsv, toVerificationStatus } from '@/lib/syntheticPermitLimits';
 
 describe('syntheticPermitLimits', () => {
   it('builds CSV for synthetic limit rows', () => {
     const csv = buildSyntheticLimitsCsv([
       {
+        id: 'a',
         permit_number: 'KYGE40869',
         outfall_number: '001',
         parameter_code: 'TSS',
@@ -17,5 +18,10 @@ describe('syntheticPermitLimits', () => {
     ]);
     expect(csv).toContain('KYGE40869,001,TSS');
     expect(csv).toContain('pending_review');
+  });
+
+  it('maps review_status to verification badge status', () => {
+    expect(toVerificationStatus('pending_review')).toBe('unreviewed');
+    expect(toVerificationStatus('verified')).toBe('verified');
   });
 });

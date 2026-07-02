@@ -17,6 +17,7 @@ type AuditAction =
   | 'compliance_archive_processed'
   | 'lab_data_imported'
   | 'permit_limits_imported'
+  | 'permit_limit_review_updated'
   | 'netdmr_dmr_imported'
   | 'sampling_matrix_imported'
   | 'matrix_expected_count_changed'
