@@ -289,8 +289,8 @@ Evidence capture for portal submissions, change log UI, access control hardening
 | **3.34** | Wire parsers into Upload Dashboard flow | 3.01, 3.32 | AI | not_started |
 | **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **PARTIAL** — batch detect script + RPC shipped; 149-permit run pending |
 | **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | in_progress |
-| **3.37** | ECHO sync coverage panel | — | AI | not_started |
-| **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | **in_progress** — confirmation basis UI + audit (Slice 6) |
+| **3.37** | ECHO sync coverage panel | — | AI | **COMPLETE** |
+| **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | **COMPLETE** — confirmation basis UI + audit + migration (Slice 6); manual map-one-permit UAT in `.qa-artifacts/slice6-va-npdes-override-20260702.md` |
 | **3.39** | Obtain MSHA mine ID mapping | — | Brian | **BLOCKED** |
 | 3.40 | Implement sync-msha-data pipeline | 3.39 | AI | not_started |
 | 3.41 | MSHA detection rules (Rules 4-6) | 3.40 | AI | not_started |
@@ -374,7 +374,7 @@ When unblocked or in parallel:
 | Immediate (low external deps) | **2.62**, **2.63** aliases; **3.01** Upload Dashboard; **3.37**, **3.38** |
 | After 3.01 | **3.32**–**3.34** (Justice EDD → DMR pipeline → Dashboard wiring); needs **1.24** sample file |
 | After internal data | **3.35**–**3.36** discrepancy re-run + triage; **3.43** virtualization |
-| Parallel polish | **3.44**–**3.45**, **3.47** |
+| Parallel polish | **3.44**–**3.47** (3.37–3.38 closed 2026-07-02) |
 | Blocked | **3.39**–**3.42** MSHA (Brian); **Phase 1**–**2** client docs |
 
 ---
