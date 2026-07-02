@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, Loader2, RefreshCw, Scale, ShieldCheck } from 'lucide-react';
+import { DollarSign, Download, Loader2, RefreshCw, Scale, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatDollars } from '@/lib/format';
-import { PENALTY_CONFIDENCE_LABELS } from '@/lib/penaltyLedger';
+import { PENALTY_CONFIDENCE_LABELS, getPenaltySourceLink } from '@/lib/penaltyLedger';
+import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
 import { usePenaltyLedger } from '@/hooks/usePenaltyLedger';
 import { usePenaltyRegimes } from '@/hooks/usePenaltyRegimes';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { PENALTY_LEDGER_SIGNOFF_ROLES } from '@/lib/rbac';
 
 const CONFIDENCE_BADGE: Record<string, string> = {
@@ -27,6 +29,7 @@ export function PenaltyLedgerPage() {
   const { summary, loading, signingOff, error, refetch, signOff } = usePenaltyLedger();
   const { regimes, loading: regimesLoading, hasVerifiedRegime } = usePenaltyRegimes();
   const { hasAllowedRole } = usePermissions();
+  const { log } = useAuditLog();
   const canSignOff = hasAllowedRole(PENALTY_LEDGER_SIGNOFF_ROLES, 'global');
   const [note, setNote] = useState('');
 
@@ -34,6 +37,40 @@ export function PenaltyLedgerPage() {
   const isVerified = summary?.verification_status === 'verified';
 
   const sourceRows = useMemo(() => summary?.sources ?? [], [summary]);
+
+  function handleExportCsv() {
+    if (!summary) return;
+    const headers = ['Source', 'Label', 'Confidence', 'Verification', 'Events', 'Amount', 'Citation'];
+    const body = sourceRows.map((row) => [
+      row.key,
+      row.label,
+      row.confidence,
+      row.verification_status ?? 'draft',
+      row.event_count,
+      row.amount,
+      row.citation ?? '',
+    ]);
+    const csv = [headers, ...body]
+      .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(
+      [
+        `${csv}\n\n"DRAFT COMBINED",${combinedTotal}\n"DISCLAIMER","${DISCLAIMER_EXPORT.replace(/"/g, '""')}"`,
+      ],
+      { type: 'text/csv;charset=utf-8' },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `penalty_ledger_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log(
+      'penalty_ledger_export_csv',
+      { source_count: sourceRows.length, draft_combined: combinedTotal },
+      { module: 'compliance', tableName: 'penalty_exposure_lines' },
+    );
+  }
 
   async function handleSignOff() {
     await signOff(note);
@@ -57,6 +94,15 @@ export function PenaltyLedgerPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={loading || sourceRows.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.02] disabled:opacity-50"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
           <button
             type="button"
             onClick={() => void refetch()}
@@ -184,12 +230,17 @@ export function PenaltyLedgerPage() {
               <tr>
                 <th className="px-4 py-2 font-medium">Source</th>
                 <th className="px-4 py-2 font-medium">Confidence</th>
+                <th className="px-4 py-2 font-medium">Verification</th>
+                <th className="px-4 py-2 font-medium">Citation</th>
                 <th className="px-4 py-2 font-medium text-right">Events</th>
                 <th className="px-4 py-2 font-medium text-right">Amount</th>
+                <th className="px-4 py-2 font-medium">Drill-down</th>
               </tr>
             </thead>
             <tbody>
-              {sourceRows.map((row) => (
+              {sourceRows.map((row) => {
+                const drillDown = getPenaltySourceLink(row.key);
+                return (
                 <tr key={row.key} className="border-t border-black/[0.04]">
                   <td className="px-4 py-3 text-text-primary">{row.label}</td>
                   <td className="px-4 py-3">
@@ -202,17 +253,35 @@ export function PenaltyLedgerPage() {
                       {PENALTY_CONFIDENCE_LABELS[row.confidence] ?? row.confidence}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] uppercase text-text-muted">
+                      {row.verification_status ?? 'draft'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 max-w-xs truncate text-text-secondary" title={row.citation}>
+                    {row.citation ?? '—'}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-text-secondary">
                     {row.event_count.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium text-text-primary">
                     {formatDollars(row.amount)}
                   </td>
+                  <td className="px-4 py-3">
+                    {drillDown ? (
+                      <Link to={drillDown} className="text-qo-accent hover:underline">
+                        View
+                      </Link>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
+                  </td>
                 </tr>
-              ))}
+              );
+              })}
               {!loading && sourceRows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-text-muted">
                     No penalty sources populated yet — upload FTS data or run gap detection.
                   </td>
                 </tr>

@@ -44,6 +44,17 @@ export const PENALTY_CONFIDENCE_LABELS: Record<PenaltyLedgerConfidence, string> 
   mixed: 'Est./actual mix',
 };
 
+export const PENALTY_SOURCE_LINKS: Record<string, string> = {
+  fts_uploaded: '/compliance/failure-to-sample',
+  sampling_gap_draft: '/compliance/missed-at-risk',
+  cd_obligations: '/obligations',
+  compliance_violations: '/compliance/violations',
+};
+
+export function getPenaltySourceLink(sourceKey: string): string | null {
+  return PENALTY_SOURCE_LINKS[sourceKey] ?? null;
+}
+
 export function parsePenaltyLedgerSummary(raw: unknown): PenaltyLedgerSummary | null {
   if (!raw || typeof raw !== 'object') return null;
   const obj = raw as Record<string, unknown>;

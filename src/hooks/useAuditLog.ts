@@ -19,6 +19,7 @@ type AuditAction =
   | 'obligation_generation'
   | 'obligation_ledger_export_csv'
   | 'obligation_ledger_clocks_refreshed'
+  | 'penalty_ledger_export_csv'
   | 'deadline_alert_sent'
   | 'coverage_export_csv'
   | 'audit_log_export_csv'
