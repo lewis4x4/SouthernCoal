@@ -4,6 +4,8 @@ import type { QueueEntry } from '@/types/queue';
 export const ARCHIVE_DOCUMENT_CATEGORIES = new Set([
   'field_inspection',
   'water_monitoring',
+  'consent_decree',
+  'sampling_matrix',
   'quarterly_report',
   'audit_report',
   'enforcement',
@@ -142,6 +144,8 @@ export function resolveQueueParser(entry: QueueEntry): QueueParserRoute {
       };
     case 'field_inspection':
     case 'water_monitoring':
+    case 'consent_decree':
+    case 'sampling_matrix':
     case 'quarterly_report':
     case 'audit_report':
     case 'enforcement':

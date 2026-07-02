@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { CATEGORY_BY_DB_KEY, STATES, STATE_MAP } from '@/lib/constants';
+import { CATEGORY_BY_DB_KEY, CATEGORIES, STATES, STATE_MAP } from '@/lib/constants';
 import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
 import { validateFile } from '@/lib/file-validation';
 import {
@@ -84,6 +84,30 @@ describe('upload dashboard category mapping', () => {
     const route = resolveQueueParser(entry);
     expect(route.kind).toBe('compliance_archive');
     expect(canProcessQueueEntry(entry)).toBe(true);
+  });
+
+  it('maps consent_decree and sampling_matrix to archive pipeline', () => {
+    expect(CATEGORY_BY_DB_KEY.consent_decree?.bucket).toBe('audit-reports');
+    expect(CATEGORY_BY_DB_KEY.sampling_matrix?.bucket).toBe('other');
+
+    for (const fileCategory of ['consent_decree', 'sampling_matrix'] as const) {
+      const entry = queueEntry({
+        file_category: fileCategory,
+        storage_bucket: CATEGORY_BY_DB_KEY[fileCategory]!.bucket,
+        file_name: fileCategory === 'consent_decree' ? 'Consent_Decree_7-16-cv-00462.pdf' : 'Sampling_Matrix_Q3.xlsx',
+      });
+      const route = resolveQueueParser(entry);
+      expect(route.kind).toBe('compliance_archive');
+      expect(route.functionName).toBe('process-compliance-archive');
+      expect(canProcessQueueEntry(entry)).toBe(true);
+    }
+  });
+
+  it('includes outreach document categories in canonical CATEGORIES list', () => {
+    const dbKeys = new Set(CATEGORY_BY_DB_KEY ? Object.keys(CATEGORY_BY_DB_KEY) : []);
+    expect(dbKeys.has('consent_decree')).toBe(true);
+    expect(dbKeys.has('sampling_matrix')).toBe(true);
+    expect(CATEGORIES.length).toBeGreaterThanOrEqual(11);
   });
 });
 

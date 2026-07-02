@@ -42,7 +42,7 @@ const CELL_COLORS: Record<MatrixCellStatus, string> = {
 };
 
 /**
- * 5×8 Compliance Matrix — States (rows) × Categories (columns).
+ * States (rows) × Categories (columns) — column count follows CATEGORIES.
  * Cell color indicates upload/processing status.
  * Click cell → filter queue. Export CSV/Markdown with disclaimer.
  */

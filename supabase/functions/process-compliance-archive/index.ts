@@ -15,6 +15,9 @@ const corsHeaders = {
 
 const ARCHIVE_CATEGORIES = new Set([
   "field_inspection",
+  "water_monitoring",
+  "consent_decree",
+  "sampling_matrix",
   "quarterly_report",
   "audit_report",
   "enforcement",

@@ -107,6 +107,8 @@ export type FileCategoryKey =
   | 'lab_data'
   | 'water_monitoring'
   | 'field_inspection'
+  | 'sampling_matrix'
+  | 'consent_decree'
   | 'quarterly_report'
   | 'dmr'
   | 'audit_report'
