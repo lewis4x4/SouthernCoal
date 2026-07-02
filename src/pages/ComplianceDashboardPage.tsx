@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useComplianceSnapshots, evaluateKPI } from '@/hooks/useComplianceSnapshots';
+import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   BarChart3,
@@ -46,6 +48,7 @@ export function ComplianceDashboardPage() {
     getKPIValue,
     fetchTrend,
   } = useComplianceSnapshots();
+  const statutoryAcks = useStatutoryAlertAcks();
   const { log } = useAuditLog();
   const [trendDays, setTrendDays] = useState<30 | 60 | 90>(30);
 
@@ -157,6 +160,30 @@ export function ComplianceDashboardPage() {
           </button>
         </div>
       </div>
+
+      {!statutoryAcks.loading && statutoryAcks.unacknowledgedCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-qo-ochre/30 bg-qo-ochre/10 px-4 py-3">
+          <p className="text-sm text-qo-ochre-text">
+            <ShieldAlert className="inline w-4 h-4 mr-1.5 align-text-bottom" />
+            {statutoryAcks.unacknowledgedCount} statutory alert
+            {statutoryAcks.unacknowledgedCount !== 1 ? 's' : ''} awaiting acknowledgment
+          </p>
+          <div className="flex flex-wrap gap-3 text-xs font-medium">
+            <Link to="/compliance/missed-at-risk" className="text-qo-accent hover:underline">
+              Sampling gaps
+            </Link>
+            <Link to="/compliance/late-incomplete-edd" className="text-qo-accent hover:underline">
+              ¶49 EDD
+            </Link>
+            <Link to="/compliance/external-data" className="text-qo-accent hover:underline">
+              MSHA
+            </Link>
+            <Link to="/monitoring" className="text-qo-accent hover:underline">
+              Exceedances
+            </Link>
+          </div>
+        </div>
+      )}
 
       {!latestSnapshot ? (
         <SpotlightCard className="p-12 text-center">
