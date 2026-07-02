@@ -9,6 +9,8 @@ import { useSyncHealth, ECHO_STALE_DAYS } from '@/hooks/useSyncHealth';
 import { useNpdesOverrides } from '@/hooks/useNpdesOverrides';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
 import { SyncHealthPanel } from '@/components/external-data/SyncHealthPanel';
+import { Slice1ActivationFunnelPanel } from '@/components/external-data/Slice1ActivationFunnelPanel';
+import { useSlice1ActivationGaps } from '@/hooks/useSlice1ActivationGaps';
 import { NpdesMappingImportPanel } from '@/components/external-data/NpdesMappingImportPanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -100,6 +102,13 @@ export function EchoCoveragePanel() {
     bulkImportMappings,
     fetchRegistryPermitNumbers,
   } = useNpdesOverrides();
+
+  const {
+    gaps: activationGaps,
+    loading: activationGapsLoading,
+    error: activationGapsError,
+    refetch: refetchActivationGaps,
+  } = useSlice1ActivationGaps();
 
   const [sortKey, setSortKey] = useState<SortKey>('state_code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -260,6 +269,13 @@ export function EchoCoveragePanel() {
         canSync={can('bulk_process')}
         onSyncNow={handleSync}
         onSyncStale={handleSyncStale}
+      />
+
+      <Slice1ActivationFunnelPanel
+        gaps={activationGaps}
+        loading={activationGapsLoading}
+        error={activationGapsError}
+        onRefresh={() => void refetchActivationGaps()}
       />
 
       {/* Summary Cards */}

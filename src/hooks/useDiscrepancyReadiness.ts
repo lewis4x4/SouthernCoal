@@ -6,7 +6,7 @@ import {
   type DiscrepancyReadinessAssessment,
   type DiscrepancyReadinessCounts,
 } from '@/lib/discrepancyDetectionReadiness';
-import type { Slice1ActivationGapsReport } from '@/lib/slice1ActivationGaps';
+import { useSlice1ActivationGaps } from '@/hooks/useSlice1ActivationGaps';
 
 const EMPTY_COUNTS: DiscrepancyReadinessCounts = {
   echoFacilities: 0,
@@ -124,33 +124,25 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
 export function useDiscrepancyReadiness() {
   const { profile } = useUserProfile();
   const orgId = profile?.organization_id;
+  const { gaps: activationGaps, refetch: refetchGaps } = useSlice1ActivationGaps();
   const [loading, setLoading] = useState(false);
   const [counts, setCounts] = useState<DiscrepancyReadinessCounts>(EMPTY_COUNTS);
   const [assessment, setAssessment] = useState<DiscrepancyReadinessAssessment>(
     () => assessDiscrepancyDetectionReadiness(EMPTY_COUNTS),
   );
-  const [activationGaps, setActivationGaps] = useState<Slice1ActivationGapsReport | null>(null);
 
   const refetch = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [next, gapsResult] = await Promise.all([
-        fetchCounts(orgId),
-        supabase.rpc('report_slice1_activation_gaps', { p_organization_id: orgId }),
-      ]);
+      const next = await fetchCounts(orgId);
       setCounts(next);
       setAssessment(assessDiscrepancyDetectionReadiness(next));
-      if (gapsResult.error) {
-        console.error('[discrepancy-readiness] activation gaps error:', gapsResult.error.message);
-        setActivationGaps(null);
-      } else {
-        setActivationGaps(gapsResult.data as Slice1ActivationGapsReport);
-      }
+      await refetchGaps();
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, refetchGaps]);
 
   useEffect(() => {
     void refetch();
