@@ -17,6 +17,7 @@ describe('slice1 exceedance seed migration', () => {
     expect(sql).toContain('external_echo_dmrs');
     expect(sql).toContain('sampling_events');
     expect(sql).toContain('lab_results');
+    expect(sql).toContain('slice1_echo_mirror_keys');
     expect(sql).toContain('slice1_echo_exceedance_seed');
   });
 

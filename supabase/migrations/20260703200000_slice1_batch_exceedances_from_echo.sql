@@ -2,6 +2,43 @@
 -- Label: SYNTHETIC_UAT_SLICE1 — not regulatory data. Inserts sampling_events + lab_results;
 -- detect_exceedance trigger creates exceedance rows for detect-discrepancies Rule 2 dedup.
 
+CREATE TABLE IF NOT EXISTS public.slice1_echo_mirror_keys (
+  organization_id uuid NOT NULL,
+  dedup_key text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (organization_id, dedup_key)
+);
+
+COMMENT ON TABLE public.slice1_echo_mirror_keys IS
+  'Tracks ECHO violation keys mirrored as internal exceedances (SYNTHETIC_UAT_SLICE1).';
+
+ALTER TABLE public.slice1_echo_mirror_keys ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS slice1_echo_mirror_keys_org_select ON public.slice1_echo_mirror_keys;
+CREATE POLICY slice1_echo_mirror_keys_org_select ON public.slice1_echo_mirror_keys
+  FOR SELECT TO authenticated
+  USING (organization_id = get_user_org_id());
+
+-- Backfill keys already mirrored via slice1 imports (idempotent).
+INSERT INTO public.slice1_echo_mirror_keys (organization_id, dedup_key)
+SELECT DISTINCT
+  ep.organization_id,
+  upper(
+    COALESCE(
+      NULLIF(trim(ep.metadata->>'federal_npdes_id_override'), ''),
+      ep.permit_number
+    )
+  ) || ':' || o.outfall_number || ':' || pr.storet_code || ':'
+  || to_char(se.sample_date, 'YYYY-MM')
+FROM lab_results lr
+JOIN sampling_events se ON se.id = lr.sampling_event_id
+JOIN outfalls o ON o.id = se.outfall_id
+JOIN npdes_permits ep ON ep.id = o.permit_id
+JOIN parameters pr ON pr.id = lr.parameter_id
+JOIN data_imports di ON di.id = lr.import_id
+WHERE di.file_name = 'slice1-echo-violation-mirror'
+ON CONFLICT DO NOTHING;
+
 CREATE OR REPLACE FUNCTION public.seed_slice1_exceedances_from_echo(
   p_organization_id uuid,
   p_limit integer DEFAULT 250
@@ -122,25 +159,15 @@ BEGIN
       AND ed.parameter_code IS NOT NULL
       AND NOT EXISTS (
         SELECT 1
-        FROM exceedances e
-        JOIN outfalls eo ON eo.id = e.outfall_id
-        JOIN npdes_permits ep ON ep.id = eo.permit_id
-        JOIN parameters epa ON epa.id = e.parameter_id
-        WHERE e.organization_id = p_organization_id
-          AND upper(
-            COALESCE(
-              NULLIF(trim(ep.metadata->>'federal_npdes_id_override'), ''),
-              ep.permit_number
-            )
-          ) = upper(
+        FROM slice1_echo_mirror_keys mk
+        WHERE mk.organization_id = p_organization_id
+          AND mk.dedup_key = upper(
             COALESCE(
               NULLIF(trim(p.metadata->>'federal_npdes_id_override'), ''),
-              p.permit_number
+              ed.npdes_id
             )
-          )
-          AND eo.outfall_number = o.outfall_number
-          AND epa.storet_code = pr.storet_code
-          AND to_char(e.sample_date, 'YYYY-MM') = to_char(ed.monitoring_period_end, 'YYYY-MM')
+          ) || ':' || ed.outfall || ':' || ed.parameter_code || ':'
+          || to_char(ed.monitoring_period_end, 'YYYY-MM')
       )
     ORDER BY
       upper(ed.npdes_id),
@@ -155,24 +182,13 @@ BEGIN
       rec.npdes_id
     );
     v_period := to_char(rec.monitoring_period_end, 'YYYY-MM');
-    v_dedup_key := upper(v_npdes_key) || ':' || rec.outfall_number || ':' || rec.storet_code || ':' || v_period;
+    v_dedup_key := upper(v_npdes_key) || ':' || rec.outfall || ':' || rec.parameter_code || ':' || v_period;
 
     SELECT EXISTS (
       SELECT 1
-      FROM exceedances e
-      JOIN outfalls eo ON eo.id = e.outfall_id
-      JOIN npdes_permits ep ON ep.id = eo.permit_id
-      JOIN parameters epa ON epa.id = e.parameter_id
-      WHERE e.organization_id = p_organization_id
-        AND upper(
-          COALESCE(
-            NULLIF(trim(ep.metadata->>'federal_npdes_id_override'), ''),
-            ep.permit_number
-          )
-        ) = upper(v_npdes_key)
-        AND eo.outfall_number = rec.outfall_number
-        AND epa.storet_code = rec.storet_code
-        AND to_char(e.sample_date, 'YYYY-MM') = v_period
+      FROM slice1_echo_mirror_keys mk
+      WHERE mk.organization_id = p_organization_id
+        AND mk.dedup_key = v_dedup_key
     ) INTO v_exists;
 
     IF v_exists THEN
@@ -251,6 +267,10 @@ BEGIN
     );
 
     v_seeded := v_seeded + 1;
+
+    INSERT INTO slice1_echo_mirror_keys (organization_id, dedup_key)
+    VALUES (p_organization_id, v_dedup_key)
+    ON CONFLICT DO NOTHING;
   END LOOP;
 
   UPDATE data_imports
