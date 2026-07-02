@@ -17,7 +17,7 @@ export interface MatrixData {
 }
 
 /**
- * Aggregates queue entries into a 5×8 compliance matrix.
+ * Aggregates queue entries into a compliance matrix (states × CATEGORIES columns).
  * Also provides summary stats for the dashboard cards.
  */
 export function useComplianceMatrix(): MatrixData {

@@ -103,4 +103,10 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
       /processLabData\(queueId\)/,
     ])).toBe(true);
   });
+
+  it('logs compliance archive processing with dedicated audit action', () => {
+    expect(assertSourceContains('hooks/useArchiveDocumentProcessing.ts', [
+      /compliance_archive_processed/,
+    ])).toBe(true);
+  });
 });

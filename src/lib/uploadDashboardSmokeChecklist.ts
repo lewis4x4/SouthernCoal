@@ -90,6 +90,7 @@ export const UPLOAD_DASHBOARD_SMOKE_CHECKS: UploadDashboardSmokeCheck[] = [
     manualSteps: [
       'Click a Compliance Matrix cell (e.g., AL + Permits).',
       'Confirm: Processing Queue filters to show only AL permit files.',
+      'Repeat for Samp. Matrix or CD column after uploading outreach documents.',
     ],
   },
   {
