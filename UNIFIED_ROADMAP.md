@@ -307,8 +307,8 @@ Evidence capture for portal submissions, change log UI, access control hardening
 | **3.43** | DiscrepancyTable virtualization (@tanstack/react-virtual) | 3.35 | AI | **COMPLETE** |
 | **3.44** | reviewed_by tracking on discrepancy actions | — | AI | **COMPLETE** |
 | **3.45** | Split loading states in useExternalData | — | AI | **COMPLETE** |
-| **3.46** | RBAC on sync/resolve action buttons | 3.01 | AI | not_started |
-| **3.47** | Realtime subscription for sync_log changes | — | AI | not_started |
+| **3.46** | RBAC on sync/resolve action buttons | 3.01 | AI | **COMPLETE** |
+| **3.47** | Realtime subscription for sync_log changes | — | AI | **COMPLETE** |
 | **3.48** | MSHA dedup index | 3.40 | AI | not_started |
 
 ---

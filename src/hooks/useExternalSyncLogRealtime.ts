@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 /**
  * Subscribes to `external_sync_log` for the current org (matches RLS).
@@ -13,7 +14,7 @@ function warnRealtimeDev(label: string, err: unknown) {
 
 export function useExternalSyncLogRealtime(
   organizationId: string | null | undefined,
-  onChange: () => void | Promise<void>,
+  onChange: (payload?: RealtimePostgresChangesPayload<Record<string, unknown>>) => void | Promise<void>,
 ) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -31,8 +32,10 @@ export function useExternalSyncLogRealtime(
           table: 'external_sync_log',
           filter: `organization_id=eq.${organizationId}`,
         },
-        () => {
-          void Promise.resolve(onChangeRef.current()).catch((err) => warnRealtimeDev('onChange', err));
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          void Promise.resolve(onChangeRef.current(payload)).catch((err) =>
+            warnRealtimeDev('onChange', err),
+          );
         },
       )
       .subscribe();

@@ -86,6 +86,7 @@ type AuditAction =
   // ECHO Coverage
   | 'echo_sync_manual_trigger'
   | 'echo_sync_stale_trigger'
+  | 'msha_sync_manual_trigger'
   | 'compliance_alert_dispatched'
   | 'exceedance_alert_dispatched'
   // Lane C QW1 — calendar gap detection

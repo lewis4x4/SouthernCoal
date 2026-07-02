@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useExternalSyncLogRealtime } from '@/hooks/useExternalSyncLogRealtime';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface CoverageFacility {
@@ -34,7 +34,6 @@ export interface SyncLogEntry {
 }
 
 export function useEchoCoverage() {
-  const { user } = useAuth();
   const { profile } = useUserProfile();
   const [facilities, setFacilities] = useState<CoverageFacility[]>([]);
   const [stateCoverage, setStateCoverage] = useState<StateCoverage[]>([]);
@@ -118,50 +117,31 @@ export function useEchoCoverage() {
     fetchCoverage();
   }, [fetchCoverage]);
 
-  // Realtime subscription for sync_log changes (Part 6)
-  useEffect(() => {
-    if (!user || !profile?.organization_id) return;
+  const handleSyncLogChange = useCallback(
+    (payload?: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const entry = (payload?.new ?? {}) as Record<string, unknown>;
+      const source = entry.source as string | undefined;
 
-    const channel = supabase
-      .channel(`sync-log:${profile.organization_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'external_sync_log',
-          filter: `organization_id=eq.${profile.organization_id}`,
-        },
-        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-          const entry = (payload.new ?? {}) as Record<string, unknown>;
+      if (source && !['echo_facility', 'echo_dmr'].includes(source)) return;
 
-          // Update syncing state
-          if (entry.status === 'running') {
-            setSyncing(true);
+      if (entry.status === 'running') {
+        setSyncing(true);
+        return;
+      }
+
+      if (entry.status === 'completed' || entry.status === 'failed') {
+        setSyncing(false);
+        void fetchCoverage().catch((err) => {
+          if (import.meta.env.DEV) {
+            console.warn('[useEchoCoverage] fetchCoverage after sync event failed', err);
           }
+        });
+      }
+    },
+    [fetchCoverage],
+  );
 
-          // Refresh data when sync completes
-          if (entry.status === 'completed' || entry.status === 'failed') {
-            setSyncing(false);
-            void fetchCoverage().catch((err) => {
-              if (import.meta.env.DEV) {
-                console.warn('[useEchoCoverage] fetchCoverage after sync event failed', err);
-              }
-            });
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel).catch((err) => {
-        if (import.meta.env.DEV) {
-          console.warn('[useEchoCoverage] removeChannel failed', err);
-        }
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: depend on stable IDs
-  }, [user?.id, profile?.organization_id, fetchCoverage]);
+  useExternalSyncLogRealtime(profile?.organization_id, handleSyncLogChange);
 
   return { facilities, stateCoverage, lastSync, syncing, loading, error, refetch: fetchCoverage };
 }

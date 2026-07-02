@@ -88,31 +88,34 @@ export function SyncHealthPanel({
             </p>
           </div>
         </div>
-        {canSync && (
-          <div className="flex flex-wrap items-center gap-2">
-            {staleCount > 0 && (
-              <button
-                type="button"
-                onClick={onSyncStale}
-                disabled={isSyncing}
-                className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-40"
-                title={`Sync up to 5 permits not refreshed in ${ECHO_STALE_DAYS}+ days`}
-              >
-                {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                Sync stale ({Math.min(staleCount, 5)})
-              </button>
-            )}
+        <div className="flex flex-wrap items-center gap-2">
+          {staleCount > 0 && (
             <button
               type="button"
-              onClick={onSyncNow}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
+              onClick={onSyncStale}
+              disabled={isSyncing || !canSync}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-40"
+              title={
+                !canSync
+                  ? 'Requires bulk_process permission'
+                  : `Sync up to 5 permits not refreshed in ${ECHO_STALE_DAYS}+ days`
+              }
             >
               {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {isSyncing ? 'Syncing…' : 'Full sync'}
+              Sync stale ({Math.min(staleCount, 5)})
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={onSyncNow}
+            disabled={isSyncing || !canSync}
+            className="flex items-center gap-1.5 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
+            title={canSync ? 'Run full ECHO facility + DMR sync' : 'Requires bulk_process permission'}
+          >
+            {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {isSyncing ? 'Syncing…' : 'Full sync'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

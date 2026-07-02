@@ -7,6 +7,8 @@ import { useMshaAbatement } from '@/hooks/useMshaAbatement';
 import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { useMshaMapStatus } from '@/hooks/useMshaMapStatus';
 import { useSyncTrigger } from '@/hooks/useSyncTrigger';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 
 export function MshaCoveragePanel() {
@@ -14,11 +16,26 @@ export function MshaCoveragePanel() {
   const { rows, alerts, loading: abatementLoading, detecting, refetch: refetchAbatement, runAbatementDetection } = useMshaAbatement();
   const statutoryAcks = useStatutoryAlertAcks();
   const { syncing, triggerMshaSync } = useSyncTrigger();
+  const { can } = usePermissions();
+  const { log } = useAuditLog();
+  const canSync = can('bulk_process');
   const isSyncing = syncing.msha ?? false;
 
   async function handleSyncViolations() {
+    if (!canSync) return;
     await triggerMshaSync();
+    log('msha_sync_manual_trigger', {}, { module: 'external_data', tableName: 'external_sync_log' });
     await refetchAbatement();
+  }
+
+  async function handleRefreshMap() {
+    if (!canSync) return;
+    await refreshMap('refresh');
+  }
+
+  async function handleAbatementDetection() {
+    if (!canSync) return;
+    await runAbatementDetection();
   }
 
   const overdue = rows.filter((r) => r.urgency === 'overdue');
@@ -42,8 +59,9 @@ export function MshaCoveragePanel() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void refreshMap('refresh')}
-            disabled={refreshing}
+            onClick={() => void handleRefreshMap()}
+            disabled={refreshing || !canSync}
+            title={canSync ? 'Refresh derived mine→org map' : 'Requires bulk_process permission'}
             className="flex items-center gap-1.5 rounded-lg border border-black/[0.12] px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.05] disabled:opacity-40"
           >
             {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -52,7 +70,8 @@ export function MshaCoveragePanel() {
           <button
             type="button"
             onClick={() => void handleSyncViolations()}
-            disabled={isSyncing}
+            disabled={isSyncing || !canSync}
+            title={canSync ? 'Pull MSHA violations for configured mine IDs' : 'Requires bulk_process permission'}
             className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 hover:bg-amber-500/20 disabled:opacity-40"
           >
             {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -60,8 +79,9 @@ export function MshaCoveragePanel() {
           </button>
           <button
             type="button"
-            onClick={() => void runAbatementDetection()}
-            disabled={detecting}
+            onClick={() => void handleAbatementDetection()}
+            disabled={detecting || !canSync}
+            title={canSync ? 'Run abatement-clock detection' : 'Requires bulk_process permission'}
             className="flex items-center gap-1.5 rounded-lg border border-black/[0.12] px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.05] disabled:opacity-40"
           >
             {detecting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}

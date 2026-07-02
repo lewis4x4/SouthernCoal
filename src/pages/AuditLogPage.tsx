@@ -15,6 +15,12 @@ const ACTION_COLORS: Record<string, string> = {
   matrix_export_markdown: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   audit_log_export_csv: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   coverage_export_csv: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  echo_sync_manual_trigger: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  echo_sync_stale_trigger: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  msha_sync_manual_trigger: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  npdes_federal_mapping_saved: 'bg-emerald-500/10 text-qo-sage-text border-emerald-500/20',
+  npdes_federal_mapping_removed: 'bg-amber-500/10 text-qo-ochre-text border-amber-500/20',
+  bulk_npdes_mapping_import: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_process: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_process_permits: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   bulk_process_lab_data: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
@@ -79,6 +85,12 @@ const ACTION_LABELS: Record<string, string> = {
   permit_limits_imported: 'Permit limits imported',
   netdmr_dmr_imported: 'NetDMR imported',
   sampling_matrix_imported: 'Sampling matrix imported',
+  echo_sync_manual_trigger: 'ECHO full sync',
+  echo_sync_stale_trigger: 'ECHO stale sync',
+  msha_sync_manual_trigger: 'MSHA sync',
+  npdes_federal_mapping_saved: 'NPDES mapping saved',
+  npdes_federal_mapping_removed: 'NPDES mapping removed',
+  bulk_npdes_mapping_import: 'NPDES bulk import',
   matrix_expected_count_changed: 'Matrix expected count',
   field_sync_manual_refresh: 'Field: manual refresh',
   field_visit_completed: 'Field: visit completed',
@@ -137,6 +149,17 @@ const PRESET_UPLOAD_AUDIT_ACTIONS = [
   'command_palette_action',
 ] as const;
 
+/** External data / ECHO / NPDES mapping actions — preset for compliance reviewers. */
+const PRESET_EXTERNAL_DATA_AUDIT_ACTIONS = [
+  'echo_sync_manual_trigger',
+  'echo_sync_stale_trigger',
+  'msha_sync_manual_trigger',
+  'npdes_federal_mapping_saved',
+  'npdes_federal_mapping_removed',
+  'bulk_npdes_mapping_import',
+  'coverage_export_csv',
+] as const;
+
 export function AuditLogPage() {
   const { hasAllowedRole, loading: permissionsLoading } = usePermissions();
   const { log } = useAuditLog();
@@ -186,7 +209,11 @@ export function AuditLogPage() {
   }, [entries]);
 
   const actions = useMemo(() => {
-    const set = new Set<string>([...PRESET_FIELD_AUDIT_ACTIONS, ...PRESET_UPLOAD_AUDIT_ACTIONS]);
+    const set = new Set<string>([
+      ...PRESET_FIELD_AUDIT_ACTIONS,
+      ...PRESET_UPLOAD_AUDIT_ACTIONS,
+      ...PRESET_EXTERNAL_DATA_AUDIT_ACTIONS,
+    ]);
     for (const e of entries) set.add(e.action);
     return Array.from(set).sort();
   }, [entries]);
