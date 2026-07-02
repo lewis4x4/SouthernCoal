@@ -21,7 +21,7 @@ describe('slice1 exceedance seed migration', () => {
   });
 
   it('caps batch limit at 10000', () => {
-    expect(sql).toMatch(/LEAST\(GREATEST\(COALESCE\(p_limit, 5000\), 1\), 10000\)/);
+    expect(sql).toMatch(/LEAST\(GREATEST\(COALESCE\(p_limit, 250\), 1\), 500\)/);
   });
 
   it('ships batch seed script', () => {

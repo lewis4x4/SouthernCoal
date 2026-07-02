@@ -28,7 +28,7 @@ if (!url || !key) {
   process.exit(1);
 }
 
-const batchLimit = arg('--limit', 5000);
+const batchLimit = arg('--limit', 250);
 const batches = arg('--batches', 1);
 
 async function rpc(name, args) {

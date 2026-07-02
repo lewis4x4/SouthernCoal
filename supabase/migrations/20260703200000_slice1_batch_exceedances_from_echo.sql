@@ -4,7 +4,7 @@
 
 CREATE OR REPLACE FUNCTION public.seed_slice1_exceedances_from_echo(
   p_organization_id uuid,
-  p_limit integer DEFAULT 5000
+  p_limit integer DEFAULT 250
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -27,12 +27,15 @@ DECLARE
   v_period text;
   v_dedup_key text;
   v_exists boolean;
+  v_existing_event uuid;
 BEGIN
+  PERFORM set_config('statement_timeout', '120000', true);
+
   IF p_organization_id IS NULL THEN
     RAISE EXCEPTION 'organization_id required';
   END IF;
 
-  v_limit := LEAST(GREATEST(COALESCE(p_limit, 5000), 1), 10000);
+  v_limit := LEAST(GREATEST(COALESCE(p_limit, 250), 1), 500);
 
   IF auth.uid() IS NOT NULL THEN
     v_is_admin := EXISTS (
@@ -117,6 +120,28 @@ BEGIN
       AND ed.monitoring_period_end IS NOT NULL
       AND ed.outfall IS NOT NULL
       AND ed.parameter_code IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM exceedances e
+        JOIN outfalls eo ON eo.id = e.outfall_id
+        JOIN npdes_permits ep ON ep.id = eo.permit_id
+        JOIN parameters epa ON epa.id = e.parameter_id
+        WHERE e.organization_id = p_organization_id
+          AND upper(
+            COALESCE(
+              NULLIF(trim(ep.metadata->>'federal_npdes_id_override'), ''),
+              ep.permit_number
+            )
+          ) = upper(
+            COALESCE(
+              NULLIF(trim(p.metadata->>'federal_npdes_id_override'), ''),
+              p.permit_number
+            )
+          )
+          AND eo.outfall_number = o.outfall_number
+          AND epa.storet_code = pr.storet_code
+          AND to_char(e.sample_date, 'YYYY-MM') = to_char(ed.monitoring_period_end, 'YYYY-MM')
+      )
     ORDER BY
       upper(ed.npdes_id),
       ed.outfall,
@@ -167,24 +192,45 @@ BEGIN
     END IF;
     v_unit := COALESCE(NULLIF(trim(rec.pl_unit), ''), NULLIF(trim(rec.limit_unit), ''), 'mg/L');
 
-    INSERT INTO sampling_events (
-      outfall_id,
-      sample_date,
-      status,
-      field_notes,
-      metadata
-    ) VALUES (
-      rec.outfall_id,
-      rec.monitoring_period_end,
-      'completed',
-      'SYNTHETIC_UAT_SLICE1 — ECHO violation mirror for domain activation',
-      jsonb_build_object(
-        'label', 'SYNTHETIC_UAT_SLICE1',
-        'echo_dmr_id', rec.echo_id,
-        'dedup_key', v_dedup_key
+    SELECT se.id
+    INTO v_existing_event
+    FROM sampling_events se
+    WHERE se.outfall_id = rec.outfall_id
+      AND se.sample_date = rec.monitoring_period_end
+    ORDER BY se.created_at
+    LIMIT 1;
+
+    IF v_existing_event IS NULL THEN
+      INSERT INTO sampling_events (
+        outfall_id,
+        sample_date,
+        status,
+        field_notes,
+        metadata
+      ) VALUES (
+        rec.outfall_id,
+        rec.monitoring_period_end,
+        'validated',
+        'SYNTHETIC_UAT_SLICE1 — ECHO violation mirror for domain activation',
+        jsonb_build_object(
+          'label', 'SYNTHETIC_UAT_SLICE1',
+          'echo_dmr_id', rec.echo_id,
+          'dedup_key', v_dedup_key
+        )
       )
-    )
-    RETURNING id INTO v_event_id;
+      RETURNING id INTO v_event_id;
+    ELSE
+      v_event_id := v_existing_event;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM lab_results lr
+      WHERE lr.sampling_event_id = v_event_id
+        AND lr.parameter_id = rec.parameter_id
+    ) THEN
+      v_skipped_existing := v_skipped_existing + 1;
+      CONTINUE;
+    END IF;
 
     INSERT INTO lab_results (
       sampling_event_id,
