@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatDollars } from '@/lib/format';
 import { PENALTY_CONFIDENCE_LABELS } from '@/lib/penaltyLedger';
 import { usePenaltyLedger } from '@/hooks/usePenaltyLedger';
+import { usePenaltyRegimes } from '@/hooks/usePenaltyRegimes';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PENALTY_LEDGER_SIGNOFF_ROLES } from '@/lib/rbac';
 
@@ -15,8 +16,16 @@ const CONFIDENCE_BADGE: Record<string, string> = {
   mixed: 'bg-black/[0.04] text-text-secondary border-black/[0.08]',
 };
 
+const REGIME_STATUS_BADGE: Record<string, string> = {
+  verified: 'bg-qo-sage/10 text-qo-sage-text border-qo-sage/25',
+  draft: 'bg-qo-ochre/10 text-qo-ochre-text border-qo-ochre/25',
+  not_configured: 'bg-black/[0.04] text-text-muted border-black/[0.08]',
+  disputed: 'bg-red-500/10 text-red-300 border-red-500/25',
+};
+
 export function PenaltyLedgerPage() {
   const { summary, loading, signingOff, error, refetch, signOff } = usePenaltyLedger();
+  const { regimes, loading: regimesLoading, hasVerifiedRegime } = usePenaltyRegimes();
   const { hasAllowedRole } = usePermissions();
   const canSignOff = hasAllowedRole(PENALTY_LEDGER_SIGNOFF_ROLES, 'global');
   const [note, setNote] = useState('');
@@ -65,6 +74,61 @@ export function PenaltyLedgerPage() {
           {error}
         </div>
       )}
+
+      {!regimesLoading && !hasVerifiedRegime && (
+        <div className="rounded-lg border border-qo-ochre/30 bg-qo-ochre/10 px-4 py-3 text-xs text-qo-ochre-text">
+          Coverage sign-off is blocked until at least one penalty regime is marked{' '}
+          <strong>verified</strong> (Consent Decree appendix compilation — task 3.17). Regimes
+          below are seeded as not-configured placeholders.
+        </div>
+      )}
+
+      <div className="rounded-xl border border-black/[0.08] bg-white overflow-hidden shadow-sm">
+        <div className="border-b border-black/[0.06] px-4 py-3">
+          <h3 className="text-sm font-semibold text-text-primary">Penalty regimes (K2 substrate)</h3>
+          <p className="mt-0.5 text-[10px] text-text-muted">
+            Bitemporal rate schedule — EMPTY until counsel verifies CD appendix rates
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-black/[0.02] text-text-muted">
+              <tr>
+                <th className="px-4 py-2 font-medium">Regime</th>
+                <th className="px-4 py-2 font-medium">Citation</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regimes.map((regime) => (
+                <tr key={regime.id} className="border-t border-black/[0.04]">
+                  <td className="px-4 py-3 text-text-primary">{regime.label}</td>
+                  <td className="px-4 py-3 text-text-secondary max-w-md truncate" title={regime.citation}>
+                    {regime.citation}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase',
+                        REGIME_STATUS_BADGE[regime.verification_status] ?? REGIME_STATUS_BADGE.not_configured,
+                      )}
+                    >
+                      {regime.verification_status.replace('_', ' ')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {!regimesLoading && regimes.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-text-muted">
+                    No penalty regimes configured.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-black/[0.08] bg-white p-5 shadow-sm">
@@ -210,7 +274,12 @@ export function PenaltyLedgerPage() {
             <button
               type="button"
               onClick={() => void handleSignOff()}
-              disabled={signingOff || loading}
+              disabled={signingOff || loading || !hasVerifiedRegime}
+              title={
+                !hasVerifiedRegime
+                  ? 'Requires at least one verified penalty_regimes row (task 3.17)'
+                  : undefined
+              }
               className="mt-3 inline-flex items-center gap-2 rounded-lg bg-qo-accent px-4 py-2 text-xs font-medium text-white hover:bg-qo-accent/90 disabled:opacity-50"
             >
               {signingOff ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}

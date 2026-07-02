@@ -984,8 +984,83 @@ const rptWaterQualityTrends = (sb: ReturnType<typeof createClient>, orgIds: stri
   rptPrerequisiteStub(sb, orgIds, cfg, 'Water Quality Trend Analysis');
 const rptExceedanceDetection = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
   rptPrerequisiteStub(sb, orgIds, cfg, 'Exceedance Detection Report');
-const rptSamplingCompleteness = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
-  rptPrerequisiteStub(sb, orgIds, cfg, 'Sampling Completeness Report');
+async function rptSamplingCompleteness(
+  sb: SB,
+  orgIds: string[],
+  cfg: Config,
+): Promise<Result> {
+  const dateFrom = cfg.date_from ?? ninetyDaysAgo();
+  let query = sb
+    .from('sampling_gap_records')
+    .select(
+      `scheduled_date, window_end, days_late, gap_kind, severity, review_status,
+       field_visit_outcome, skip_reason, calendar_status,
+       outfalls(outfall_number, npdes_permits(permit_number)),
+       parameters(name, storet_code)`,
+    )
+    .in('organization_id', orgIds)
+    .gte('scheduled_date', dateFrom.slice(0, 10))
+    .order('scheduled_date', { ascending: false })
+    .limit(MAX_ROWS);
+
+  if (cfg.date_to) {
+    query = query.lte('scheduled_date', cfg.date_to.slice(0, 10));
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const columns = [
+    'Scheduled Date',
+    'Window End',
+    'Permit',
+    'Outfall',
+    'Parameter',
+    'STORET',
+    'Gap Kind',
+    'Severity',
+    'Days Late',
+    'Review Status',
+    'Field Outcome',
+    'Skip Reason',
+  ];
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const outfall = row.outfalls as Record<string, unknown> | null;
+    const permit = outfall?.npdes_permits as Record<string, unknown> | null;
+    const param = row.parameters as Record<string, unknown> | null;
+    return [
+      row.scheduled_date,
+      row.window_end,
+      permit?.permit_number ?? '',
+      outfall?.outfall_number ?? '',
+      param?.name ?? '',
+      param?.storet_code ?? '',
+      row.gap_kind,
+      row.severity,
+      row.days_late,
+      row.review_status,
+      row.field_visit_outcome ?? '',
+      row.skip_reason ?? '',
+    ];
+  });
+
+  const missed = rows.filter((r) => r[6] === 'missed').length;
+  const atRisk = rows.filter((r) => r[6] === 'at_risk').length;
+
+  return {
+    columns,
+    rows,
+    flags: {
+      draft: rows.length === 0,
+      missed_count: missed,
+      at_risk_count: atRisk,
+      message: rows.length === 0
+        ? 'No sampling gaps in range — run calendar gap detection after matrix seed'
+        : undefined,
+    },
+  };
+}
 const rptDmrPreparation = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
   rptPrerequisiteStub(sb, orgIds, cfg, 'DMR Preparation Report');
 const rptExceedanceTrendAnalysis = (sb: ReturnType<typeof createClient>, orgIds: string[], cfg: Config) =>
