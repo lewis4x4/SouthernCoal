@@ -25,8 +25,8 @@ describe('slice1 synthetic limits export ilike filter', () => {
     'utf8',
   );
 
-  it('uses URL-encoded ilike wildcard', () => {
-    expect(script).toContain('ilike.%25SYNTHETIC_UAT_SLICE1%25');
+  it('uses PostgREST ilike wildcard syntax', () => {
+    expect(script).toContain('ilike.*SYNTHETIC_UAT_SLICE1*');
   });
 });
 

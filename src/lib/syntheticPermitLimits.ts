@@ -27,8 +27,8 @@ interface LimitQueryRow {
   npdes_permits: { permit_number: string } | { permit_number: string }[] | null;
   outfalls: { outfall_number: string } | { outfall_number: string }[] | null;
   parameters:
-    | { name: string; parameter_code: string | null }
-    | { name: string; parameter_code: string | null }[]
+    | { name: string; storet_code: string | null }
+    | { name: string; storet_code: string | null }[]
     | null;
 }
 
@@ -46,7 +46,7 @@ export function mapSyntheticLimitRows(data: LimitQueryRow[]): SyntheticPermitLim
       id: row.id,
       permit_number: permit?.permit_number ?? '',
       outfall_number: outfall?.outfall_number ?? '',
-      parameter_code: parameter?.parameter_code ?? '',
+      parameter_code: parameter?.storet_code ?? '',
       parameter_name: parameter?.name ?? '',
       limit_type: row.limit_type,
       limit_value: row.limit_value,
@@ -107,4 +107,4 @@ export function downloadSyntheticLimitsCsv(rows: SyntheticPermitLimitRow[], file
 export const SYNTHETIC_LIMIT_NOTES_FILTER = 'SYNTHETIC_UAT_SLICE1';
 
 export const SYNTHETIC_LIMIT_SELECT =
-  'id, limit_type, limit_value, unit, review_status, npdes_permits(permit_number), outfalls(outfall_number), parameters(name, parameter_code)';
+  'id, limit_type, limit_value, unit, review_status, npdes_permits(permit_number), outfalls(outfall_number), parameters(name, storet_code)';

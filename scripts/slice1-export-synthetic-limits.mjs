@@ -26,9 +26,9 @@ function csvEscape(value) {
 async function fetchLimits() {
   const query = new URLSearchParams({
     select:
-      'limit_type,limit_value,unit,review_status,npdes_permits!inner(permit_number,organization_id),outfalls(outfall_number),parameters(name,parameter_code)',
+      'limit_type,limit_value,unit,review_status,npdes_permits!inner(permit_number,organization_id),outfalls(outfall_number),parameters(name,storet_code)',
     'npdes_permits.organization_id': `eq.${SCC_ORG}`,
-    condition_notes: 'ilike.%25SYNTHETIC_UAT_SLICE1%25',
+    condition_notes: 'ilike.*SYNTHETIC_UAT_SLICE1*',
     limit: '2000',
     order: 'review_status.asc',
   });
@@ -51,7 +51,7 @@ async function main() {
     return [
       permit,
       outfall,
-      param.parameter_code ?? '',
+      param.storet_code ?? '',
       param.name ?? '',
       row.limit_type,
       row.limit_value ?? '',
