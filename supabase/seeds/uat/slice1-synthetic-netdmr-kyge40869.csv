@@ -1,0 +1,2 @@
+Permit Number,Permit Name,Outfall,Monitoring Period Start,Monitoring Period End,Parameter Code,Parameter Description,Statistical Base Code,Limit Value,Limit Unit,DMR Value,DMR Unit,NODI Code,Number of Excursions,Exceedance Percent
+KYGE40869,SYNTHETIC UAT SLICE1 — NOT REGULATORY DATA,001,01/01/2026,01/31/2026,00530,Total Suspended Solids,03,70,mg/L,12.5,mg/L,,0,0
