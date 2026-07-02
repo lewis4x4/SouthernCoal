@@ -22,6 +22,15 @@ describe('slice2 DMR loop hardening migration', () => {
     expect(sql).toContain('conversion_warnings');
   });
 
+  it('allows service role when caller org is null', () => {
+    expect(sql).toContain('v_caller_org IS NOT NULL AND v_submission_org IS DISTINCT FROM v_caller_org');
+  });
+
+  it('guards no_discharge with nested IF (PL/pgSQL does not short-circuit AND)', () => {
+    expect(sql).not.toMatch(/IF v_modern_schema AND COALESCE\(v_submission\.no_discharge/);
+    expect(sql).toMatch(/IF v_modern_schema THEN[\s\S]*IF COALESCE\(v_submission\.no_discharge/);
+  });
+
   it('does not deploy half-MDL body', () => {
     expect(sql).not.toContain('v_nd_factor');
     expect(sql).not.toContain('non_detect_substituted');
