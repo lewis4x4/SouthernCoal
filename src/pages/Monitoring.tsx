@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Activity, RefreshCw, Bell, Loader2 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useExceedanceAlerts } from '@/hooks/useExceedanceAlerts';
+import { useStatutoryAlertAcks } from '@/hooks/useStatutoryAlertAcks';
 import { ExceedanceAlertRulesPanel } from '@/components/monitoring/ExceedanceAlertRulesPanel';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { SummaryCards, SeverityBreakdown } from '@/components/monitoring/SummaryCards';
@@ -17,6 +18,7 @@ export function Monitoring() {
   const { can } = usePermissions();
   const canAlert = can('bulk_process');
   const { dispatching: alerting, dispatchDryRun, dispatchDigest } = useExceedanceAlerts();
+  const statutoryAcks = useStatutoryAlertAcks();
 
   // Convert store filters to hook filters
   const hookFilters = useMemo(() => ({
@@ -92,6 +94,11 @@ export function Monitoring() {
             <h1 className="text-2xl font-bold tracking-tight">Real-Time Monitoring</h1>
             <p className="text-sm text-muted-foreground">
               Track permit limit exceedances and compliance status
+              {statutoryAcks.unacknowledgedCount > 0 && (
+                <span className="ml-2 text-qo-ochre-text">
+                  · {statutoryAcks.unacknowledgedCount} statutory alert(s) need acknowledgment
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -156,6 +163,14 @@ export function Monitoring() {
                 onAcknowledge={handleAcknowledge}
                 onResolve={handleResolve}
                 onMarkFalsePositive={handleMarkFalsePositive}
+                isStatutoryUnacknowledged={(id) =>
+                  statutoryAcks.isUnacknowledged('exceedance_digest', id)
+                }
+                isStatutoryAcknowledging={(id) =>
+                  statutoryAcks.isAcknowledging('exceedance_digest', id)
+                }
+                statutoryAckLoading={statutoryAcks.loading}
+                onStatutoryAck={(id) => statutoryAcks.acknowledge('exceedance_digest', id)}
               />
             </div>
           </SpotlightCard>

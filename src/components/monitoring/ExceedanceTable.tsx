@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle, CheckCircle, Eye, XCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ExceedanceWithRelations, ExceedanceSeverity, ExceedanceStatus } from '@/types';
+import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
 
 interface ExceedanceTableProps {
   exceedances: ExceedanceWithRelations[];
@@ -9,6 +10,10 @@ interface ExceedanceTableProps {
   onAcknowledge?: (id: string) => void;
   onResolve?: (id: string) => void;
   onMarkFalsePositive?: (id: string) => void;
+  isStatutoryUnacknowledged?: (id: string) => boolean;
+  onStatutoryAck?: (id: string) => void | Promise<unknown>;
+  isStatutoryAcknowledging?: (id: string) => boolean;
+  statutoryAckLoading?: boolean;
 }
 
 const SEVERITY_CONFIG: Record<ExceedanceSeverity, { label: string; color: string; icon: typeof AlertTriangle }> = {
@@ -77,6 +82,10 @@ export function ExceedanceTable({
   onAcknowledge,
   onResolve,
   onMarkFalsePositive,
+  isStatutoryUnacknowledged,
+  onStatutoryAck,
+  isStatutoryAcknowledging,
+  statutoryAckLoading,
 }: ExceedanceTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -187,6 +196,15 @@ export function ExceedanceTable({
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      {onStatutoryAck && (
+                        <StatutoryAckButton
+                          compact
+                          needsAck={isStatutoryUnacknowledged?.(exceedance.id) ?? false}
+                          acknowledging={isStatutoryAcknowledging?.(exceedance.id) ?? false}
+                          loading={statutoryAckLoading}
+                          onAck={() => onStatutoryAck(exceedance.id)}
+                        />
+                      )}
                       {exceedance.status === 'open' && onAcknowledge && (
                         <button
                           className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors"
