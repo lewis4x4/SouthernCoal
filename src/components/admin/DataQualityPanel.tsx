@@ -87,10 +87,10 @@ export function DataQualityPanel() {
     };
     const newValues = buildNpdesPermitDispositionUpdate(resolution);
 
-    const { error } = await supabase
-      .from('npdes_permits')
-      .update(newValues)
-      .eq('id', permit.id);
+    const { error } = await supabase.rpc('update_npdes_permit_administrative_disposition', {
+      p_permit_id: permit.id,
+      p_resolution: resolution,
+    });
 
     if (error) {
       toast.error(`Failed to update ${permit.permit_number}: ${error.message}`);

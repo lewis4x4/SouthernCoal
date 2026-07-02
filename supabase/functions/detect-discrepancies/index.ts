@@ -5,6 +5,7 @@ import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/aut
 import { triggerInternalEdgeFunction } from "../_shared/internal-dispatch.ts";
 import { evaluateMshaCitations, type MshaCitationInput } from "../_shared/msha-discrepancy-rules.ts";
 import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
+import { permitStatusesSemanticallyMatch } from "../_shared/echoPermitStatusMap.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -247,10 +248,14 @@ async function detectEchoDiscrepancies(
     const internalPermit = permitByNpdes.get(String(facility.npdes_id).toUpperCase());
 
     if (internalPermit && facility.permit_status) {
-      const extStatus = String(facility.permit_status).toLowerCase().trim();
       const intStatus = String(internalPermit.status || "").toLowerCase().trim();
+      const extStatus = String(facility.permit_status).toLowerCase().trim();
 
-      if (extStatus && intStatus && extStatus !== intStatus) {
+      if (
+        extStatus &&
+        intStatus &&
+        !permitStatusesSemanticallyMatch(internalPermit.status, facility.permit_status)
+      ) {
         discrepancies.push({
           organization_id: orgId,
           npdes_id: facility.npdes_id,

@@ -11,6 +11,7 @@ import {
   hasOrgScopedDuplicate,
   isOrgScopedDedupViolation,
 } from '@/lib/uploadDedup';
+import { assertSafeUploadStoragePath } from '@/lib/uploadStoragePath';
 import type { StagedFile } from '@/types/upload';
 import type { QueueEntry } from '@/types/queue';
 
@@ -92,9 +93,6 @@ export function useFileUpload() {
   /**
    * Check for duplicate file hash in the queue (org-scoped).
    * RLS also scopes reads to the user's organization.
-   *
-   * TODO: MULTI-TENANT — when onboarding a second customer, verify storage path
-   * prefixes and dedup keys remain org-scoped end-to-end (not just queue rows).
    */
   async function checkDuplicate(
     fileHash: string,
@@ -191,6 +189,7 @@ export function useFileUpload() {
           fileName: stagedFile.fileName,
           hashPrefix,
         });
+        assertSafeUploadStoragePath(storagePath, userProfile.organization_id);
 
         // 6. Upload to Supabase Storage
         uploadStore.setStatus(stagedFile.id, 'uploading');

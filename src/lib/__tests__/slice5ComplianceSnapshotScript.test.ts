@@ -10,7 +10,9 @@ describe('slice5 compliance snapshot validate script', () => {
 
   it('generates snapshot and compares permit/outfall counts', () => {
     expect(script).toContain('generate_compliance_snapshot');
+    expect(script).toContain('get_upload_dashboard_domain_stats');
     expect(script).toContain('compliance_snapshots');
     expect(script).toContain('total_permits');
+    expect(script).not.toContain('select id from sites');
   });
 });

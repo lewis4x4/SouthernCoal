@@ -16,6 +16,18 @@ describe('status mismatch permit status RPC', () => {
   });
 });
 
+describe('align permit status RPC hardening (canonical)', () => {
+  const hardened = readFileSync(
+    resolve(process.cwd(), 'supabase/migrations/20260703310000_security_definer_rpc_auth_hardening.sql'),
+    'utf8',
+  );
+
+  it('requires auth on align_npdes_permit_status_from_echo', () => {
+    expect(hardened).toContain('Authentication required');
+    expect(hardened).not.toMatch(/AND\s*\(\s*auth\.uid\(\)\s+IS\s+NULL\s+OR/);
+  });
+});
+
 describe('DiscrepancyDetailPanel align status', () => {
   const detail = readFileSync(
     resolve(process.cwd(), 'src/components/review-queue/DiscrepancyDetailPanel.tsx'),

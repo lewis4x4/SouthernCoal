@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   mapEchoPermitStatusToInternal,
   statusMismatchNeedsInternalUpdate,
@@ -9,7 +8,6 @@ import {
 
 export function useAlignPermitStatusFromEcho() {
   const [busy, setBusy] = useState(false);
-  const { log } = useAuditLog();
 
   const alignStatus = useCallback(
     async (permitId: string, echoStatus: string, reviewNotes?: string) => {
@@ -30,15 +28,9 @@ export function useAlignPermitStatusFromEcho() {
         return { ok: false as const, error: error.message };
       }
 
-      void log(
-        'permit_status_aligned_from_echo',
-        { permit_id: permitId, echo_status: echoStatus, new_status: mapped },
-        { module: 'external_data', tableName: 'npdes_permits', recordId: permitId },
-      );
-
       return { ok: true as const, newStatus: mapped as NpdesPermitStatus, row: data };
     },
-    [log],
+    [],
   );
 
   return { alignStatus, busy, needsUpdate: statusMismatchNeedsInternalUpdate };

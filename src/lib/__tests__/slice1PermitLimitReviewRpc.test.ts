@@ -19,6 +19,15 @@ describe('permit limit review status RPC', () => {
   });
 });
 
+describe('security definer RPC hardening (canonical)', () => {
+  const hardened = readMigration('20260703310000_security_definer_rpc_auth_hardening.sql');
+
+  it('removes auth.uid() IS NULL bypass from permit limit review RPC', () => {
+    expect(hardened).toContain('update_permit_limit_review_status');
+    expect(hardened).not.toMatch(/AND\s*\(\s*auth\.uid\(\)\s+IS\s+NULL\s+OR/);
+  });
+});
+
 describe('SyntheticLimitReviewPanel', () => {
   const panel = readFileSync(
     resolve(process.cwd(), 'src/components/external-data/SyntheticLimitReviewPanel.tsx'),

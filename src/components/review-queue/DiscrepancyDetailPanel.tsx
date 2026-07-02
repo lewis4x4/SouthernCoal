@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
@@ -65,6 +65,17 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   const [dismissReason, setDismissReason] = useState('');
   const [showDismiss, setShowDismiss] = useState(false);
   const [busy, setBusy] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const [customDismissText, setCustomDismissText] = useState('');
   const dismissReasons =
@@ -110,17 +121,28 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-black/[0.08] bg-white  shadow-2xl overflow-y-auto">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="discrepancy-detail-title"
+      className="fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-black/[0.08] bg-white  shadow-2xl overflow-y-auto"
+    >
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/[0.06] bg-white80  px-6 py-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-text-primary">Discrepancy Detail</h3>
+          <h3 id="discrepancy-detail-title" className="text-sm font-semibold text-text-primary">
+            Discrepancy Detail
+          </h3>
           <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', SEVERITY_BADGE[d.severity])}>
             {d.severity}
           </span>
         </div>
         <button
+          ref={closeButtonRef}
+          type="button"
           onClick={onClose}
+          aria-label="Close discrepancy detail"
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary"
         >
           <X size={16} />

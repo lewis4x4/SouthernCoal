@@ -37,7 +37,7 @@ async function rpc(name, body) {
   return text ? JSON.parse(text) : null;
 }
 
-async function count(table, filter = '') {
+async function headCount(table, filter) {
   const res = await fetch(`${url}/rest/v1/${table}?select=id&${filter}`, {
     headers: { ...headers, Prefer: 'count=exact' },
   });
@@ -45,6 +45,36 @@ async function count(table, filter = '') {
   const range = res.headers.get('content-range') ?? '';
   const total = range.split('/')[1];
   return Number(total ?? 0);
+}
+
+async function fetchAllPermitIds(orgId) {
+  const ids = [];
+  let offset = 0;
+  const page = 1000;
+  while (true) {
+    const res = await fetch(
+      `${url}/rest/v1/npdes_permits?select=id&organization_id=eq.${orgId}&limit=${page}&offset=${offset}`,
+      { headers },
+    );
+    if (!res.ok) throw new Error(`npdes_permits: ${res.status} ${await res.text()}`);
+    const batch = await res.json();
+    ids.push(...batch.map((row) => row.id));
+    if (batch.length < page) break;
+    offset += page;
+  }
+  return ids;
+}
+
+async function countOutfallsForPermits(permitIds, activeOnly) {
+  if (permitIds.length === 0) return 0;
+  let total = 0;
+  for (let i = 0; i < permitIds.length; i += 80) {
+    const chunk = permitIds.slice(i, i + 80);
+    let filter = `permit_id=in.(${chunk.join(',')})`;
+    if (activeOnly) filter += '&is_active=eq.true';
+    total += await headCount('outfalls', filter);
+  }
+  return total;
 }
 
 async function main() {
@@ -59,18 +89,30 @@ async function main() {
     `${url}/rest/v1/compliance_snapshots?select=total_permits,active_permits,total_outfalls,active_outfalls,dmr_submissions_due,compliance_score,snapshot_date&organization_id=eq.${SCC_ORG}&order=snapshot_date.desc&limit=1`,
     { headers },
   );
+  if (!snapRes.ok) throw new Error(`compliance_snapshots: ${snapRes.status} ${await snapRes.text()}`);
   const [snapshot] = await snapRes.json();
 
-  const [permits, outfalls] = await Promise.all([
-    count('npdes_permits', `organization_id=eq.${SCC_ORG}`),
-    count('outfalls', `site_id=in.(select id from sites where organization_id=eq.${SCC_ORG})`),
+  const stats = await rpc('get_upload_dashboard_domain_stats', {
+    p_organization_id: SCC_ORG,
+  });
+
+  const [activePermits, allPermitIds] = await Promise.all([
+    headCount('npdes_permits', `organization_id=eq.${SCC_ORG}&status=eq.active`),
+    fetchAllPermitIds(SCC_ORG),
   ]);
 
+  const [rawOutfalls, activeOutfalls] = await Promise.all([
+    countOutfallsForPermits(allPermitIds, false),
+    countOutfallsForPermits(allPermitIds, true),
+  ]);
+
+  const rawPermits = stats?.total_permits ?? allPermitIds.length;
+
   const rows = [
-    ['total_permits', snapshot?.total_permits, permits],
-    ['active_permits', snapshot?.active_permits, permits],
-    ['total_outfalls', snapshot?.total_outfalls, outfalls],
-    ['active_outfalls', snapshot?.active_outfalls, outfalls],
+    ['total_permits', snapshot?.total_permits, rawPermits],
+    ['active_permits', snapshot?.active_permits, activePermits],
+    ['total_outfalls', snapshot?.total_outfalls, rawOutfalls],
+    ['active_outfalls', snapshot?.active_outfalls, activeOutfalls],
   ];
 
   const md = `# Slice 5 — compliance snapshot validation

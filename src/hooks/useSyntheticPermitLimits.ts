@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   downloadSyntheticLimitsCsv,
   mapSyntheticLimitRows,
@@ -15,7 +14,6 @@ export function useSyntheticPermitLimits() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const { log } = useAuditLog();
 
   const fetchRows = useCallback(async (unverifiedOnly = true) => {
     setLoading(true);
@@ -83,15 +81,9 @@ export function useSyntheticPermitLimits() {
         prev.map((row) => (row.id === limitId ? { ...row, review_status: status } : row)),
       );
 
-      void log(
-        'permit_limit_review_updated',
-        { limit_id: limitId, review_status: status },
-        { module: 'external_data', tableName: 'permit_limits', recordId: limitId },
-      );
-
       return { ok: true as const };
     },
-    [log],
+    [],
   );
 
   return {

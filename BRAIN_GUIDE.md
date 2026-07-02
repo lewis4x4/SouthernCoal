@@ -59,7 +59,7 @@ npm run dev          # local dev server
 npm run build        # production build
 npm run typecheck    # TypeScript
 npm run lint         # ESLint (tsconfigRootDir pinned in eslint.config.js)
-npm test             # Vitest (301+ tests)
+npm test             # Vitest (555+ tests)
 npm run qa:lane-a-staging   # Lane A M1+M2 automated gate + manual sign-off reminder
 npm run qa:lane-a-m1 # Lane A M1 automated gate (A1–A6 Vitest map)
 npm run qa:lane-a-m2 # Lane A M2 automated gate (B1–B5 Vitest map)
