@@ -357,11 +357,15 @@ export function useDmrSubmissions() {
     }
 
     const result = data as DmrCalculationResult;
-    await supabase.rpc('apply_dmr_mass_loading_for_submission', {
-      p_submission_id: submissionId,
-    });
+    const { data: massUpdated, error: massError } = await supabase.rpc(
+      'apply_dmr_mass_loading_for_submission',
+      { p_submission_id: submissionId },
+    );
     if (result.populated && result.populated > 0) {
       toast.success(`Populated ${result.populated} of ${result.line_count} line items`);
+      if (!massError && typeof massUpdated === 'number' && massUpdated > 0) {
+        toast.success(`Calculated mass loading for ${massUpdated} quantity-type line(s)`);
+      }
       if (result.conversion_warnings && result.conversion_warnings > 0) {
         toast.warning(
           `${result.conversion_warnings} line item(s) have missing unit conversions — review before submit`,
