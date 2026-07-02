@@ -278,14 +278,26 @@ export function ComplianceDashboardPage() {
                   value: `$${latestSnapshot.total_penalties.toLocaleString()}`,
                   icon: AlertTriangle,
                   color: latestSnapshot.total_penalties > 0 ? 'text-qo-risk' : 'text-qo-sage-text',
+                  href: '/compliance/penalty-ledger',
                 },
-              ].map(({ label, value, sub, icon: Icon, color }) => (
+              ].map(({ label, value, sub, icon: Icon, color, href }) => (
+                href ? (
+                  <Link key={label} to={href} className="block">
+                    <SpotlightCard className="p-3 transition-colors hover:border-qo-accent/30">
+                      <Icon className={clsx('w-4 h-4 mb-1', color)} />
+                      <div className={clsx('text-xl font-bold', color)}>{value}</div>
+                      <div className="text-xs text-text-secondary">{label}</div>
+                      {sub && <div className="text-xs text-text-secondary mt-0.5">{sub}</div>}
+                    </SpotlightCard>
+                  </Link>
+                ) : (
                 <SpotlightCard key={label} className="p-3">
                   <Icon className={clsx('w-4 h-4 mb-1', color)} />
                   <div className={clsx('text-xl font-bold', color)}>{value}</div>
                   <div className="text-xs text-text-secondary">{label}</div>
                   {sub && <div className="text-xs text-text-secondary mt-0.5">{sub}</div>}
                 </SpotlightCard>
+                )
               ))}
             </div>
           </div>

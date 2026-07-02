@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DollarSign, Download, Loader2, RefreshCw, Scale, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { formatDollars } from '@/lib/format';
 import { PENALTY_CONFIDENCE_LABELS, getPenaltySourceLink } from '@/lib/penaltyLedger';
@@ -73,7 +74,17 @@ export function PenaltyLedgerPage() {
   }
 
   async function handleSignOff() {
-    await signOff(note);
+    const result = await signOff(note);
+    if (!result) {
+      toast.error('Coverage review not recorded — check penalty regime verification (task 3.17)');
+      return;
+    }
+    log(
+      'penalty_ledger_coverage_review',
+      { draft_combined: combinedTotal, note: note.trim() || null },
+      { module: 'compliance', tableName: 'penalty_ledger_verifications' },
+    );
+    toast.success('Draft ledger coverage review recorded');
     setNote('');
   }
 
