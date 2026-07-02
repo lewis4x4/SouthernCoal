@@ -1,7 +1,7 @@
 # Slice 1 — activation gap report
 
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`  
-**Generated:** 2026-07-02T22:57:52.257Z
+**Generated:** 2026-07-02T23:00:28.589Z
 
 ## Funnel (distinct npdes:outfall:parameter keys)
 
@@ -17,8 +17,8 @@
 
 | Metric | Count |
 |--------|------:|
-| `slice1_echo_mirror_keys` | 15164 |
-| Pending `missing_internal` | 144655 |
+| `slice1_echo_mirror_keys` | 15179 |
+| Pending `missing_internal` | 144649 |
 | Permits without federal override | 32 |
 
 ## Interpretation
@@ -52,9 +52,9 @@
     "has_permit_limit": 2441,
     "distinct_violation_keys": 13199
   },
-  "mirror_keys": 15164,
+  "mirror_keys": 15179,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
-  "pending_missing_internal": 144655,
+  "pending_missing_internal": 144649,
   "top_permits_missing_limits": [
     {
       "npdes_id": "KYGE40869",
