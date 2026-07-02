@@ -7,6 +7,22 @@ import { useQueueStore } from '@/stores/queue';
 
 const ARCHIVE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-compliance-archive`;
 
+const UPLOAD_AUDIT_ENTITY = {
+  module: 'upload_dashboard',
+  tableName: 'file_processing_queue',
+} as const;
+
+function archiveSuccessMessage(fileCategory: string, fileName: string): string {
+  switch (fileCategory) {
+    case 'sampling_matrix':
+      return `Indexed ${fileName} — calendar row import is manual until matrix parser ships; review on Field Schedule.`;
+    case 'consent_decree':
+      return `Indexed ${fileName} — link obligations on the Consent Decree page after counsel review.`;
+    default:
+      return `Indexed ${fileName} for search`;
+  }
+}
+
 async function invokeArchiveProcessor(queueId: string): Promise<void> {
   const token = await getFreshToken();
   const controller = new AbortController();
@@ -33,7 +49,8 @@ async function invokeArchiveProcessor(queueId: string): Promise<void> {
 }
 
 /**
- * Archive document processing — field inspections, quarterly/audit reports, enforcement.
+ * Archive document processing — field inspections, quarterly/audit reports, enforcement,
+ * and outreach docs (sampling matrix, consent decree).
  * Marks queue rows parsed and triggers embedding generation via Realtime hook.
  */
 export function useArchiveDocumentProcessing() {
@@ -56,12 +73,15 @@ export function useArchiveDocumentProcessing() {
 
     try {
       await invokeArchiveProcessor(queueId);
-      log('bulk_process', {
-        action: 'compliance_archive_processed',
-        queue_id: queueId,
-        file_name: entry.file_name,
-        file_category: entry.file_category,
-      });
+      log(
+        'compliance_archive_processed',
+        {
+          queue_id: queueId,
+          file_name: entry.file_name,
+          file_category: entry.file_category,
+        },
+        { ...UPLOAD_AUDIT_ENTITY, recordId: queueId },
+      );
 
       const { data: freshEntry } = await supabase
         .from('file_processing_queue')
@@ -73,7 +93,7 @@ export function useArchiveDocumentProcessing() {
         useQueueStore.getState().upsertEntry(freshEntry);
       }
 
-      toast.success(`Indexed ${entry.file_name} for search`);
+      toast.success(archiveSuccessMessage(entry.file_category, entry.file_name));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Processing failed';
       toast.error(`Failed to process ${entry.file_name}: ${message}`);

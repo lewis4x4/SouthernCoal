@@ -146,12 +146,11 @@ serve(async (req: Request) => {
   await supabase.from("audit_log").insert({
     user_id: auth.userId,
     organization_id: auth.organizationId,
-    action: "bulk_process",
+    action: "compliance_archive_processed",
     module: "upload_dashboard",
     table_name: "file_processing_queue",
     record_id: queueId,
     description: JSON.stringify({
-      action_type: "compliance_archive_processed",
       file_name: entry.file_name,
       file_category: entry.file_category,
     }),

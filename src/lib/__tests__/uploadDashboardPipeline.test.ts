@@ -6,6 +6,7 @@ import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
 import { validateFile } from '@/lib/file-validation';
 import {
   canProcessQueueEntry,
+  isArchiveDocumentCategory,
   resolveQueueParser,
 } from '@/lib/queueProcessorRouting';
 import type { QueueEntry } from '@/types/queue';
@@ -108,6 +109,25 @@ describe('upload dashboard category mapping', () => {
     expect(dbKeys.has('consent_decree')).toBe(true);
     expect(dbKeys.has('sampling_matrix')).toBe(true);
     expect(CATEGORIES.length).toBeGreaterThanOrEqual(11);
+  });
+
+  it('treats all archive-routed categories as archive documents', () => {
+    for (const fileCategory of [
+      'field_inspection',
+      'water_monitoring',
+      'consent_decree',
+      'sampling_matrix',
+      'quarterly_report',
+      'audit_report',
+      'enforcement',
+    ] as const) {
+      expect(isArchiveDocumentCategory(fileCategory)).toBe(true);
+      const entry = queueEntry({
+        file_category: fileCategory,
+        storage_bucket: CATEGORY_BY_DB_KEY[fileCategory]?.bucket ?? 'other',
+      });
+      expect(resolveQueueParser(entry).kind).toBe('compliance_archive');
+    }
   });
 });
 

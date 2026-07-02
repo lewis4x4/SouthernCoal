@@ -14,6 +14,7 @@ type AuditAction =
   | 'bulk_retry'
   | 'process_queued'
   | 'retry_queued'
+  | 'compliance_archive_processed'
   | 'matrix_expected_count_changed'
   | 'staging_clear_all'
   | 'command_palette_action'
