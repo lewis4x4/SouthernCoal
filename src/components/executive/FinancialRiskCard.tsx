@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatDollars } from '@/lib/format';
 import { MONTH_ABBR } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
+import { parsePenaltyLedgerSummary } from '@/lib/penaltyLedger';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLiveProgramScope } from '@/hooks/useLiveProgramScope';
 import { ftsMonthlyTotalInScope } from '@/lib/liveProgramScope';
@@ -37,10 +38,12 @@ export function FinancialRiskCard() {
     total: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [draftCombined, setDraftCombined] = useState<number | null>(null);
 
   useEffect(() => {
     if (!orgId) {
       setMonthlyTotals([]);
+      setDraftCombined(null);
       setLoading(false);
       return;
     }
@@ -49,7 +52,7 @@ export function FinancialRiskCard() {
 
     async function fetchData() {
       try {
-        const [ftsRes, obligRes] = await Promise.all([
+        const [ftsRes, obligRes, ledgerRes] = await Promise.all([
           supabase
             .from('fts_monthly_totals')
             .select('*')
@@ -76,12 +79,14 @@ export function FinancialRiskCard() {
 
             return scoped;
           })(),
+          supabase.rpc('get_penalty_ledger_summary'),
         ]);
 
         if (cancelled) return;
 
         if (ftsRes.error || obligRes.error) {
           setMonthlyTotals([]);
+          setDraftCombined(null);
           setObligations({
             tier1: { count: 0, amount: 0 },
             tier2: { count: 0, amount: 0 },
@@ -92,6 +97,9 @@ export function FinancialRiskCard() {
         }
 
         if (ftsRes.data) setMonthlyTotals(ftsRes.data.filter((row) => ftsMonthlyTotalInScope(row, scope)));
+
+        const ledger = parsePenaltyLedgerSummary(ledgerRes.data);
+        setDraftCombined(ledger && !ledger.error ? ledger.totals.draft_combined : null);
 
         if (obligRes.data) {
           const tier1: ObligationTier = { count: 0, amount: 0 };
@@ -116,6 +124,7 @@ export function FinancialRiskCard() {
       } catch {
         if (!cancelled) {
           setMonthlyTotals([]);
+          setDraftCombined(null);
           setObligations({
             tier1: { count: 0, amount: 0 },
             tier2: { count: 0, amount: 0 },
@@ -292,27 +301,60 @@ export function FinancialRiskCard() {
             </div>
           )}
 
+          {/* Draft combined ledger (K2) */}
+          {draftCombined != null && draftCombined > 0 && (
+            <div className="rounded-lg border border-qo-risk/20 bg-qo-risk/5 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">Draft combined exposure</span>
+                <span className="text-lg font-bold text-qo-risk font-mono">
+                  {formatDollars(draftCombined)}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-text-muted">
+                FTS + gaps + obligations + violations — not verified for external use
+              </p>
+            </div>
+          )}
+
           {/* Link to FTS Page */}
-          <Link
-            to="/compliance/failure-to-sample"
-            className="flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
-          >
-            View Full Penalty Breakdown
-            <ChevronRight size={14} />
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              to="/compliance/failure-to-sample"
+              className="flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
+            >
+              View FTS Penalty Breakdown
+              <ChevronRight size={14} />
+            </Link>
+            <Link
+              to="/compliance/penalty-ledger"
+              className="flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
+            >
+              View Combined Draft Ledger
+              <ChevronRight size={14} />
+            </Link>
+          </div>
         </div>
       ) : (
         /* No FTS data — show original consent decree view */
         <div className="space-y-4">
           <div className="text-4xl font-bold text-text-primary">
-            {formatDollars(obligations.total)}
+            {formatDollars(draftCombined ?? obligations.total)}
           </div>
-          <div className="mt-1 text-sm text-text-muted">Total Accrued Penalties</div>
+          <div className="mt-1 text-sm text-text-muted">
+            {draftCombined != null ? 'Draft Combined Exposure' : 'Total Accrued Penalties'}
+          </div>
           <div className="space-y-2.5">
             <TierRow label="Tier 1 (1–14 days)" color="yellow" tier={obligations.tier1} />
             <TierRow label="Tier 2 (15–30 days)" color="orange" tier={obligations.tier2} />
             <TierRow label="Tier 3 (31+ days)" color="red" tier={obligations.tier3} />
           </div>
+          <Link
+            to="/compliance/penalty-ledger"
+            className="flex items-center justify-center gap-2 rounded-lg border border-black/[0.06] bg-qo-nested py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-text-primary"
+          >
+            View Combined Draft Ledger
+            <ChevronRight size={14} />
+          </Link>
         </div>
       )}
     </div>
