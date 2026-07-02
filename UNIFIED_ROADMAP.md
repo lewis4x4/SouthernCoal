@@ -287,8 +287,8 @@ Evidence capture for portal submissions, change log UI, access control hardening
 | **3.32** | Justice EDD parser Edge Function | 1.24, 2.62, 2.63 | AI | not_started |
 | **3.33** | DMR submission pipeline (dmr_submissions + dmr_line_items) | 3.32, 1.29 | AI | not_started |
 | **3.34** | Wire parsers into Upload Dashboard flow | 3.01, 3.32 | AI | not_started |
-| **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | not_started |
-| **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | not_started |
+| **3.35** | Full discrepancy detection re-run (all 3 rules with real data) | 3.32, 3.33 | AI | **PARTIAL** — batched per-permit detect shipped; full org loop pending |
+| **3.36** | Triage initial discrepancies through Review Queue | 3.35 | both | in_progress |
 | **3.37** | ECHO sync coverage panel | — | AI | not_started |
 | **3.38** | Manual VA NPDES ID override flow (DMLR → NPDES mapping) | — | AI | not_started |
 | **3.39** | Obtain MSHA mine ID mapping | — | Brian | **BLOCKED** |
@@ -304,9 +304,9 @@ Evidence capture for portal submissions, change log UI, access control hardening
 
 | Task | Description | Depends On | Owner | Status |
 |------|-------------|-----------|-------|--------|
-| **3.43** | DiscrepancyTable virtualization (@tanstack/react-virtual) | 3.35 | AI | not_started |
-| **3.44** | reviewed_by tracking on discrepancy actions | — | AI | not_started |
-| **3.45** | Split loading states in useExternalData | — | AI | not_started |
+| **3.43** | DiscrepancyTable virtualization (@tanstack/react-virtual) | 3.35 | AI | **COMPLETE** |
+| **3.44** | reviewed_by tracking on discrepancy actions | — | AI | **COMPLETE** |
+| **3.45** | Split loading states in useExternalData | — | AI | **COMPLETE** |
 | **3.46** | RBAC on sync/resolve action buttons | 3.01 | AI | not_started |
 | **3.47** | Realtime subscription for sync_log changes | — | AI | not_started |
 | **3.48** | MSHA dedup index | 3.40 | AI | not_started |

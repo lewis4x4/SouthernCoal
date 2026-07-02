@@ -24,6 +24,8 @@ export function ReviewQueuePage() {
     counts,
     pendingCount,
     escalatedCount,
+    filteredTotal,
+    truncated,
     refetch,
     updateStatus,
     bulkMarkReviewed,
@@ -265,6 +267,13 @@ export function ReviewQueuePage() {
       )}
 
       {canRunEchoSync && <ComplianceAlertRulesPanel />}
+
+      {truncated && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-text-secondary">
+          Showing {rows.length.toLocaleString()} of {filteredTotal.toLocaleString()} matching rows.
+          Add severity, source, or type filters to narrow the queue, or change status to reviewed/escalated.
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-4">

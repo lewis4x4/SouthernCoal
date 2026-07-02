@@ -3,6 +3,13 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useReviewQueueStore } from '@/stores/reviewQueue';
+import {
+  DISCREPANCY_PAGE_SIZE,
+  MAX_DISCREPANCY_TABLE_ROWS,
+  QUEUE_TABLE_STATUSES,
+  resolveDiscrepancyStatusFilter,
+} from '@/lib/discrepancyListQuery';
 import type { DiscrepancyRow, DiscrepancySeverity, DiscrepancyStatus } from '@/stores/reviewQueue';
 
 interface SeverityCounts {
@@ -12,12 +19,15 @@ interface SeverityCounts {
   low: number;
 }
 
-const PAGE_SIZE = 500;
+const PAGE_SIZE = DISCREPANCY_PAGE_SIZE;
 
 export function useDiscrepancies() {
+  const filters = useReviewQueueStore((s) => s.filters);
   const [rows, setRows] = useState<DiscrepancyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [truncated, setTruncated] = useState(false);
+  const [filteredTotal, setFilteredTotal] = useState(0);
   const [counts, setCounts] = useState<SeverityCounts>({ critical: 0, high: 0, medium: 0, low: 0 });
   const [pendingCount, setPendingCount] = useState(0);
   const [escalatedCount, setEscalatedCount] = useState(0);
@@ -41,55 +51,89 @@ export function useDiscrepancies() {
 
     await Promise.all(
       severities.map(async (sev) => {
-        const { count } = await supabase
+        let q = supabase
           .from('discrepancy_reviews')
           .select('id', { count: 'exact', head: true })
-          .in('status', ['pending', 'reviewed', 'escalated'])
+          .in('status', QUEUE_TABLE_STATUSES)
           .eq('severity', sev);
+        if (orgId) q = q.eq('organization_id', orgId);
+        const { count } = await q;
         results[sev] = count ?? 0;
       }),
     );
 
     setCounts(results);
 
-    const [{ count: pending }, { count: escalated }] = await Promise.all([
-      supabase
-        .from('discrepancy_reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending'),
-      supabase
-        .from('discrepancy_reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'escalated'),
-    ]);
+    let pendingQ = supabase
+      .from('discrepancy_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    let escalatedQ = supabase
+      .from('discrepancy_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'escalated');
+    if (orgId) {
+      pendingQ = pendingQ.eq('organization_id', orgId);
+      escalatedQ = escalatedQ.eq('organization_id', orgId);
+    }
+    const [{ count: pending }, { count: escalated }] = await Promise.all([pendingQ, escalatedQ]);
     setPendingCount(pending ?? 0);
     setEscalatedCount(escalated ?? 0);
-  }, []);
+  }, [orgId]);
 
   const fetchDiscrepancies = useCallback(async () => {
-    // Abort any in-flight pagination loop
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     setLoading(true);
     setError(null);
+    setTruncated(false);
+
+    const statusFilter = resolveDiscrepancyStatusFilter(filters);
+
+    let countQuery = supabase
+      .from('discrepancy_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', statusFilter);
+    if (orgId) countQuery = countQuery.eq('organization_id', orgId);
+    if (filters.severity) countQuery = countQuery.eq('severity', filters.severity);
+    if (filters.source) countQuery = countQuery.eq('source', filters.source);
+    if (filters.type) countQuery = countQuery.eq('discrepancy_type', filters.type);
+
+    const { count: matchCount, error: countErr } = await countQuery;
+    if (controller.signal.aborted) return;
+    if (countErr) {
+      setError(countErr.message);
+      setLoading(false);
+      return;
+    }
+
+    const totalMatches = matchCount ?? 0;
+    setFilteredTotal(totalMatches);
 
     const allRows: DiscrepancyRow[] = [];
     let offset = 0;
     let hasMore = true;
 
-    while (hasMore) {
+    while (hasMore && allRows.length < MAX_DISCREPANCY_TABLE_ROWS) {
       if (controller.signal.aborted) return;
 
-      const { data, error: fetchErr } = await supabase
+      const end = offset + PAGE_SIZE - 1;
+      let pageQuery = supabase
         .from('discrepancy_reviews')
         .select('*')
-        .in('status', ['pending', 'reviewed', 'escalated'])
+        .eq('status', statusFilter)
         .order('severity', { ascending: true })
         .order('detected_at', { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1)
+        .range(offset, end)
         .abortSignal(controller.signal);
+      if (orgId) pageQuery = pageQuery.eq('organization_id', orgId);
+      if (filters.severity) pageQuery = pageQuery.eq('severity', filters.severity);
+      if (filters.source) pageQuery = pageQuery.eq('source', filters.source);
+      if (filters.type) pageQuery = pageQuery.eq('discrepancy_type', filters.type);
+
+      const { data, error: fetchErr } = await pageQuery;
 
       if (controller.signal.aborted) return;
 
@@ -109,11 +153,12 @@ export function useDiscrepancies() {
 
     setRows(allRows);
     setTotalCount(allRows.length);
+    setTruncated(totalMatches > allRows.length);
 
     await fetchCounts();
 
     setLoading(false);
-  }, [fetchCounts]);
+  }, [fetchCounts, filters, orgId]);
 
   fetchHandlersRef.current = {
     fetchRows: fetchDiscrepancies,
@@ -348,6 +393,8 @@ export function useDiscrepancies() {
     pendingCount,
     escalatedCount,
     totalCount,
+    filteredTotal,
+    truncated,
     refetch: fetchDiscrepancies,
     updateStatus,
     bulkMarkReviewed,
