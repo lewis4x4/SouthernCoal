@@ -28,7 +28,9 @@ export function UploadDashboardSmokePanel() {
     return map;
   }, [runtimeResults]);
 
-  if (!can('bulk_process')) return null;
+  if (!can('view')) return null;
+
+  const canRunRuntime = can('bulk_process');
 
   function handleRunRuntime() {
     const results = runUploadDashboardRuntimeAssertions();
@@ -73,7 +75,14 @@ export function UploadDashboardSmokePanel() {
             <button
               type="button"
               onClick={handleRunRuntime}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent hover:bg-qo-accent/20 transition-colors"
+              disabled={!canRunRuntime}
+              title={canRunRuntime ? undefined : 'Requires bulk process permission to run runtime checks'}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                canRunRuntime
+                  ? 'border-qo-accent/30 bg-qo-accent/10 text-qo-accent hover:bg-qo-accent/20'
+                  : 'opacity-50 cursor-not-allowed border-black/[0.08] text-text-muted',
+              )}
             >
               <Play size={12} />
               Run runtime checks
