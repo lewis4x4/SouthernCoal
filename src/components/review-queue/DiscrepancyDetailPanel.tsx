@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { X, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAlignPermitStatusFromEcho } from '@/hooks/useAlignPermitStatusFromEcho';
+import {
+  formatNpdesPermitStatusLabel,
+  mapEchoPermitStatusToInternal,
+  statusMismatchNeedsInternalUpdate,
+} from '@/lib/echoPermitStatusMap';
 import { formatDiscrepancyReviewerLabel, selfReviewDisplayNameFromProfile } from '@/lib/reviewQueueDisplay';
 import type { DiscrepancyRow, DiscrepancySeverity } from '@/stores/reviewQueue';
 
@@ -47,6 +53,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   const { user } = useAuth();
   const { can } = usePermissions();
   const canTriage = can('verify');
+  const { alignStatus, busy: alignBusy } = useAlignPermitStatusFromEcho();
   const { profile } = useUserProfile();
   const reviewerLabel = formatDiscrepancyReviewerLabel(
     d.reviewed_by,
@@ -62,6 +69,29 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   const [customDismissText, setCustomDismissText] = useState('');
   const dismissReasons =
     d.discrepancy_type === 'status_mismatch' ? STATUS_MISMATCH_DISMISS_REASONS : DISMISS_REASONS;
+
+  const suggestedInternalStatus = d.external_value
+    ? mapEchoPermitStatusToInternal(d.external_value)
+    : null;
+  const canAlignStatus =
+    d.discrepancy_type === 'status_mismatch' &&
+    d.internal_source_table === 'npdes_permits' &&
+    Boolean(d.internal_source_id) &&
+    statusMismatchNeedsInternalUpdate(d.internal_value, d.external_value);
+
+  async function handleAlignStatus() {
+    if (!d.internal_source_id || !d.external_value) return;
+    const result = await alignStatus(d.internal_source_id, d.external_value, notes || undefined);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(
+      `Permit status updated to ${formatNpdesPermitStatusLabel(result.newStatus)} — dismiss this row when ready`,
+    );
+    setDismissReason('Internal status updated to match ECHO termination/expiry');
+    setShowDismiss(true);
+  }
 
   async function handleAction(status: 'reviewed' | 'dismissed' | 'escalated' | 'resolved') {
     setBusy(true);
@@ -138,7 +168,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
         </div>
 
         {d.discrepancy_type === 'status_mismatch' && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3 space-y-1">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3 space-y-2">
             <p className="text-xs font-medium text-text-primary">Permit lifecycle decision required</p>
             <p className="text-[11px] text-text-secondary leading-relaxed">
               Internal <span className="font-mono">npdes_permits.status</span> is{' '}
@@ -147,6 +177,35 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
               which record is authoritative, update internal status if needed, then dismiss with a
               documented reason — do not bulk-mark reviewed without notes.
             </p>
+            {suggestedInternalStatus && (
+              <p className="text-[10px] text-text-muted">
+                Suggested internal mapping:{' '}
+                <span className="font-mono text-text-secondary">
+                  {formatNpdesPermitStatusLabel(suggestedInternalStatus)}
+                </span>
+                {suggestedInternalStatus === (d.internal_value ?? '').toLowerCase().trim() && (
+                  <span> — label differs only; dismiss if internal is correct</span>
+                )}
+              </p>
+            )}
+            {canAlignStatus && canTriage && (
+              <button
+                type="button"
+                onClick={() => void handleAlignStatus()}
+                disabled={alignBusy || busy}
+                className="flex items-center gap-1.5 rounded-lg border border-qo-accent/20 bg-qo-accent/10 px-3 py-1.5 text-xs font-medium text-qo-accent hover:bg-qo-accent/20 disabled:opacity-40"
+              >
+                {alignBusy ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={14} />
+                )}
+                Set internal status to{' '}
+                {suggestedInternalStatus
+                  ? formatNpdesPermitStatusLabel(suggestedInternalStatus)
+                  : 'ECHO value'}
+              </button>
+            )}
           </div>
         )}
 
