@@ -26,3 +26,15 @@ describe('StatusMismatchTriageBanner', () => {
     expect(banner).toContain('qa:slice4-status-mismatch');
   });
 });
+
+describe('DiscrepancyDetailPanel status_mismatch', () => {
+  const detail = readFileSync(
+    resolve(process.cwd(), 'src/components/review-queue/DiscrepancyDetailPanel.tsx'),
+    'utf8',
+  );
+
+  it('shows lifecycle guidance and status-specific dismiss reasons', () => {
+    expect(detail).toContain('STATUS_MISMATCH_DISMISS_REASONS');
+    expect(detail).toContain('Permit lifecycle decision required');
+  });
+});

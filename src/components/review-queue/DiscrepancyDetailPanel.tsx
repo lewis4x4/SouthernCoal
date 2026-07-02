@@ -25,6 +25,13 @@ const DISMISS_REASONS = [
   'Other',
 ];
 
+const STATUS_MISMATCH_DISMISS_REASONS = [
+  'Internal active is correct — renewal pending or ECHO lag',
+  'Internal status updated to match ECHO termination/expiry',
+  'Duplicate permit record — resolved elsewhere',
+  'Other',
+];
+
 interface Props {
   discrepancy: DiscrepancyRow;
   reviewerNames?: Record<string, string>;
@@ -53,6 +60,8 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
   const [busy, setBusy] = useState(false);
 
   const [customDismissText, setCustomDismissText] = useState('');
+  const dismissReasons =
+    d.discrepancy_type === 'status_mismatch' ? STATUS_MISMATCH_DISMISS_REASONS : DISMISS_REASONS;
 
   async function handleAction(status: 'reviewed' | 'dismissed' | 'escalated' | 'resolved') {
     setBusy(true);
@@ -128,6 +137,19 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
           </div>
         </div>
 
+        {d.discrepancy_type === 'status_mismatch' && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3 space-y-1">
+            <p className="text-xs font-medium text-text-primary">Permit lifecycle decision required</p>
+            <p className="text-[11px] text-text-secondary leading-relaxed">
+              Internal <span className="font-mono">npdes_permits.status</span> is{' '}
+              <span className="font-mono">{d.internal_value || 'active'}</span> while ECHO reports{' '}
+              <span className="font-mono">{d.external_value || 'expired/terminated'}</span>. Confirm
+              which record is authoritative, update internal status if needed, then dismiss with a
+              documented reason — do not bulk-mark reviewed without notes.
+            </p>
+          </div>
+        )}
+
         {/* Notes */}
         <div>
           <label className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-1 block">
@@ -158,7 +180,7 @@ export function DiscrepancyDetailPanel({ discrepancy: d, reviewerNames, onClose,
               className="w-full rounded-lg border border-black/[0.08] bg-qo-nested px-3 py-2 text-sm text-text-primary focus:border-qo-accent/30 focus:outline-none focus:ring-1 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">Select reason...</option>
-              {DISMISS_REASONS.map((r) => (
+              {dismissReasons.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
