@@ -66,7 +66,7 @@ Corrections to the original proposal: the route is **`/compliance/dashboard`** (
 - [x] `get_job_health()` shows every scheduled job with a logged last run; a forced failure produces a `failed` row + audit entry (Slice 0) — verified prod 2026-07-02; precip sync live `failed` row
 - [ ] Statutory-alert surfaces show ack state; every ack is a named human on the record (Slice 0) — UI/RPC shipped; **0 acks in prod** (human triage pending)
 - [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/7757 ≡ raw SCC SQL (2026-07-02)
-- [ ] ≥1 DMR auto-populated from lab data and validated in UI **with zero silent unit-conversion fallbacks** (Slice 2) — only 1 `dmr_submission`; prod body is not half-MDL
+- [ ] ≥1 DMR auto-populated from lab data and validated in UI **with zero silent unit-conversion fallbacks** (Slice 2) — KYGE40869 synthetic: auto-populate ✅ (18.4 mg/L TSS), mass loading ✅ (383.64 lbs/day @ 2.5 MGD), conversion warnings surfaced (not silent); **full UI walkthrough still pending**
 - [ ] WV1024078 DMRs synced via chunked retry; full re-run completes under `job_runs`; before/after discrepancy counts documented and `missing_internal` shrinks materially (Slice 3) — **149/149 detect ✅**; WV1024078 **BLOCKED (EPA 502)**; `missing_internal` shrinkage deferred to Slice 1 data growth
 - [x] Task 3.45 done; roadmap statuses for 3.43/3.44/3.35/3.38 corrected; queue usable at post-re-run volume (Slice 4) — 3.35 marked complete in prod 2026-07-02
 - [x] Snapshot generation scheduled and validated against live data (Slice 5) — daily cron + snapshot match (artifact `.qa-artifacts/slice5-compliance-snapshot-20260702.md`)
