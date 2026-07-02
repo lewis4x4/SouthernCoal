@@ -116,7 +116,7 @@ Phase 1 (org/docs) ──→ Phase 2 (inventory) ──→ Phase 3 (software) �
                               └── 3.38 VA override (no deps)
 ```
 
-**Critical path:** 2H → 3.32 (Justice EDD) → 3.33 (DMR pipeline) → 3.35 (re-run detection) → 5.14 (cron sync)
+**Critical path:** 2H → 3.32 (Justice EDD) → 3.33 (DMR pipeline) → ~~3.35~~ → ~~5.14~~ (cron live)
 
 **Can start NOW (no dependencies):**
 - 2.62 parameter_aliases migration
@@ -355,8 +355,8 @@ Mock regulator audit, quarterly access review cadence.
 
 | Task | Description | Depends On | Owner | Status |
 |------|-------------|-----------|-------|--------|
-| **5.14** | Cron-based ECHO sync (weekly, permits older than 7 days) | 3.35 | AI | not_started |
-| **5.15** | Sync health dashboard (admin: last sync, failures, stale permits) | 5.14 | AI | not_started |
+| **5.14** | Cron-based ECHO sync (weekly, permits older than 7 days) | 3.35 | AI | **COMPLETE** — `sync-echo-weekly` pg_cron active (Sun 04:00 UTC); migration `20260524120000` |
+| **5.15** | Sync health dashboard (admin: last sync, failures, stale permits) | 5.14 | AI | **COMPLETE** — `SyncHealthPanel` on External Data / ECHO coverage |
 | **5.16** | Discrepancy/compliance alert rules (Resend/Twilio) | 3.13, 3.35 | AI | not_started |
 
 ---
