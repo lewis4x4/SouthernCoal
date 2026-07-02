@@ -33,6 +33,7 @@
     "qa:slice1-seed-exceedances": "node scripts/slice1-seed-exceedances.mjs",
     "qa:slice1-reconcile": "node scripts/slice1-reconcile.mjs",
     "qa:slice1-activation-gaps": "node scripts/slice1-activation-gaps.mjs",
+    "qa:slice1-seed-permit-limits": "node scripts/slice1-seed-permit-limits.mjs",
     "qa:slice2-dmr": "node scripts/slice2-dmr-preflight.mjs",
     "qa:slice4-status-mismatch": "node scripts/slice4-status-mismatch-export.mjs",
     "qa:slice3-echo-rerun": "node scripts/slice3-echo-rerun.mjs",

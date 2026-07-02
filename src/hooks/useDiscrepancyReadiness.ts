@@ -30,6 +30,45 @@ async function headCount(table: string, orgId: string): Promise<number> {
   return count ?? 0;
 }
 
+async function countDmrSubmissions(orgId: string): Promise<number> {
+  const modern = await supabase
+    .from('dmr_submissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId);
+  if (!modern.error) return modern.count ?? 0;
+
+  const cms = await supabase
+    .from('dmr_submissions')
+    .select('id, npdes_permits!inner(organization_id)', { count: 'exact', head: true })
+    .eq('npdes_permits.organization_id', orgId);
+  if (cms.error) {
+    console.error('[discrepancy-readiness] dmr_submissions count error:', cms.error.message);
+    return 0;
+  }
+  return cms.count ?? 0;
+}
+
+async function countDmrLineItems(orgId: string): Promise<number> {
+  const modern = await supabase
+    .from('dmr_line_items')
+    .select('id, dmr_submissions!inner(organization_id)', { count: 'exact', head: true })
+    .eq('dmr_submissions.organization_id', orgId);
+  if (!modern.error) return modern.count ?? 0;
+
+  const cms = await supabase
+    .from('dmr_line_items')
+    .select('id, dmr_submissions!inner(npdes_permits!inner(organization_id))', {
+      count: 'exact',
+      head: true,
+    })
+    .eq('dmr_submissions.npdes_permits.organization_id', orgId);
+  if (cms.error) {
+    console.error('[discrepancy-readiness] dmr_line_items count error:', cms.error.message);
+    return 0;
+  }
+  return cms.count ?? 0;
+}
+
 async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
   const [
     echoFacilities,
@@ -37,7 +76,7 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
     internalPermits,
     exceedances,
     dmrSubmissions,
-    dmrLineItemsResult,
+    dmrLineItems,
     mshaOpenCitations,
   ] = await Promise.all([
     headCount('external_echo_facilities', orgId),
@@ -48,11 +87,8 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
       .not('violation_code', 'is', null),
     headCount('npdes_permits', orgId),
     headCount('exceedances', orgId),
-    headCount('dmr_submissions', orgId),
-    supabase
-      .from('dmr_line_items')
-      .select('id, dmr_submissions!inner(organization_id)', { count: 'exact', head: true })
-      .eq('dmr_submissions.organization_id', orgId),
+    countDmrSubmissions(orgId),
+    countDmrLineItems(orgId),
     supabase
       .from('external_msha_inspections')
       .select('*', { count: 'exact', head: true })
@@ -66,13 +102,6 @@ async function fetchCounts(orgId: string): Promise<DiscrepancyReadinessCounts> {
         return 0;
       })()
     : (echoViolationsResult.count ?? 0);
-
-  const dmrLineItems = dmrLineItemsResult.error
-    ? (() => {
-        console.error('[discrepancy-readiness] dmr_line_items count error:', dmrLineItemsResult.error.message);
-        return 0;
-      })()
-    : (dmrLineItemsResult.count ?? 0);
 
   const mshaCount = mshaOpenCitations.error
     ? (() => {
