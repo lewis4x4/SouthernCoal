@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from '@/types/database';
+import { WORK_ORDER_SOURCE_LABELS } from '@/lib/workOrderSourceLinks';
 
 const STATUS_LABELS: Record<WorkOrderStatus, string> = {
   open: 'Open',
@@ -333,6 +334,9 @@ export function WorkOrdersPage() {
                           <span className={clsx(isOverdue && 'text-qo-risk')}>
                             Due: {wo.due_date}
                           </span>
+                        )}
+                        {wo.source_type !== 'manual' && (
+                          <span>{WORK_ORDER_SOURCE_LABELS[wo.source_type] ?? wo.source_type}</span>
                         )}
                         <span>{wo.created_at.split('T')[0]}</span>
                       </div>

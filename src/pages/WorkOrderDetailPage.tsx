@@ -16,6 +16,10 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { WorkOrderStatus, WorkOrderEvent } from '@/types/database';
+import {
+  WORK_ORDER_SOURCE_LABELS,
+  getWorkOrderSourceLink,
+} from '@/lib/workOrderSourceLinks';
 
 const STATUS_LABELS: Record<WorkOrderStatus, string> = {
   open: 'Open',
@@ -131,6 +135,7 @@ export function WorkOrderDetailPage() {
   }
 
   const nextStatuses = NEXT_STATUS[wo.status] ?? [];
+  const sourceLink = getWorkOrderSourceLink(wo.source_type, wo.source_id);
 
   return (
     <div className="space-y-6">
@@ -166,7 +171,7 @@ export function WorkOrderDetailPage() {
             {wo.category && <span>{wo.category.replace(/_/g, ' ')}</span>}
             {wo.source_type !== 'manual' && (
               <span className="text-xs bg-qo-nested px-2 py-0.5 rounded">
-                Source: {wo.source_type.replace(/_/g, ' ')}
+                Source: {WORK_ORDER_SOURCE_LABELS[wo.source_type] ?? wo.source_type.replace(/_/g, ' ')}
               </span>
             )}
           </div>
@@ -350,6 +355,16 @@ export function WorkOrderDetailPage() {
               )}
               <dt className="text-text-secondary">Created</dt>
               <dd className="text-text-primary">{new Date(wo.created_at).toLocaleDateString()}</dd>
+              {sourceLink && (
+                <>
+                  <dt className="text-text-secondary">Detector source</dt>
+                  <dd>
+                    <Link to={sourceLink.href} className="text-qo-accent hover:underline">
+                      {sourceLink.label}
+                    </Link>
+                  </dd>
+                </>
+              )}
             </dl>
           </SpotlightCard>
 

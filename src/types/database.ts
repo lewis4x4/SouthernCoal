@@ -563,7 +563,16 @@ export interface ExceedanceWithRelations extends Exceedance {
 // Phase 8 — Work Orders
 // ---------------------------------------------------------------------------
 
-export type WorkOrderSourceType = 'field_deficiency' | 'inspection' | 'incident' | 'exceedance' | 'manual';
+export type WorkOrderSourceType =
+  | 'field_deficiency'
+  | 'inspection'
+  | 'incident'
+  | 'exceedance'
+  | 'manual'
+  | 'sampling_gap'
+  | 'equipment_maintenance'
+  | 'edd_paragraph49'
+  | 'msha_abatement';
 export type WorkOrderPriority = 'low' | 'medium' | 'high' | 'critical';
 export type WorkOrderStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'verified' | 'cancelled';
 export type WorkOrderCategory =

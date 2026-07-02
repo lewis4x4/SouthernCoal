@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { EDD_REVIEW_STATUS_LABELS } from '@/lib/eddParagraph49';
@@ -40,6 +40,8 @@ function FlagBadges({ row }: { row: EddParagraph49Evaluation }) {
 }
 
 export function LateIncompleteEddPage() {
+  const [searchParams] = useSearchParams();
+  const deepLinkEvalId = searchParams.get('evalId');
   const { rows, loading, error, counts, updateReviewStatus } = useEddParagraph49Flags();
   const statutoryAcks = useStatutoryAlertAcks();
   const { can } = usePermissions();
@@ -60,6 +62,13 @@ export function LateIncompleteEddPage() {
     () => rows.find((r) => r.id === selectedId) ?? null,
     [rows, selectedId],
   );
+
+  useEffect(() => {
+    if (!deepLinkEvalId || loading) return;
+    if (rows.some((r) => r.id === deepLinkEvalId)) {
+      setSelectedId(deepLinkEvalId);
+    }
+  }, [deepLinkEvalId, loading, rows]);
 
   async function handleStatus(status: EddParagraph49ReviewStatus) {
     if (!selected) return;

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { SamplingGapDetailPanel } from '@/components/sampling-gaps/SamplingGapDetailPanel';
@@ -10,6 +11,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import type { SamplingGapKind } from '@/lib/samplingGapSeverity';
 
 export function MissedAtRiskPage() {
+  const [searchParams] = useSearchParams();
+  const deepLinkGapId = searchParams.get('gapId');
   const {
     rows,
     loading,
@@ -31,6 +34,13 @@ export function MissedAtRiskPage() {
     () => rows.find((r) => r.id === selectedId) ?? null,
     [rows, selectedId],
   );
+
+  useEffect(() => {
+    if (!deepLinkGapId || loading) return;
+    if (rows.some((r) => r.id === deepLinkGapId)) {
+      setSelectedId(deepLinkGapId);
+    }
+  }, [deepLinkGapId, loading, rows]);
 
   async function handleRunDetection() {
     const result = await runDetection();
