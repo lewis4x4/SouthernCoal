@@ -117,6 +117,12 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
     ])).toBe(true);
   });
 
+  it('adds lab import toast follow-up to monitoring', () => {
+    expect(assertSourceContains('hooks/useLabDataImport.ts', [
+      /showPostProcessFollowUpToast/,
+    ])).toBe(true);
+  });
+
   it('renders compliance archive branch in ExtractionPanel', () => {
     expect(assertSourceContains('components/dashboard/queue/ExtractionPanel.tsx', [
       /compliance_archive/,

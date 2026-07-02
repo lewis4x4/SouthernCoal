@@ -9,6 +9,7 @@ describe('uploadPostProcessLinks', () => {
     expect(getUploadPostProcessFollowUp('sampling_matrix')?.href).toBe('/field/schedule');
     expect(getUploadPostProcessFollowUp('consent_decree')?.href).toBe('/obligations');
     expect(getUploadPostProcessFollowUp('dmr')?.href).toBe('/dmr');
+    expect(getUploadPostProcessFollowUp('lab_data')?.href).toBe('/monitoring');
     expect(getUploadPostProcessFollowUp('field_inspection')).toBeNull();
   });
 

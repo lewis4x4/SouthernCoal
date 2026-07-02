@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { edgeFunctionFetchHeaders, getFreshToken, supabase } from '@/lib/supabase';
+import { showPostProcessFollowUpToast } from '@/lib/uploadPostProcessLinks';
 import { useQueueStore } from '@/stores/queue';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import type { QueueEntry } from '@/types/queue';
@@ -13,6 +15,7 @@ import type { QueueEntry } from '@/types/queue';
 export function useLabDataImport() {
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
   const { log } = useAuditLog();
+  const navigate = useNavigate();
 
   /**
    * Import a single parsed lab data file to domain tables.
@@ -86,8 +89,10 @@ export function useLabDataImport() {
             import_id: result.import_id,
           });
 
-          toast.success(
+          showPostProcessFollowUpToast(
             `Imported ${result.results_created} lab results from ${entry.file_name}`,
+            'lab_data',
+            navigate,
           );
 
           // Refresh entry from database to get final status
@@ -137,7 +142,7 @@ export function useLabDataImport() {
         });
       }
     },
-    [log],
+    [log, navigate],
   );
 
   /**
@@ -202,7 +207,11 @@ export function useLabDataImport() {
     }
 
     if (failCount === 0 && skippedCount === 0) {
-      toast.success(`Successfully imported ${successCount} lab data files.`);
+      showPostProcessFollowUpToast(
+        `Successfully imported ${successCount} lab data file${successCount === 1 ? '' : 's'}.`,
+        'lab_data',
+        navigate,
+      );
     } else {
       toast.warning(
         `Imported ${successCount}, failed ${failCount}, skipped ${skippedCount}. Check entries for details.`,
@@ -218,7 +227,7 @@ export function useLabDataImport() {
     if (freshEntries) {
       useQueueStore.getState().setEntries(freshEntries as QueueEntry[]);
     }
-  }, [importLabData]);
+  }, [importLabData, navigate]);
 
   /**
    * Check if a specific entry is currently being imported.

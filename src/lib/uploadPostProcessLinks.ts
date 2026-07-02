@@ -24,6 +24,11 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     actionLabel: 'Open DMR Submissions',
     panelNote: 'Review draft submissions created from this import before regulatory submit.',
   },
+  lab_data: {
+    href: '/monitoring',
+    actionLabel: 'Open Monitoring',
+    panelNote: 'Review imported lab results and exceedances before relying on them for compliance decisions.',
+  },
 };
 
 export function getUploadPostProcessFollowUp(fileCategory: string): UploadPostProcessFollowUp | null {

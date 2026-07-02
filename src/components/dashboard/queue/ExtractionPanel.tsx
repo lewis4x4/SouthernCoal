@@ -952,11 +952,24 @@ function LabDataExtractionPanel({
 
       {/* Already imported indicator */}
       {entry.status === 'imported' && (
-        <div className="mt-4 pt-3 border-t border-black/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06] space-y-2">
           <div className="flex items-center gap-2 text-xs text-green-300">
             <CheckCircle2 size={14} />
             <span>Data successfully imported to domain tables</span>
           </div>
+          {(() => {
+            const followUp = getUploadPostProcessFollowUp('lab_data');
+            if (!followUp) return null;
+            return (
+              <p className="text-[10px] text-text-muted">
+                Open{' '}
+                <Link to={followUp.href} className="text-qo-accent hover:text-qo-accent">
+                  {followUp.actionLabel}
+                </Link>{' '}
+                to review imported results and exceedances.
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
