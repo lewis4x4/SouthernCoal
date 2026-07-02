@@ -19,6 +19,11 @@ const FOLLOW_UPS: Record<string, UploadPostProcessFollowUp> = {
     actionLabel: 'Review obligations',
     panelNote: 'Link obligation evidence after counsel confirms CD appendix rates.',
   },
+  water_monitoring: {
+    href: '/monitoring',
+    actionLabel: 'Open Monitoring',
+    panelNote: 'Review indexed water monitoring records alongside lab results and exceedances.',
+  },
   dmr: {
     href: '/dmr',
     actionLabel: 'Open DMR Submissions',

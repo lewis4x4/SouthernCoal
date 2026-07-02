@@ -85,15 +85,18 @@ export function usePermitLimitsImport() {
           const result = await response.json();
 
           // Log successful import
-          log('bulk_process', {
-            action: 'permit_limits_imported',
-            queue_id: queueId,
-            file_name: entry.file_name,
-            permits_created: result.permits_created,
-            outfalls_created: result.outfalls_created,
-            limits_created: result.limits_created,
-            import_batch_id: result.import_batch_id,
-          });
+          log(
+            'permit_limits_imported',
+            {
+              queue_id: queueId,
+              file_name: entry.file_name,
+              permits_created: result.permits_created,
+              outfalls_created: result.outfalls_created,
+              limits_created: result.limits_created,
+              import_batch_id: result.import_batch_id,
+            },
+            { module: 'upload_dashboard', tableName: 'permit_limits', recordId: queueId },
+          );
 
           showPostProcessFollowUpToast(
             `Imported ${result.limits_created} permit limits from ${entry.file_name}`,

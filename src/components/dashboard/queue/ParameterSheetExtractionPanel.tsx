@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { usePermitLimitsImport } from '@/hooks/usePermitLimitsImport';
+import { getUploadPostProcessFollowUp } from '@/lib/uploadPostProcessLinks';
 import { VerificationBadge } from './VerificationBadge';
 import {
   CheckCircle2,
@@ -229,11 +231,24 @@ export function ParameterSheetExtractionPanel({
 
       {/* Already imported indicator */}
       {entry.status === 'imported' && (
-        <div className="mt-4 pt-3 border-t border-black/[0.06]">
+        <div className="mt-4 pt-3 border-t border-black/[0.06] space-y-2">
           <div className="flex items-center gap-2 text-xs text-green-300">
             <CheckCircle2 size={14} />
             <span>Permit limits successfully imported to domain tables</span>
           </div>
+          {(() => {
+            const followUp = getUploadPostProcessFollowUp('npdes_permit');
+            if (!followUp) return null;
+            return (
+              <p className="text-[10px] text-text-muted">
+                Open{' '}
+                <Link to={followUp.href} className="text-qo-accent hover:text-qo-accent">
+                  {followUp.actionLabel}
+                </Link>{' '}
+                to review imported limits and outfalls.
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>

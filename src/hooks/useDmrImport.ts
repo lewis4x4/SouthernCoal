@@ -86,16 +86,15 @@ export function useDmrImport() {
           }
 
           log(
-            'bulk_process',
+            'netdmr_dmr_imported',
             {
-              action: 'netdmr_dmr_imported',
               queue_id: queueId,
               file_name: entry.file_name,
               submissions_created: result.submissions_created,
               line_items_created: result.line_items_created,
               import_id: result.import_id,
             },
-            { module: 'upload_dashboard', tableName: 'dmr_submissions' },
+            { module: 'upload_dashboard', tableName: 'dmr_submissions', recordId: queueId },
           );
 
           showPostProcessFollowUpToast(

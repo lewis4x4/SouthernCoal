@@ -120,7 +120,13 @@ describe('uploadDashboardSmokeAssertions — source wiring (v6 §12)', () => {
   it('adds lab import toast follow-up to monitoring', () => {
     expect(assertSourceContains('hooks/useLabDataImport.ts', [
       /showPostProcessFollowUpToast/,
+      /lab_data_imported/,
     ])).toBe(true);
+  });
+
+  it('uses dedicated audit actions for domain imports', () => {
+    expect(assertSourceContains('hooks/useDmrImport.ts', [/netdmr_dmr_imported/])).toBe(true);
+    expect(assertSourceContains('hooks/usePermitLimitsImport.ts', [/permit_limits_imported/])).toBe(true);
   });
 
   it('renders compliance archive branch in ExtractionPanel', () => {

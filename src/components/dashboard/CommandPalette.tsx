@@ -89,6 +89,7 @@ export function CommandPalette() {
             <Search size={16} className="text-text-muted" />
             <Command.Input
               placeholder="Type a command..."
+              aria-label="Search commands"
               className="flex-1 h-12 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             />
           </div>

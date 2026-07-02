@@ -80,14 +80,17 @@ export function useLabDataImport() {
           const result = await response.json();
 
           // Log successful import
-          log('bulk_process', {
-            action: 'lab_data_imported',
-            queue_id: queueId,
-            file_name: entry.file_name,
-            events_created: result.events_created,
-            results_created: result.results_created,
-            import_id: result.import_id,
-          });
+          log(
+            'lab_data_imported',
+            {
+              queue_id: queueId,
+              file_name: entry.file_name,
+              events_created: result.events_created,
+              results_created: result.results_created,
+              import_id: result.import_id,
+            },
+            { module: 'upload_dashboard', tableName: 'lab_results', recordId: queueId },
+          );
 
           showPostProcessFollowUpToast(
             `Imported ${result.results_created} lab results from ${entry.file_name}`,
