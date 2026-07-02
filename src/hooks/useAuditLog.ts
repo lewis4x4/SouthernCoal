@@ -17,6 +17,8 @@ type AuditAction =
   | 'filter_change'
   | 'upload_smoke_runtime_run'
   | 'obligation_generation'
+  | 'obligation_ledger_export_csv'
+  | 'obligation_ledger_clocks_refreshed'
   | 'deadline_alert_sent'
   | 'coverage_export_csv'
   | 'audit_log_export_csv'

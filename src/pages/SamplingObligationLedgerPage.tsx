@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { CalendarDays, Loader2, RefreshCw } from 'lucide-react';
+import { CalendarDays, Download, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { DISCLAIMER_EXPORT } from '@/lib/disclaimer';
 import { useSamplingObligationLedger } from '@/hooks/useSamplingObligationLedger';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   OBLIGATION_DOMAIN_LABELS,
   OBLIGATION_STATUS_LABELS,
@@ -46,10 +48,50 @@ export function SamplingObligationLedgerPage() {
     applyDomainFilter,
     refetch,
   } = useSamplingObligationLedger();
+  const { log } = useAuditLog();
 
   const counts = ledger?.status_counts;
   const coverage = ledger?.coverage;
   const rows = ledger?.rows ?? [];
+
+  function handleExportCsv() {
+    const headers = ['Domain', 'Due Date', 'Obligation', 'Detail', 'Status', 'Source'];
+    const body = rows.map((row) => {
+      if (isNpdesObligationRow(row)) {
+        return [
+          'NPDES',
+          row.effective_due,
+          `${row.outfall_number ?? ''} · ${row.parameter_short_name ?? ''}`,
+          row.permit_number ?? '',
+          row.obligation_status,
+          row.schedule_source ?? '',
+        ];
+      }
+      return [
+        row.domain.toUpperCase(),
+        row.due_date ?? '',
+        row.label,
+        row.severity ?? '',
+        row.obligation_status,
+        row.source_table ?? '',
+      ];
+    });
+    const csv = [headers, ...body]
+      .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([`${csv}\n\n"${DISCLAIMER_EXPORT}"`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `statutory_obligation_ledger_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log(
+      'obligation_ledger_export_csv',
+      { row_count: rows.length, status_filter: statusFilter ?? 'all', domain_filter: domainFilter ?? 'all' },
+      { module: 'environmental_compliance', tableName: 'statutory_obligation_clocks' },
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -67,12 +109,22 @@ export function SamplingObligationLedgerPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void refetch()}
-          disabled={loading || refreshingClocks}
-          className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.02] disabled:opacity-50"
-        >
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={loading || rows.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.02] disabled:opacity-50"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={loading || refreshingClocks}
+            className="inline-flex items-center gap-2 rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs font-medium text-text-primary hover:bg-black/[0.02] disabled:opacity-50"
+          >
           {loading || refreshingClocks ? (
             <Loader2 size={14} className="animate-spin" />
           ) : (
@@ -80,6 +132,7 @@ export function SamplingObligationLedgerPage() {
           )}
           Refresh clocks
         </button>
+        </div>
       </div>
 
       {error && (

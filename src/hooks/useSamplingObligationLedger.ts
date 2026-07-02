@@ -55,8 +55,13 @@ export function useSamplingObligationLedger() {
     setRefreshingClocks(true);
     await supabase.rpc('refresh_statutory_obligation_clocks', { p_organization_id: orgId });
     setRefreshingClocks(false);
+    log(
+      'obligation_ledger_clocks_refreshed',
+      { domain_filter: domainFilter ?? 'all' },
+      { module: 'environmental_compliance', tableName: 'statutory_obligation_clocks' },
+    );
     return fetchLedger();
-  }, [fetchLedger, orgId]);
+  }, [domainFilter, fetchLedger, log, orgId]);
 
   useEffect(() => {
     void fetchLedger(statusFilter, domainFilter);
