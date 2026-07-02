@@ -301,10 +301,13 @@ export function CommandPalette() {
               </Command.Item>
               <Command.Item
                 value="clear staging area"
-                onSelect={() =>
-                  runAction('staging_clear_all', () => clearAll())
-                }
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary"
+                disabled={!can('upload')}
+                onSelect={() => {
+                  if (!can('upload')) return;
+                  runAction('staging_clear_all', () => clearAll());
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-text-secondary cursor-pointer data-[selected=true]:bg-black/[0.04] data-[selected=true]:text-text-primary data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+                title={can('upload') ? undefined : 'Requires upload permission to clear staging'}
               >
                 <Trash2 size={12} />
                 Clear staging area
