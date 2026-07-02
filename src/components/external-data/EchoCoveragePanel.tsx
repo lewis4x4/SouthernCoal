@@ -15,6 +15,7 @@ import { NpdesMappingImportPanel } from '@/components/external-data/NpdesMapping
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { STATES } from '@/lib/constants';
+import { downloadRegistryGapsCsv } from '@/lib/npdesRegistryGaps';
 import {
   classifyRegistryPermitId,
   confirmationBasisLabel,
@@ -468,6 +469,15 @@ export function EchoCoveragePanel() {
               <h3 className="text-sm font-semibold text-text-primary">Registry Mapping Gaps</h3>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => downloadRegistryGapsCsv(filteredRegistryGaps)}
+                disabled={filteredRegistryGaps.length === 0}
+                className="flex items-center gap-1 rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary disabled:opacity-50"
+              >
+                <Download className="w-3 h-3" />
+                Export CSV
+              </button>
               <select
                 value={gapStateFilter}
                 onChange={(e) => setGapStateFilter(e.target.value)}

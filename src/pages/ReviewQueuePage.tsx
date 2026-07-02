@@ -11,6 +11,7 @@ import { useDiscrepancyDetection } from '@/hooks/useDiscrepancyDetection';
 import { useComplianceAlerts } from '@/hooks/useComplianceAlerts';
 import { ComplianceAlertRulesPanel } from '@/components/review-queue/ComplianceAlertRulesPanel';
 import { DiscrepancyReadinessPanel } from '@/components/review-queue/DiscrepancyReadinessPanel';
+import { StatusMismatchTriageBanner } from '@/components/review-queue/StatusMismatchTriageBanner';
 import { useDiscrepancyReadiness } from '@/hooks/useDiscrepancyReadiness';
 import { useReviewQueueStore } from '@/stores/reviewQueue';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -25,6 +26,7 @@ export function ReviewQueuePage() {
     pendingCount,
     reviewedCount,
     escalatedCount,
+    statusMismatchPendingCount,
     filteredTotal,
     truncated,
     refetch,
@@ -83,6 +85,15 @@ export function ReviewQueuePage() {
 
   function showPendingOnly() {
     setFilters({ ...filters, status: 'pending' });
+  }
+
+  function toggleStatusMismatchFilter() {
+    const active = filters.type === 'status_mismatch';
+    setFilters({
+      ...filters,
+      status: 'pending',
+      type: active ? undefined : 'status_mismatch',
+    });
   }
 
   async function handleQuickReview(id: string) {
@@ -291,6 +302,12 @@ export function ReviewQueuePage() {
         loading={readinessLoading}
         onRefresh={() => void refetchReadiness()}
         activationGaps={activationGaps}
+      />
+
+      <StatusMismatchTriageBanner
+        count={statusMismatchPendingCount}
+        active={filters.type === 'status_mismatch'}
+        onFilter={toggleStatusMismatchFilter}
       />
 
       {/* Triage progress */}

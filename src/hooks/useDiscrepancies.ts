@@ -32,6 +32,7 @@ export function useDiscrepancies() {
   const [pendingCount, setPendingCount] = useState(0);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [escalatedCount, setEscalatedCount] = useState(0);
+  const [statusMismatchPendingCount, setStatusMismatchPendingCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const { user } = useAuth();
   const { profile } = useUserProfile();
@@ -82,14 +83,25 @@ export function useDiscrepancies() {
       reviewedQ = reviewedQ.eq('organization_id', orgId);
       escalatedQ = escalatedQ.eq('organization_id', orgId);
     }
-    const [{ count: pending }, { count: reviewed }, { count: escalated }] = await Promise.all([
+    const [{ count: pending }, { count: reviewed }, { count: escalated }, { count: statusMismatch }] =
+      await Promise.all([
       pendingQ,
       reviewedQ,
       escalatedQ,
+      (() => {
+        let q = supabase
+          .from('discrepancy_reviews')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending')
+          .eq('discrepancy_type', 'status_mismatch');
+        if (orgId) q = q.eq('organization_id', orgId);
+        return q;
+      })(),
     ]);
     setPendingCount(pending ?? 0);
     setReviewedCount(reviewed ?? 0);
     setEscalatedCount(escalated ?? 0);
+    setStatusMismatchPendingCount(statusMismatch ?? 0);
   }, [orgId]);
 
   const fetchDiscrepancies = useCallback(async () => {
@@ -453,6 +465,7 @@ export function useDiscrepancies() {
     pendingCount,
     reviewedCount,
     escalatedCount,
+    statusMismatchPendingCount,
     totalCount,
     filteredTotal,
     truncated,

@@ -38,14 +38,39 @@ function summarize(rows) {
   return [...byExternal.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+function csvEscape(value) {
+  const s = value == null ? '' : String(value);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function buildCsv(rows) {
+  const header = 'id,npdes_id,severity,description,internal_value,external_value,detected_at';
+  const lines = rows.map((r) =>
+    [
+      r.id,
+      r.npdes_id,
+      r.severity,
+      r.description,
+      r.internal_value,
+      r.external_value,
+      r.detected_at,
+    ]
+      .map(csvEscape)
+      .join(','),
+  );
+  return [header, ...lines].join('\n');
+}
+
 async function main() {
   const rows = await fetchAll();
   const summary = summarize(rows);
   const critical = rows.filter((r) => r.severity === 'critical').length;
+  const dateStamp = new Date().toISOString().slice(0, 10);
 
   const md = `# Slice 4 — status_mismatch triage export
 
-**Date:** ${new Date().toISOString().slice(0, 10)}  
+**Date:** ${dateStamp}  
 **Pending rows:** ${rows.length}  
 **Critical:** ${critical}
 
@@ -75,12 +100,15 @@ ${JSON.stringify(rows.slice(0, 10), null, 2)}
 
   const outDir = resolve(REPO_ROOT, '.qa-artifacts');
   mkdirSync(outDir, { recursive: true });
-  const path = resolve(outDir, 'slice4-status-mismatch-triage-20260702.md');
-  writeFileSync(path, md);
+  const mdPath = resolve(outDir, `slice4-status-mismatch-triage-${dateStamp}.md`);
+  const csvPath = resolve(outDir, `slice4-status-mismatch-${dateStamp}.csv`);
+  writeFileSync(mdPath, md);
+  writeFileSync(csvPath, buildCsv(rows));
 
   console.log(`Pending status_mismatch: ${rows.length} (${critical} critical)`);
   for (const [k, n] of summary) console.log(`  ${k}: ${n}`);
-  console.log(`Artifact: ${path}`);
+  console.log(`Markdown: ${mdPath}`);
+  console.log(`CSV: ${csvPath}`);
 }
 
 main().catch((err) => {
