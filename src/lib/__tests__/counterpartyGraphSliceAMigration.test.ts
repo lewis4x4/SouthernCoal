@@ -41,6 +41,7 @@ describe('Counterparty Graph Slice A migrations', () => {
     const mergeSql = migrations['20260704023000_counterparty_party_merge_events.sql'];
 
     expect(mergeSql).toContain('CREATE TABLE IF NOT EXISTS public.party_merge_events');
+    expect(mergeSql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS uq_party_merge_events_active_superseded');
     expect(mergeSql).toContain('CREATE TRIGGER enforce_party_merge_boundary');
     expect(mergeSql).toContain('BEFORE UPDATE OF superseded_by ON public.parties');
     expect(mergeSql).toContain(
@@ -48,6 +49,18 @@ describe('Counterparty Graph Slice A migrations', () => {
     );
     expect(mergeSql).toContain('current_setting(\'app.party_merge_authorized\', true)');
     expect(mergeSql).toContain('CREATE OR REPLACE VIEW public.parties_resolved');
+  });
+
+  it('forces merge audit integrity through the RPC-only append path', () => {
+    const mergeSql = migrations['20260704023000_counterparty_party_merge_events.sql'];
+
+    expect(mergeSql).toContain('REVOKE INSERT, UPDATE, DELETE ON public.party_merge_events FROM authenticated');
+    expect(mergeSql).not.toMatch(/CREATE POLICY "party_merge_events_insert"[\s\S]*FOR INSERT TO authenticated/);
+    expect(mergeSql).toContain('NEW.merged_by := auth.uid();');
+    expect(mergeSql).not.toContain('NEW.merged_by := COALESCE(NEW.merged_by, auth.uid())');
+    expect(mergeSql).toMatch(/WHERE id IN \(NEW\.surviving_party_id, NEW\.superseded_party_id\)[\s\S]*ORDER BY id[\s\S]*FOR UPDATE/);
+    expect(mergeSql).toContain('GET DIAGNOSTICS v_updated_count = ROW_COUNT');
+    expect(mergeSql).toContain('IF v_updated_count <> 1 THEN');
   });
 
   it('keeps role and relationship assertions tenant-private with bitemporal no-overlap', () => {

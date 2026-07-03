@@ -23,6 +23,10 @@ CREATE INDEX IF NOT EXISTS idx_party_merge_events_surviving
 CREATE INDEX IF NOT EXISTS idx_party_merge_events_superseded
   ON public.party_merge_events(superseded_party_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_party_merge_events_active_superseded
+  ON public.party_merge_events(superseded_party_id)
+  WHERE unmerge_of IS NULL;
+
 CREATE OR REPLACE FUNCTION public.validate_party_merge_event()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -32,19 +36,28 @@ AS $$
 DECLARE
   v_survivor public.parties%ROWTYPE;
   v_superseded public.parties%ROWTYPE;
+  v_locked_party public.parties%ROWTYPE;
   v_cycle_found boolean;
 BEGIN
   IF NULLIF(btrim(NEW.basis), '') IS NULL THEN
     RAISE EXCEPTION 'Merge basis is required';
   END IF;
 
-  SELECT * INTO v_survivor
-  FROM public.parties
-  WHERE id = NEW.surviving_party_id;
+  FOR v_locked_party IN
+    SELECT *
+    FROM public.parties
+    WHERE id IN (NEW.surviving_party_id, NEW.superseded_party_id)
+    ORDER BY id
+    FOR UPDATE
+  LOOP
+    IF v_locked_party.id = NEW.surviving_party_id THEN
+      v_survivor := v_locked_party;
+    END IF;
 
-  SELECT * INTO v_superseded
-  FROM public.parties
-  WHERE id = NEW.superseded_party_id;
+    IF v_locked_party.id = NEW.superseded_party_id THEN
+      v_superseded := v_locked_party;
+    END IF;
+  END LOOP;
 
   IF v_survivor.id IS NULL OR v_superseded.id IS NULL THEN
     RAISE EXCEPTION 'Merge parties must both exist';
@@ -108,7 +121,10 @@ BEGIN
     RAISE EXCEPTION 'Party merge would create a superseded_by cycle';
   END IF;
 
-  NEW.merged_by := COALESCE(NEW.merged_by, auth.uid());
+  IF auth.uid() IS NOT NULL THEN
+    NEW.merged_by := auth.uid();
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -208,6 +224,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_updated_count integer;
 BEGIN
   PERFORM set_config('app.party_merge_authorized', 'on', true);
 
@@ -215,6 +233,12 @@ BEGIN
   SET superseded_by = NEW.surviving_party_id
   WHERE id = NEW.superseded_party_id
     AND superseded_by IS NULL;
+
+  GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+
+  IF v_updated_count <> 1 THEN
+    RAISE EXCEPTION 'Party merge event % did not update exactly one superseded party', NEW.id;
+  END IF;
 
   RETURN NEW;
 END;
@@ -244,18 +268,11 @@ CREATE POLICY "party_merge_events_select" ON public.party_merge_events
   USING (organization_id = get_user_org_id() OR organization_id IS NULL);
 
 DROP POLICY IF EXISTS "party_merge_events_insert" ON public.party_merge_events;
-CREATE POLICY "party_merge_events_insert" ON public.party_merge_events
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    organization_id = get_user_org_id()
-    AND EXISTS (
-      SELECT 1
-      FROM public.user_role_assignments ura
-      JOIN public.roles r ON r.id = ura.role_id
-      WHERE ura.user_id = auth.uid()
-        AND r.name IN ('admin', 'executive', 'environmental_manager', 'site_manager')
-    )
-  );
+REVOKE INSERT, UPDATE, DELETE ON public.party_merge_events FROM authenticated;
+GRANT SELECT ON public.party_merge_events TO authenticated;
+
+COMMENT ON TABLE public.party_merge_events IS
+  'Append-only merge audit ledger. Authenticated tenants must use apply_party_merge(); direct table inserts have no authenticated RLS policy.';
 
 DROP POLICY IF EXISTS "party_merge_events_service" ON public.party_merge_events;
 CREATE POLICY "party_merge_events_service" ON public.party_merge_events
