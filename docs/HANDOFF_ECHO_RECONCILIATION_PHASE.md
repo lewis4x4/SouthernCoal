@@ -65,7 +65,7 @@ Corrections to the original proposal: the route is **`/compliance/dashboard`** (
 
 - [x] `get_job_health()` shows every scheduled job with a logged last run; a forced failure produces a `failed` row + audit entry (Slice 0) — verified prod 2026-07-02; precip sync live `failed` row
 - [ ] Statutory-alert surfaces show ack state; every ack is a named human on the record (Slice 0) — UI/RPC shipped; **0 acks in prod** (human triage pending)
-- [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/8248 ≡ raw SCC SQL (2026-07-03)
+- [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/8286 ≡ raw SCC SQL (2026-07-03)
 - [x] KYGE40869 activation chain (Slice 1 phase 3) — 66 exceedances seeded, 66 `missing_internal` reconciled, KYGE40869 off top gap list (144 limits from phase 2); scoped detect run 2026-07-03 (artifact `.qa-artifacts/slice1-kyge40869-activation-chain-20260703.md`)
 - [ ] ≥1 DMR auto-populated from lab data and validated in UI **with zero silent unit-conversion fallbacks** (Slice 2) — KYGE40869 synthetic: `qa:slice2-dmr` ✅ (18.4 mg/L TSS, 383.64 lbs/day, 1 conversion warning surfaced); prod body confirmed **not** half-MDL; **full UI walkthrough still pending**
 - [ ] WV1024078 DMRs synced via chunked retry; full re-run completes under `job_runs`; before/after discrepancy counts documented and `missing_internal` shrinks materially (Slice 3) — **149/149 detect ✅**; WV1024078 **BLOCKED (EPA 502)**; `missing_internal` shrinkage deferred to Slice 1 data growth

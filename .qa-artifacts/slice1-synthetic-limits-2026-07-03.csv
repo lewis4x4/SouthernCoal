@@ -790,3 +790,41 @@ WV1018779,013,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
 WV1018779,014,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
 WV1018779,014,00945,Sulfate,daily_max,320,mg/l,pending_review
 WV1018779,014,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,001,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,001,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,001,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,002,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,002,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,002,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,003,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,003,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,003,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,004,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,004,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,004,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,005,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,005,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,005,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,006,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,006,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,006,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,007,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,007,00410,Alkalinity,daily_max,35,mg/L,pending_review
+WV1006304,007,00916,Calcium,daily_max,70,MG/L,pending_review
+WV1006304,007,00927,Magnesium,daily_max,0.5,MG/L,pending_review
+WV1006304,007,00929,Sodium,daily_max,0.43,mg/L,pending_review
+WV1006304,007,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,007,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,007,61426,"Toxicity, Chronic Ceriodaphnia",daily_max,0.82,tox chronic,pending_review
+WV1006304,008,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,008,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,008,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,009,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,009,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,009,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,010,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,010,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,010,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review
+WV1006304,011,00095,Specific Conductance,daily_max,70,UMHO/CM,pending_review
+WV1006304,011,00945,Sulfate,daily_max,320,mg/l,pending_review
+WV1006304,011,01106,"Aluminum, Dissolved",daily_max,0.75,MG/L,pending_review

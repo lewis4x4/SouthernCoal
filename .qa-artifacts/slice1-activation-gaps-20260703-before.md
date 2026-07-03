@@ -1,7 +1,7 @@
 # Slice 1 — activation gap report
 
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`  
-**Generated:** 2026-07-03T15:02:39.215Z
+**Generated:** 2026-07-03T15:07:37.318Z
 
 ## Funnel (distinct npdes:outfall:parameter keys)
 
@@ -12,16 +12,16 @@
 | Has permit | 8817 |
 | Has outfall | 4366 |
 | Has parameter | 3443 |
-| Has permit_limit | 2932 |
+| Has permit_limit | 2970 |
 
 ## Backlog
 
 | Metric | Count |
 |--------|------:|
-| `slice1_echo_mirror_keys` | 15667 |
-| Pending `missing_internal` | 143433 |
+| `slice1_echo_mirror_keys` | 15713 |
+| Pending `missing_internal` | 143295 |
 | Permits without federal override | 32 |
-| SYNTHETIC ECHO limits | 791 |
+| SYNTHETIC ECHO limits | 829 |
 
 ## Interpretation
 
@@ -32,7 +32,6 @@
 
 | permit_number | npdes_id | missing_limit_keys |
 | --- | --- | --- |
-| WV1006304 | WV1006304 | 38 |
 | WV1022652 | WV1022652 | 36 |
 | WV1025929 | WV1025929 | 35 |
 | KYGE40999 | KYGE40999 | 24 |
@@ -42,6 +41,7 @@
 | WV1025911 | WV1025911 | 18 |
 | WV1021061 | WV1021061 | 17 |
 | KY0106151 | KY0106151 | 16 |
+| WV0052531 | WV0052531 | 15 |
 
 ## Raw JSON
 
@@ -52,19 +52,14 @@
     "has_permit": 8817,
     "has_outfall": 4366,
     "has_parameter": 3443,
-    "has_permit_limit": 2932,
+    "has_permit_limit": 2970,
     "distinct_violation_keys": 13200
   },
-  "mirror_keys": 15667,
+  "mirror_keys": 15713,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
-  "synthetic_echo_limits": 791,
-  "pending_missing_internal": 143433,
+  "synthetic_echo_limits": 829,
+  "pending_missing_internal": 143295,
   "top_permits_missing_limits": [
-    {
-      "npdes_id": "WV1006304",
-      "permit_number": "WV1006304",
-      "missing_limit_keys": 38
-    },
     {
       "npdes_id": "WV1022652",
       "permit_number": "WV1022652",
@@ -183,6 +178,11 @@
     {
       "npdes_id": "KY0094510",
       "permit_number": "KY0094510",
+      "missing_limit_keys": 7
+    },
+    {
+      "npdes_id": "WV1021117",
+      "permit_number": "WV1021117",
       "missing_limit_keys": 7
     }
   ],

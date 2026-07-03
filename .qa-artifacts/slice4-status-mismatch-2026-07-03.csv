@@ -1,6 +1,6 @@
 id,npdes_id,severity,description,internal_value,external_value,detected_at
-1cb74e21-31ff-48aa-bdc0-adf386cc754a,AL0062693,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:26:13.150073+00:00
 aa9b670d-02e1-4f60-8bd9-207949b19ab6,AL0062693,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:25:19.29538+00:00
+1cb74e21-31ff-48aa-bdc0-adf386cc754a,AL0062693,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:26:13.150073+00:00
 23dc05b8-671d-4128-80da-58269b3481b8,AL0072991,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Terminated; Compliance Tracking Off""",active,Terminated; Compliance Tracking Off,2026-07-02T22:26:29.284889+00:00
 60d43ecf-28f4-4507-9168-f3eec61c2a09,AL0073920,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Terminated; Compliance Tracking Off""",active,Terminated; Compliance Tracking Off,2026-07-02T22:26:34.478306+00:00
 d9028aa9-2c56-4006-b0d9-559cff75b600,AL0073962,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:26:56.704573+00:00
@@ -42,10 +42,10 @@ b0a6a529-abf5-4b39-b72b-e9fba2dc532d,WV1027891,medium,"Permit status mismatch: i
 43e57ef4-eb2a-489b-b66c-ddabb0810229,WV1027913,medium,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:34:31.780787+00:00
 7de34d9f-5c0f-4ad9-9c57-1e53833ea4ed,KY0106151,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:27:25.722799+00:00
 5035a09c-4488-4396-b171-badfa8f93b1b,KYGE40840,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:28:23.085228+00:00
-d18f4b74-15ae-4f1f-b761-e08bf3b8a8c9,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-03T03:21:29.633185+00:00
+3c541da4-6846-410e-995d-c1b6d3629add,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T01:59:46.928228+00:00
 0869873c-ff4f-4446-984e-5b38d2bc124b,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:28:27.008173+00:00
 ed8a5828-70dd-490b-ad45-464f45b0260a,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-03T14:34:03.835768+00:00
-3c541da4-6846-410e-995d-c1b6d3629add,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T01:59:46.928228+00:00
+d18f4b74-15ae-4f1f-b761-e08bf3b8a8c9,KYGE40869,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-03T03:21:29.633185+00:00
 eba72d12-79e0-4108-add0-667ed3acf6dd,TN0049964,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:29:31.209042+00:00
 b5b72b36-b9f2-4e00-9c98-bde2898dba63,TN0069175,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:29:49.532817+00:00
 72c65fc0-bb98-45ad-9c9b-d62dcf31a145,TN0076376,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:30:14.200121+00:00
@@ -66,6 +66,7 @@ d83f2487-1c94-4bb1-b779-17aa3b80f68c,WV1005952,critical,"Permit status mismatch:
 52810186-9094-4c6f-a7d5-95535441c521,WV1005995,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:31:52.500958+00:00
 6efb696b-8598-450a-b96c-605a1728986d,WV1006070,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:31:55.368662+00:00
 fe175850-cdae-4e36-bf34-23da0fd3029b,WV1006304,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:31:59.64002+00:00
+de54682b-a11d-4732-b38d-490f386fd1ec,WV1006304,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-03T15:08:02.184235+00:00
 d01c5195-5970-4c2a-9206-99080854967c,WV1006347,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:32:02.68203+00:00
 9469ce4f-96e3-406f-bdd4-1c0ab961ea36,WV1006479,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:32:05.332567+00:00
 c55ce93f-8d5d-4734-a045-bd21c66b0330,WV1006614,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:32:07.636724+00:00
@@ -82,19 +83,19 @@ b69ae5cb-1f51-498e-b514-6e227c7e6870,WV1018663,critical,"Permit status mismatch:
 69e8b4d4-0c3a-4ba8-90a0-2a59f3b32ef4,WV1018701,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:44.6333+00:00
 72fa8f19-a0db-41d8-824f-1278bfc24716,WV1018736,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:32:47.848341+00:00
 5d82a45a-1d48-460b-92a9-0b487d3b6fd1,WV1018752,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:50.613143+00:00
-ee35aa5f-6275-4d38-a2cb-165490295ad1,WV1018779,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:54.482179+00:00
 39176923-5903-4e80-8610-3859c42e9009,WV1018779,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-03T15:03:03.699606+00:00
+ee35aa5f-6275-4d38-a2cb-165490295ad1,WV1018779,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:54.482179+00:00
 4efbbb9c-6616-4220-a8ef-67aee1df2d8b,WV1018809,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:56.890561+00:00
 0fea9514-5693-44cd-ab4a-bb5b70320471,WV1018833,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:32:59.889448+00:00
-4442e603-5b7e-4a33-a227-16520dbc1b86,WV1018965,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:04.730119+00:00
 c74937dd-c226-4f93-85d5-05639e53da6a,WV1018965,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-03T03:23:51.270187+00:00
+4442e603-5b7e-4a33-a227-16520dbc1b86,WV1018965,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:04.730119+00:00
 869e563b-d0bb-4d2a-bb35-71bdf3256645,WV1021079,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:14.296155+00:00
 79e9689e-96f1-4c86-9b21-3be9df6e2162,WV1021079,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-03T03:26:00.280146+00:00
 c83adb07-98dc-42e9-a749-e7da2e127e40,WV1021095,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:17.50587+00:00
 c58c7a63-2667-49ec-bbec-8644a25f214a,WV1021249,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:22.617456+00:00
 c5f99387-337a-4b28-9cfd-55500c7cdda9,WV1021281,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:33:24.622882+00:00
-6c35a11d-06f1-45d4-b72a-7185eb70d203,WV1021338,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:28.203026+00:00
 f77a0a55-f848-4690-aad2-fe865558efb7,WV1021338,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-03T14:36:41.6024+00:00
+6c35a11d-06f1-45d4-b72a-7185eb70d203,WV1021338,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Admin Continued""",active,Admin Continued,2026-07-02T22:33:28.203026+00:00
 501cf91a-813a-4288-8d69-1f631ee954c5,WV1022580,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:33:33.914396+00:00
 4f5a6138-140d-41ec-a79c-5886e3084e41,WV1022652,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Effective""",active,Effective,2026-07-02T22:33:36.773792+00:00
 4c4efd38-83c4-453b-9fed-2620ceb2cc26,WV1023781,critical,"Permit status mismatch: internal=""active"" vs ECHO=""Expired""",active,Expired,2026-07-02T22:33:39.835003+00:00

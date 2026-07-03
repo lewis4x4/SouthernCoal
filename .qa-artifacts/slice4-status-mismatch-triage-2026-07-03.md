@@ -1,8 +1,8 @@
 # Slice 4 — status_mismatch triage export
 
 **Date:** 2026-07-03
-**Pending rows:** 111
-**Critical:** 70
+**Pending rows:** 112
+**Critical:** 71
 
 ## Pattern
 
@@ -10,7 +10,7 @@ All rows are **permit status** mismatches: internal `npdes_permits.status = acti
 
 | ECHO status | Count |
 |-------------|------:|
-| Expired | 38 |
+| Expired | 39 |
 | Effective | 34 |
 | Terminated; Compliance Tracking Off | 21 |
 | Admin Continued | 17 |
@@ -30,15 +30,6 @@ Review in **Review Queue** → filter **Type: Status Mismatch**. For each permit
 ```json
 [
   {
-    "id": "1cb74e21-31ff-48aa-bdc0-adf386cc754a",
-    "npdes_id": "AL0062693",
-    "severity": "medium",
-    "description": "Permit status mismatch: internal=\"active\" vs ECHO=\"Admin Continued\"",
-    "internal_value": "active",
-    "external_value": "Admin Continued",
-    "detected_at": "2026-07-02T22:26:13.150073+00:00"
-  },
-  {
     "id": "aa9b670d-02e1-4f60-8bd9-207949b19ab6",
     "npdes_id": "AL0062693",
     "severity": "medium",
@@ -46,6 +37,15 @@ Review in **Review Queue** → filter **Type: Status Mismatch**. For each permit
     "internal_value": "active",
     "external_value": "Admin Continued",
     "detected_at": "2026-07-02T22:25:19.29538+00:00"
+  },
+  {
+    "id": "1cb74e21-31ff-48aa-bdc0-adf386cc754a",
+    "npdes_id": "AL0062693",
+    "severity": "medium",
+    "description": "Permit status mismatch: internal=\"active\" vs ECHO=\"Admin Continued\"",
+    "internal_value": "active",
+    "external_value": "Admin Continued",
+    "detected_at": "2026-07-02T22:26:13.150073+00:00"
   },
   {
     "id": "23dc05b8-671d-4128-80da-58269b3481b8",

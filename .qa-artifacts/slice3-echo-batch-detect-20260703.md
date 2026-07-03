@@ -1,17 +1,17 @@
 # Slice 3 — batched ECHO discrepancy detect (task 3.35)
 
-**Captured:** 2026-07-03T15:03:20.435Z
+**Captured:** 2026-07-03T15:08:18.669Z
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`
-**Batch:** offset=115, limit=1, processed=1 / 149 facilities
+**Batch:** offset=97, limit=1, processed=1 / 149 facilities
 
 ## Before / after
 
 | Metric | Before | After | Δ |
 |--------|-------:|------:|--:|
-| discrepancy_reviews (total) | 181086 | 181087 | +1 |
+| discrepancy_reviews (total) | 181087 | 181088 | +1 |
 | missing_internal | 180976 | 180976 | +0 |
 | value_mismatch | 0 | 0 | 0 |
-| status_mismatch | 110 | 111 | 1 |
+| status_mismatch | 111 | 112 | 1 |
 | external_echo_dmrs | 336403 | 336403 | 0 |
 
 ## job_runs (detect-discrepancies-echo since batch start)
@@ -28,11 +28,11 @@
 
 | NPDES | OK | ms | detail |
 |-------|:--:|---:|--------|
-| WV1018779 | ✓ | 134 | req 38637 |
+| WV1006304 | ✓ | 53 | req 38639 |
 
 ## Remaining
 
-33 permits not processed in this window. Resume with `--resume` or `--offset 116`.
+51 permits not processed in this window. Resume with `--resume` or `--offset 98`.
 
 ## Notes
 
