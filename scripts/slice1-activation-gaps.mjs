@@ -117,9 +117,15 @@ ${JSON.stringify(report, null, 2)}
 \`\`\`
 `;
 
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const suffixArg = process.argv.indexOf('--suffix');
+  const suffix =
+    suffixArg >= 0 && process.argv[suffixArg + 1]
+      ? `-${String(process.argv[suffixArg + 1]).replace(/[^a-z0-9_-]/gi, '')}`
+      : '';
   const outDir = resolve(REPO_ROOT, '.qa-artifacts');
   mkdirSync(outDir, { recursive: true });
-  const path = resolve(outDir, 'slice1-activation-gaps-20260702.md');
+  const path = resolve(outDir, `slice1-activation-gaps-${stamp}${suffix}.md`);
   writeFileSync(path, md);
   console.log(`Artifact: ${path}`);
 }
