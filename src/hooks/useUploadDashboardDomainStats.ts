@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useQueueStore } from '@/stores/queue';
 
 export interface UploadDashboardDomainStats {
   totalPermits: number;
@@ -9,6 +10,7 @@ export interface UploadDashboardDomainStats {
   computedAt?: string;
   loading: boolean;
   error?: string;
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -16,13 +18,25 @@ export interface UploadDashboardDomainStats {
  */
 export function useUploadDashboardDomainStats(): UploadDashboardDomainStats {
   const { profile } = useUserProfile();
-  const [stats, setStats] = useState<Omit<UploadDashboardDomainStats, 'loading'>>({
+  const entries = useQueueStore((s) => s.entries);
+  const [stats, setStats] = useState<Omit<UploadDashboardDomainStats, 'loading' | 'refetch'>>({
     totalPermits: 0,
     totalOutfalls: 0,
     totalLimits: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
+
+  /** Refetch when any queue row lands in imported (v6 §12 #5 live stat cards). */
+  const importSignature = useMemo(
+    () =>
+      entries
+        .filter((e) => e.status === 'imported')
+        .map((e) => `${e.id}:${e.records_imported ?? 0}`)
+        .sort()
+        .join('|'),
+    [entries],
+  );
 
   const refetch = useCallback(async () => {
     if (!profile?.organization_id) {
@@ -58,7 +72,7 @@ export function useUploadDashboardDomainStats(): UploadDashboardDomainStats {
 
   useEffect(() => {
     void refetch();
-  }, [refetch]);
+  }, [refetch, importSignature]);
 
-  return { ...stats, loading, error };
+  return { ...stats, loading, error, refetch };
 }
