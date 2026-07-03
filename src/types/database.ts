@@ -68,6 +68,131 @@ export interface OutfallAlias {
 }
 
 // ---------------------------------------------------------------------------
+// Counterparty Graph Slice A - Party Spine
+// ---------------------------------------------------------------------------
+
+export type PartyKind = 'person' | 'organization';
+
+export type PartyRoleTypeCategory =
+  | 'internal'
+  | 'regulator'
+  | 'commercial'
+  | 'legal'
+  | 'financial'
+  | 'community';
+
+export interface PartyRoleType {
+  code: string;
+  display_label: string;
+  category: PartyRoleTypeCategory;
+  statutory_basis: string | null;
+  is_active: boolean;
+  deprecated_at: string | null;
+  created_at: string;
+}
+
+export interface PartyRelationshipType {
+  code: string;
+  display_label: string;
+  is_directed: boolean;
+  created_at: string;
+}
+
+export interface Party {
+  id: string;
+  party_kind: PartyKind;
+  display_name: string;
+  legal_name: string | null;
+  organization_id: string | null;
+  is_shared_reference: boolean;
+  user_profile_id: string | null;
+  external_ids: Record<string, unknown>;
+  superseded_by: string | null;
+  valid_from: string;
+  valid_to: string | null;
+  transaction_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartyRole {
+  id: string;
+  party_id: string;
+  organization_id: string;
+  role_type_code: string;
+  site_id: string | null;
+  npdes_permit_id: string | null;
+  source: string;
+  confidence: number | null;
+  valid_from: string;
+  valid_to: string | null;
+  transaction_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartyRelationship {
+  id: string;
+  from_party_id: string;
+  to_party_id: string;
+  relationship_type_code: string;
+  organization_id: string | null;
+  evidence_refs: Record<string, unknown>[];
+  valid_from: string;
+  valid_to: string | null;
+  transaction_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartyMergeEvent {
+  id: string;
+  surviving_party_id: string;
+  superseded_party_id: string;
+  organization_id: string | null;
+  merged_by: string | null;
+  basis: string;
+  confidence: number | null;
+  unmerge_of: string | null;
+  transaction_time: string;
+  created_at: string;
+}
+
+export interface PartyResolved {
+  party_id: string;
+  canonical_party_id: string;
+  is_canonical: boolean;
+  merge_depth: number;
+  canonical_display_name: string;
+  canonical_legal_name: string | null;
+  canonical_external_ids: Record<string, unknown>;
+  canonical_organization_id: string | null;
+  canonical_is_shared_reference: boolean;
+  observed_display_name: string;
+  observed_legal_name: string | null;
+  observed_organization_id: string | null;
+  observed_is_shared_reference: boolean;
+}
+
+export interface MshaOwnsOrControlsPartyRelationship {
+  derived_relationship_key: string;
+  from_party_id: string | null;
+  to_party_id: string;
+  relationship_type_code: 'owns_or_controls';
+  organization_id: string;
+  mine_id: string;
+  controller_id: string;
+  controller_name: string;
+  operator_name: string;
+  mine_name: string | null;
+  state: string | null;
+  valid_from: string;
+  valid_to: string | null;
+  transaction_time: string;
+  evidence_refs: Record<string, unknown>[];
+}
+
+// ---------------------------------------------------------------------------
 // Permit Limits Review Status (Migration 005)
 // ---------------------------------------------------------------------------
 
