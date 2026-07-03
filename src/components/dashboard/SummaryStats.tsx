@@ -31,6 +31,8 @@ const CARDS = [
   },
 ];
 
+const DOMAIN_KEYS = ['totalPermits', 'totalOutfalls', 'totalLimits'] as const;
+
 /**
  * Four SpotlightCard stat cards at the top of the dashboard.
  * Animated counters transition from old → new values.
@@ -46,24 +48,47 @@ export function SummaryStats() {
     awaitingReview: queueStats.awaitingReview,
   };
 
+  function displayValue(key: (typeof CARDS)[number]['key']): number | null {
+    if (key === 'awaitingReview') return stats[key];
+    if (domainStats.loading && stats[key] === 0) return null;
+    if (domainStats.error) return null;
+    return stats[key];
+  }
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {CARDS.map(({ key, label, icon: Icon, spotlightColor }) => (
-        <SpotlightCard key={key} spotlightColor={spotlightColor} className="p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                {label}
-              </p>
-              <AnimatedCounter
-                value={stats[key]}
-                className="text-2xl font-semibold text-text-primary mt-1 block"
-              />
+      {CARDS.map(({ key, label, icon: Icon, spotlightColor }) => {
+        const value = displayValue(key);
+        const isDomainCard = (DOMAIN_KEYS as readonly string[]).includes(key);
+        const showError = isDomainCard && domainStats.error;
+
+        return (
+          <SpotlightCard key={key} spotlightColor={spotlightColor} className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  {label}
+                </p>
+                {showError ? (
+                  <p className="text-sm text-status-failed mt-1" title={domainStats.error}>
+                    Unavailable
+                  </p>
+                ) : value === null ? (
+                  <span className="text-2xl font-semibold text-text-muted mt-1 block animate-pulse">
+                    —
+                  </span>
+                ) : (
+                  <AnimatedCounter
+                    value={value}
+                    className="text-2xl font-semibold text-text-primary mt-1 block"
+                  />
+                )}
+              </div>
+              <Icon size={20} className="text-text-muted" />
             </div>
-            <Icon size={20} className="text-text-muted" />
-          </div>
-        </SpotlightCard>
-      ))}
+          </SpotlightCard>
+        );
+      })}
     </div>
   );
 }

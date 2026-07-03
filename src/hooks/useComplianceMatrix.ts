@@ -111,9 +111,11 @@ export function useComplianceMatrix(): MatrixData {
         }
       }
 
-      // Awaiting review: imported/embedded + unreviewed (v6 5d — reviewable categories)
+      // Awaiting review: parsed/imported/embedded + unreviewed (v6 5d — reviewable categories)
       if (
-        (entry.status === 'imported' || entry.status === 'embedded') &&
+        (entry.status === 'parsed' ||
+          entry.status === 'imported' ||
+          entry.status === 'embedded') &&
         (catKey === 'npdes_permit' || catKey === 'lab_data' || catKey === 'dmr')
       ) {
         const vStatus = verificationStatuses[entry.id];
