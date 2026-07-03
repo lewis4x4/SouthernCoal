@@ -65,7 +65,7 @@ Corrections to the original proposal: the route is **`/compliance/dashboard`** (
 
 - [x] `get_job_health()` shows every scheduled job with a logged last run; a forced failure produces a `failed` row + audit entry (Slice 0) — verified prod 2026-07-02; precip sync live `failed` row
 - [ ] Statutory-alert surfaces show ack state; every ack is a named human on the record (Slice 0) — UI/RPC shipped; **0 acks in prod** (human triage pending)
-- [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/7757 ≡ raw SCC SQL (2026-07-02)
+- [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/8119 ≡ raw SCC SQL (2026-07-03)
 - [x] KYGE40869 activation chain (Slice 1 phase 3) — 66 exceedances seeded, 66 `missing_internal` reconciled, KYGE40869 off top gap list (144 limits from phase 2); scoped detect run 2026-07-03 (artifact `.qa-artifacts/slice1-kyge40869-activation-chain-20260703.md`)
 - [ ] ≥1 DMR auto-populated from lab data and validated in UI **with zero silent unit-conversion fallbacks** (Slice 2) — KYGE40869 synthetic: auto-populate ✅ (18.4 mg/L TSS), mass loading ✅ (383.64 lbs/day @ 2.5 MGD), conversion warnings surfaced (not silent); **full UI walkthrough still pending**
 - [ ] WV1024078 DMRs synced via chunked retry; full re-run completes under `job_runs`; before/after discrepancy counts documented and `missing_internal` shrinks materially (Slice 3) — **149/149 detect ✅**; WV1024078 **BLOCKED (EPA 502)**; `missing_internal` shrinkage deferred to Slice 1 data growth
@@ -73,7 +73,7 @@ Corrections to the original proposal: the route is **`/compliance/dashboard`** (
 - [x] Snapshot generation scheduled and validated against live data (Slice 5) — daily cron + snapshot match (artifact `.qa-artifacts/slice5-compliance-snapshot-20260702.md`)
 - [ ] A VA permit mapped via override UI with confirmation basis recorded, no bulk apply (Slice 6) — UI shipped; human UAT pending
 
-**Closeout artifact:** `.qa-artifacts/echo-reconciliation-closeout-20260702.md` (2026-07-02 prod re-measure)
+**Closeout artifact:** `.qa-artifacts/echo-reconciliation-closeout-20260703.md` (2026-07-03 prod re-measure; supersedes 20260702)
 
 **Verify every slice:** `npm run typecheck && npm run lint && npm test && npm run build`, plus `npm run qa:upload-dashboard-staging` and `npm run smoke:upload-dashboard` where dashboard surfaces change.
 
