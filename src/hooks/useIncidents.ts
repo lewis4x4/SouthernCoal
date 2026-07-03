@@ -63,7 +63,13 @@ export function useIncidents() {
       setLoading(false);
       return;
     }
-    Promise.all([fetchIncidentTypes(), fetchIncidents()]).then(() => setLoading(false));
+    void Promise.all([fetchIncidentTypes(), fetchIncidents()])
+      .catch((err) => {
+        console.error('[incidents] initial fetch failed:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [fetchIncidentTypes, fetchIncidents, orgId]);
 
   // Realtime subscription for new incidents

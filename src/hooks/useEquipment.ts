@@ -143,13 +143,19 @@ export function useEquipment() {
       setLoading(false);
       return;
     }
-    Promise.all([
+    void Promise.all([
       fetchEquipment(),
       fetchAssignments(),
       fetchCalibrationsDue(),
       fetchMaintenanceDue(),
       fetchMaintenanceAlerts(),
-    ]).then(() => setLoading(false));
+    ])
+      .catch((err) => {
+        console.error('[equipment] fetch failed:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [fetchEquipment, fetchAssignments, fetchCalibrationsDue, fetchMaintenanceDue, fetchMaintenanceAlerts, orgId]);
 
   const addEquipment = useCallback(

@@ -39,7 +39,13 @@ export function useRCATemplates() {
 
   useEffect(() => {
     if (orgId) {
-      fetchTemplates().then(() => setLoading(false));
+      void fetchTemplates()
+        .catch((err) => {
+          console.error('[rca] templates load failed:', err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     } else {
       setLoading(false);
     }

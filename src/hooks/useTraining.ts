@@ -79,9 +79,13 @@ export function useTraining() {
       setLoading(false);
       return;
     }
-    Promise.all([fetchCatalog(), fetchRequirements(), fetchCompletions()]).then(() =>
-      setLoading(false),
-    );
+    void Promise.all([fetchCatalog(), fetchRequirements(), fetchCompletions()])
+      .catch((err) => {
+        console.error('[training] fetch failed:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [fetchCatalog, fetchRequirements, fetchCompletions, orgId]);
 
   const addCatalogItem = useCallback(

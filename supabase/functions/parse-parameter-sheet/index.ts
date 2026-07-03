@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { getCallerOrganizationId, queueEntryMatchesCallerOrg } from "../_shared/queue-access.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -621,6 +622,14 @@ serve(async (req: Request) => {
 
     if (fetchError || !entry) {
       return jsonResponse({ success: false, error: `Queue entry not found: ${queueId}` }, 404);
+    }
+
+    const callerOrgId = await getCallerOrganizationId(supabase, userId);
+    if (!callerOrgId) {
+      return jsonResponse({ success: false, error: "User profile not found" }, 401);
+    }
+    if (!queueEntryMatchesCallerOrg(entry.organization_id, callerOrgId)) {
+      return jsonResponse({ success: false, error: "Access denied" }, 403);
     }
 
     // 6. Validate status

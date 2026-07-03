@@ -222,6 +222,8 @@ export function ComplianceViolationDetailPage() {
   }
 
   const nextStatuses = NEXT_STATUS[violation.status] ?? [];
+  const statusClass = STATUS_COLORS[violation.status] ?? STATUS_COLORS.open;
+  const severityClass = SEVERITY_COLORS[violation.severity] ?? SEVERITY_COLORS.moderate;
 
   return (
     <div className="space-y-6">
@@ -246,10 +248,10 @@ export function ComplianceViolationDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
-            <span className={clsx('px-2 py-0.5 rounded text-xs font-medium border', STATUS_COLORS[violation.status])}>
+            <span className={clsx('px-2 py-0.5 rounded text-xs font-medium border', statusClass)}>
               {STATUS_LABELS[violation.status]}
             </span>
-            <span className={clsx('px-2 py-0.5 rounded text-xs font-medium', SEVERITY_COLORS[violation.severity])}>
+            <span className={clsx('px-2 py-0.5 rounded text-xs font-medium', severityClass)}>
               {violation.severity}
             </span>
             <span>Date: {violation.violation_date}</span>

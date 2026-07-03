@@ -47,6 +47,14 @@ export function useRealtimeQueue() {
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const lastEventRef = useRef<number>(Date.now());
   const initialLoadDone = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
    * Full paginated fetch — used only on initial mount.
@@ -135,10 +143,12 @@ export function useRealtimeQueue() {
           filter: `organization_id=eq.${profile.organization_id}`,
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          if (!isMountedRef.current) return;
           lastEventRef.current = Date.now();
 
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const entry = payload.new as unknown as QueueEntry;
+            if (!isMountedRef.current) return;
             upsertEntry(entry);
 
             // Trigger embedding generation when parse completes

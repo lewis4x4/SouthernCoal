@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { extractUserBearerToken, getUserProfile } from "../_shared/auth.ts";
+import { isOrgScopedStoragePath } from "../_shared/queue-access.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -169,18 +171,16 @@ serve(async (req) => {
   // Initialize Supabase client with service role
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Verify auth
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
+  // Verify auth (reject anon/service_role JWT — SEC-003)
+  const token = extractUserBearerToken(req);
+  if (!token) {
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(
-    authHeader.slice(7)
-  );
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
   if (authError || !user) {
     return new Response(
@@ -188,6 +188,15 @@ serve(async (req) => {
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  const callerProfile = await getUserProfile(supabase, user.id);
+  if (!callerProfile?.organizationId) {
+    return new Response(
+      JSON.stringify({ success: false, error: "User profile not found" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  const callerOrgId = callerProfile.organizationId;
 
   // Parse request body
   let body: ProcessRequest;
@@ -202,11 +211,25 @@ serve(async (req) => {
 
   console.log(`[process-handoff] User ${user.id} processing handoff ${body.handoff_input_id}`);
 
+  if (body.organization_id && body.organization_id !== callerOrgId) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Access denied" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     let extractedText = body.raw_content || "";
 
     // Step 1: Extract text from attachment using Claude Vision
     if (body.attachment_path) {
+      if (!isOrgScopedStoragePath(body.attachment_path, callerOrgId)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       console.log(`[process-handoff] Downloading attachment: ${body.attachment_path}`);
 
       const { data: fileData, error: downloadError } = await supabase.storage
@@ -270,8 +293,8 @@ serve(async (req) => {
       });
 
       if (!visionResponse.ok) {
-        const errorText = await visionResponse.text();
-        throw new Error(`Claude Vision API failed: ${errorText}`);
+        console.error("[process-handoff] Claude Vision API failed:", visionResponse.status);
+        throw new Error("Document extraction failed");
       }
 
       const visionData = await visionResponse.json();
@@ -282,10 +305,11 @@ serve(async (req) => {
       console.log(`[process-handoff] Extracted ${extractedText.length} characters from attachment`);
     }
 
-    // Step 2: Fetch ALL roadmap tasks for comprehensive matching
+    // Step 2: Fetch org-scoped roadmap tasks for matching
     const { data: tasks, error: tasksError } = await supabase
       .from("roadmap_tasks")
       .select("id, task_number, title, description, status, category, phase, section")
+      .eq("organization_id", callerOrgId)
       .order("task_number");
 
     if (tasksError) {
@@ -475,7 +499,7 @@ serve(async (req) => {
       unmatched_items: [],
       extraction_confidence: 0,
       processing_time_ms: Date.now() - startTime,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Processing failed",
     };
 
     return new Response(JSON.stringify(response), {

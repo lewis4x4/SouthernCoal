@@ -45,22 +45,19 @@ interface Recipient {
 async function validateAuth(
   req: Request,
   supabase: ReturnType<typeof createClient>,
-): Promise<{ ok: boolean; userId: string | null }> {
+): Promise<{ ok: boolean; userId: string | null; privileged: boolean }> {
   if (verifyInternalSecret(req)) {
-    return { ok: true, userId: null };
+    return { ok: true, userId: null, privileged: true };
   }
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return { ok: false, userId: null };
+  if (!authHeader?.startsWith("Bearer ")) return { ok: false, userId: null, privileged: false };
 
   const token = authHeader.replace("Bearer ", "").trim();
-  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
-    return { ok: true, userId: null };
-  }
-  if (isPrivilegedOrAnonymousJwt(token)) return { ok: false, userId: null };
+  if (isPrivilegedOrAnonymousJwt(token)) return { ok: false, userId: null, privileged: false };
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return { ok: false, userId: null };
+  if (error || !user) return { ok: false, userId: null, privileged: false };
 
   const { data: roles } = await supabase
     .from("user_role_assignments")
@@ -76,9 +73,34 @@ async function validateAuth(
   }
 
   const allowed = ["admin", "executive", "environmental_manager", "site_manager"];
-  if (!names.some((n) => allowed.includes(n))) return { ok: false, userId: null };
+  if (!names.some((n) => allowed.includes(n))) return { ok: false, userId: null, privileged: false };
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, privileged: false };
+}
+
+async function resolveTargetOrgId(
+  supabase: ReturnType<typeof createClient>,
+  auth: { userId: string | null; privileged: boolean },
+  bodyOrgId: string,
+): Promise<{ ok: true; orgId: string } | { ok: false; status: number; message: string }> {
+  if (auth.privileged) {
+    return { ok: true, orgId: bodyOrgId };
+  }
+  if (!auth.userId) {
+    return { ok: false, status: 401, message: "Unauthorized" };
+  }
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", auth.userId)
+    .single();
+  if (!profile?.organization_id) {
+    return { ok: false, status: 401, message: "User profile not found" };
+  }
+  if (profile.organization_id !== bodyOrgId) {
+    return { ok: false, status: 403, message: "organization_id does not match caller" };
+  }
+  return { ok: true, orgId: bodyOrgId };
 }
 
 async function isRateLimited(
@@ -128,6 +150,14 @@ serve(async (req) => {
   if (!orgId) {
     return new Response(JSON.stringify({ error: "organization_id required" }), {
       status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const orgResolution = await resolveTargetOrgId(supabase, auth, orgId);
+  if (!orgResolution.ok) {
+    return new Response(JSON.stringify({ error: orgResolution.message }), {
+      status: orgResolution.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

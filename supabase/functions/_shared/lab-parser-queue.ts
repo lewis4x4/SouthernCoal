@@ -63,6 +63,26 @@ export async function loadLabQueueEntry(
   return { entry: data as LabQueueEntry };
 }
 
+export async function assertLabQueueOrgAccess(
+  supabase: SupabaseClient,
+  userId: string,
+  entry: LabQueueEntry,
+): Promise<string | null> {
+  const { data: profile, error } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  if (error || !profile?.organization_id) {
+    return "User profile not found";
+  }
+  if (entry.organization_id !== profile.organization_id) {
+    return "Access denied";
+  }
+  return null;
+}
+
 export function validateLabQueueEntry(
   entry: LabQueueEntry,
   expectedCategory = "lab_data",

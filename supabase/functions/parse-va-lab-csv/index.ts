@@ -9,6 +9,7 @@ import {
   markProcessing,
   validateLabQueueEntry,
   verifyLabParserAuth,
+  assertLabQueueOrgAccess,
 } from "../_shared/lab-parser-queue.ts";
 import {
   aliasSourceForDocumentType,
@@ -55,6 +56,12 @@ Deno.serve(async (req: Request) => {
   const { entry, error: loadError } = await loadLabQueueEntry(supabase, queueId);
   if (!entry) {
     return jsonResponse({ success: false, error: loadError ?? "Not found" }, 404, corsHeaders);
+  }
+
+  const orgAccessError = await assertLabQueueOrgAccess(supabase, userId, entry);
+  if (orgAccessError) {
+    const status = orgAccessError === "Access denied" ? 403 : 401;
+    return jsonResponse({ success: false, error: orgAccessError }, status, corsHeaders);
   }
 
   const validationError = validateLabQueueEntry(entry);

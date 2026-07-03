@@ -6,6 +6,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").trim();
@@ -54,10 +55,14 @@ Deno.serve(async (req: Request) => {
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "Unauthorized" }, 401);
   }
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (isPrivilegedOrAnonymousJwt(token)) {
+    return json({ error: "Unauthorized" }, 401);
+  }
   const {
     data: { user },
     error: authError,
-  } = await sb.auth.getUser(authHeader.replace("Bearer ", ""));
+  } = await sb.auth.getUser(token);
   if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
   // Get user's org

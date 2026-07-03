@@ -25,7 +25,7 @@
       "expected_ms": 2000
     },
     {
-      "url": "https://zymenlnwyzpnohljwifx.supabase.co/auth/v1/health?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5bWVubG53eXpwbm9obGp3aWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NTY0NjcsImV4cCI6MjA4NjIzMjQ2N30.Q6uKHhUEKhnanBuWEeCIVoJN08t5afqUx74zGZ4VMgQ",
+      "url": "https://zymenlnwyzpnohljwifx.supabase.co/auth/v1/health",
       "name": "Supabase Auth health",
       "expected_ms": 500
     }

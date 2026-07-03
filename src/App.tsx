@@ -230,7 +230,7 @@ export function App() {
         }}
       />
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
 
         {APP_ROUTES.map(({ path, element, roles, guardScope = 'assignment', shell = 'app' }) => (
           <Route

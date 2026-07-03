@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
+import { queueEntryMatchesCallerOrg } from "../_shared/queue-access.ts";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -66,12 +67,7 @@ async function validateAuth(
   supabase: ReturnType<typeof createClient>,
 ): Promise<{ authorized: boolean; userId: string | null; orgId: string | null }> {
   // Path 1: Internal secret (backfill, automation)
-  const internalHeader = req.headers.get("X-Internal-Secret");
-  if (
-    internalHeader &&
-    internalHeader === EMBEDDING_INTERNAL_SECRET &&
-    EMBEDDING_INTERNAL_SECRET.length > 0
-  ) {
+  if (verifyInternalSecret(req)) {
     return { authorized: true, userId: null, orgId: null };
   }
 
@@ -520,21 +516,26 @@ serve(async (req: Request) => {
     const { data: queueEntry, error: fetchError } = await supabase
       .from("file_processing_queue")
       .select(
-        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id",
+        "id, storage_bucket, storage_path, file_name, file_category, state_code, status, uploaded_by, document_id, organization_id",
       )
       .eq("id", queue_id)
       .single();
 
     if (fetchError || !queueEntry) {
+      console.error("[embed] Queue entry not found:", fetchError?.message);
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Queue entry not found: ${queue_id}`,
-          details: fetchError?.message ?? null,
-          hint: fetchError?.hint ?? null,
-          code: fetchError?.code ?? null,
+          error: "Queue entry not found",
         }),
         { status: 404, headers },
+      );
+    }
+
+    if (auth.orgId && !queueEntryMatchesCallerOrg(queueEntry.organization_id, auth.orgId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Access denied" }),
+        { status: 403, headers },
       );
     }
 

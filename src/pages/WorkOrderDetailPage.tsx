@@ -91,10 +91,16 @@ export function WorkOrderDetailPage() {
   useEffect(() => {
     if (!id || loading || wo) return;
     setDirectLoading(true);
-    void fetchWorkOrderById(id).then((row) => {
-      setDirectWo(row);
-      setDirectLoading(false);
-    });
+    void fetchWorkOrderById(id)
+      .then((row) => {
+        setDirectWo(row);
+      })
+      .catch(() => {
+        setDirectWo(null);
+      })
+      .finally(() => {
+        setDirectLoading(false);
+      });
   }, [fetchWorkOrderById, id, loading, wo]);
 
   const isOverdue =

@@ -14,10 +14,16 @@ export function ProfileCertificationsPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    checkUserReadiness(user.id).then((results) => {
-      setReadiness(results);
-      setReadinessLoading(false);
-    });
+    void checkUserReadiness(user.id)
+      .then((results) => {
+        setReadiness(results);
+      })
+      .catch(() => {
+        setReadiness([]);
+      })
+      .finally(() => {
+        setReadinessLoading(false);
+      });
   }, [user?.id, checkUserReadiness]);
 
   const myCompletions = completions.filter((c) => c.user_id === user?.id);

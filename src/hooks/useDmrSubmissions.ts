@@ -107,7 +107,13 @@ export function useDmrSubmissions() {
 
   useEffect(() => {
     if (orgId) {
-      fetchSubmissions().then(() => setLoading(false));
+      void fetchSubmissions()
+        .catch((err) => {
+          console.error('[dmr] submissions fetch failed:', err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     } else {
       setLoading(false);
     }

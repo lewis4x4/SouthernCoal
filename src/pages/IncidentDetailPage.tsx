@@ -113,20 +113,26 @@ export function IncidentDetailPage() {
   async function handleEscalate() {
     if (!id) return;
     setActing(true);
-    await escalateIncident(id, escalateNotes || undefined);
-    setEscalateNotes('');
-    await loadDetail();
-    setActing(false);
+    try {
+      await escalateIncident(id, escalateNotes || undefined);
+      setEscalateNotes('');
+      await loadDetail();
+    } finally {
+      setActing(false);
+    }
   }
 
   async function handleResolve() {
     if (!id || !resolveNotes.trim()) return;
     setActing(true);
-    await resolveIncident(id, resolveNotes.trim());
-    setResolveNotes('');
-    setShowResolve(false);
-    await loadDetail();
-    setActing(false);
+    try {
+      await resolveIncident(id, resolveNotes.trim());
+      setResolveNotes('');
+      setShowResolve(false);
+      await loadDetail();
+    } finally {
+      setActing(false);
+    }
   }
 
   if (loading || !incident) {
@@ -137,8 +143,8 @@ export function IncidentDetailPage() {
     );
   }
 
-  const sevColors = SEVERITY_COLORS[incident.severity];
-  const statusColors = STATUS_COLORS[incident.status];
+  const sevColors = SEVERITY_COLORS[incident.severity] ?? SEVERITY_COLORS.medium;
+  const statusColors = STATUS_COLORS[incident.status] ?? STATUS_COLORS.open;
   const countdown = countdownDisplay(incident.countdown_expires_at, incident.countdown_paused);
   const isExpired = countdown === 'EXPIRED';
   const isClosed = incident.status === 'closed' || incident.status === 'closed_no_action';

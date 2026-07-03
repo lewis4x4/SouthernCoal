@@ -3,6 +3,7 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { getCallerOrganizationId, queueEntryMatchesCallerOrg } from "../_shared/queue-access.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 
 // ---------------------------------------------------------------------------
@@ -547,13 +548,21 @@ serve(async (req: Request) => {
   const { data: queueEntry, error: fetchError } = await supabase
     .from("file_processing_queue")
     .select(
-      "id, storage_bucket, storage_path, file_name, file_size_bytes, file_category, state_code, status, uploaded_by",
+      "id, storage_bucket, storage_path, file_name, file_size_bytes, file_category, state_code, status, uploaded_by, organization_id",
     )
     .eq("id", queueId)
     .single();
 
   if (fetchError || !queueEntry) {
     return jsonResponse({ success: false, error: "Queue entry not found" }, 404);
+  }
+
+  const callerOrgId = await getCallerOrganizationId(supabase, userId);
+  if (!callerOrgId) {
+    return jsonResponse({ success: false, error: "User profile not found" }, 401);
+  }
+  if (!queueEntryMatchesCallerOrg(queueEntry.organization_id, callerOrgId)) {
+    return jsonResponse({ success: false, error: "Access denied" }, 403);
   }
 
   // 4. Guard: only process queued or failed entries (failed = retry)

@@ -953,6 +953,7 @@ ${schemaContext}`;
     );
 
     if (queryError) {
+      console.error("[compliance-search] Query execution failed:", queryError.message);
       await auditLog(supabase, userContext, request, queryId, {
         generatedSql: generatedQuery.sql,
         error: queryError.message,
@@ -961,7 +962,7 @@ ${schemaContext}`;
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Query error: ${queryError.message}. Try narrowing your search.`,
+          error: "Query could not be executed. Try narrowing your search.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

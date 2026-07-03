@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
   evaluateComplianceAlert,
   tallySeverities,
@@ -15,7 +15,6 @@ import {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const SYNC_INTERNAL_SECRET = Deno.env.get("EMBEDDING_INTERNAL_SECRET") ?? "";
 const _frontendEnv = Deno.env.get("FRONTEND_URL");
 const FRONTEND_URL = (_frontendEnv ?? (
   (Deno.env.get("SUPABASE_URL") ?? "").includes("localhost") ? "http://localhost:5173" : ""
@@ -48,23 +47,19 @@ interface Recipient {
 async function validateAuth(
   req: Request,
   supabase: ReturnType<typeof createClient>,
-): Promise<{ ok: boolean; userId: string | null }> {
-  const secret = req.headers.get("x-internal-secret");
-  if (secret && SYNC_INTERNAL_SECRET && secret === SYNC_INTERNAL_SECRET) {
-    return { ok: true, userId: null };
+): Promise<{ ok: boolean; userId: string | null; privileged: boolean }> {
+  if (verifyInternalSecret(req)) {
+    return { ok: true, userId: null, privileged: true };
   }
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return { ok: false, userId: null };
+  if (!authHeader?.startsWith("Bearer ")) return { ok: false, userId: null, privileged: false };
 
   const token = authHeader.replace("Bearer ", "").trim();
-  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
-    return { ok: true, userId: null };
-  }
-  if (isPrivilegedOrAnonymousJwt(token)) return { ok: false, userId: null };
+  if (isPrivilegedOrAnonymousJwt(token)) return { ok: false, userId: null, privileged: false };
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return { ok: false, userId: null };
+  if (error || !user) return { ok: false, userId: null, privileged: false };
 
   const { data: roles } = await supabase
     .from("user_role_assignments")
@@ -80,9 +75,34 @@ async function validateAuth(
   }
 
   const allowed = ["admin", "executive", "environmental_manager"];
-  if (!names.some((n) => allowed.includes(n))) return { ok: false, userId: null };
+  if (!names.some((n) => allowed.includes(n))) return { ok: false, userId: null, privileged: false };
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, privileged: false };
+}
+
+async function resolveTargetOrgId(
+  supabase: ReturnType<typeof createClient>,
+  auth: { userId: string | null; privileged: boolean },
+  bodyOrgId: string,
+): Promise<{ ok: true; orgId: string } | { ok: false; status: number; message: string }> {
+  if (auth.privileged) {
+    return { ok: true, orgId: bodyOrgId };
+  }
+  if (!auth.userId) {
+    return { ok: false, status: 401, message: "Unauthorized" };
+  }
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", auth.userId)
+    .single();
+  if (!profile?.organization_id) {
+    return { ok: false, status: 401, message: "User profile not found" };
+  }
+  if (profile.organization_id !== bodyOrgId) {
+    return { ok: false, status: 403, message: "organization_id does not match caller" };
+  }
+  return { ok: true, orgId: bodyOrgId };
 }
 
 async function isRateLimited(
@@ -133,6 +153,14 @@ serve(async (req) => {
   if (!orgId) {
     return new Response(JSON.stringify({ error: "organization_id required" }), {
       status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const orgResolution = await resolveTargetOrgId(supabase, auth, orgId);
+  if (!orgResolution.ok) {
+    return new Response(JSON.stringify({ error: orgResolution.message }), {
+      status: orgResolution.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
