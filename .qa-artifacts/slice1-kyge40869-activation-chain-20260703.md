@@ -1,7 +1,7 @@
 # Slice 1 phase 3 — KYGE40869 activation chain (session status)
 
 **Date:** 2026-07-03  
-**Branch:** `cursor/kyge40869-activation-chain-ea7e`  
+**Branch:** `cursor/kyge40869-activation-chain-fcd8`  
 **Org:** Southern Coal Corporation (`2bffc35c-e2c4-4396-868f-207f80e1e2c4`)
 
 ## Shipped this session
@@ -9,9 +9,10 @@
 | Item | Status |
 |------|--------|
 | PR #22 — `loadEnvLocal()` in slice1 QA scripts + slice3 `--permit` | Merged on `main` |
-| `qa:slice1-activation-chain` orchestrator | New on branch |
-| Activation-gaps dynamic artifact path + `--suffix before/after` | New on branch |
-| Verify (572/572 tests, build) | Green |
+| `qa:slice1-activation-chain` orchestrator | On branch (exceedance → repair → reconcile → gaps → scoped detect) |
+| Activation-gaps dynamic artifact path + `--suffix before/after` | On branch |
+| `slice1ActivationChain.test.ts` — orchestrator smoke test | On branch |
+| Verify (576/576 tests, build) | Green |
 
 ## Prod chain — not executed (cloud blocker)
 
