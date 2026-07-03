@@ -19,6 +19,7 @@ function run(script, args = []) {
 }
 
 run('slice1-seed-permit-limits.mjs', ['--limit', '50', '--batches', '8']);
+run('slice1-seed-propagated-limits.mjs', ['--permit', 'KYGE40869', '--limit', '100', '--batches', '3']);
 run('slice1-seed-exceedances.mjs', ['--limit', '250', '--batches', '10']);
 run('slice1-repair-stuck-keys.mjs', ['--limit', '100']);
 run('slice1-reconcile.mjs', ['--limit', '10000', '--batches', '10']);
