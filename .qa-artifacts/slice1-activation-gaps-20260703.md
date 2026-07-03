@@ -1,7 +1,7 @@
 # Slice 1 — activation gap report
 
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`  
-**Generated:** 2026-07-03T14:53:58.686Z
+**Generated:** 2026-07-03T15:03:38.818Z
 
 ## Funnel (distinct npdes:outfall:parameter keys)
 
@@ -12,16 +12,16 @@
 | Has permit | 8817 |
 | Has outfall | 4366 |
 | Has parameter | 3443 |
-| Has permit_limit | 2893 |
+| Has permit_limit | 2932 |
 
 ## Backlog
 
 | Metric | Count |
 |--------|------:|
-| `slice1_echo_mirror_keys` | 15667 |
-| Pending `missing_internal` | 143433 |
+| `slice1_echo_mirror_keys` | 15713 |
+| Pending `missing_internal` | 143295 |
 | Permits without federal override | 32 |
-| SYNTHETIC ECHO limits | 752 |
+| SYNTHETIC ECHO limits | 791 |
 
 ## Interpretation
 
@@ -32,7 +32,6 @@
 
 | permit_number | npdes_id | missing_limit_keys |
 | --- | --- | --- |
-| WV1018779 | WV1018779 | 39 |
 | WV1006304 | WV1006304 | 38 |
 | WV1022652 | WV1022652 | 36 |
 | WV1025929 | WV1025929 | 35 |
@@ -42,6 +41,7 @@
 | WV1021249 | WV1021249 | 18 |
 | WV1025911 | WV1025911 | 18 |
 | WV1021061 | WV1021061 | 17 |
+| KY0106151 | KY0106151 | 16 |
 
 ## Raw JSON
 
@@ -52,19 +52,14 @@
     "has_permit": 8817,
     "has_outfall": 4366,
     "has_parameter": 3443,
-    "has_permit_limit": 2893,
+    "has_permit_limit": 2932,
     "distinct_violation_keys": 13200
   },
-  "mirror_keys": 15667,
+  "mirror_keys": 15713,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
-  "synthetic_echo_limits": 752,
-  "pending_missing_internal": 143433,
+  "synthetic_echo_limits": 791,
+  "pending_missing_internal": 143295,
   "top_permits_missing_limits": [
-    {
-      "npdes_id": "WV1018779",
-      "permit_number": "WV1018779",
-      "missing_limit_keys": 39
-    },
     {
       "npdes_id": "WV1006304",
       "permit_number": "WV1006304",
@@ -184,6 +179,11 @@
       "npdes_id": "WV1018833",
       "permit_number": "WV1018833",
       "missing_limit_keys": 8
+    },
+    {
+      "npdes_id": "KY0094510",
+      "permit_number": "KY0094510",
+      "missing_limit_keys": 7
     }
   ],
   "permits_without_federal_override": 32

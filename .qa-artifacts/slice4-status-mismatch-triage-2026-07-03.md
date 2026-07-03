@@ -1,8 +1,8 @@
 # Slice 4 — status_mismatch triage export
 
-**Date:** 2026-07-03  
-**Pending rows:** 110  
-**Critical:** 69
+**Date:** 2026-07-03
+**Pending rows:** 111
+**Critical:** 70
 
 ## Pattern
 
@@ -10,7 +10,7 @@ All rows are **permit status** mismatches: internal `npdes_permits.status = acti
 
 | ECHO status | Count |
 |-------------|------:|
-| Expired | 37 |
+| Expired | 38 |
 | Effective | 34 |
 | Terminated; Compliance Tracking Off | 21 |
 | Admin Continued | 17 |

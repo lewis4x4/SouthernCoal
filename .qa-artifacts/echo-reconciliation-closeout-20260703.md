@@ -1,29 +1,29 @@
 # ECHO Reconciliation Phase — Closeout (Phase 1)
 
-**Captured:** 2026-07-03 14:47 UTC  
-**Branch:** `main` @ `21a8dff`  
+**Captured:** 2026-07-03 15:04 UTC
+**Branch:** `main` @ `cd2167a`
 **Org:** Southern Coal Corporation (`2bffc35c-e2c4-4396-868f-207f80e1e2c4`)
 
 ## Prod re-measure (fresh)
 
 | Metric | Jul 2 closeout | Now | Δ |
 |--------|---------------:|----:|--:|
-| discrepancy_reviews (total) | 181,080 | **181,086** | +6 |
+| discrepancy_reviews (total) | 181,080 | **181,087** | +7 |
 | missing_internal | 180,976 | **180,976** | 0 |
-| status_mismatch | 104 | **110** | +6 |
+| status_mismatch | 104 | **111** | +7 |
 | external_echo_dmrs | 336,403 | **336,403** | 0 |
 | external_echo_facilities | 149 | **149** | 0 |
 | npdes_permits (all orgs) | 142 | **142** | 0 |
 | npdes_permits (SCC) | 141 | **141** | 0 |
-| permit_limits (all) | 7,762 | **8,124** | +362 |
-| permit_limits (SCC via RPC) | 7,757 | **8,119** | +362 |
+| permit_limits (all) | 7,762 | **8,253** | +491 |
+| permit_limits (SCC via RPC) | 7,757 | **8,248** | +491 |
 | dmr_submissions | 1 | **1** | 0 |
-| exceedances | 17,255 | **17,631** | +376 |
-| synthetic limits (SYNTHETIC_UAT_SLICE1) | 301 | **662** | +361 |
+| exceedances | 17,255 | **17,789** | +534 |
+| synthetic limits (SYNTHETIC_UAT_SLICE1) | 301 | **791** | +490 |
 | compliance_snapshots (SCC) | 1 | **2** | +1 |
 | alert_acknowledgments | 0 | **0** | 0 |
 
-**Interpretation:** Slice 1 activation chains (KYGE40869 + WV permits) grew limits/exceedances since Jul 2; `missing_internal` flat because new internal rows are offset by expanded detect coverage. Shrinkage requires DMR/permit import at scale, not detection alone.
+**Interpretation:** Slice 1 activation chains and limit propagation grew limits/exceedances since Jul 2; total `missing_internal` is flat because new internal rows are offset by expanded detect coverage. Pending SCC `missing_internal` now measures 143,295 after the WV1018779 activation chain reconciled 138 rows. Shrinkage requires DMR/permit import at scale, not detection alone.
 
 ## Slice acceptance matrix
 
@@ -32,18 +32,18 @@
 | **0** | `get_job_health()` covers scheduled jobs | ✅ | 11 jobs; daily crons green 2026-07-03 |
 | **0** | Forced failure → failed row + audit | ✅ | `sync-precipitation-daily` live `failed` row |
 | **0** | Statutory alert acks on record | ⏸ | **0** acks — UI/RPC shipped; human triage pending |
-| **1** | Summary stat cards match raw SQL | ✅ | RPC 141/823/8119 ≡ raw SCC SQL |
+| **1** | Summary stat cards match raw SQL | ✅ | RPC 141/823/8248 ≡ raw SCC SQL |
 | **1** | KYGE40869 + WV activation chains | ✅ | Artifacts `.qa-artifacts/slice1-*-20260703.md` |
 | **2** | ≥1 DMR auto-populated, zero silent unit fallback | ⏸ | KYGE40869 synthetic: auto-populate + mass loading ✅; **full UI walkthrough pending** |
 | **3** | WV1024078 DMR sync | 🔴 BLOCKED | EPA effluent API 502/timeout — upstream |
-| **3** | Full re-run under `job_runs` | ✅ | 149/149 batch detect; scoped run 2026-07-03 14:36 UTC |
+| **3** | Full re-run under `job_runs` | ✅ | 149/149 batch detect; latest scoped run 2026-07-03 15:03 UTC |
 | **3** | `missing_internal` shrinks materially | ⏸ | N/A until Slice 1 DMR/permit growth |
 | **4** | Task 3.45 + roadmap 3.43/3.44/3.35/3.38 | ✅ | DB: all five tasks **complete** |
 | **4** | Queue usable at ~181K volume | ✅ | Virtualization + bulk triage shipped |
 | **5** | Snapshot cron + validation | ✅ | `qa:slice5-compliance-snapshot` green 2026-07-03 |
 | **6** | VA override with confirmation basis | ⏸ | UI shipped; human map-one-permit UAT pending (~32 VA gaps) |
 
-## `get_job_health()` snapshot (2026-07-03)
+## `get_job_health()` snapshot (2026-07-03 15:04 UTC)
 
 | Job | Last status | Stale? |
 |-----|-------------|--------|
@@ -51,17 +51,19 @@
 | refresh-penalty-exposure-lines-daily | succeeded | no |
 | generate-compliance-snapshot-daily | succeeded | no |
 | sync-precipitation-daily | **failed** | no |
-| detect-discrepancies-echo | succeeded (14:36 UTC) | no |
+| detect-discrepancies-echo | succeeded (15:03 UTC) | no |
 | sync-echo-npdes-target | succeeded | no |
 | sync-echo-weekly | — | yes (no run yet) |
 | sync-msha-weekly | — | yes |
 | dispatch-exceedance-digest-weekly | — | yes |
+| detect-msha-abatement-nightly | succeeded | no |
+| detect-equipment-maintenance-nightly | succeeded | no |
 
-## status_mismatch triage (110 pending)
+## status_mismatch triage (111 pending)
 
 | ECHO external_value | Count |
 |---------------------|------:|
-| Expired | 37 |
+| Expired | 38 |
 | Effective | 34 |
 | Terminated; Compliance Tracking Off | 21 |
 | Admin Continued | 17 |
@@ -74,16 +76,16 @@ Semantic map deployed (`Effective` ↔ `active` no longer false-positive on **ne
 | Script | Result |
 |--------|--------|
 | `qa:slice5-compliance-snapshot` | ✅ snapshot 141/823 matches raw |
-| `qa:slice4-status-mismatch` | ✅ 110 pending exported |
-| MCP SQL validation | ✅ counts verified |
+| `qa:slice4-status-mismatch` | ✅ 111 pending exported |
+| REST/RPC validation | ✅ counts verified |
 
 **Note:** slice4/slice5 scripts require `source .env.local` (they do not auto-load dotenv).
 
 ## Phase 2 entry (active)
 
-1. Export synthetic limits CSV (662 rows) — `qa:slice1-export-synthetic-limits`
-2. Run `qa:slice1-activation-gaps` — prioritize permits without limits / DMR path
-3. Scoped detect re-run after internal data lands
+1. Export synthetic limits CSV (791 rows) — `qa:slice1-export-synthetic-limits`
+2. Continue bounded permit-limit propagation on the next top gap (`WV1006304`, 38 missing keys) before mirror/reconcile.
+3. Scoped detect re-run after each permit activation chain.
 
 ## Hard gates respected
 
