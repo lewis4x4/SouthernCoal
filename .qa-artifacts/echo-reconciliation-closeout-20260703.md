@@ -35,7 +35,7 @@
 | **1** | Summary stat cards match raw SQL | ✅ | RPC 141/823/8286 ≡ raw SCC SQL |
 | **1** | KYGE40869 + WV activation chains | ✅ | Artifacts `.qa-artifacts/slice1-*-20260703.md` |
 | **2** | ≥1 DMR auto-populated, zero silent unit fallback | ⏸ | KYGE40869 synthetic: auto-populate + mass loading ✅; **full UI walkthrough pending** |
-| **3** | WV1024078 DMR sync | 🔴 BLOCKED | EPA effluent API 502/timeout — upstream |
+| **3** | WV1024078 DMR sync | ✅ | Parameter-sliced fallback deployed; one-month smoke inserted 1,013 ECHO DMR rows with 0 parameter failures |
 | **3** | Full re-run under `job_runs` | ✅ | 149/149 batch detect; latest scoped run 2026-07-03 15:08 UTC |
 | **3** | `missing_internal` shrinks materially | ⏸ | N/A until Slice 1 DMR/permit growth |
 | **4** | Task 3.45 + roadmap 3.43/3.44/3.35/3.38 | ✅ | DB: all five tasks **complete** |

@@ -43,7 +43,7 @@ The full code path already exists: `import-lab-data` → `sampling_events`/`lab_
 ### Slice 3 — ECHO discrepancy re-run (roadmap task 3.35)
 
 0. Capture **fresh** before-counts (`external_echo_dmrs`, `discrepancy_reviews` by type, internal tables) — the Feb 2026 figures are stale.
-1. **WV1024078:** it *partially* synced — facility row landed; DMR rows failed on the Edge Function compute limit. Implement the date-range-chunked retry `ECHO_SYNC_REPORT.md` recommends (the `p_start_date` param exists on the effluent call; the chunking loop does not).
+1. **WV1024078:** broad effluent pulls still time out upstream, but the deployed parameter-sliced fallback synced a one-month smoke window for `00400`, `50050`, and `00530` (1,013 DMR rows; 0 parameter failures; artifact `.qa-artifacts/slice3-wv1024078-sync-20260703.md`). Continue using scoped parameter slices for this heavy permit; full-history backfill should advance chunk-by-chunk rather than one broad ECHO request.
 2. Re-run `detect-discrepancies` after Slices 1–2 land — **wrapped in `job_runs`** (Slice 0). Note the weekly cron (`sync-echo-weekly`, Sundays 04:00 UTC) only refreshes 5 stale permits per run — the full re-run is a deliberate one-off, not "wait for cron."
 3. Document before/after counts in the PR; `missing_internal` should shrink materially. Update roadmap task statuses.
 
@@ -68,7 +68,7 @@ Corrections to the original proposal: the route is **`/compliance/dashboard`** (
 - [x] Summary stat cards match raw SQL counts for permits/outfalls/limits (Slice 1) — RPC 141/823/8286 ≡ raw SCC SQL (2026-07-03)
 - [x] KYGE40869 activation chain (Slice 1 phase 3) — 66 exceedances seeded, 66 `missing_internal` reconciled, KYGE40869 off top gap list (144 limits from phase 2); scoped detect run 2026-07-03 (artifact `.qa-artifacts/slice1-kyge40869-activation-chain-20260703.md`)
 - [ ] ≥1 DMR auto-populated from lab data and validated in UI **with zero silent unit-conversion fallbacks** (Slice 2) — KYGE40869 synthetic: `qa:slice2-dmr` ✅ (18.4 mg/L TSS, 383.64 lbs/day, 1 conversion warning surfaced); prod body confirmed **not** half-MDL; **full UI walkthrough still pending**
-- [ ] WV1024078 DMRs synced via chunked retry; full re-run completes under `job_runs`; before/after discrepancy counts documented and `missing_internal` shrinks materially (Slice 3) — **149/149 detect ✅**; WV1024078 **BLOCKED (EPA 502)**; `missing_internal` shrinkage deferred to Slice 1 data growth
+- [x] WV1024078 DMRs synced via chunked/parameter-sliced retry; full re-run completes under `job_runs`; before/after discrepancy counts documented and `missing_internal` shrinkage deferred to Slice 1 data growth (Slice 3) — **149/149 detect ✅**; WV1024078 smoke sync inserted **1,013** ECHO DMR rows with **0** parameter failures; scoped detect rerun 2026-07-03 wrote 0 new discrepancies
 - [x] Task 3.45 done; roadmap statuses for 3.43/3.44/3.35/3.38 corrected; queue usable at post-re-run volume (Slice 4) — 3.35 marked complete in prod 2026-07-02
 - [x] Snapshot generation scheduled and validated against live data (Slice 5) — daily cron + snapshot match (artifact `.qa-artifacts/slice5-compliance-snapshot-20260702.md`)
 - [ ] A VA permit mapped via override UI with confirmation basis recorded, no bulk apply (Slice 6) — UI shipped; human UAT pending

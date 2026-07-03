@@ -3,7 +3,9 @@ import {
   buildEffluentChartUrl,
   formatEchoDate,
   HEAVY_DMR_NPDES_IDS,
+  HEAVY_DMR_PARAMETER_CODES,
   resolveDmrChunkMonths,
+  resolveHeavyDmrParameterCodes,
 } from '../../../supabase/functions/_shared/echo-dmr-sync.ts';
 import { describe, expect, it } from 'vitest';
 
@@ -12,11 +14,20 @@ describe('echo DMR date-range chunking', () => {
     expect(formatEchoDate(new Date('2026-01-15T12:00:00Z'))).toBe('01/15/2026');
   });
 
-  it('builds quarterly chunks for heavy permits', () => {
-    expect(resolveDmrChunkMonths('WV1024078')).toBe(3);
+  it('builds monthly chunks for heavy permits', () => {
+    expect(resolveDmrChunkMonths('WV1024078')).toBe(1);
     expect(HEAVY_DMR_NPDES_IDS.has('WV1024078')).toBe(true);
-    const chunks = buildDmrDateChunks(3, 3, new Date('2026-07-01T00:00:00Z'));
-    expect(chunks.length).toBeGreaterThanOrEqual(12);
+    const chunks = buildDmrDateChunks(3, 1, new Date('2026-07-01T00:00:00Z'));
+    expect(chunks.length).toBeGreaterThanOrEqual(36);
+  });
+
+  it('resolves parameter-sliced fallback codes for WV1024078', () => {
+    expect(HEAVY_DMR_PARAMETER_CODES.WV1024078).toContain('00530');
+    expect(resolveHeavyDmrParameterCodes('WV1024078')).toContain('00400');
+    expect(resolveHeavyDmrParameterCodes('WV1024078', [' 00530 ', '00530', '50050'])).toEqual([
+      '00530',
+      '50050',
+    ]);
   });
 
   it('builds effluent chart URLs with p_start_date and p_end_date', () => {
@@ -29,6 +40,17 @@ describe('echo DMR date-range chunking', () => {
     expect(url).toContain('p_start_date=01/01/2025');
     expect(url).toContain('p_end_date=03/31/2025');
     expect(url).toContain('p_id=WV1024078');
+  });
+
+  it('builds parameter-specific effluent chart URLs', () => {
+    const url = buildEffluentChartUrl(
+      'https://echodata.epa.gov/echo',
+      'WV1024078',
+      new Date(2026, 0, 1),
+      new Date(2026, 0, 31),
+      { parameterCode: '00530' },
+    );
+    expect(url).toContain('parameter_code=00530');
   });
 });
 
@@ -62,5 +84,19 @@ describe('slice3 echo batch detect migration', () => {
     );
     expect(sql).toContain('run_detect_discrepancies_echo_batch_job');
     expect(sql).toContain('detect-discrepancies-echo-batch');
+  });
+});
+
+describe('sync-echo-data WV1024078 heavy permit fallback', () => {
+  it('keeps targeted detect and parameter failure metadata wired', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const source = readFileSync(
+      resolve(import.meta.dirname, '../../../supabase/functions/sync-echo-data/index.ts'),
+      'utf8',
+    );
+    expect(source).toContain('dmr_parameter_codes');
+    expect(source).toContain('dmr_parameter_failures');
+    expect(source).toContain('target_npdes_ids: permits.map((permit) => permit.npdes_id)');
   });
 });

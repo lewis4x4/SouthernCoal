@@ -5,7 +5,9 @@ import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/aut
 import {
   buildDmrDateChunks,
   buildEffluentChartUrl,
+  HEAVY_DMR_NPDES_IDS,
   resolveDmrChunkMonths,
+  resolveHeavyDmrParameterCodes,
 } from "../_shared/echo-dmr-sync.ts";
 import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
 
@@ -286,6 +288,14 @@ interface DmrRecord {
   exceedance_pct: number | null;
 }
 
+interface DmrFetchFailure {
+  npdes_id: string;
+  start_date: string;
+  end_date: string;
+  parameter_code: string | null;
+  reason: string;
+}
+
 // Convert EPA date "31-OCT-22" → "2022-10-31"
 function parseEpaDate(raw: string | null | undefined): string | null {
   if (!raw || typeof raw !== "string") return null;
@@ -443,12 +453,16 @@ async function syncPermitDmrData(
   chunkMonths: number,
   errors: string[],
   dmrChunkIndex?: number | null,
+  requestedParameterCodes: string[] = [],
 ): Promise<{
   inserted: number;
   emptyResponses: number;
   chunksFetched: number;
   totalChunks: number;
   chunkIndex: number | null;
+  parameterSliced: boolean;
+  parameterCodes: string[];
+  failures: DmrFetchFailure[];
 }> {
   const allChunks = buildDmrDateChunks(BACKFILL_YEARS, chunkMonths);
   const chunks =
@@ -457,33 +471,66 @@ async function syncPermitDmrData(
       : allChunks;
   const aggregated: DmrRecord[] = [];
   let emptyResponses = 0;
+  const failures: DmrFetchFailure[] = [];
+  const parameterCodes = await resolvePermitDmrParameterCodes(
+    supabase,
+    permit,
+    requestedParameterCodes,
+  );
+  const parameterSliced =
+    HEAVY_DMR_NPDES_IDS.has(permit.npdes_id.toUpperCase()) && parameterCodes.length > 0;
 
   for (const chunk of chunks) {
-    const dmrUrl = buildEffluentChartUrl(ECHO_BASE, permit.npdes_id, chunk.start, chunk.end);
-    const dmrResp = await fetchWithRetry(dmrUrl, MAX_RETRIES, 120_000);
+    const fetchTargets = parameterSliced
+      ? parameterCodes.map((parameterCode) => ({ parameterCode }))
+      : [{ parameterCode: null as string | null }];
 
-    if (!dmrResp) {
-      errors.push(
-        `${permit.npdes_id}: DMR fetch failed for ${chunk.start.toISOString().slice(0, 10)}–${chunk.end.toISOString().slice(0, 10)}`,
+    for (const target of fetchTargets) {
+      const startDate = chunk.start.toISOString().slice(0, 10);
+      const endDate = chunk.end.toISOString().slice(0, 10);
+      const dmrUrl = buildEffluentChartUrl(ECHO_BASE, permit.npdes_id, chunk.start, chunk.end, {
+        parameterCode: target.parameterCode,
+      });
+      const dmrResp = await fetchWithRetry(
+        dmrUrl,
+        target.parameterCode ? 2 : MAX_RETRIES,
+        target.parameterCode ? 45_000 : 120_000,
       );
+
+      if (!dmrResp) {
+        const failure = {
+          npdes_id: permit.npdes_id,
+          start_date: startDate,
+          end_date: endDate,
+          parameter_code: target.parameterCode,
+          reason: "fetch_failed_or_timed_out",
+        };
+        failures.push(failure);
+        errors.push(
+          `${permit.npdes_id}: DMR fetch failed for ${startDate}–${endDate}` +
+            (target.parameterCode ? ` parameter=${target.parameterCode}` : ""),
+        );
+        await sleep(RATE_LIMIT_MS);
+        continue;
+      }
+
+      const dmrJson = await dmrResp.json() as Record<string, unknown>;
+      const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
+      if (dmrRecords.length === 0) {
+        emptyResponses++;
+        const topLevelKeys = Object.keys(dmrJson || {});
+        const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
+        console.log(
+          `${permit.npdes_id}: DMR chunk ${startDate}–${endDate}` +
+            (target.parameterCode ? ` parameter=${target.parameterCode}` : "") +
+            ` returned 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
+        );
+      } else {
+        aggregated.push(...dmrRecords);
+      }
+
       await sleep(RATE_LIMIT_MS);
-      continue;
     }
-
-    const dmrJson = await dmrResp.json() as Record<string, unknown>;
-    const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
-    if (dmrRecords.length === 0) {
-      emptyResponses++;
-      const topLevelKeys = Object.keys(dmrJson || {});
-      const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
-      console.log(
-        `${permit.npdes_id}: DMR chunk ${chunk.start.toISOString().slice(0, 10)}–${chunk.end.toISOString().slice(0, 10)} returned 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
-      );
-    } else {
-      aggregated.push(...dmrRecords);
-    }
-
-    await sleep(RATE_LIMIT_MS);
   }
 
   const uniqueDmrs = dedupeDmrRecords(aggregated);
@@ -495,11 +542,59 @@ async function syncPermitDmrData(
   const inserted = await upsertDmrBatch(supabase, permit, uniqueDmrs, errors);
   return {
     inserted,
-    emptyResponses: emptyResponses === chunks.length ? 1 : 0,
+    emptyResponses: emptyResponses > 0 && aggregated.length === 0 ? 1 : 0,
     chunksFetched: chunks.length,
     totalChunks: allChunks.length,
     chunkIndex: typeof dmrChunkIndex === "number" ? dmrChunkIndex : null,
+    parameterSliced,
+    parameterCodes,
+    failures,
   };
+}
+
+async function resolvePermitDmrParameterCodes(
+  supabase: ReturnType<typeof createClient>,
+  permit: PermitMapping,
+  requestedParameterCodes: string[],
+): Promise<string[]> {
+  const requested = resolveHeavyDmrParameterCodes(permit.npdes_id, requestedParameterCodes);
+  if (requested.length > 0) return requested;
+
+  if (!HEAVY_DMR_NPDES_IDS.has(permit.npdes_id.toUpperCase())) return [];
+
+  const { data: permitRow } = await supabase
+    .from("npdes_permits")
+    .select("id")
+    .eq("organization_id", permit.organization_id)
+    .eq("permit_number", permit.npdes_id)
+    .maybeSingle();
+
+  if (!permitRow?.id) return resolveHeavyDmrParameterCodes(permit.npdes_id);
+
+  const { data: limitRows, error } = await supabase
+    .from("permit_limits")
+    .select("storet_code, parameters(storet_code, epa_parameter_code)")
+    .eq("permit_id", permitRow.id)
+    .eq("is_active", true)
+    .limit(500);
+
+  if (error) {
+    console.warn(`${permit.npdes_id}: failed to resolve parameter codes from permit_limits: ${error.message}`);
+    return resolveHeavyDmrParameterCodes(permit.npdes_id);
+  }
+
+  const codes = new Set<string>();
+  for (const row of limitRows ?? []) {
+    const nested = row.parameters as { storet_code?: string | null; epa_parameter_code?: string | null } | null;
+    for (const code of [row.storet_code, nested?.epa_parameter_code, nested?.storet_code]) {
+      if (typeof code === "string" && code.trim()) {
+        codes.add(code.trim().toUpperCase());
+        break;
+      }
+    }
+  }
+
+  return codes.size > 0 ? [...codes] : resolveHeavyDmrParameterCodes(permit.npdes_id);
 }
 
 // ---------------------------------------------------------------------------
@@ -538,6 +633,7 @@ serve(async (req) => {
   let staleOnly = false;
   let dmrChunkMonths = 0;
   let dmrChunkIndex: number | null = null;
+  let dmrParameterCodes: string[] = [];
   let skipFacility = false;
   let dmrOnly = false;
   let jobRunId: string | null = null;
@@ -566,6 +662,11 @@ serve(async (req) => {
     }
     if (typeof body.dmr_chunk_index === "number" && body.dmr_chunk_index >= 0) {
       dmrChunkIndex = Math.floor(body.dmr_chunk_index);
+    }
+    if (Array.isArray(body.dmr_parameter_codes)) {
+      dmrParameterCodes = body.dmr_parameter_codes
+        .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+        .map((v: string) => v.trim().toUpperCase());
     }
     skipFacility = body.skip_facility === true;
     dmrOnly = body.dmr_only === true;
@@ -844,6 +945,8 @@ serve(async (req) => {
   let facilityEmptyResponses = 0;
   let dmrEmptyResponses = 0;
   let dmrChunksFetched = 0;
+  let dmrParameterSlices = 0;
+  const dmrParameterFailures: DmrFetchFailure[] = [];
   const errors: string[] = [];
 
   // Backfill date range (used for logging; DMR fetch uses chunked windows)
@@ -910,10 +1013,15 @@ serve(async (req) => {
         chunkMonths,
         errors,
         dmrChunkIndex,
+        dmrParameterCodes,
       );
       dmrsInserted += dmrResult.inserted;
       dmrEmptyResponses += dmrResult.emptyResponses;
       dmrChunksFetched += dmrResult.chunksFetched;
+      if (dmrResult.parameterSliced) {
+        dmrParameterSlices += dmrResult.chunksFetched * dmrResult.parameterCodes.length;
+        dmrParameterFailures.push(...dmrResult.failures);
+      }
 
       if (dmrResult.inserted === 0 && dmrResult.emptyResponses > 0) {
         console.log(`${permit.npdes_id}: no DMR rows synced across ${dmrResult.chunksFetched} date chunks`);
@@ -955,6 +1063,8 @@ serve(async (req) => {
         facility_empty_responses: facilityEmptyResponses,
         dmr_empty_responses: dmrEmptyResponses,
         dmr_chunks_fetched: dmrChunksFetched,
+        dmr_parameter_slices: dmrParameterSlices,
+        dmr_parameter_failures: dmrParameterFailures,
         offset,
         has_more: hasMore,
         next_offset: hasMore ? offset + permits.length : null,
@@ -1015,6 +1125,7 @@ serve(async (req) => {
         organization_id: orgId,
         sync_log_id: syncLog.id,
         triggered_by: auth.userId,
+        target_npdes_ids: permits.map((permit) => permit.npdes_id),
       }),
     });
     if (!resp.ok) {
@@ -1051,6 +1162,9 @@ serve(async (req) => {
       overrides_applied: overridesApplied,
       facility_empty_responses: facilityEmptyResponses,
       dmr_empty_responses: dmrEmptyResponses,
+      dmr_chunks_fetched: dmrChunksFetched,
+      dmr_parameter_slices: dmrParameterSlices || undefined,
+      dmr_parameter_failures: dmrParameterFailures.length > 0 ? dmrParameterFailures : undefined,
       batchSize: permits.length,
       offset,
       hasMore,
