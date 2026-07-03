@@ -23,11 +23,33 @@ const SCC_ORG = '2bffc35c-e2c4-4396-868f-207f80e1e2c4';
 const STAMP = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 const PROGRESS_FILE = resolve(REPO_ROOT, '.qa-artifacts', 'slice3-echo-batch-detect-progress.json');
 
+function loadEnvLocal() {
+  const envPath = resolve(REPO_ROOT, '.env.local');
+  if (!existsSync(envPath)) return;
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+loadEnvLocal();
+
 const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function parseArgs(argv) {
-  const opts = { limit: null, offset: 0, waitSec: 20, dryRun: false, resume: false };
+  const opts = { limit: null, offset: 0, waitSec: 20, dryRun: false, resume: false, permit: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') opts.dryRun = true;
@@ -35,6 +57,7 @@ function parseArgs(argv) {
     else if (a === '--limit') opts.limit = Number(argv[++i]);
     else if (a === '--offset') opts.offset = Number(argv[++i]);
     else if (a === '--wait') opts.waitSec = Number(argv[++i]);
+    else if (a === '--permit') opts.permit = String(argv[++i]).trim().toUpperCase();
   }
   return opts;
 }
@@ -131,6 +154,16 @@ async function main() {
     `external_echo_facilities?select=npdes_id&organization_id=eq.${SCC_ORG}&order=npdes_id`,
   );
   const allIds = [...new Set((rows ?? []).map((r) => String(r.npdes_id).trim().toUpperCase()))].sort();
+
+  if (opts.permit) {
+    if (!allIds.includes(opts.permit)) {
+      console.error(`[batch-detect] Permit ${opts.permit} not in org external_echo_facilities.`);
+      process.exit(1);
+    }
+    opts.offset = allIds.indexOf(opts.permit);
+    opts.limit = 1;
+    console.log(`[batch-detect] Scoped to permit ${opts.permit} (offset=${opts.offset})`);
+  }
 
   if (opts.resume) {
     const progress = readProgress();
