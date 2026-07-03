@@ -1,7 +1,7 @@
 # Engineering Freedom Amendment
 
-**Version:** 1.2  
-**Date:** 2026-07-01 (v1.2 adds the two SCC-OS keystone gates — see Roadmap §7.3)  
+**Version:** 1.3  
+**Date:** 2026-07-03 (v1.2 added the two SCC-OS keystone gates — Roadmap §7.3; v1.3 adds the interaction-ledger auto-capture gate — Roadmap §8)  
 **Status:** Active — governs all agent and contractor build behavior in this repo  
 **Orchestrator:** `.cursor/skills/orchestrator/SKILL.md` + `.cursor/rules/orchestrator-autonomous.mdc` — agents run in continuous build mode; never pause to ask “should I continue?”  
 **Authority:** This document resolves conflicts between legacy “wait / approve / block” language and current build policy. When docs disagree on **whether you may build**, this file wins.
@@ -139,6 +139,7 @@ Agents may build **draft → review → approve → submit** workflows; the **su
 | Present agent output as **legal advice** or **EMS certification** | Product is compliance reporting tool only |
 | Waive or narrow **attorney-client privilege** scope | GC (Steve Ball) / counsel |
 | Start any **SCC-OS keystone Phase 2** feature (exposure positions, self-assessment or disclosure drafting, completeness certification) | Counsel must settle the privilege architecture first — Roadmap §7.3/§7.4 |
+| Enable **interaction-ledger auto-capture** (`email_sync`/`portal_scrape`/`field_voice`) or elevate any interaction to attorney-client/work-product by machine | Counsel-signed privilege + retention + FOIA policy row must exist first; machines set `pending_review` only — Roadmap §8, `HANDOFF_COUNTERPARTY_GRAPH.md` §4–5. (Slice A party spine + manual capture are ungated.) |
 
 Building UI that **shows** DRAFT figures internally is allowed. **Citing** them externally is gated.
 
