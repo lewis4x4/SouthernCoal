@@ -22,6 +22,7 @@ describe('slice1 activation chain orchestrator', () => {
     expect(script).toContain('slice3-echo-batch-detect.mjs');
     expect(script).toContain('--suffix');
     expect(script).toContain('--skip-detect');
+    expect(script).toContain("'--permit'");
   });
 
   it('calls report_slice1_activation_gaps for before/after acceptance', () => {

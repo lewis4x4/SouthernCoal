@@ -55,8 +55,8 @@ function parseArgs(argv) {
   const opts = {
     permit: 'KYGE40869',
     skipDetect: false,
-    exceedanceLimit: 250,
-    exceedanceBatches: 10,
+    exceedanceLimit: 50,
+    exceedanceBatches: 20,
     repairLimit: 100,
     reconcileLimit: 10000,
     reconcileBatches: 10,
@@ -141,6 +141,8 @@ async function main() {
     String(opts.exceedanceLimit),
     '--batches',
     String(opts.exceedanceBatches),
+    '--permit',
+    opts.permit,
   ]);
 
   runStep('Repair stuck keys', 'scripts/slice1-repair-stuck-keys.mjs', [
@@ -208,7 +210,7 @@ async function main() {
 
 \`\`\`bash
 npm run qa:slice1-activation-gaps -- --suffix before
-npm run qa:slice1-seed-exceedances -- --limit ${opts.exceedanceLimit} --batches ${opts.exceedanceBatches}
+npm run qa:slice1-seed-exceedances -- --limit ${opts.exceedanceLimit} --batches ${opts.exceedanceBatches} --permit ${opts.permit}
 npm run qa:slice1-repair-stuck-keys -- --limit ${opts.repairLimit}
 npm run qa:slice1-reconcile -- --limit ${opts.reconcileLimit} --batches ${opts.reconcileBatches}
 npm run qa:slice1-activation-gaps -- --suffix after
