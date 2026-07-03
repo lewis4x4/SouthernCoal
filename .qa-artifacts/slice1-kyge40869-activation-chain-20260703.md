@@ -1,7 +1,7 @@
 # Slice 1 phase 3 — KYGE40869 activation chain (session status)
 
 **Date:** 2026-07-03  
-**Branch:** `cursor/kyge40869-activation-chain-fcd8`  
+**Branch:** `cursor/kyge40869-activation-chain-26e8`  
 **Org:** Southern Coal Corporation (`2bffc35c-e2c4-4396-868f-207f80e1e2c4`)
 
 ## Shipped this session
@@ -9,9 +9,8 @@
 | Item | Status |
 |------|--------|
 | PR #22 — `loadEnvLocal()` in slice1 QA scripts + slice3 `--permit` | Merged on `main` |
-| `qa:slice1-activation-chain` orchestrator | On branch (exceedance → repair → reconcile → gaps → scoped detect) |
-| Activation-gaps dynamic artifact path + `--suffix before/after` | On branch |
-| `slice1ActivationChain.test.ts` — orchestrator smoke test | On branch |
+| PR #25 — `qa:slice1-activation-chain` orchestrator | Merged on `main` |
+| Vitest env fallbacks for cloud/CI (no `.env.local` required) | On branch |
 | Verify (576/576 tests, build) | Green |
 
 ## Prod chain — not executed (cloud blocker)
@@ -29,6 +28,13 @@ npm run qa:slice1-repair-stuck-keys -- --limit 100
 npm run qa:slice1-reconcile -- --limit 10000 --batches 10
 npm run qa:slice1-activation-gaps -- --suffix after
 npm run qa:slice3-echo-batch-detect -- --permit KYGE40869
+```
+
+## Phase 4 (next after prod phase 3)
+
+```bash
+npm run qa:slice1-seed-propagated-limits -- --permit WV1018965
+npm run qa:slice1-activation-chain -- --permit WV1018965
 ```
 
 ## Baseline (2026-07-02, pre–phase 3 prod run)
