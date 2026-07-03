@@ -57,7 +57,8 @@ function parseArgs(argv) {
     skipDetect: false,
     exceedanceLimit: 50,
     exceedanceBatches: 20,
-    repairLimit: 100,
+    repairLimit: 50,
+    repairBatches: 10,
     reconcileLimit: 10000,
     reconcileBatches: 10,
     detectWaitSec: 20,
@@ -69,6 +70,7 @@ function parseArgs(argv) {
     else if (a === '--exceedance-limit') opts.exceedanceLimit = Number(argv[++i]);
     else if (a === '--exceedance-batches') opts.exceedanceBatches = Number(argv[++i]);
     else if (a === '--repair-limit') opts.repairLimit = Number(argv[++i]);
+    else if (a === '--repair-batches') opts.repairBatches = Number(argv[++i]);
     else if (a === '--reconcile-limit') opts.reconcileLimit = Number(argv[++i]);
     else if (a === '--reconcile-batches') opts.reconcileBatches = Number(argv[++i]);
     else if (a === '--detect-wait') opts.detectWaitSec = Number(argv[++i]);
@@ -148,6 +150,10 @@ async function main() {
   runStep('Repair stuck keys', 'scripts/slice1-repair-stuck-keys.mjs', [
     '--limit',
     String(opts.repairLimit),
+    '--batches',
+    String(opts.repairBatches),
+    '--permit',
+    opts.permit,
   ]);
 
   runStep('Reconcile missing_internal', 'scripts/slice1-reconcile.mjs', [
@@ -211,7 +217,7 @@ async function main() {
 \`\`\`bash
 npm run qa:slice1-activation-gaps -- --suffix before
 npm run qa:slice1-seed-exceedances -- --limit ${opts.exceedanceLimit} --batches ${opts.exceedanceBatches} --permit ${opts.permit}
-npm run qa:slice1-repair-stuck-keys -- --limit ${opts.repairLimit}
+npm run qa:slice1-repair-stuck-keys -- --limit ${opts.repairLimit} --batches ${opts.repairBatches} --permit ${opts.permit}
 npm run qa:slice1-reconcile -- --limit ${opts.reconcileLimit} --batches ${opts.reconcileBatches}
 npm run qa:slice1-activation-gaps -- --suffix after
 ${opts.skipDetect ? '# detect skipped' : `npm run qa:slice3-echo-batch-detect -- --permit ${opts.permit} --wait ${opts.detectWaitSec}`}

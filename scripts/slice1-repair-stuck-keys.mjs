@@ -36,13 +36,22 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
-  return i >= 0 && process.argv[i + 1] ? Number(process.argv[i + 1]) : fallback;
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+}
+
+function numArg(name, fallback) {
+  const v = arg(name, null);
+  return v != null ? Number(v) : fallback;
 }
 
 if (!url || !key) {
   console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   process.exit(1);
 }
+
+const batchLimit = numArg('--limit', 50);
+const batches = numArg('--batches', 1);
+const permitNumber = arg('--permit', null);
 
 async function rpc(name, args) {
   const res = await fetch(`${url}/rest/v1/rpc/${name}`, {
@@ -59,12 +68,39 @@ async function rpc(name, args) {
   return JSON.parse(text);
 }
 
+async function rpcWithRetry(name, baseArgs, retries = 4) {
+  let limit = baseArgs.p_limit;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      return await rpc(name, { ...baseArgs, p_limit: limit });
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes('57014') && limit > 10) {
+        limit = Math.max(10, Math.floor(limit / 2));
+        console.warn(`Statement timeout — retrying with p_limit=${limit}`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`${name}: exhausted retries after statement timeout`);
+}
+
 async function main() {
-  const result = await rpc('repair_slice1_stuck_mirror_keys', {
-    p_organization_id: SCC_ORG,
-    p_limit: arg('--limit', 100),
-  });
-  console.log(result);
+  for (let i = 0; i < batches; i += 1) {
+    const rpcArgs = {
+      p_organization_id: SCC_ORG,
+      p_limit: batchLimit,
+    };
+    if (permitNumber) rpcArgs.p_permit_number = permitNumber;
+
+    const result = await rpcWithRetry('repair_slice1_stuck_mirror_keys', rpcArgs);
+    console.log(`Batch ${i + 1}:`, result);
+
+    const repaired = Number(result.repaired_lab_results ?? 0);
+    const inserted = Number(result.mirror_keys_inserted ?? 0);
+    if (repaired === 0 && inserted === 0) break;
+  }
 }
 
 main().catch((err) => {
