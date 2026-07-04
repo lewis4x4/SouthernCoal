@@ -1,0 +1,302 @@
+permit_number,outfall_number,parameter_code,parameter_name,limit_type,limit_value,unit,review_status
+WV0060216,002,01045,"Iron, Total",daily_max,1.64,mg/L,pending_review
+WV0060216,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV0060216,001,01045,"Iron, Total",daily_max,3,mg/L,pending_review
+WV0060216,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV0062961,003,01148,"Selenium, Dry Weight",daily_max,8,mg/kg,pending_review
+WV1008552,004,01045,"Iron, Total",daily_max,5.26,mg/L,pending_review
+WV1008552,004,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1008552,004,00530,Total Suspended Solids,daily_max,70,mg/L,pending_review
+WV1008552,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1008552,004,01105,"Aluminum, Total",daily_max,0.75,mg/L,pending_review
+WV1008552,004,00400,pH,daily_max,9,SU,pending_review
+WV1024230,001,01045,"Iron, Total",daily_max,0.95,mg/L,pending_review
+WV1024230,001,01055,"Manganese, Total",daily_max,4,mg/L,pending_review
+WV1024230,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1024230,001,01105,"Aluminum, Total",daily_max,6,mg/L,pending_review
+WV1021338,015,01045,"Iron, Total",daily_max,1.42,mg/L,pending_review
+WV1021338,015,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,015,01105,"Aluminum, Total",daily_max,0.08,mg/L,pending_review
+WV1021338,001,01045,"Iron, Total",daily_max,3.69,mg/L,pending_review
+WV1021338,001,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,001,01105,"Aluminum, Total",daily_max,0.036,mg/L,pending_review
+WV1021338,016,01045,"Iron, Total",daily_max,1.22,mg/L,pending_review
+WV1021338,016,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,016,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+WV1021338,016,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1021338,016,01105,"Aluminum, Total",daily_max,0.43,mg/L,pending_review
+WV1021338,016,00400,pH,daily_max,9,SU,pending_review
+WV1021338,004,01045,"Iron, Total",daily_max,2.13,mg/L,pending_review
+WV1021338,004,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,004,01105,"Aluminum, Total",daily_max,0.036,mg/L,pending_review
+WV1021338,003,01045,"Iron, Total",daily_max,2.13,mg/L,pending_review
+WV1021338,003,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,003,01105,"Aluminum, Total",daily_max,0.036,mg/L,pending_review
+WV1021338,006,01045,"Iron, Total",daily_max,2.35,mg/L,pending_review
+WV1021338,006,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,006,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1021338,012,01045,"Iron, Total",daily_max,1.42,mg/L,pending_review
+WV1021338,012,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,012,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1021338,011,01045,"Iron, Total",daily_max,0.09,mg/L,pending_review
+WV1021338,011,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,011,01105,"Aluminum, Total",daily_max,0.22,mg/L,pending_review
+WV1021338,013,01045,"Iron, Total",daily_max,5.26,mg/L,pending_review
+WV1021338,013,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,013,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1021338,014,01045,"Iron, Total",daily_max,5.26,mg/L,pending_review
+WV1021338,014,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,014,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1021338,010,01045,"Iron, Total",daily_max,0.09,mg/L,pending_review
+WV1021338,010,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,010,01105,"Aluminum, Total",daily_max,0.22,mg/L,pending_review
+WV1021338,002,01045,"Iron, Total",daily_max,3.69,mg/L,pending_review
+WV1021338,002,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,002,01105,"Aluminum, Total",daily_max,0.02,mg/L,pending_review
+WV1021338,008,01045,"Iron, Total",daily_max,0.15,mg/L,pending_review
+WV1021338,008,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,008,01105,"Aluminum, Total",daily_max,0.13,mg/L,pending_review
+WV1021338,005,01045,"Iron, Total",daily_max,4.07,mg/L,pending_review
+WV1021338,005,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1021338,005,01105,"Aluminum, Total",daily_max,0.08,mg/L,pending_review
+WV1021338,009,01045,"Iron, Total",daily_max,0.09,mg/L,pending_review
+WV1021338,009,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,009,01105,"Aluminum, Total",daily_max,0.22,mg/L,pending_review
+WV1021338,007,01045,"Iron, Total",daily_max,0.15,mg/L,pending_review
+WV1021338,007,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021338,007,01105,"Aluminum, Total",daily_max,0.13,mg/L,pending_review
+WV1008838,002,00530,Total Suspended Solids,daily_max,70,mg/L,pending_review
+WV1008838,001,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1008838,001,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40999,204,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,204,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,206,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,206,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,203,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,203,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,202,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40999,202,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,202,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,205,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,205,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,313,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40999,313,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,313,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40999,313,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,207,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40999,207,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,207,00400,pH,daily_max,6,SU,pending_review
+KYGE40999,201,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40999,201,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40999,201,00400,pH,daily_max,6,SU,pending_review
+WV1026003,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1026003,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,013,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,007,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,012,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,009,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,006,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,011,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,014,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,008,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,010,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018779,005,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1006304,011,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1006304,011,01105,"Aluminum, Total",daily_max,0.44,mg/L,pending_review
+WV1025911,006,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1025911,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1025911,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1025911,005,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1025911,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1025911,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1024442,025,01045,"Iron, Total",daily_max,1.64,mg/L,pending_review
+WV1024442,025,01055,"Manganese, Total",daily_max,4,mg/L,pending_review
+WV1024442,025,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1018663,002,01045,"Iron, Total",daily_max,5.26,mg/L,pending_review
+WV1018663,002,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1018663,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018663,002,01105,"Aluminum, Total",daily_max,6,mg/L,pending_review
+WV1018698,002,01105,"Aluminum, Total",daily_max,0.43,mg/L,pending_review
+WV1018698,001,01105,"Aluminum, Total",daily_max,0.43,mg/L,pending_review
+WV1018698,003,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1018698,003,01105,"Aluminum, Total",daily_max,0.75,mg/L,pending_review
+WV1021117,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40840,003,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40840,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40840,003,00400,pH,daily_max,6,SU,pending_review
+KYGE40840,002,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40840,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40840,002,00400,pH,daily_max,6,SU,pending_review
+KYGE40840,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40840,001,00400,pH,daily_max,6,SU,pending_review
+WV1023781,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1026861,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005774,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1024124,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1027913,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1027913,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1027913,001,61426,"Toxicity, Chronic Ceriodaphnia",daily_max,1.64,tox chronic,pending_review
+WV1027913,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1027891,001,61426,"Toxicity, Chronic Ceriodaphnia",daily_max,0.82,tox chronic,pending_review
+WV1027891,001,01045,"Iron, Total",daily_max,0.88,mg/L,pending_review
+KYGE40869,051,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,051,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,001,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,001,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,010,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,010,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,010,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,049,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,049,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,026,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,026,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,020,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,020,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,037,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,037,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,012,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,012,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,050,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,050,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,002,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,002,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,013,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,013,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,036,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,036,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,009,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,009,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,009,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,043,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,043,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,042,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,042,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,042,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,040,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,040,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,017,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,017,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,017,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,005,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,005,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,005,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,006,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,006,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,006,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,025,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,025,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,038,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,038,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,004,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,004,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,033,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,033,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,039,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,039,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,018,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,018,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,018,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,007,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,007,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,007,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,053,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,053,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,041,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,041,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,003,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,003,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,045,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,045,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,048,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,048,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,024,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,024,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,016,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,016,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,016,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,047,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,047,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,021,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,021,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,023,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,023,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,023,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,011,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,011,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,027,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,027,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,052,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,052,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,029,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,029,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,034,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,034,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,046,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,046,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,015,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,015,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,019,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,019,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40869,019,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,044,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,044,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,028,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,028,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,008,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40869,008,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,008,00400,pH,daily_max,6,SU,pending_review
+KYGE40869,035,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40869,035,00400,pH,daily_max,6,SU,pending_review
+WV1006070,001,01045,"Iron, Total",daily_max,2.46,mg/L,pending_review
+WV1006070,001,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+WV1021079,015,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021079,015,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1021095,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1021095,001,01045,"Iron, Total",daily_max,2.46,mg/L,pending_review
+WV1021095,001,01055,"Manganese, Total",daily_max,2,mg/L,pending_review
+WV1021095,001,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+WV1021095,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1021095,001,01105,"Aluminum, Total",daily_max,0.75,mg/L,pending_review
+WV1021095,001,00400,pH,daily_max,9,SU,pending_review
+WV1005952,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005952,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+TN0049964,005,01119,"Copper, Total Recoverable",daily_max,78,ug/L,pending_review
+TN0049964,002,01119,"Copper, Total Recoverable",daily_max,78,ug/L,pending_review
+WV1026488,015,01045,"Iron, Total",daily_max,0.6,mg/L,pending_review
+WV1026488,015,01055,"Manganese, Total",daily_max,4,mg/L,pending_review
+WV1026488,015,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+WV1026488,015,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1026488,015,01105,"Aluminum, Total",daily_max,0.14,mg/L,pending_review
+WV1026488,015,00400,pH,daily_max,9,SU,pending_review
+WV1024159,003,01105,"Aluminum, Total",daily_max,0.43,mg/L,pending_review
+KYGE40958,033,00530,Total Suspended Solids,daily_max,35,mg/L,pending_review
+KYGE40958,033,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40958,033,01148,"Selenium, Dry Weight",daily_max,8.6,mg/kg,pending_review
+KYGE40958,033,00400,pH,daily_max,6,SU,pending_review
+KYGE40958,015,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+KYGE40958,015,00400,pH,daily_max,6,SU,pending_review
+WV1021281,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1021281,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1021281,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005995,001,01045,"Iron, Total",daily_max,2.46,mg/L,pending_review
+WV1006479,003,61426,"Toxicity, Chronic Ceriodaphnia",daily_max,0.82,tox chronic,pending_review
+WV1006479,003,01045,"Iron, Total",daily_max,5.26,mg/L,pending_review
+WV1006479,003,01055,"Manganese, Total",daily_max,4,mg/L,pending_review
+WV1006479,003,01105,"Aluminum, Total",daily_max,0.43,mg/L,pending_review
+WV1005481,004,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005481,006,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005481,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005481,003,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005481,002,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1005481,005,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018965,021,01045,"Iron, Total",daily_max,2.28,mg/L,pending_review
+WV1018965,021,01055,"Manganese, Total",daily_max,3.47,mg/L,pending_review
+WV1018965,021,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review
+WV1018965,021,01105,"Aluminum, Total",daily_max,1.89,mg/L,pending_review
+WV1012088,001,00545,Settleable Solids,daily_max,0.5,mL/L,pending_review

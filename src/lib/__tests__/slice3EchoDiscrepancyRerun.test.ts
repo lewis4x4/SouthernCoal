@@ -1,6 +1,8 @@
 import {
+  bisectDmrDateChunk,
   buildDmrDateChunks,
   buildEffluentChartUrl,
+  dmrDateWindowDays,
   formatEchoDate,
   HEAVY_DMR_NPDES_IDS,
   HEAVY_DMR_PARAMETER_CODES,
@@ -40,6 +42,28 @@ describe('echo DMR date-range chunking', () => {
     expect(url).toContain('p_start_date=01/01/2025');
     expect(url).toContain('p_end_date=03/31/2025');
     expect(url).toContain('p_id=WV1024078');
+  });
+
+  it('bisects retry-failed windows down to smaller date ranges', () => {
+    const split = bisectDmrDateChunk({
+      start: new Date(2026, 0, 1),
+      end: new Date(2026, 0, 31),
+    });
+    expect(split).not.toBeNull();
+    expect(split?.[0].start.toISOString().slice(0, 10)).toBe('2026-01-01');
+    expect(split?.[0].end.toISOString().slice(0, 10)).toBe('2026-01-15');
+    expect(split?.[1].start.toISOString().slice(0, 10)).toBe('2026-01-16');
+    expect(split?.[1].end.toISOString().slice(0, 10)).toBe('2026-01-31');
+    expect(dmrDateWindowDays(split![0]) + dmrDateWindowDays(split![1])).toBe(31);
+  });
+
+  it('does not split a one-day window', () => {
+    expect(
+      bisectDmrDateChunk({
+        start: new Date(2026, 0, 1),
+        end: new Date(2026, 0, 1, 23, 59, 59),
+      }),
+    ).toBeNull();
   });
 
   it('builds parameter-specific effluent chart URLs', () => {
@@ -97,6 +121,24 @@ describe('sync-echo-data WV1024078 heavy permit fallback', () => {
     );
     expect(source).toContain('dmr_parameter_codes');
     expect(source).toContain('dmr_parameter_failures');
+    expect(source).toContain('dmr_bad_windows');
+    expect(source).toContain('dmr_window_results');
+    expect(source).toContain('syncDmrWindowWithBisection');
     expect(source).toContain('target_npdes_ids: permits.map((permit) => permit.npdes_id)');
+  });
+});
+
+describe('WV1024078 sync artifact script', () => {
+  it('writes bad-window and imported-row artifact sections', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const source = readFileSync(
+      resolve(import.meta.dirname, '../../../scripts/slice3-wv1024078-sync.mjs'),
+      'utf8',
+    );
+    expect(source).toContain('## EPA window outcomes');
+    expect(source).toContain('## Bad EPA windows');
+    expect(source).toContain('rows_imported');
+    expect(source).toContain('slice3-wv1024078-sync-windows');
   });
 });

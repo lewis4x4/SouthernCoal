@@ -64,6 +64,10 @@ function csvEscape(value) {
   return s;
 }
 
+function mdCell(value) {
+  return (value == null ? '' : String(value)).replace(/\n/g, ' ').replace(/\|/g, '\\|');
+}
+
 function echoUrl(failure) {
   if (!failure?.start_date || !failure?.end_date) return '';
   const [sy, sm, sd] = failure.start_date.split('-');
@@ -76,6 +80,27 @@ function echoUrl(failure) {
   });
   if (failure.parameter_code) query.set('parameter_code', failure.parameter_code);
   return `https://echodata.epa.gov/echo/eff_rest_services.get_effluent_chart?${query}`;
+}
+
+function formatWindowTable(rows) {
+  if (!rows.length) return '_None_';
+  return [
+    '| Parameter | Start | End | Status | Parsed | Deduped | Imported | Depth | Reason |',
+    '|-----------|-------|-----|--------|-------:|--------:|---------:|------:|--------|',
+    ...rows.map((row) =>
+      [
+        mdCell(row.parameter_code || '-'),
+        mdCell(row.start_date || ''),
+        mdCell(row.end_date || ''),
+        mdCell(row.status || ''),
+        row.rows_parsed ?? 0,
+        row.rows_deduped ?? 0,
+        row.rows_imported ?? 0,
+        row.bisect_depth ?? 0,
+        mdCell(row.reason || ''),
+      ].join(' | '),
+    ).map((line) => `| ${line} |`),
+  ].join('\n');
 }
 
 loadEnvLocal();
@@ -205,8 +230,11 @@ async function dispatchViaRpc() {
     syncLog,
     syncLogId: syncLog?.id,
     dmrsInserted: metadata.dmrs_inserted ?? jobRun.rows_affected ?? 0,
+    dmr_requests_attempted: metadata.dmr_requests_attempted ?? 0,
     dmr_parameter_slices: metadata.dmr_parameter_slices ?? 0,
     dmr_parameter_failures: metadata.dmr_parameter_failures ?? [],
+    dmr_bad_windows: metadata.dmr_bad_windows ?? metadata.dmr_parameter_failures ?? [],
+    dmr_window_results: metadata.dmr_window_results ?? [],
     errors: syncLog?.error_details?.errors,
   };
 }
@@ -226,20 +254,34 @@ async function main() {
   const startedAt = new Date().toISOString();
   const syncResult = await invokeSyncWithFallback();
   const after = await restCount('external_echo_dmrs', `npdes_id=eq.${NPDES_ID}`);
-  const failures = syncResult.dmr_parameter_failures ?? [];
+  const failures = syncResult.dmr_bad_windows ?? syncResult.dmr_parameter_failures ?? [];
+  const windowResults = syncResult.dmr_window_results ?? [];
 
   const failureRows = failures.map((failure) => ({
     parameter_code: failure.parameter_code ?? '',
     start_date: failure.start_date ?? '',
     end_date: failure.end_date ?? '',
     reason: failure.reason ?? '',
+    bisect_depth: failure.bisect_depth ?? 0,
     url: echoUrl(failure),
+  }));
+  const windowRows = windowResults.map((row) => ({
+    parameter_code: row.parameter_code ?? '',
+    start_date: row.start_date ?? '',
+    end_date: row.end_date ?? '',
+    status: row.status ?? '',
+    rows_parsed: row.rows_parsed ?? 0,
+    rows_deduped: row.rows_deduped ?? 0,
+    rows_imported: row.rows_imported ?? 0,
+    bisect_depth: row.bisect_depth ?? 0,
+    reason: row.reason ?? '',
   }));
 
   const outDir = resolve(REPO_ROOT, '.qa-artifacts');
   mkdirSync(outDir, { recursive: true });
   const artifact = resolve(outDir, `slice3-wv1024078-sync-${STAMP}.md`);
   const csvPath = resolve(outDir, `slice3-wv1024078-sync-failures-${STAMP}.csv`);
+  const windowsCsvPath = resolve(outDir, `slice3-wv1024078-sync-windows-${STAMP}.csv`);
 
   const md = `# Slice 3 — WV1024078 parameter-sliced ECHO DMR sync
 
@@ -265,15 +307,20 @@ async function main() {
 | DMR rows after | ${after} |
 | DMR rows delta | ${after - before} |
 | dmrsInserted response | ${syncResult.dmrsInserted ?? 0} |
+| EPA requests attempted | ${syncResult.dmr_requests_attempted ?? 0} |
 | parameter slices attempted | ${syncResult.dmr_parameter_slices ?? 0} |
-| parameter failures | ${failures.length} |
+| bad EPA windows | ${failures.length} |
 | invocation | ${syncResult.invocation ?? 'direct-edge'} |
 
-## Failed EPA windows
+## EPA window outcomes
+
+${formatWindowTable(windowRows)}
+
+## Bad EPA windows
 
 ${failureRows.length
-    ? `| Parameter | Start | End | Reason |\n|-----------|-------|-----|--------|\n${failureRows
-      .map((row) => `| ${row.parameter_code || '-'} | ${row.start_date} | ${row.end_date} | ${row.reason} |`)
+    ? `| Parameter | Start | End | Depth | Reason | URL |\n|-----------|-------|-----|------:|--------|-----|\n${failureRows
+      .map((row) => `| ${mdCell(row.parameter_code || '-')} | ${mdCell(row.start_date)} | ${mdCell(row.end_date)} | ${row.bisect_depth} | ${mdCell(row.reason)} | ${mdCell(row.url)} |`)
       .join('\n')}`
     : '_None_'}
 
@@ -288,17 +335,37 @@ ${JSON.stringify(syncResult, null, 2)}
   writeFileSync(
     csvPath,
     [
-      'parameter_code,start_date,end_date,reason,url',
+      'parameter_code,start_date,end_date,bisect_depth,reason,url',
       ...failureRows.map((row) =>
-        [row.parameter_code, row.start_date, row.end_date, row.reason, row.url].map(csvEscape).join(','),
+        [row.parameter_code, row.start_date, row.end_date, row.bisect_depth, row.reason, row.url].map(csvEscape).join(','),
+      ),
+    ].join('\n') + '\n',
+  );
+  writeFileSync(
+    windowsCsvPath,
+    [
+      'parameter_code,start_date,end_date,status,rows_parsed,rows_deduped,rows_imported,bisect_depth,reason',
+      ...windowRows.map((row) =>
+        [
+          row.parameter_code,
+          row.start_date,
+          row.end_date,
+          row.status,
+          row.rows_parsed,
+          row.rows_deduped,
+          row.rows_imported,
+          row.bisect_depth,
+          row.reason,
+        ].map(csvEscape).join(','),
       ),
     ].join('\n') + '\n',
   );
 
   console.log(`WV1024078 DMR rows: ${before} -> ${after} (delta ${after - before})`);
-  console.log(`Parameter failures: ${failures.length}`);
+  console.log(`Bad EPA windows: ${failures.length}`);
   console.log(`Artifact: ${artifact}`);
   console.log(`Failures CSV: ${csvPath}`);
+  console.log(`Window outcomes CSV: ${windowsCsvPath}`);
 }
 
 main().catch((err) => {

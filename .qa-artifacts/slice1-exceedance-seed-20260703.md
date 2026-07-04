@@ -1,26 +1,34 @@
 # Slice 1 — exceedance batch seed
 
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`
-**Before exceedances:** 17787
-**After exceedances:** 17824
-**Batches:** 2
+**Before exceedances:** 17826
+**After exceedances:** 17882
+**Batches:** 3
 
 ```json
 [
   {
     "limit": 50,
-    "seeded": 37,
-    "import_id": "f0bf47f0-a7f9-4b6d-bb05-edc1b0d8ab8b",
-    "permit_number": "WV1006304",
-    "skipped_existing": 3,
+    "seeded": 50,
+    "import_id": "f8a8d173-2d98-42c2-91d0-4989ae897f1c",
+    "permit_number": "WV1022652",
+    "skipped_existing": 0,
+    "skipped_unresolved": 0
+  },
+  {
+    "limit": 50,
+    "seeded": 6,
+    "import_id": "e60e3ef7-81c8-4eb2-9239-a05106136161",
+    "permit_number": "WV1022652",
+    "skipped_existing": 0,
     "skipped_unresolved": 0
   },
   {
     "limit": 50,
     "seeded": 0,
-    "import_id": "3082bb1f-b4b9-4c94-ae1d-1bbb5c12b959",
-    "permit_number": "WV1006304",
-    "skipped_existing": 3,
+    "import_id": "67ed2cc1-b29c-485c-9b66-95abfafea73a",
+    "permit_number": "WV1022652",
+    "skipped_existing": 0,
     "skipped_unresolved": 0
   }
 ]

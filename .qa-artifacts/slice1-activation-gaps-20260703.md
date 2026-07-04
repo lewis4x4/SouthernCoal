@@ -1,25 +1,25 @@
 # Slice 1 — activation gap report
 
-**Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`  
-**Generated:** 2026-07-03T15:08:42.447Z
+**Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`
+**Generated:** 2026-07-03T17:39:09.561Z
 
 ## Funnel (distinct npdes:outfall:parameter keys)
 
 | Stage | Count |
 |-------|------:|
-| Violation keys | 13200 |
+| Violation keys | 13312 |
 | No registry permit | 4383 |
-| Has permit | 8817 |
-| Has outfall | 4366 |
-| Has parameter | 3443 |
-| Has permit_limit | 2970 |
+| Has permit | 8929 |
+| Has outfall | 4372 |
+| Has parameter | 3449 |
+| Has permit_limit | 2974 |
 
 ## Backlog
 
 | Metric | Count |
 |--------|------:|
 | `slice1_echo_mirror_keys` | 15753 |
-| Pending `missing_internal` | 143178 |
+| Pending `missing_internal` | 143719 |
 | Permits without federal override | 32 |
 | SYNTHETIC ECHO limits | 829 |
 
@@ -49,16 +49,16 @@
 {
   "funnel": {
     "no_permit": 4383,
-    "has_permit": 8817,
-    "has_outfall": 4366,
-    "has_parameter": 3443,
-    "has_permit_limit": 2970,
-    "distinct_violation_keys": 13200
+    "has_permit": 8929,
+    "has_outfall": 4372,
+    "has_parameter": 3449,
+    "has_permit_limit": 2974,
+    "distinct_violation_keys": 13312
   },
   "mirror_keys": 15753,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
   "synthetic_echo_limits": 829,
-  "pending_missing_internal": 143178,
+  "pending_missing_internal": 143719,
   "top_permits_missing_limits": [
     {
       "npdes_id": "WV1022652",

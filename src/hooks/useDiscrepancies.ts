@@ -457,6 +457,44 @@ export function useDiscrepancies() {
     [fetchDiscrepancies, filters, log, orgId, userId],
   );
 
+  const bulkDismissSemanticStatusMismatches = useCallback(
+    async (limit = 1000) => {
+      if (!userId) {
+        return { count: 0, error: 'Sign in to record who performed this review action' };
+      }
+      if (!orgId) {
+        return { count: 0, error: 'Organization context required' };
+      }
+
+      const { data, error: rpcErr } = await supabase.rpc('bulk_dismiss_semantic_status_mismatches', {
+        p_limit: limit,
+        p_review_notes:
+          'Auto-dismissed from Review Queue: ECHO permit_status maps to current internal permit status.',
+      });
+
+      if (rpcErr) {
+        return { count: 0, error: rpcErr.message };
+      }
+
+      const dismissed = Number(data ?? 0);
+      if (dismissed > 0) {
+        log(
+          'discrepancy_dismissed',
+          {
+            bulk: true,
+            semantic_status_mismatch: true,
+            count: dismissed,
+          },
+          { module: 'external_data', tableName: 'discrepancy_reviews' },
+        );
+      }
+
+      await fetchDiscrepancies();
+      return { count: dismissed, error: null };
+    },
+    [fetchDiscrepancies, log, orgId, userId],
+  );
+
   return {
     rows,
     loading,
@@ -473,5 +511,6 @@ export function useDiscrepancies() {
     updateStatus,
     bulkMarkReviewed,
     bulkMarkReviewedFiltered,
+    bulkDismissSemanticStatusMismatches,
   };
 }

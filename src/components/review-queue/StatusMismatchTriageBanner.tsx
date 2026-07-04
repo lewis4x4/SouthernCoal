@@ -1,15 +1,25 @@
-import { AlertTriangle, ListFilter } from 'lucide-react';
+import { AlertTriangle, CheckCheck, ListFilter, Loader2 } from 'lucide-react';
 
 interface Props {
   count: number;
   active: boolean;
   onFilter: () => void;
+  canDismissSemantic?: boolean;
+  dismissingSemantic?: boolean;
+  onDismissSemantic?: () => void;
 }
 
 /**
- * Human-triage callout for permit status mismatches (internal active vs ECHO expired/terminated).
+ * Human-triage callout for permit status mismatches.
  */
-export function StatusMismatchTriageBanner({ count, active, onFilter }: Props) {
+export function StatusMismatchTriageBanner({
+  count,
+  active,
+  onFilter,
+  canDismissSemantic = false,
+  dismissingSemantic = false,
+  onDismissSemantic,
+}: Props) {
   if (count === 0) return null;
 
   return (
@@ -23,8 +33,10 @@ export function StatusMismatchTriageBanner({ count, active, onFilter }: Props) {
             </p>
             <p className="text-[11px] text-text-secondary max-w-2xl">
               Internal <span className="font-mono">npdes_permits.status</span> is{' '}
-              <span className="font-mono">active</span> while ECHO shows expired or terminated. Decide
-              whether to update internal status or dismiss with notes — do not bulk-mark reviewed.
+              compared against ECHO <span className="font-mono">permit_status</span>. The semantic
+              dismiss action only clears rows where both statuses already map to the same internal
+              value; rows that imply a permit lifecycle change remain pending for operator judgment.
+              Do not bulk-mark reviewed.
             </p>
             <p className="text-[10px] text-text-muted">
               CLI export: <span className="font-mono">npm run qa:slice4-status-mismatch</span>
@@ -43,6 +55,22 @@ export function StatusMismatchTriageBanner({ count, active, onFilter }: Props) {
           <ListFilter size={14} />
           {active ? 'Showing status mismatches' : 'Filter status mismatches'}
         </button>
+        {canDismissSemantic && onDismissSemantic && (
+          <button
+            type="button"
+            onClick={onDismissSemantic}
+            disabled={dismissingSemantic}
+            title="Dismiss only rows where ECHO status maps to the current internal permit status"
+            className="flex items-center gap-1.5 shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
+          >
+            {dismissingSemantic ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <CheckCheck size={14} />
+            )}
+            Dismiss semantic
+          </button>
+        )}
       </div>
     </div>
   );

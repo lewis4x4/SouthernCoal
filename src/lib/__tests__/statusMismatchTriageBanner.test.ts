@@ -22,7 +22,7 @@ describe('StatusMismatchTriageBanner', () => {
   });
 
   it('warns against bulk dismiss', () => {
-    expect(banner).toContain('do not bulk-mark reviewed');
+    expect(banner).toContain('Do not bulk-mark reviewed');
     expect(banner).toContain('qa:slice4-status-mismatch');
   });
 });

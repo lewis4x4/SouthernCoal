@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useReviewerProfiles } from '@/hooks/useReviewerProfiles';
 import { ShieldAlert, RefreshCw, Loader2, ListFilter, CheckCheck, Bell, HardHat } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,6 +33,7 @@ export function ReviewQueuePage() {
     updateStatus,
     bulkMarkReviewed,
     bulkMarkReviewedFiltered,
+    bulkDismissSemanticStatusMismatches,
   } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { running: detecting, runDetection } = useDiscrepancyDetection();
@@ -47,6 +48,7 @@ export function ReviewQueuePage() {
   const { can } = usePermissions();
   const canRunEchoSync = can('bulk_process');
   const canTriage = can('verify');
+  const [dismissingSemantic, setDismissingSemantic] = useState(false);
 
   const reviewerIds = useMemo(
     () => rows.map((r) => r.reviewed_by).filter((id): id is string => Boolean(id)),
@@ -139,6 +141,34 @@ export function ReviewQueuePage() {
       toast.error(err);
     } else {
       toast.success(`Server batch reviewed up to ${label} pending rows`);
+    }
+  }
+
+  async function handleDismissSemanticStatusMismatches() {
+    if (!canTriage || dismissingSemantic) return;
+    const limit = Math.min(Math.max(statusMismatchPendingCount, 1), 5000);
+    if (
+      !window.confirm(
+        'Dismiss only semantic status mismatch rows where ECHO permit_status maps to the current internal permit status? Rows that imply a permit lifecycle change will remain pending.',
+      )
+    ) {
+      return;
+    }
+
+    setDismissingSemantic(true);
+    try {
+      const result = await bulkDismissSemanticStatusMismatches(limit);
+      if (result.error) {
+        toast.error(result.error);
+      } else if (result.count === 0) {
+        toast.info('No semantic status mismatches were eligible for dismissal');
+      } else {
+        toast.success(`Dismissed ${result.count.toLocaleString()} semantic status mismatch rows`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to dismiss semantic status mismatches');
+    } finally {
+      setDismissingSemantic(false);
     }
   }
 
@@ -308,6 +338,9 @@ export function ReviewQueuePage() {
         count={statusMismatchPendingCount}
         active={filters.type === 'status_mismatch'}
         onFilter={toggleStatusMismatchFilter}
+        canDismissSemantic={canTriage}
+        dismissingSemantic={dismissingSemantic}
+        onDismissSemantic={handleDismissSemanticStatusMismatches}
       />
 
       {/* Triage progress */}

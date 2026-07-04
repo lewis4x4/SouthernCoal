@@ -3,8 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
+  bisectDmrDateChunk,
   buildDmrDateChunks,
   buildEffluentChartUrl,
+  type DmrDateChunk,
   HEAVY_DMR_NPDES_IDS,
   resolveDmrChunkMonths,
   resolveHeavyDmrParameterCodes,
@@ -22,6 +24,7 @@ const ECHO_BASE = "https://echodata.epa.gov/echo";
 const RATE_LIMIT_MS = 500; // max ~2 req/sec per EPA guidelines
 const MAX_RETRIES = 3;
 const BACKFILL_YEARS = 3;
+const RETRYABLE_ECHO_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,33 +169,45 @@ async function fetchWithRetry(
   retries = MAX_RETRIES,
   timeoutMs = 30_000,
 ): Promise<Response | null> {
+  return (await fetchWithRetryResult(url, retries, timeoutMs)).response;
+}
+
+async function fetchWithRetryResult(
+  url: string,
+  retries = MAX_RETRIES,
+  timeoutMs = 30_000,
+): Promise<{ response: Response | null; failureReason: string | null }> {
+  let lastFailureReason: string | null = null;
   for (let attempt = 0; attempt < retries; attempt++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const resp = await fetch(url, { signal: controller.signal });
-      if (resp.ok) return resp;
-      if (resp.status === 429 || resp.status === 503 || resp.status === 502 || resp.status === 504) {
+      if (resp.ok) return { response: resp, failureReason: null };
+      lastFailureReason = `epa_http_${resp.status}`;
+      if (RETRYABLE_ECHO_STATUSES.has(resp.status)) {
         const backoff = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
         console.log(`ECHO API ${resp.status}, backing off ${backoff}ms (attempt ${attempt + 1})`);
         await sleep(backoff);
         continue;
       }
       console.error(`ECHO API error: ${resp.status} for ${url}`);
-      return null;
+      return { response: null, failureReason: lastFailureReason };
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
+        lastFailureReason = `timeout_${timeoutMs}ms`;
         console.error(`ECHO API timeout after ${timeoutMs}ms (attempt ${attempt + 1}): ${url}`);
       } else {
+        lastFailureReason = `fetch_error:${String(err).slice(0, 160)}`;
         console.error(`ECHO fetch error (attempt ${attempt + 1}):`, err);
       }
-      if (attempt === retries - 1) return null;
+      if (attempt === retries - 1) return { response: null, failureReason: lastFailureReason };
       await sleep(Math.pow(2, attempt + 1) * 1000);
     } finally {
       clearTimeout(timeout);
     }
   }
-  return null;
+  return { response: null, failureReason: lastFailureReason ?? "fetch_failed" };
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +309,28 @@ interface DmrFetchFailure {
   end_date: string;
   parameter_code: string | null;
   reason: string;
+  bisect_depth?: number;
+}
+
+interface DmrWindowResult {
+  npdes_id: string;
+  start_date: string;
+  end_date: string;
+  parameter_code: string | null;
+  status: "imported" | "empty" | "failed" | "upsert_failed";
+  rows_parsed: number;
+  rows_deduped: number;
+  rows_imported: number;
+  bisect_depth: number;
+  reason?: string;
+}
+
+interface DmrWindowSyncResult {
+  inserted: number;
+  emptyResponses: number;
+  requestsAttempted: number;
+  failures: DmrFetchFailure[];
+  windowResults: DmrWindowResult[];
 }
 
 // Convert EPA date "31-OCT-22" → "2022-10-31"
@@ -447,6 +484,221 @@ async function upsertDmrBatch(
   return inserted;
 }
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function shouldBisectDmrFetchFailure(reason: string | null, chunk: DmrDateChunk): boolean {
+  if (!bisectDmrDateChunk(chunk)) return false;
+  if (!reason) return true;
+  return (
+    reason.startsWith("epa_http_429") ||
+    reason.startsWith("epa_http_500") ||
+    reason.startsWith("epa_http_502") ||
+    reason.startsWith("epa_http_503") ||
+    reason.startsWith("epa_http_504") ||
+    reason.startsWith("timeout_") ||
+    reason.startsWith("fetch_error")
+  );
+}
+
+function combineDmrWindowSyncResults(results: DmrWindowSyncResult[]): DmrWindowSyncResult {
+  return results.reduce<DmrWindowSyncResult>(
+    (acc, result) => ({
+      inserted: acc.inserted + result.inserted,
+      emptyResponses: acc.emptyResponses + result.emptyResponses,
+      requestsAttempted: acc.requestsAttempted + result.requestsAttempted,
+      failures: [...acc.failures, ...result.failures],
+      windowResults: [...acc.windowResults, ...result.windowResults],
+    }),
+    { inserted: 0, emptyResponses: 0, requestsAttempted: 0, failures: [], windowResults: [] },
+  );
+}
+
+async function syncDmrWindowWithBisection(
+  supabase: ReturnType<typeof createClient>,
+  permit: PermitMapping,
+  chunk: DmrDateChunk,
+  parameterCode: string | null,
+  errors: string[],
+  depth = 0,
+): Promise<DmrWindowSyncResult> {
+  const startDate = isoDate(chunk.start);
+  const endDate = isoDate(chunk.end);
+  const dmrUrl = buildEffluentChartUrl(ECHO_BASE, permit.npdes_id, chunk.start, chunk.end, {
+    parameterCode,
+  });
+  const { response: dmrResp, failureReason } = await fetchWithRetryResult(
+    dmrUrl,
+    parameterCode ? 2 : MAX_RETRIES,
+    parameterCode ? 45_000 : 120_000,
+  );
+
+  if (!dmrResp) {
+    if (shouldBisectDmrFetchFailure(failureReason, chunk)) {
+      const halves = bisectDmrDateChunk(chunk);
+      if (halves) {
+        console.warn(
+          `${permit.npdes_id}: DMR fetch ${failureReason ?? "failed"} for ${startDate}–${endDate}` +
+            (parameterCode ? ` parameter=${parameterCode}` : "") +
+            `; bisecting into ${isoDate(halves[0].start)}–${isoDate(halves[0].end)} and ${isoDate(halves[1].start)}–${isoDate(halves[1].end)}`,
+        );
+        await sleep(RATE_LIMIT_MS);
+        const left = await syncDmrWindowWithBisection(
+          supabase,
+          permit,
+          halves[0],
+          parameterCode,
+          errors,
+          depth + 1,
+        );
+        await sleep(RATE_LIMIT_MS);
+        const right = await syncDmrWindowWithBisection(
+          supabase,
+          permit,
+          halves[1],
+          parameterCode,
+          errors,
+          depth + 1,
+        );
+        return {
+          ...combineDmrWindowSyncResults([left, right]),
+          requestsAttempted: left.requestsAttempted + right.requestsAttempted + 1,
+        };
+      }
+    }
+
+    const failure: DmrFetchFailure = {
+      npdes_id: permit.npdes_id,
+      start_date: startDate,
+      end_date: endDate,
+      parameter_code: parameterCode,
+      reason: failureReason ?? "fetch_failed_or_timed_out",
+      bisect_depth: depth,
+    };
+    failuresLog(permit, failure, errors);
+    await sleep(RATE_LIMIT_MS);
+    return {
+      inserted: 0,
+      emptyResponses: 0,
+      requestsAttempted: 1,
+      failures: [failure],
+      windowResults: [{
+        npdes_id: permit.npdes_id,
+        start_date: startDate,
+        end_date: endDate,
+        parameter_code: parameterCode,
+        status: "failed",
+        rows_parsed: 0,
+        rows_deduped: 0,
+        rows_imported: 0,
+        bisect_depth: depth,
+        reason: failure.reason,
+      }],
+    };
+  }
+
+  let dmrJson: Record<string, unknown>;
+  try {
+    dmrJson = await dmrResp.json() as Record<string, unknown>;
+  } catch (err) {
+    const reason = `invalid_json:${String(err).slice(0, 160)}`;
+    const failure: DmrFetchFailure = {
+      npdes_id: permit.npdes_id,
+      start_date: startDate,
+      end_date: endDate,
+      parameter_code: parameterCode,
+      reason,
+      bisect_depth: depth,
+    };
+    failuresLog(permit, failure, errors);
+    await sleep(RATE_LIMIT_MS);
+    return {
+      inserted: 0,
+      emptyResponses: 0,
+      requestsAttempted: 1,
+      failures: [failure],
+      windowResults: [{
+        npdes_id: permit.npdes_id,
+        start_date: startDate,
+        end_date: endDate,
+        parameter_code: parameterCode,
+        status: "failed",
+        rows_parsed: 0,
+        rows_deduped: 0,
+        rows_imported: 0,
+        bisect_depth: depth,
+        reason,
+      }],
+    };
+  }
+
+  const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
+  if (dmrRecords.length === 0) {
+    const topLevelKeys = Object.keys(dmrJson || {});
+    const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
+    console.log(
+      `${permit.npdes_id}: DMR chunk ${startDate}–${endDate}` +
+        (parameterCode ? ` parameter=${parameterCode}` : "") +
+        ` returned 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
+    );
+    await sleep(RATE_LIMIT_MS);
+    return {
+      inserted: 0,
+      emptyResponses: 1,
+      requestsAttempted: 1,
+      failures: [],
+      windowResults: [{
+        npdes_id: permit.npdes_id,
+        start_date: startDate,
+        end_date: endDate,
+        parameter_code: parameterCode,
+        status: "empty",
+        rows_parsed: 0,
+        rows_deduped: 0,
+        rows_imported: 0,
+        bisect_depth: depth,
+      }],
+    };
+  }
+
+  const uniqueDmrs = dedupeDmrRecords(dmrRecords);
+  const dedupDropped = dmrRecords.length - uniqueDmrs.length;
+  if (dedupDropped > 0) {
+    console.log(`${permit.npdes_id}: deduped ${dedupDropped} duplicate DMR rows (${dmrRecords.length} → ${uniqueDmrs.length})`);
+  }
+
+  const errorsBefore = errors.length;
+  const inserted = await upsertDmrBatch(supabase, permit, uniqueDmrs, errors);
+  await sleep(RATE_LIMIT_MS);
+  return {
+    inserted,
+    emptyResponses: 0,
+    requestsAttempted: 1,
+    failures: [],
+    windowResults: [{
+      npdes_id: permit.npdes_id,
+      start_date: startDate,
+      end_date: endDate,
+      parameter_code: parameterCode,
+      status: errors.length > errorsBefore ? "upsert_failed" : "imported",
+      rows_parsed: dmrRecords.length,
+      rows_deduped: uniqueDmrs.length,
+      rows_imported: inserted,
+      bisect_depth: depth,
+      reason: errors.length > errorsBefore ? "dmr_upsert_failed" : undefined,
+    }],
+  };
+}
+
+function failuresLog(permit: PermitMapping, failure: DmrFetchFailure, errors: string[]) {
+  errors.push(
+    `${permit.npdes_id}: DMR fetch failed for ${failure.start_date}–${failure.end_date}` +
+      (failure.parameter_code ? ` parameter=${failure.parameter_code}` : "") +
+      ` (${failure.reason})`,
+  );
+}
+
 async function syncPermitDmrData(
   supabase: ReturnType<typeof createClient>,
   permit: PermitMapping,
@@ -462,16 +714,22 @@ async function syncPermitDmrData(
   chunkIndex: number | null;
   parameterSliced: boolean;
   parameterCodes: string[];
+  requestsAttempted: number;
+  parameterRequestsAttempted: number;
   failures: DmrFetchFailure[];
+  windowResults: DmrWindowResult[];
 }> {
   const allChunks = buildDmrDateChunks(BACKFILL_YEARS, chunkMonths);
   const chunks =
     typeof dmrChunkIndex === "number" && dmrChunkIndex >= 0 && dmrChunkIndex < allChunks.length
       ? [allChunks[dmrChunkIndex]]
       : allChunks;
-  const aggregated: DmrRecord[] = [];
+  let inserted = 0;
   let emptyResponses = 0;
+  let requestsAttempted = 0;
+  let parameterRequestsAttempted = 0;
   const failures: DmrFetchFailure[] = [];
+  const windowResults: DmrWindowResult[] = [];
   const parameterCodes = await resolvePermitDmrParameterCodes(
     supabase,
     permit,
@@ -486,69 +744,34 @@ async function syncPermitDmrData(
       : [{ parameterCode: null as string | null }];
 
     for (const target of fetchTargets) {
-      const startDate = chunk.start.toISOString().slice(0, 10);
-      const endDate = chunk.end.toISOString().slice(0, 10);
-      const dmrUrl = buildEffluentChartUrl(ECHO_BASE, permit.npdes_id, chunk.start, chunk.end, {
-        parameterCode: target.parameterCode,
-      });
-      const dmrResp = await fetchWithRetry(
-        dmrUrl,
-        target.parameterCode ? 2 : MAX_RETRIES,
-        target.parameterCode ? 45_000 : 120_000,
+      const result = await syncDmrWindowWithBisection(
+        supabase,
+        permit,
+        chunk,
+        target.parameterCode,
+        errors,
       );
-
-      if (!dmrResp) {
-        const failure = {
-          npdes_id: permit.npdes_id,
-          start_date: startDate,
-          end_date: endDate,
-          parameter_code: target.parameterCode,
-          reason: "fetch_failed_or_timed_out",
-        };
-        failures.push(failure);
-        errors.push(
-          `${permit.npdes_id}: DMR fetch failed for ${startDate}–${endDate}` +
-            (target.parameterCode ? ` parameter=${target.parameterCode}` : ""),
-        );
-        await sleep(RATE_LIMIT_MS);
-        continue;
-      }
-
-      const dmrJson = await dmrResp.json() as Record<string, unknown>;
-      const dmrRecords = parseDmrData(dmrJson, permit.npdes_id);
-      if (dmrRecords.length === 0) {
-        emptyResponses++;
-        const topLevelKeys = Object.keys(dmrJson || {});
-        const resultKeys = Object.keys((dmrJson?.Results as Record<string, unknown>) || {});
-        console.log(
-          `${permit.npdes_id}: DMR chunk ${startDate}–${endDate}` +
-            (target.parameterCode ? ` parameter=${target.parameterCode}` : "") +
-            ` returned 0 rows. topKeys=[${topLevelKeys.join(", ")}], resultKeys=[${resultKeys.join(", ")}]`,
-        );
-      } else {
-        aggregated.push(...dmrRecords);
-      }
-
-      await sleep(RATE_LIMIT_MS);
+      inserted += result.inserted;
+      emptyResponses += result.emptyResponses;
+      requestsAttempted += result.requestsAttempted;
+      if (target.parameterCode) parameterRequestsAttempted += result.requestsAttempted;
+      failures.push(...result.failures);
+      windowResults.push(...result.windowResults);
     }
   }
 
-  const uniqueDmrs = dedupeDmrRecords(aggregated);
-  const dedupDropped = aggregated.length - uniqueDmrs.length;
-  if (dedupDropped > 0) {
-    console.log(`${permit.npdes_id}: deduped ${dedupDropped} duplicate DMR rows (${aggregated.length} → ${uniqueDmrs.length})`);
-  }
-
-  const inserted = await upsertDmrBatch(supabase, permit, uniqueDmrs, errors);
   return {
     inserted,
-    emptyResponses: emptyResponses > 0 && aggregated.length === 0 ? 1 : 0,
+    emptyResponses,
     chunksFetched: chunks.length,
     totalChunks: allChunks.length,
     chunkIndex: typeof dmrChunkIndex === "number" ? dmrChunkIndex : null,
     parameterSliced,
     parameterCodes,
+    requestsAttempted,
+    parameterRequestsAttempted,
     failures,
+    windowResults,
   };
 }
 
@@ -945,8 +1168,11 @@ serve(async (req) => {
   let facilityEmptyResponses = 0;
   let dmrEmptyResponses = 0;
   let dmrChunksFetched = 0;
+  let dmrRequestsAttempted = 0;
   let dmrParameterSlices = 0;
+  const dmrFetchFailures: DmrFetchFailure[] = [];
   const dmrParameterFailures: DmrFetchFailure[] = [];
+  const dmrWindowResults: DmrWindowResult[] = [];
   const errors: string[] = [];
 
   // Backfill date range (used for logging; DMR fetch uses chunked windows)
@@ -1018,8 +1244,11 @@ serve(async (req) => {
       dmrsInserted += dmrResult.inserted;
       dmrEmptyResponses += dmrResult.emptyResponses;
       dmrChunksFetched += dmrResult.chunksFetched;
+      dmrRequestsAttempted += dmrResult.requestsAttempted;
+      dmrWindowResults.push(...dmrResult.windowResults);
+      dmrFetchFailures.push(...dmrResult.failures);
       if (dmrResult.parameterSliced) {
-        dmrParameterSlices += dmrResult.chunksFetched * dmrResult.parameterCodes.length;
+        dmrParameterSlices += dmrResult.parameterRequestsAttempted;
         dmrParameterFailures.push(...dmrResult.failures);
       }
 
@@ -1063,8 +1292,11 @@ serve(async (req) => {
         facility_empty_responses: facilityEmptyResponses,
         dmr_empty_responses: dmrEmptyResponses,
         dmr_chunks_fetched: dmrChunksFetched,
+        dmr_requests_attempted: dmrRequestsAttempted,
         dmr_parameter_slices: dmrParameterSlices,
         dmr_parameter_failures: dmrParameterFailures,
+        dmr_bad_windows: dmrFetchFailures,
+        dmr_window_results: dmrWindowResults,
         offset,
         has_more: hasMore,
         next_offset: hasMore ? offset + permits.length : null,
@@ -1084,7 +1316,7 @@ serve(async (req) => {
   const { error: auditErr } = await supabase.from("audit_log").insert({
     user_id: auth.userId,
     organization_id: orgId,
-    action: errors.length === permits.length ? "external_sync_failed" : "external_sync_completed",
+    action: finalStatus === "failed" ? "external_sync_failed" : "external_sync_completed",
     module: "external_data",
     table_name: "external_sync_log",
     record_id: syncLog.id,
@@ -1163,8 +1395,11 @@ serve(async (req) => {
       facility_empty_responses: facilityEmptyResponses,
       dmr_empty_responses: dmrEmptyResponses,
       dmr_chunks_fetched: dmrChunksFetched,
+      dmr_requests_attempted: dmrRequestsAttempted,
       dmr_parameter_slices: dmrParameterSlices || undefined,
       dmr_parameter_failures: dmrParameterFailures.length > 0 ? dmrParameterFailures : undefined,
+      dmr_bad_windows: dmrFetchFailures.length > 0 ? dmrFetchFailures : undefined,
+      dmr_window_results: dmrWindowResults.length > 0 ? dmrWindowResults : undefined,
       batchSize: permits.length,
       offset,
       hasMore,

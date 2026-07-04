@@ -1,5 +1,10 @@
 /** Shared ECHO DMR date-range chunking (sync-echo-data Slice 3). */
 
+export interface DmrDateChunk {
+  start: Date;
+  end: Date;
+}
+
 export const HEAVY_DMR_NPDES_IDS = new Set(["WV1024078"]);
 export const DMR_CHUNK_MONTHS_DEFAULT = 12;
 export const DMR_CHUNK_MONTHS_HEAVY = 1;
@@ -51,13 +56,13 @@ export function buildDmrDateChunks(
   backfillYears: number,
   chunkMonths: number,
   now: Date = new Date(),
-): Array<{ start: Date; end: Date }> {
+): DmrDateChunk[] {
   const rangeEnd = new Date(now);
   const rangeStart = new Date(now);
   rangeStart.setFullYear(rangeStart.getFullYear() - backfillYears);
   rangeStart.setHours(0, 0, 0, 0);
 
-  const chunks: Array<{ start: Date; end: Date }> = [];
+  const chunks: DmrDateChunk[] = [];
   let cursor = new Date(rangeStart);
 
   while (cursor <= rangeEnd) {
@@ -74,6 +79,33 @@ export function buildDmrDateChunks(
   }
 
   return chunks;
+}
+
+function localDateUtcMs(d: Date): number {
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addLocalDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+}
+
+export function dmrDateWindowDays(chunk: DmrDateChunk): number {
+  const days = Math.floor((localDateUtcMs(chunk.end) - localDateUtcMs(chunk.start)) / 86_400_000) + 1;
+  return Math.max(1, days);
+}
+
+export function bisectDmrDateChunk(chunk: DmrDateChunk): [DmrDateChunk, DmrDateChunk] | null {
+  const days = dmrDateWindowDays(chunk);
+  if (days <= 1) return null;
+
+  const leftDays = Math.floor(days / 2);
+  const leftEnd = addLocalDays(chunk.start, leftDays - 1);
+  const rightStart = addLocalDays(leftEnd, 1);
+
+  return [
+    { start: new Date(chunk.start), end: leftEnd },
+    { start: rightStart, end: new Date(chunk.end) },
+  ];
 }
 
 export function buildEffluentChartUrl(
