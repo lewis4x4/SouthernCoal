@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Slice 1 phase 3 — KYGE40869 activation chain (prod QA orchestrator).
+ * Slice 1 phase 3 — single-permit activation chain (prod QA orchestrator).
  *
  * Steps:
  *   0. Activation gaps (before)
@@ -8,12 +8,11 @@
  *   2. Repair stuck mirror keys
  *   3. Reconcile missing_internal discrepancies
  *   4. Activation gaps (after)
- *   5. Scoped ECHO detect on KYGE40869
+ *   5. Scoped ECHO detect on the selected permit
  *
  * Usage:
- *   npm run qa:slice1-activation-chain
  *   npm run qa:slice1-activation-chain -- --permit WV1018965
- *   npm run qa:slice1-activation-chain -- --skip-detect
+ *   npm run qa:slice1-activation-chain -- --permit WV1018965 --skip-detect
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -53,7 +52,7 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function parseArgs(argv) {
   const opts = {
-    permit: 'KYGE40869',
+    permit: '',
     skipDetect: false,
     exceedanceLimit: 50,
     exceedanceBatches: 20,
@@ -74,6 +73,9 @@ function parseArgs(argv) {
     else if (a === '--reconcile-limit') opts.reconcileLimit = Number(argv[++i]);
     else if (a === '--reconcile-batches') opts.reconcileBatches = Number(argv[++i]);
     else if (a === '--detect-wait') opts.detectWaitSec = Number(argv[++i]);
+  }
+  if (!opts.permit) {
+    throw new Error('Pass --permit <NPDES_ID> so the activation chain is scoped explicitly.');
   }
   return opts;
 }

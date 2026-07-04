@@ -1,81 +1,67 @@
-# Slice 1 phase 3 — KYGE40869 activation chain
+# Slice 1 WV batch activation
 
-**Started:** 2026-07-03T14:33:24.542Z  
-**Finished:** 2026-07-03T14:34:21.427Z  
+**Started:** 2026-07-03T17:39:09.704Z
+**Finished:** 2026-07-03T17:39:17.405Z
+**Status:** dry-run
 **Org:** `2bffc35c-e2c4-4396-868f-207f80e1e2c4`
+**Selection:** current `report_slice1_activation_gaps` top missing-limit permits, state prefix `WV`
+**Limit:** 5
 
-## Acceptance checks
+## Ranked summary
 
-| Check | Result |
-|-------|--------|
-| `has_permit_limit` increased | 0 (2755 → 2755) |
-| Pending `missing_internal` dropped | 144126 → 144060 (Δ -66) |
-| KYGE40869 off top gap list | KYGE40869 was not on top gap list before or after |
-| Scoped detect | Ran slice3-echo-batch-detect --permit KYGE40869 |
+| Run rank |Top rank before |Top rank after |Permit |Missing-limit keys |Has permit_limit |Mirror keys |Pending missing_internal |Synthetic limits |Status |Chain artifact |
+| --: |--: |--: |--- |--- |--- |--- |--- |--- |--- |--- |
+| 1 |7 |7 |WV1025911 |18 -> 18 (0) |2974 -> 2974 (0) |15753 -> 15753 (0) |143719 -> 143719 (0) |829 -> 829 (0) |planned | |
+| 2 |8 |8 |WV1021061 |17 -> 17 (0) |2974 -> 2974 (0) |15753 -> 15753 (0) |143719 -> 143719 (0) |829 -> 829 (0) |planned | |
+| 3 |10 |10 |WV0052531 |15 -> 15 (0) |2974 -> 2974 (0) |15753 -> 15753 (0) |143719 -> 143719 (0) |829 -> 829 (0) |planned | |
+| 4 |11 |11 |WV1005481 |12 -> 12 (0) |2974 -> 2974 (0) |15753 -> 15753 (0) |143719 -> 143719 (0) |829 -> 829 (0) |planned | |
+| 5 |12 |12 |WV1026003 |12 -> 12 (0) |2974 -> 2974 (0) |15753 -> 15753 (0) |143719 -> 143719 (0) |829 -> 829 (0) |planned | |
 
-## Funnel (before → after)
+## Overall deltas
 
-| Stage | Before | After | Δ |
-|-------|-------:|------:|--:|
-| Violation keys | 13200 | 13200 | 0 |
-| Has permit_limit | 2755 | 2755 | 0 |
-| Mirror keys | 15392 | 15458 | 66 |
+| Metric |Before -> after |
+| --- |--- |
+| Violation keys |13312 -> 13312 (0) |
+| Has permit_limit |2974 -> 2974 (0) |
+| Mirror keys |15753 -> 15753 (0) |
+| Pending missing_internal |143719 -> 143719 (0) |
+| SYNTHETIC ECHO limits |829 -> 829 (0) |
+
+## Today's skipped chain artifacts
+
+KYGE40869, WV0091952, WV1006304, WV1018736, WV1018779, WV1018965, WV1021079, WV1021249, WV1021338, WV1022580, WV1022652, WV1024132, WV1025929, WV1026488
 
 ## Commands run
 
 ```bash
-npm run qa:slice1-activation-gaps -- --suffix before
-npm run qa:slice1-seed-exceedances -- --limit 250 --batches 10 --permit KYGE40869
-npm run qa:slice1-repair-stuck-keys -- --limit 100 --batches 10 --permit KYGE40869
-npm run qa:slice1-reconcile -- --limit 10000 --batches 10
-npm run qa:slice1-activation-gaps -- --suffix after
-npm run qa:slice3-echo-batch-detect -- --permit KYGE40869 --wait 20
+npm run qa:slice1-activation-chain -- --permit WV1025911 --exceedance-limit 50 --exceedance-batches 20 --repair-limit 50 --repair-batches 10 --reconcile-limit 10000 --reconcile-batches 10 --detect-wait 20
+npm run qa:slice1-activation-chain -- --permit WV1021061 --exceedance-limit 50 --exceedance-batches 20 --repair-limit 50 --repair-batches 10 --reconcile-limit 10000 --reconcile-batches 10 --detect-wait 20
+npm run qa:slice1-activation-chain -- --permit WV0052531 --exceedance-limit 50 --exceedance-batches 20 --repair-limit 50 --repair-batches 10 --reconcile-limit 10000 --reconcile-batches 10 --detect-wait 20
+npm run qa:slice1-activation-chain -- --permit WV1005481 --exceedance-limit 50 --exceedance-batches 20 --repair-limit 50 --repair-batches 10 --reconcile-limit 10000 --reconcile-batches 10 --detect-wait 20
+npm run qa:slice1-activation-chain -- --permit WV1026003 --exceedance-limit 50 --exceedance-batches 20 --repair-limit 50 --repair-batches 10 --reconcile-limit 10000 --reconcile-batches 10 --detect-wait 20
 ```
 
-## Raw gap reports
+## Failures
 
-<details><summary>Before</summary>
+_None_
+
+## Initial gap report
 
 ```json
 {
   "funnel": {
     "no_permit": 4383,
-    "has_permit": 8817,
-    "has_outfall": 4366,
-    "has_parameter": 3443,
-    "has_permit_limit": 2755,
-    "distinct_violation_keys": 13200
+    "has_permit": 8929,
+    "has_outfall": 4372,
+    "has_parameter": 3449,
+    "has_permit_limit": 2974,
+    "distinct_violation_keys": 13312
   },
-  "mirror_keys": 15392,
+  "mirror_keys": 15753,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
-  "synthetic_echo_limits": 614,
-  "pending_missing_internal": 144126,
+  "synthetic_echo_limits": 829,
+  "pending_missing_internal": 143719,
   "top_permits_missing_limits": [
-    {
-      "npdes_id": "WV1021338",
-      "permit_number": "WV1021338",
-      "missing_limit_keys": 48
-    },
-    {
-      "npdes_id": "WV1022580",
-      "permit_number": "WV1022580",
-      "missing_limit_keys": 48
-    },
-    {
-      "npdes_id": "WV1018736",
-      "permit_number": "WV1018736",
-      "missing_limit_keys": 42
-    },
-    {
-      "npdes_id": "WV1018779",
-      "permit_number": "WV1018779",
-      "missing_limit_keys": 39
-    },
-    {
-      "npdes_id": "WV1006304",
-      "permit_number": "WV1006304",
-      "missing_limit_keys": 38
-    },
     {
       "npdes_id": "WV1022652",
       "permit_number": "WV1022652",
@@ -175,56 +161,54 @@ npm run qa:slice3-echo-batch-detect -- --permit KYGE40869 --wait 20
       "npdes_id": "WV1021281",
       "permit_number": "WV1021281",
       "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1023781",
+      "permit_number": "WV1023781",
+      "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1024159",
+      "permit_number": "WV1024159",
+      "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1018833",
+      "permit_number": "WV1018833",
+      "missing_limit_keys": 8
+    },
+    {
+      "npdes_id": "KY0094510",
+      "permit_number": "KY0094510",
+      "missing_limit_keys": 7
+    },
+    {
+      "npdes_id": "WV1021117",
+      "permit_number": "WV1021117",
+      "missing_limit_keys": 7
     }
   ],
   "permits_without_federal_override": 32
 }
 ```
 
-</details>
-
-<details><summary>After</summary>
+## Final gap report
 
 ```json
 {
   "funnel": {
     "no_permit": 4383,
-    "has_permit": 8817,
-    "has_outfall": 4366,
-    "has_parameter": 3443,
-    "has_permit_limit": 2755,
-    "distinct_violation_keys": 13200
+    "has_permit": 8929,
+    "has_outfall": 4372,
+    "has_parameter": 3449,
+    "has_permit_limit": 2974,
+    "distinct_violation_keys": 13312
   },
-  "mirror_keys": 15458,
+  "mirror_keys": 15753,
   "organization_id": "2bffc35c-e2c4-4396-868f-207f80e1e2c4",
-  "synthetic_echo_limits": 614,
-  "pending_missing_internal": 144060,
+  "synthetic_echo_limits": 829,
+  "pending_missing_internal": 143719,
   "top_permits_missing_limits": [
-    {
-      "npdes_id": "WV1021338",
-      "permit_number": "WV1021338",
-      "missing_limit_keys": 48
-    },
-    {
-      "npdes_id": "WV1022580",
-      "permit_number": "WV1022580",
-      "missing_limit_keys": 48
-    },
-    {
-      "npdes_id": "WV1018736",
-      "permit_number": "WV1018736",
-      "missing_limit_keys": 42
-    },
-    {
-      "npdes_id": "WV1018779",
-      "permit_number": "WV1018779",
-      "missing_limit_keys": 39
-    },
-    {
-      "npdes_id": "WV1006304",
-      "permit_number": "WV1006304",
-      "missing_limit_keys": 38
-    },
     {
       "npdes_id": "WV1022652",
       "permit_number": "WV1022652",
@@ -324,10 +308,33 @@ npm run qa:slice3-echo-batch-detect -- --permit KYGE40869 --wait 20
       "npdes_id": "WV1021281",
       "permit_number": "WV1021281",
       "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1023781",
+      "permit_number": "WV1023781",
+      "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1024159",
+      "permit_number": "WV1024159",
+      "missing_limit_keys": 9
+    },
+    {
+      "npdes_id": "WV1018833",
+      "permit_number": "WV1018833",
+      "missing_limit_keys": 8
+    },
+    {
+      "npdes_id": "KY0094510",
+      "permit_number": "KY0094510",
+      "missing_limit_keys": 7
+    },
+    {
+      "npdes_id": "WV1021117",
+      "permit_number": "WV1021117",
+      "missing_limit_keys": 7
     }
   ],
   "permits_without_federal_override": 32
 }
 ```
-
-</details>

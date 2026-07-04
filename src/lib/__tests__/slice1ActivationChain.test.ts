@@ -23,6 +23,12 @@ describe('slice1 activation chain orchestrator', () => {
     expect(script).toContain('--suffix');
     expect(script).toContain('--skip-detect');
     expect(script).toContain("'--permit'");
+    expect(script).toContain('Pass --permit <NPDES_ID>');
+  });
+
+  it('does not default to the old KYGE40869 one-off permit', () => {
+    expect(script).not.toContain("permit: 'KYGE40869'");
+    expect(script).not.toContain('Scoped ECHO detect on KYGE40869');
   });
 
   it('calls report_slice1_activation_gaps for before/after acceptance', () => {

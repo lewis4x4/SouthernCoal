@@ -34,6 +34,7 @@
     "qa:slice1-reconcile": "node scripts/slice1-reconcile.mjs",
     "qa:slice1-activation-gaps": "node scripts/slice1-activation-gaps.mjs",
     "qa:slice1-activation-chain": "node scripts/slice1-activation-chain.mjs",
+    "qa:slice1-activation-batch": "node scripts/slice1-activation-batch.mjs",
     "qa:slice1-seed-permit-limits": "node scripts/slice1-seed-permit-limits.mjs",
     "qa:slice1-seed-propagated-limits": "node scripts/slice1-seed-propagated-limits.mjs",
     "qa:slice1-repair-stuck-keys": "node scripts/slice1-repair-stuck-keys.mjs",
