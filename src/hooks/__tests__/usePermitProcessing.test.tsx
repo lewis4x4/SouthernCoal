@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const logMock = vi.fn();
 const invokeMock = vi.fn();
 const fromMock = vi.fn();
+const fetchMock = vi.fn();
 
 vi.mock('@/hooks/useAuditLog', () => ({
   useAuditLog: () => ({ log: logMock }),
@@ -14,6 +15,8 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('@/lib/supabase', () => ({
+  getFreshToken: vi.fn().mockResolvedValue('test-token'),
+  edgeFunctionFetchHeaders: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
   supabase: {
     functions: { invoke: (...args: unknown[]) => invokeMock(...args) },
     from: (...args: unknown[]) => fromMock(...args),
@@ -23,6 +26,11 @@ vi.mock('@/lib/supabase', () => ({
 describe('usePermitProcessing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(''),
+    });
     invokeMock.mockResolvedValue({ error: null });
     fromMock.mockReturnValue({
       select: () => ({
@@ -32,6 +40,7 @@ describe('usePermitProcessing', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.resetModules();
   });
 
