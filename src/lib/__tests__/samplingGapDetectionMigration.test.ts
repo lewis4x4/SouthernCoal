@@ -18,6 +18,10 @@ const orgGuardMigrationPath = resolve(
   process.cwd(),
   'supabase/migrations/20260703080000_review_rpc_org_guards.sql',
 );
+const readinessMigrationPath = resolve(
+  process.cwd(),
+  'supabase/migrations/20260705170000_qw1_sampling_gap_readiness.sql',
+);
 const qw1SeedPath = resolve(process.cwd(), 'scripts/seed-qw1-uat-calendar.sql');
 
 function extractFunctionBody(sql: string, functionName: string): string | undefined {
@@ -33,6 +37,7 @@ describe('sampling calendar gap detection migration', () => {
   const keystoneSql = readFileSync(keystoneMigrationPath, 'utf8');
   const jobRunsSql = readFileSync(jobRunsMigrationPath, 'utf8');
   const orgGuardSql = readFileSync(orgGuardMigrationPath, 'utf8');
+  const readinessSql = readFileSync(readinessMigrationPath, 'utf8');
   const seedSql = readFileSync(qw1SeedPath, 'utf8');
 
   it('defines gap tables with RLS and open-record uniqueness', () => {
@@ -119,6 +124,49 @@ describe('sampling calendar gap detection migration', () => {
 
     const openBody = extractFunctionBody(orgGuardSql, 'open_sampling_gap_with_work_order');
     expect(openBody).toContain('PERFORM resolve_scoped_org_id(p_organization_id)');
+  });
+
+  it('generates the active calendar window before nightly gap scans', () => {
+    const ensureBody = extractFunctionBody(readinessSql, 'ensure_sampling_gap_calendar_window');
+    expect(ensureBody).toBeTruthy();
+    expect(ensureBody).toContain('generate_sampling_calendar');
+    expect(ensureBody).toContain("'not_configured'");
+    expect(ensureBody).toContain("'calendar_rows_generated'");
+
+    const detectBody = extractFunctionBody(readinessSql, 'detect_sampling_calendar_gaps');
+    expect(detectBody).toBeTruthy();
+    expect(detectBody).toContain('ensure_sampling_gap_calendar_window');
+    expect(detectBody).toContain("'calendar_generation', v_calendar_generation");
+    expect(detectBody).toContain("'readiness_state', v_readiness ->> 'state'");
+  });
+
+  it('exposes configured, draft, empty, and not-configured readiness states', () => {
+    const readinessBody = extractFunctionBody(
+      readinessSql,
+      'get_sampling_gap_detection_readiness',
+    );
+
+    expect(readinessBody).toBeTruthy();
+    expect(readinessBody).toContain("source = 'matrix_upload'");
+    expect(readinessBody).toContain("'not_configured'");
+    expect(readinessBody).toContain("'empty'");
+    expect(readinessBody).toContain("'draft'");
+    expect(readinessBody).toContain("'configured'");
+    expect(readinessBody).toContain("'latest_run'");
+    expect(readinessSql).toContain('GRANT EXECUTE ON FUNCTION public.get_sampling_gap_detection_readiness');
+  });
+
+  it('keeps sampling gap helpers internal and manager-gates triage writes', () => {
+    const triageBody = extractFunctionBody(readinessSql, 'update_sampling_gap_review_status');
+    expect(triageBody).toBeTruthy();
+    expect(triageBody).toContain('IF auth.uid() IS NULL THEN');
+    expect(triageBody).toContain('IF NOT public.can_manage_sampling_records() THEN');
+    expect(triageBody).toContain('work_order_events');
+    expect(triageBody).toContain("'sampling_gap_review_updated'");
+
+    expect(readinessSql).toContain('REVOKE ALL ON FUNCTION public.open_sampling_gap_with_work_order');
+    expect(readinessSql).toContain('FROM authenticated;');
+    expect(readinessSql).toContain('TO service_role;');
   });
 
   it('logs triage updates to audit_log', () => {

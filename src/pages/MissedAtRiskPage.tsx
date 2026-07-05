@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { SamplingGapDetailPanel } from '@/components/sampling-gaps/SamplingGapDetailPanel';
+import { SamplingGapReadinessBanner } from '@/components/sampling-gaps/SamplingGapReadinessBanner';
 import { SamplingGapSummaryCards } from '@/components/sampling-gaps/SamplingGapSummaryCards';
 import { SamplingGapTable } from '@/components/sampling-gaps/SamplingGapTable';
 import { useSamplingGaps } from '@/hooks/useSamplingGaps';
@@ -16,6 +17,8 @@ export function MissedAtRiskPage() {
   const {
     rows,
     loading,
+    readiness,
+    readinessLoading,
     detecting,
     error,
     counts,
@@ -93,6 +96,8 @@ export function MissedAtRiskPage() {
         </div>
       )}
 
+      <SamplingGapReadinessBanner readiness={readiness} loading={readinessLoading} />
+
       <SamplingGapSummaryCards
         missed={counts.missed}
         atRisk={counts.at_risk}
@@ -115,6 +120,7 @@ export function MissedAtRiskPage() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               kindFilter={kindFilter}
+              readinessState={readiness.state}
             />
           </div>
           <div>
