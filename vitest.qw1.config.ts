@@ -12,6 +12,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: [
       'src/lib/__tests__/samplingGapDetectionMigration.test.ts',
+      'src/lib/__tests__/samplingGapReadiness.test.ts',
       'src/lib/__tests__/samplingGapSeverity.test.ts',
     ],
   },

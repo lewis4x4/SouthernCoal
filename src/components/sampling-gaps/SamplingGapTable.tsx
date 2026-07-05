@@ -2,6 +2,7 @@ import { cn } from '@/lib/cn';
 import { GAP_REVIEW_STATUS_LABELS } from '@/lib/samplingGapSeverity';
 import { GapKindBadge, GapSeverityBadge } from '@/components/sampling-gaps/SamplingGapSummaryCards';
 import type { SamplingGapRecord, SamplingGapReviewStatus } from '@/types/samplingGaps';
+import type { SamplingGapReadinessState } from '@/lib/samplingGapReadiness';
 import { Link } from 'react-router-dom';
 
 const STATUS_COLORS: Record<SamplingGapReviewStatus, string> = {
@@ -17,18 +18,55 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   kindFilter?: 'missed' | 'at_risk' | null;
+  readinessState?: SamplingGapReadinessState;
 }
 
-export function SamplingGapTable({ rows, selectedId, onSelect, kindFilter }: Props) {
+function emptyStateCopy(readinessState: SamplingGapReadinessState | undefined) {
+  switch (readinessState) {
+    case 'not_configured':
+      return {
+        title: 'Sampling Matrix not configured',
+        body:
+          'No active schedules or calendar rows are loaded. The queue will populate after Sampling Matrix import or schedule seeding.',
+      };
+    case 'empty':
+      return {
+        title: 'Calendar window empty',
+        body:
+          'Schedules exist, but no calendar rows are present yet. The nightly detector generates the active window before scanning.',
+      };
+    case 'draft':
+      return {
+        title: 'No open draft gaps detected',
+        body:
+          'The detector is scanning manual or synthetic schedules until Sampling Matrix rows arrive.',
+      };
+    case 'configured':
+    default:
+      return {
+        title: 'No open gaps detected',
+        body:
+          'The calendar-gap detector runs nightly at 06:00 UTC and compares expected events to arrived lab results.',
+      };
+  }
+}
+
+export function SamplingGapTable({
+  rows,
+  selectedId,
+  onSelect,
+  kindFilter,
+  readinessState,
+}: Props) {
   const filtered = kindFilter ? rows.filter((r) => r.gap_kind === kindFilter) : rows;
+  const emptyCopy = emptyStateCopy(readinessState);
 
   if (filtered.length === 0) {
     return (
       <div className="rounded-xl border border-black/[0.08] bg-qo-nested p-8 text-center">
-        <p className="text-sm font-medium text-text-primary">No open gaps detected</p>
+        <p className="text-sm font-medium text-text-primary">{emptyCopy.title}</p>
         <p className="mt-2 text-xs text-text-muted max-w-md mx-auto">
-          The calendar-gap detector runs nightly at 06:00 UTC. Run detection manually once sampling
-          schedules are seeded, or after the Sampling Matrix populates the calendar.
+          {emptyCopy.body}
         </p>
         <p className="mt-3 text-[10px] text-qo-ochre-text/90 uppercase tracking-wide">
           DRAFT — advisory flags for human review; not verified penalty amounts

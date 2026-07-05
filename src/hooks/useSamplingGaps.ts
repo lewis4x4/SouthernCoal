@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import {
+  DEFAULT_SAMPLING_GAP_READINESS,
+  parseSamplingGapReadiness,
+  type SamplingGapReadiness,
+} from '@/lib/samplingGapReadiness';
 import type { SamplingGapRecord, SamplingGapReviewStatus } from '@/types/samplingGaps';
 
 interface GapCounts {
@@ -18,8 +23,12 @@ export function useSamplingGaps() {
 
   const [rows, setRows] = useState<SamplingGapRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readinessLoading, setReadinessLoading] = useState(true);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<SamplingGapReadiness>(
+    DEFAULT_SAMPLING_GAP_READINESS,
+  );
   const [counts, setCounts] = useState<GapCounts>({
     missed: 0,
     at_risk: 0,
@@ -62,8 +71,46 @@ export function useSamplingGaps() {
     setLoading(false);
   }, [orgId]);
 
+  const fetchReadiness = useCallback(async () => {
+    if (!orgId) {
+      setReadiness(DEFAULT_SAMPLING_GAP_READINESS);
+      setReadinessLoading(false);
+      return DEFAULT_SAMPLING_GAP_READINESS;
+    }
+
+    setReadinessLoading(true);
+
+    const { data, error: readinessError } = await supabase.rpc(
+      'get_sampling_gap_detection_readiness',
+      { p_organization_id: orgId },
+    );
+
+    if (readinessError) {
+      const fallback = {
+        ...DEFAULT_SAMPLING_GAP_READINESS,
+        error: readinessError.message,
+      };
+      setReadiness(fallback);
+      setReadinessLoading(false);
+      return fallback;
+    }
+
+    const parsed = parseSamplingGapReadiness(data);
+    setReadiness(parsed);
+    setReadinessLoading(false);
+    return parsed;
+  }, [orgId]);
+
   const fetchCounts = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId) {
+      setCounts({
+        missed: 0,
+        at_risk: 0,
+        pending: 0,
+        critical: 0,
+      });
+      return;
+    }
 
     const base = supabase
       .from('sampling_gap_records')
@@ -104,7 +151,8 @@ export function useSamplingGaps() {
   useEffect(() => {
     void fetchRows();
     void fetchCounts();
-  }, [fetchRows, fetchCounts]);
+    void fetchReadiness();
+  }, [fetchRows, fetchCounts, fetchReadiness]);
 
   const runDetection = useCallback(async () => {
     if (!orgId) return null;
@@ -137,6 +185,7 @@ export function useSamplingGaps() {
 
     await fetchRows();
     await fetchCounts();
+    await fetchReadiness();
 
     return data as {
       run_id: string;
@@ -144,8 +193,9 @@ export function useSamplingGaps() {
       gaps_opened: number;
       gaps_updated: number;
       gaps_resolved: number;
+      readiness_state?: SamplingGapReadiness['state'];
     };
-  }, [orgId, log, fetchRows, fetchCounts]);
+  }, [orgId, log, fetchRows, fetchCounts, fetchReadiness]);
 
   const updateReviewStatus = useCallback(
     async (gapId: string, status: SamplingGapReviewStatus, notes?: string) => {
@@ -170,14 +220,17 @@ export function useSamplingGaps() {
 
       await fetchRows();
       await fetchCounts();
+      await fetchReadiness();
       return null;
     },
-    [log, fetchRows, fetchCounts],
+    [log, fetchRows, fetchCounts, fetchReadiness],
   );
 
   return {
     rows,
     loading,
+    readiness,
+    readinessLoading,
     detecting,
     error,
     counts,
