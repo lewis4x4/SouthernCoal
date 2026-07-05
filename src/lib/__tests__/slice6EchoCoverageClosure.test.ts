@@ -11,6 +11,7 @@ describe('slice6 / task 3.38 — VA NPDES override UI wiring', () => {
     const source = readSrc('components/external-data/EchoCoveragePanel.tsx');
     expect(source).toMatch(/requiresConfirmation/);
     expect(source).toMatch(/requireConfirmationBasis/);
+    expect(source).toMatch(/requireConfirmationReference/);
     expect(source).toMatch(/NPDES_CONFIRMATION_BASIS/);
     expect(source).toMatch(/saveOverride/);
   });

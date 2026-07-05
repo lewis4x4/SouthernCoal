@@ -12,6 +12,9 @@ export const NPDES_MAPPING_CSV_HEADERS = [
   'npdes_id',
   'state_code',
   'confidence',
+  'confirmation_basis',
+  'confirmation_reference',
+  'notes',
 ] as const;
 
 export interface NpdesMappingCsvRow {
@@ -173,6 +176,7 @@ export function buildNpdesMappingImportPreview(
     const reference = row.confirmation_reference.trim();
     const basisValidation = validateConfirmationBasis(basis || null, reference, {
       required: requiresConfirmation,
+      requireReference: requiresConfirmation,
     });
     if (!basisValidation.valid) {
       preview.skippedConfirmation.push(row);

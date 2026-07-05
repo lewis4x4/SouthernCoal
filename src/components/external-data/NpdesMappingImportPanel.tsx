@@ -71,7 +71,7 @@ export function NpdesMappingImportPanel({
           <span className="font-mono text-text-secondary">SCC_Federal_NPDES_Mapping_IMPORT.csv</span>{' '}
           (columns: permit_number, npdes_id, state_code, confidence; optional confirmation_basis,
           confirmation_reference). PROXIMITY / UNKNOWN / CANDIDATE rows are skipped. VA rows require a valid
-          confirmation basis before import.
+          confirmation basis and source citation before import; TODO/TBD references are skipped.
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -126,7 +126,7 @@ export function NpdesMappingImportPanel({
               <p className="flex items-center gap-1.5 text-[11px] text-qo-ochre-text">
                 <AlertTriangle size={12} />
                 {preview.skippedInvalid.length} invalid NPDES format · {preview.skippedMissing.length} missing fields ·{' '}
-                {preview.skippedConfirmation.length} missing/invalid confirmation basis
+                {preview.skippedConfirmation.length} missing/invalid confirmation basis or reference
               </p>
             )}
 

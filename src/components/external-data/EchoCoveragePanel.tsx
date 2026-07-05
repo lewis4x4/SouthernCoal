@@ -600,7 +600,10 @@ function RegistryGapRow({
     const basisValidation = validateConfirmationBasis(
       confirmationBasis || null,
       confirmationReference,
-      { required: requiresConfirmation },
+      {
+        required: requiresConfirmation,
+        requireReference: requiresConfirmation,
+      },
     );
     if (!basisValidation.valid) {
       toast.error(basisValidation.message ?? 'Invalid confirmation basis');
@@ -612,6 +615,7 @@ function RegistryGapRow({
       confirmationBasis: confirmationBasis || undefined,
       confirmationReference: confirmationReference.trim() || undefined,
       requireConfirmationBasis: requiresConfirmation,
+      requireConfirmationReference: requiresConfirmation,
       notes: kind === 'dmlr_mining' ? 'DMLR → federal crosswalk' : undefined,
     });
     if (error) {
@@ -675,8 +679,8 @@ function RegistryGapRow({
               value={confirmationReference}
               onChange={(e) => setConfirmationReference(e.target.value)}
               placeholder={
-                confirmationBasis === 'other'
-                  ? 'Reference (required)'
+                requiresConfirmation || confirmationBasis === 'other'
+                  ? 'CEDS ID / PDF cite *'
                   : 'CEDS ID / PDF cite (optional)'
               }
               className="rounded-lg border border-black/[0.08] bg-qo-nested px-2 py-1 text-xs text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-qo-accent/50 flex-1 min-w-[10rem]"
@@ -688,6 +692,7 @@ function RegistryGapRow({
                 saving ||
                 !npdesId.trim() ||
                 (requiresConfirmation && !confirmationBasis) ||
+                (requiresConfirmation && !confirmationReference.trim()) ||
                 (confirmationBasis === 'other' && !confirmationReference.trim())
               }
               className="flex items-center gap-1 rounded-lg border border-qo-accent/30 bg-qo-accent/10 px-2 py-1 text-[10px] font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
@@ -698,7 +703,7 @@ function RegistryGapRow({
           </div>
           {requiresConfirmation && (
             <p className="text-[10px] text-text-muted">
-              VA mappings require confirmation basis (VPDES PDF, CEDS, CD Attachment F, etc.) — audit-logged with your user ID.
+              VA mappings require confirmation basis plus a source citation (VPDES PDF, CEDS, CD Attachment F, etc.) — audit-logged with your user ID.
             </p>
           )}
         </div>

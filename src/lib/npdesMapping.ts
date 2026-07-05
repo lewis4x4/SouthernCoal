@@ -105,10 +105,19 @@ export interface ConfirmationBasisValidation {
   message?: string;
 }
 
+const PLACEHOLDER_CONFIRMATION_REFERENCE_PATTERN = /\b(todo|tbd|placeholder)\b/i;
+
+export function hasPlaceholderConfirmationReference(reference: string | null | undefined): boolean {
+  return PLACEHOLDER_CONFIRMATION_REFERENCE_PATTERN.test(reference?.trim() ?? '');
+}
+
 export function validateConfirmationBasis(
   basis: string | null | undefined,
   reference?: string | null,
-  { required = false }: { required?: boolean } = {},
+  {
+    required = false,
+    requireReference = false,
+  }: { required?: boolean; requireReference?: boolean } = {},
 ): ConfirmationBasisValidation {
   if (!basis || !basis.trim()) {
     if (required) {
@@ -120,11 +129,12 @@ export function validateConfirmationBasis(
   if (!CONFIRMATION_BASIS_SET.has(normalized)) {
     return { valid: false, message: 'Invalid confirmation basis.' };
   }
-  if (normalized === 'other') {
-    const ref = reference?.trim();
-    if (!ref) {
-      return { valid: false, message: 'Reference is required when basis is Other.' };
-    }
+  const ref = reference?.trim();
+  if ((requireReference || normalized === 'other') && !ref) {
+    return { valid: false, message: 'Confirmation reference is required.' };
+  }
+  if (hasPlaceholderConfirmationReference(ref)) {
+    return { valid: false, message: 'Replace TODO/TBD confirmation reference before saving.' };
   }
   return { valid: true };
 }

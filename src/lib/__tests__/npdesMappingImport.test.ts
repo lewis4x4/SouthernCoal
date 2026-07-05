@@ -54,4 +54,23 @@ WV1025929,WV1025929,WV,CONFIRMED,,
     expect(preview.skippedConfirmation).toHaveLength(1);
     expect(preview.skippedConfirmation[0]?.permit_number).toBe('VA0081916');
   });
+
+  it('requires real source references before promoted VA candidate-pack rows import', () => {
+    const rows = parseNpdesMappingCsv(`permit_number,npdes_id,state_code,confidence,confirmation_basis,confirmation_reference
+1101916,VA0081916,VA,CONFIRMED,va_deq_ceds,TODO: cite VA DEQ CEDS
+1101917,VA0081917,VA,CONFIRMED,va_deq_ceds,
+1101918,VA0081918,VA,CONFIRMED,va_deq_ceds,CEDS record 1101918
+`);
+    const preview = buildNpdesMappingImportPreview(
+      rows,
+      new Set(['1101916', '1101917', '1101918']),
+    );
+
+    expect(preview.importable).toHaveLength(1);
+    expect(preview.importable[0]?.permit_number).toBe('1101918');
+    expect(preview.skippedConfirmation.map((row) => row.permit_number)).toEqual([
+      '1101916',
+      '1101917',
+    ]);
+  });
 });

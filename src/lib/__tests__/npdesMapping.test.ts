@@ -33,6 +33,9 @@ describe('npdesMapping', () => {
   it('validates confirmation basis for VA overrides', () => {
     expect(validateConfirmationBasis(null, null, { required: true }).valid).toBe(false);
     expect(validateConfirmationBasis('va_deq_ceds', null).valid).toBe(true);
+    expect(validateConfirmationBasis('va_deq_ceds', null, { requireReference: true }).valid).toBe(false);
+    expect(validateConfirmationBasis('va_deq_ceds', 'TODO: CEDS cite', { requireReference: true }).valid).toBe(false);
+    expect(validateConfirmationBasis('va_deq_ceds', 'CEDS record 1101916', { requireReference: true }).valid).toBe(true);
     expect(validateConfirmationBasis('other', null).valid).toBe(false);
     expect(validateConfirmationBasis('other', 'CEDS-12345').valid).toBe(true);
     expect(suggestedConfirmationBases('dmlr_mining')).toContain('cd_attachment_f');

@@ -33,6 +33,7 @@ export interface SaveOverrideOptions {
   confirmationBasis?: NpdesConfirmationBasis;
   confirmationReference?: string;
   requireConfirmationBasis?: boolean;
+  requireConfirmationReference?: boolean;
 }
 
 export interface RegistryFederalMappingGap {
@@ -242,7 +243,10 @@ export function useNpdesOverrides() {
       const basisValidation = validateConfirmationBasis(
         options?.confirmationBasis,
         options?.confirmationReference,
-        { required: options?.requireConfirmationBasis ?? false },
+        {
+          required: options?.requireConfirmationBasis ?? false,
+          requireReference: options?.requireConfirmationReference ?? false,
+        },
       );
       if (!basisValidation.valid) {
         return { error: basisValidation.message ?? 'Invalid confirmation basis' };
