@@ -75,6 +75,26 @@ describe('Counterparty Graph Slice A migrations', () => {
     expect(assertionSql).toContain("RAISE EXCEPTION 'owns_or_controls relationships derive from msha_mine_org_map'");
   });
 
+  it('keeps the Slice A identity spine ungated from Slice B auto-capture policy', () => {
+    const spineSql = [
+      migrations['20260704021000_counterparty_parties.sql'],
+      migrations['20260704022000_counterparty_party_roles_relationships.sql'],
+      migrations['20260704023000_counterparty_party_merge_events.sql'],
+    ].join('\n');
+
+    expect(spineSql).toContain('CREATE POLICY "parties_insert"');
+    expect(spineSql).toContain('CREATE POLICY "party_roles_insert"');
+    expect(spineSql).toContain('CREATE POLICY "party_relationships_insert"');
+    expect(spineSql).toContain('CREATE OR REPLACE FUNCTION public.apply_party_merge');
+
+    expect(spineSql).not.toMatch(/\bprivilege\b/i);
+    expect(spineSql).not.toMatch(/\bretention\b/i);
+    expect(spineSql).not.toMatch(/\bfoia\b/i);
+    expect(spineSql).not.toContain('pending_review');
+    expect(spineSql).not.toContain('interaction_privilege_reviews');
+    expect(spineSql).not.toContain('capture_source');
+  });
+
   it('bridges the 27 seeded organizations to private org-kind parties', () => {
     const bridgeSql = migrations['20260704024000_counterparty_org_party_bridge.sql'];
 

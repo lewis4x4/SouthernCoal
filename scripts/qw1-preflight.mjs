@@ -26,4 +26,7 @@ console.log('Automated gate passed. Activate detector in staging:');
 console.log('  1. Run scripts/seed-qw1-uat-calendar.sql (after seed-lane-a-wv-uat.sql)');
 console.log('  2. Open /compliance/missed-at-risk as wv-uat-admin@invalid.scc.local');
 console.log('  3. Click Run gap detection — expect 1 missed + 1 at-risk (excused row excluded)');
-console.log('  4. Nightly cron: detect-sampling-calendar-gaps-nightly @ 06:00 UTC\n');
+console.log('  4. Verify both opened gaps have work_order_id and start/complete audit rows');
+console.log('  5. Re-run detection — expect no duplicate open gap for the same calendar row');
+console.log('  6. Resolve one gap by lab result or documented excuse — expect valid_to + closed work order');
+console.log('  7. Nightly cron: detect-sampling-calendar-gaps-nightly @ 06:00 UTC\n');

@@ -251,6 +251,14 @@ DECLARE
   v_expected integer;
   v_actual integer;
 BEGIN
+  IF to_regclass('public.interactions') IS NOT NULL
+     OR to_regclass('public.interaction_participants') IS NOT NULL
+     OR to_regclass('public.interaction_media') IS NOT NULL THEN
+    RAISE EXCEPTION 'Slice A proof found Slice B interaction tables';
+  END IF;
+
+  RAISE NOTICE '[PROOF PASS] Slice A has no interaction auto-capture tables';
+
   SELECT COUNT(DISTINCT organization_id)
   INTO v_expected
   FROM public.msha_subsidiary_org;
@@ -290,6 +298,97 @@ SELECT public.expect_error(
   'new row violates row-level security policy'
 );
 COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET LOCAL request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{}}';
+INSERT INTO public.parties(id, party_kind, display_name, organization_id, is_shared_reference, external_ids)
+VALUES
+  (
+    '33333333-3333-3333-3333-333333333331',
+    'organization',
+    'Ungated Private Vendor A',
+    '10000000-0000-0000-0000-000000000001',
+    false,
+    '{"source_key":"proof:ungated:vendor_a"}'
+  ),
+  (
+    '33333333-3333-3333-3333-333333333332',
+    'organization',
+    'Ungated Private Vendor B',
+    '10000000-0000-0000-0000-000000000001',
+    false,
+    '{"source_key":"proof:ungated:vendor_b"}'
+  );
+
+INSERT INTO public.party_roles(party_id, organization_id, role_type_code, source, confidence)
+VALUES (
+  '33333333-3333-3333-3333-333333333331',
+  '10000000-0000-0000-0000-000000000001',
+  'vendor',
+  'proof:ungated:tenant-admin',
+  1
+);
+
+INSERT INTO public.party_relationships(
+  from_party_id,
+  to_party_id,
+  relationship_type_code,
+  organization_id,
+  evidence_refs
+)
+VALUES (
+  '33333333-3333-3333-3333-333333333331',
+  '33333333-3333-3333-3333-333333333332',
+  'same_as',
+  '10000000-0000-0000-0000-000000000001',
+  '[{"source":"proof:tenant-admin"}]'::jsonb
+);
+COMMIT;
+
+DO $$
+DECLARE
+  v_private_parties integer;
+  v_private_roles integer;
+  v_private_relationships integer;
+BEGIN
+  SELECT COUNT(*)
+  INTO v_private_parties
+  FROM public.parties
+  WHERE external_ids ->> 'source_key' IN (
+    'proof:ungated:vendor_a',
+    'proof:ungated:vendor_b'
+  )
+    AND organization_id = '10000000-0000-0000-0000-000000000001'
+    AND is_shared_reference = false;
+
+  SELECT COUNT(*)
+  INTO v_private_roles
+  FROM public.party_roles
+  WHERE party_id = '33333333-3333-3333-3333-333333333331'
+    AND organization_id = '10000000-0000-0000-0000-000000000001'
+    AND role_type_code = 'vendor';
+
+  SELECT COUNT(*)
+  INTO v_private_relationships
+  FROM public.party_relationships
+  WHERE from_party_id = '33333333-3333-3333-3333-333333333331'
+    AND to_party_id = '33333333-3333-3333-3333-333333333332'
+    AND relationship_type_code = 'same_as'
+    AND organization_id = '10000000-0000-0000-0000-000000000001';
+
+  IF v_private_parties <> 2 OR v_private_roles <> 1 OR v_private_relationships <> 1 THEN
+    RAISE EXCEPTION
+      'tenant-private Slice A write proof failed: parties %, roles %, relationships %',
+      v_private_parties,
+      v_private_roles,
+      v_private_relationships;
+  END IF;
+
+  RAISE NOTICE '[PROOF PASS] tenant admin can write private Slice A parties, roles, and relationships without an interaction policy gate';
+END;
+$$;
 
 INSERT INTO public.parties(id, party_kind, display_name, organization_id, is_shared_reference, external_ids)
 VALUES
