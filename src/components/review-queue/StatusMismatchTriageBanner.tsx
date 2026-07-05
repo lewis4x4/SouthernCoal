@@ -7,6 +7,9 @@ interface Props {
   canDismissSemantic?: boolean;
   dismissingSemantic?: boolean;
   onDismissSemantic?: () => void;
+  canBulkAlign?: boolean;
+  aligningBulk?: boolean;
+  onBulkAlign?: () => void;
 }
 
 /**
@@ -19,6 +22,9 @@ export function StatusMismatchTriageBanner({
   canDismissSemantic = false,
   dismissingSemantic = false,
   onDismissSemantic,
+  canBulkAlign = false,
+  aligningBulk = false,
+  onBulkAlign,
 }: Props) {
   if (count === 0) return null;
 
@@ -36,7 +42,7 @@ export function StatusMismatchTriageBanner({
               compared against ECHO <span className="font-mono">permit_status</span>. The semantic
               dismiss action only clears rows where both statuses already map to the same internal
               value; rows that imply a permit lifecycle change remain pending for operator judgment.
-              Do not bulk-mark reviewed.
+              Bulk align only applies mapped rows with verified permit context. Do not bulk-mark reviewed.
             </p>
             <p className="text-[10px] text-text-muted">
               CLI export: <span className="font-mono">npm run qa:slice4-status-mismatch</span>
@@ -69,6 +75,22 @@ export function StatusMismatchTriageBanner({
               <CheckCheck size={14} />
             )}
             Dismiss semantic
+          </button>
+        )}
+        {canBulkAlign && onBulkAlign && (
+          <button
+            type="button"
+            onClick={onBulkAlign}
+            disabled={aligningBulk}
+            title="Align mapped rows only when the permit context and current internal status still match"
+            className="flex items-center gap-1.5 shrink-0 rounded-lg border border-qo-accent/20 bg-qo-accent/10 px-3 py-2 text-xs font-medium text-qo-accent transition-colors hover:bg-qo-accent/20 disabled:opacity-40"
+          >
+            {aligningBulk ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <CheckCheck size={14} />
+            )}
+            Align mapped
           </button>
         )}
       </div>

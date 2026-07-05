@@ -69,7 +69,9 @@ export function NpdesMappingImportPanel({
         <p className="text-xs text-text-muted">
           Import{' '}
           <span className="font-mono text-text-secondary">SCC_Federal_NPDES_Mapping_IMPORT.csv</span>{' '}
-          (columns: permit_number, npdes_id, state_code, confidence). PROXIMITY / UNKNOWN rows are skipped.
+          (columns: permit_number, npdes_id, state_code, confidence; optional confirmation_basis,
+          confirmation_reference). PROXIMITY / UNKNOWN / CANDIDATE rows are skipped. VA rows require a valid
+          confirmation basis before import.
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -97,7 +99,7 @@ export function NpdesMappingImportPanel({
 
         {preview && (
           <div className="rounded-lg border border-black/[0.06] bg-white/60 px-3 py-3 space-y-2">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
               <div>
                 <span className="text-text-muted">CSV rows</span>
                 <p className="font-mono font-medium text-text-primary">{preview.totalRows}</p>
@@ -114,12 +116,17 @@ export function NpdesMappingImportPanel({
                 <span className="text-text-muted">Not in registry</span>
                 <p className="font-mono font-medium text-qo-risk">{preview.unmatchedPermits.length}</p>
               </div>
+              <div>
+                <span className="text-text-muted">Basis needed</span>
+                <p className="font-mono font-medium text-qo-risk">{preview.skippedConfirmation.length}</p>
+              </div>
             </div>
 
-            {(preview.skippedInvalid.length > 0 || preview.skippedMissing.length > 0) && (
+            {(preview.skippedInvalid.length > 0 || preview.skippedMissing.length > 0 || preview.skippedConfirmation.length > 0) && (
               <p className="flex items-center gap-1.5 text-[11px] text-qo-ochre-text">
                 <AlertTriangle size={12} />
-                {preview.skippedInvalid.length} invalid NPDES format · {preview.skippedMissing.length} missing fields
+                {preview.skippedInvalid.length} invalid NPDES format · {preview.skippedMissing.length} missing fields ·{' '}
+                {preview.skippedConfirmation.length} missing/invalid confirmation basis
               </p>
             )}
 
@@ -131,6 +138,9 @@ export function NpdesMappingImportPanel({
                     <span className="text-text-primary">{row.permit_number}</span>
                     <span className="text-text-muted">&rarr;</span>
                     <span className="text-qo-accent">{row.npdes_id}</span>
+                    {row.confirmation_basis && (
+                      <span className="text-qo-ochre-text">{row.confirmation_basis}</span>
+                    )}
                   </div>
                 ))}
                 {preview.importable.length > 8 && (

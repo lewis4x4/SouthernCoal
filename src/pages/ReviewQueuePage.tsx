@@ -34,6 +34,7 @@ export function ReviewQueuePage() {
     bulkMarkReviewed,
     bulkMarkReviewedFiltered,
     bulkDismissSemanticStatusMismatches,
+    bulkAlignStatusMismatchesFromEcho,
   } = useDiscrepancies();
   const { syncing, triggerEchoSync } = useSyncTrigger();
   const { running: detecting, runDetection } = useDiscrepancyDetection();
@@ -49,6 +50,7 @@ export function ReviewQueuePage() {
   const canRunEchoSync = can('bulk_process');
   const canTriage = can('verify');
   const [dismissingSemantic, setDismissingSemantic] = useState(false);
+  const [aligningStatusMismatches, setAligningStatusMismatches] = useState(false);
 
   const reviewerIds = useMemo(
     () => rows.map((r) => r.reviewed_by).filter((id): id is string => Boolean(id)),
@@ -169,6 +171,34 @@ export function ReviewQueuePage() {
       toast.error(err instanceof Error ? err.message : 'Failed to dismiss semantic status mismatches');
     } finally {
       setDismissingSemantic(false);
+    }
+  }
+
+  async function handleBulkAlignStatusMismatches() {
+    if (!canTriage || aligningStatusMismatches) return;
+    const limit = Math.min(Math.max(statusMismatchPendingCount, 1), 5000);
+    if (
+      !window.confirm(
+        'Bulk align only mapped ECHO status mismatches with npdes_permits context, matching permit number, and unchanged current internal status? Rows that fail any guard will remain pending for operator follow-up.',
+      )
+    ) {
+      return;
+    }
+
+    setAligningStatusMismatches(true);
+    try {
+      const result = await bulkAlignStatusMismatchesFromEcho(limit);
+      if (result.error) {
+        toast.error(result.error);
+      } else if (result.count === 0) {
+        toast.info('No mapped status mismatches were eligible for bulk align');
+      } else {
+        toast.success(`Aligned and dismissed ${result.count.toLocaleString()} mapped status mismatch rows`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to bulk align status mismatches');
+    } finally {
+      setAligningStatusMismatches(false);
     }
   }
 
@@ -341,6 +371,9 @@ export function ReviewQueuePage() {
         canDismissSemantic={canTriage}
         dismissingSemantic={dismissingSemantic}
         onDismissSemantic={handleDismissSemanticStatusMismatches}
+        canBulkAlign={canTriage}
+        aligningBulk={aligningStatusMismatches}
+        onBulkAlign={handleBulkAlignStatusMismatches}
       />
 
       {/* Triage progress */}

@@ -46,6 +46,7 @@
     "qa:slice2-dmr-ui": "vitest run src/pages/__tests__/DmrDetailPage.slice2-smoke.test.tsx",
     "qa:slice4-status-mismatch": "node scripts/slice4-status-mismatch-export.mjs",
     "qa:slice4-status-mismatch:apply-safe-dismisses": "node scripts/slice4-status-mismatch-export.mjs --apply-safe-dismisses",
+    "qa:slice4-status-mismatch:apply-bulk-align": "node scripts/slice4-status-mismatch-export.mjs --apply-safe-dismisses --apply-bulk-align",
     "qa:slice5-compliance-snapshot": "node scripts/slice5-compliance-snapshot-validate.mjs",
     "qa:slice3-echo-rerun": "node scripts/slice3-echo-rerun.mjs",
     "qa:slice3-echo-batch-detect": "node scripts/slice3-echo-batch-detect.mjs",

@@ -355,7 +355,10 @@ export function useNpdesOverrides() {
         state_code: c.state_code,
         source_permit_id: c.permit_number,
         npdes_id: c.npdes_id,
-        notes: `UI bulk import; confidence=${c.confidence}`,
+        notes: [`UI bulk import; confidence=${c.confidence}`, c.notes].filter(Boolean).join('; '),
+        confirmation_basis: c.confirmation_basis ?? null,
+        confirmation_reference: c.confirmation_reference?.trim() || null,
+        confirmed_at: c.confirmation_basis ? new Date().toISOString() : null,
         created_by: user.id,
         updated_at: new Date().toISOString(),
       }));
@@ -395,7 +398,10 @@ export function useNpdesOverrides() {
         const metaResult = await syncPermitFederalMetadata(
           c.permit_number,
           c.npdes_id,
-          undefined,
+          {
+            basis: c.confirmation_basis ?? null,
+            reference: c.confirmation_reference ?? null,
+          },
           permitIndex,
         );
         if (metaResult.error) {
@@ -412,6 +418,7 @@ export function useNpdesOverrides() {
           override_upserted: overrideOk,
           source: UI_BULK_IMPORT_SOURCE,
           invalid_skipped: invalidCount,
+          confirmation_basis_count: validCandidates.filter((c) => c.confirmation_basis).length,
           metadata_errors: metadataErrors.length,
         },
         { module: 'external_data', tableName: 'npdes_id_overrides' },

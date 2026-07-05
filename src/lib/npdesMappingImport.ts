@@ -1,4 +1,9 @@
-import { validateFederalNpdesId, normalizePermitId } from '@/lib/npdesMapping';
+import {
+  validateConfirmationBasis,
+  validateFederalNpdesId,
+  normalizePermitId,
+  type NpdesConfirmationBasis,
+} from '@/lib/npdesMapping';
 
 export const IMPORTABLE_NPDES_CONFIDENCE = new Set(['CONFIRMED', 'IDENTITY']);
 
@@ -14,6 +19,9 @@ export interface NpdesMappingCsvRow {
   npdes_id: string;
   state_code: string;
   confidence: string;
+  confirmation_basis: string;
+  confirmation_reference: string;
+  notes: string;
   raw: Record<string, string>;
 }
 
@@ -28,6 +36,9 @@ export interface NpdesMappingImportCandidate {
   npdes_id: string;
   state_code: string;
   confidence: string;
+  confirmation_basis?: NpdesConfirmationBasis;
+  confirmation_reference?: string;
+  notes?: string;
 }
 
 export interface NpdesMappingImportPreview {
@@ -36,7 +47,16 @@ export interface NpdesMappingImportPreview {
   skippedConfidence: NpdesMappingCsvRow[];
   skippedInvalid: NpdesMappingCsvRow[];
   skippedMissing: NpdesMappingCsvRow[];
+  skippedConfirmation: NpdesMappingCsvRow[];
   unmatchedPermits: NpdesMappingImportCandidate[];
+}
+
+function rawValue(raw: Record<string, string>, ...headers: string[]): string {
+  for (const header of headers) {
+    const value = raw[header];
+    if (value !== undefined) return value;
+  }
+  return '';
 }
 
 /** Parse SCC_Federal_NPDES_Mapping_IMPORT.csv text (quoted fields supported). */
@@ -96,6 +116,14 @@ export function parseNpdesMappingCsv(text: string): NpdesMappingCsvRow[] {
         npdes_id: raw.npdes_id ?? '',
         state_code: raw.state_code ?? '',
         confidence: (raw.confidence ?? '').toUpperCase(),
+        confirmation_basis: rawValue(raw, 'confirmation_basis', 'confirmation basis', 'basis'),
+        confirmation_reference: rawValue(
+          raw,
+          'confirmation_reference',
+          'confirmation reference',
+          'reference',
+        ),
+        notes: raw.notes ?? '',
         raw,
       };
     });
@@ -111,6 +139,7 @@ export function buildNpdesMappingImportPreview(
     skippedConfidence: [],
     skippedInvalid: [],
     skippedMissing: [],
+    skippedConfirmation: [],
     unmatchedPermits: [],
   };
 
@@ -135,6 +164,24 @@ export function buildNpdesMappingImportPreview(
       state_code: row.state_code.trim().toUpperCase(),
       confidence: row.confidence,
     };
+
+    const requiresConfirmation =
+      candidate.state_code === 'VA' ||
+      candidate.permit_number.startsWith('VA') ||
+      candidate.npdes_id.startsWith('VA');
+    const basis = row.confirmation_basis.trim();
+    const reference = row.confirmation_reference.trim();
+    const basisValidation = validateConfirmationBasis(basis || null, reference, {
+      required: requiresConfirmation,
+    });
+    if (!basisValidation.valid) {
+      preview.skippedConfirmation.push(row);
+      continue;
+    }
+
+    if (basis) candidate.confirmation_basis = basis as NpdesConfirmationBasis;
+    if (reference) candidate.confirmation_reference = reference;
+    if (row.notes.trim()) candidate.notes = row.notes.trim();
 
     if (!registryPermitNumbers.has(candidate.permit_number)) {
       preview.unmatchedPermits.push(candidate);

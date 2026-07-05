@@ -495,6 +495,44 @@ export function useDiscrepancies() {
     [fetchDiscrepancies, log, orgId, userId],
   );
 
+  const bulkAlignStatusMismatchesFromEcho = useCallback(
+    async (limit = 1000) => {
+      if (!userId) {
+        return { count: 0, error: 'Sign in to record who performed this review action' };
+      }
+      if (!orgId) {
+        return { count: 0, error: 'Organization context required' };
+      }
+
+      const { data, error: rpcErr } = await supabase.rpc('bulk_align_status_mismatches_from_echo', {
+        p_limit: limit,
+        p_review_notes:
+          'Bulk-aligned from Review Queue: mapped ECHO permit_status had verified permit context and current status still matched the discrepancy snapshot.',
+      });
+
+      if (rpcErr) {
+        return { count: 0, error: rpcErr.message };
+      }
+
+      const aligned = Number(data ?? 0);
+      if (aligned > 0) {
+        log(
+          'permit_status_aligned_from_echo',
+          {
+            bulk: true,
+            status_mismatch_bulk_align: true,
+            dismissed_discrepancy_count: aligned,
+          },
+          { module: 'external_data', tableName: 'npdes_permits' },
+        );
+      }
+
+      await fetchDiscrepancies();
+      return { count: aligned, error: null };
+    },
+    [fetchDiscrepancies, log, orgId, userId],
+  );
+
   return {
     rows,
     loading,
@@ -512,5 +550,6 @@ export function useDiscrepancies() {
     bulkMarkReviewed,
     bulkMarkReviewedFiltered,
     bulkDismissSemanticStatusMismatches,
+    bulkAlignStatusMismatchesFromEcho,
   };
 }
