@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isPrivilegedOrAnonymousJwt, verifyInternalSecret } from "../_shared/auth.ts";
+import { isPrivilegedOrAnonymousJwt, isServiceRoleJwt, verifyInternalSecret } from "../_shared/auth.ts";
 import {
   buildDmrDateChunks,
   buildEffluentChartUrl,
@@ -30,6 +30,13 @@ interface PermitMapping {
   organization_id: string;
   npdes_id: string;
   state_code: string | null;
+}
+
+interface PermitLookupRow {
+  organization_id: string;
+  permit_number: string;
+  metadata: Record<string, unknown> | null;
+  states: { code?: string | null } | null;
 }
 
 type NormalizeResult =
@@ -77,8 +84,9 @@ async function validateAuth(
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "").trim();
 
-    // Path 2: Service role key (pg_cron / pg_net)
-    if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
+    // Path 2: Service role key (pg_cron / pg_net / GitHub Actions).
+    // The claim path depends on Supabase Edge gateway JWT verification.
+    if ((SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) || isServiceRoleJwt(token)) {
       return { authorized: true, userId: null, orgId: null, role: "system" };
     }
     if (isPrivilegedOrAnonymousJwt(token)) return denied;
@@ -155,6 +163,40 @@ function normalizeNpdesId(rawValue: string, stateCode: string | null): Normalize
   }
 
   return { normalized, reason: null };
+}
+
+function trimmedString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function metadataFederalNpdesId(metadata: Record<string, unknown> | null): string | null {
+  return trimmedString(metadata?.federal_npdes_id_override);
+}
+
+function permitLookupRowToMapping(
+  row: PermitLookupRow,
+  explicitFederalNpdesIdOverride: string | null,
+): PermitMapping | null {
+  const stateCode = trimmedString(row.states?.code)?.toUpperCase() ?? null;
+  const candidates = [
+    explicitFederalNpdesIdOverride,
+    metadataFederalNpdesId(row.metadata),
+    row.permit_number,
+  ];
+
+  for (const candidate of candidates) {
+    const value = trimmedString(candidate);
+    if (!value) continue;
+    const normalized = normalizeNpdesId(value, stateCode);
+    if (!normalized.normalized || shouldSkipEcho(normalized.normalized)) continue;
+    return {
+      organization_id: row.organization_id,
+      npdes_id: normalized.normalized,
+      state_code: stateCode,
+    };
+  }
+
+  return null;
 }
 
 function shouldSkipEcho(npdesId: string): boolean {
@@ -637,6 +679,9 @@ serve(async (req) => {
   let skipFacility = false;
   let dmrOnly = false;
   let jobRunId: string | null = null;
+  let requestedPermitId: string | null = null;
+  let requestedPermitNumber: string | null = null;
+  let requestedFederalNpdesIdOverride: string | null = null;
   try {
     const body = await req.json();
     jobRunId = readJobRunId(body);
@@ -671,6 +716,9 @@ serve(async (req) => {
     skipFacility = body.skip_facility === true;
     dmrOnly = body.dmr_only === true;
     if (dmrOnly) skipFacility = true;
+    requestedPermitId = trimmedString(body.permit_id);
+    requestedPermitNumber = trimmedString(body.permit_number);
+    requestedFederalNpdesIdOverride = trimmedString(body.federal_npdes_id_override);
   } catch {
     // No body is fine — defaults to manual, no limit, offset 0
   }
@@ -680,6 +728,58 @@ serve(async (req) => {
     if (!staleOnly) staleOnly = true;
     if (limit <= 0) limit = 5;
     if (!runTag) runTag = "cron-weekly-echo";
+  }
+
+  const requestedPermitMappings: PermitMapping[] = [];
+  if (requestedPermitId) {
+    const { data: permitRow, error: permitLookupError } = await supabase
+      .from("npdes_permits")
+      .select("organization_id, permit_number, metadata, states(code)")
+      .eq("id", requestedPermitId)
+      .maybeSingle();
+
+    if (permitLookupError) {
+      console.error("Failed to resolve requested permit_id:", permitLookupError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to resolve requested permit" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!permitRow) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Requested permit not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const mapping = permitLookupRowToMapping(
+      permitRow as PermitLookupRow,
+      requestedFederalNpdesIdOverride,
+    );
+
+    if (!mapping) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Requested permit could not be resolved to an ECHO NPDES ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!isPrivileged && mapping.organization_id !== callerOrgId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Requested permit is outside caller organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    requestedPermitMappings.push(mapping);
+    targetNpdesIds = [...new Set([...targetNpdesIds, mapping.npdes_id])];
+  } else if (requestedPermitNumber && targetNpdesIds.length === 0) {
+    const value = requestedFederalNpdesIdOverride ?? requestedPermitNumber;
+    const normalized = normalizeNpdesId(value, null);
+    if (normalized.normalized && !shouldSkipEcho(normalized.normalized)) {
+      targetNpdesIds = [normalized.normalized];
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -814,6 +914,11 @@ serve(async (req) => {
       }
     }
     console.log(`Applied ${overridesApplied} NPDES ID overrides (${overrideRows.length} total in table)`);
+  }
+
+  for (const requested of requestedPermitMappings) {
+    rawPermitIds.add(requested.npdes_id);
+    permitMap.set(requested.npdes_id, requested);
   }
 
   let eligiblePermits = Array.from(permitMap.values()).sort((a, b) =>
