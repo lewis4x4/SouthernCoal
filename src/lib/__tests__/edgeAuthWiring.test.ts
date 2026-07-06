@@ -28,4 +28,12 @@ describe('sync-echo-data service role auth wiring', () => {
     expect(echoSyncSource).toContain('.select("organization_id, permit_number, metadata, states(code)")');
     expect(echoSyncSource).toContain('targetNpdesIds = [...new Set([...targetNpdesIds, mapping.npdes_id])]');
   });
+
+  it('handles permit_number payloads and array-shaped states embeds', () => {
+    expect(echoSyncSource).toContain('Array.isArray(states) ? states[0] : states');
+    expect(echoSyncSource).toContain('.eq("permit_number", requestedPermitNumber)');
+    expect(echoSyncSource).toContain('.eq("metadata->>federal_npdes_id_override", requestedFederalNpdesIdOverride)');
+    expect(echoSyncSource).toContain('requestedPermitMappings.push(...mappingByNpdesId.values())');
+    expect(echoSyncSource).toContain('Requested permit target was not found in eligible ECHO permits');
+  });
 });

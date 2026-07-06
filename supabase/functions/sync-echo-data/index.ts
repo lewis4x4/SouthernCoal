@@ -36,7 +36,7 @@ interface PermitLookupRow {
   organization_id: string;
   permit_number: string;
   metadata: Record<string, unknown> | null;
-  states: { code?: string | null } | null;
+  states: { code?: string | null } | Array<{ code?: string | null }> | null;
 }
 
 type NormalizeResult =
@@ -173,11 +173,16 @@ function metadataFederalNpdesId(metadata: Record<string, unknown> | null): strin
   return trimmedString(metadata?.federal_npdes_id_override);
 }
 
+function embeddedStateCode(states: PermitLookupRow["states"]): string | null {
+  const state = Array.isArray(states) ? states[0] : states;
+  return trimmedString(state?.code)?.toUpperCase() ?? null;
+}
+
 function permitLookupRowToMapping(
   row: PermitLookupRow,
   explicitFederalNpdesIdOverride: string | null,
 ): PermitMapping | null {
-  const stateCode = trimmedString(row.states?.code)?.toUpperCase() ?? null;
+  const stateCode = embeddedStateCode(row.states);
   const candidates = [
     explicitFederalNpdesIdOverride,
     metadataFederalNpdesId(row.metadata),
@@ -774,11 +779,79 @@ serve(async (req) => {
 
     requestedPermitMappings.push(mapping);
     targetNpdesIds = [...new Set([...targetNpdesIds, mapping.npdes_id])];
-  } else if (requestedPermitNumber && targetNpdesIds.length === 0) {
-    const value = requestedFederalNpdesIdOverride ?? requestedPermitNumber;
-    const normalized = normalizeNpdesId(value, null);
-    if (normalized.normalized && !shouldSkipEcho(normalized.normalized)) {
-      targetNpdesIds = [normalized.normalized];
+  } else if (requestedPermitNumber || requestedFederalNpdesIdOverride) {
+    const mappingByNpdesId = new Map<string, PermitMapping>();
+    let resolvedOutsideCallerOrg = false;
+    const addRequestedRows = (rows: unknown[] | null) => {
+      for (const row of rows ?? []) {
+        const mapping = permitLookupRowToMapping(
+          row as PermitLookupRow,
+          requestedFederalNpdesIdOverride,
+        );
+        if (!mapping) continue;
+        if (!isPrivileged && mapping.organization_id !== callerOrgId) {
+          resolvedOutsideCallerOrg = true;
+          continue;
+        }
+        mappingByNpdesId.set(mapping.npdes_id, mapping);
+      }
+    };
+
+    if (requestedPermitNumber) {
+      const { data: permitRows, error: permitLookupError } = await supabase
+        .from("npdes_permits")
+        .select("organization_id, permit_number, metadata, states(code)")
+        .eq("permit_number", requestedPermitNumber)
+        .limit(20);
+
+      if (permitLookupError) {
+        console.error("Failed to resolve requested permit_number:", permitLookupError);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to resolve requested permit" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      addRequestedRows(permitRows);
+    }
+
+    if (requestedFederalNpdesIdOverride) {
+      const { data: permitRows, error: permitLookupError } = await supabase
+        .from("npdes_permits")
+        .select("organization_id, permit_number, metadata, states(code)")
+        .eq("metadata->>federal_npdes_id_override", requestedFederalNpdesIdOverride)
+        .limit(20);
+
+      if (permitLookupError) {
+        console.error("Failed to resolve requested federal_npdes_id_override:", permitLookupError);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to resolve requested permit" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      addRequestedRows(permitRows);
+    }
+
+    if (resolvedOutsideCallerOrg && mappingByNpdesId.size === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Requested permit is outside caller organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    requestedPermitMappings.push(...mappingByNpdesId.values());
+    const requestedTargets = [...mappingByNpdesId.keys()];
+    const fallbackValue = requestedFederalNpdesIdOverride ?? requestedPermitNumber;
+    if (fallbackValue) {
+      const normalized = normalizeNpdesId(fallbackValue, null);
+      if (normalized.normalized && !shouldSkipEcho(normalized.normalized)) {
+        requestedTargets.push(normalized.normalized);
+      }
+    }
+
+    if (requestedTargets.length > 0) {
+      targetNpdesIds = [...new Set([...targetNpdesIds, ...requestedTargets])];
     }
   }
 
@@ -966,6 +1039,17 @@ serve(async (req) => {
   const selectedPermitPool = targetSet.size > 0
     ? eligiblePermits.filter((p) => targetSet.has(p.npdes_id))
     : eligiblePermits;
+
+  if (
+    targetSet.size > 0 &&
+    selectedPermitPool.length === 0 &&
+    (requestedPermitId || requestedPermitNumber || requestedFederalNpdesIdOverride)
+  ) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Requested permit target was not found in eligible ECHO permits" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const sliced = targetSet.size > 0
     ? selectedPermitPool
