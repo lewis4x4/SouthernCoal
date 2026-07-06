@@ -36,14 +36,27 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+export function getJwtRole(token: string): string | null {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.role === "string" ? payload.role : null;
+}
+
+/**
+ * Returns true for service-role JWTs already admitted by the Supabase Edge
+ * gateway. Use only for functions deployed with JWT verification enabled.
+ */
+export function isServiceRoleJwt(token: string): boolean {
+  return getJwtRole(token) === "service_role";
+}
+
 /**
  * Returns true when the bearer token must be rejected (anon, service_role, or missing sub).
  * SEC-003: the project anon key is a valid JWT; gateway verify_jwt alone does not block it.
  */
 export function isPrivilegedOrAnonymousJwt(token: string): boolean {
+  const role = getJwtRole(token);
   const payload = decodeJwtPayload(token);
   if (!payload) return true;
-  const role = payload.role;
   if (role === "anon" || role === "service_role") return true;
   if (typeof payload.sub !== "string" || !payload.sub) return true;
   return false;
