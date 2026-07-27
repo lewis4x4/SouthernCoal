@@ -1270,6 +1270,71 @@ serve(async (req) => {
       batchNumber,
       rootJobRunId,
     });
+    const noPermitStatus = coverageResult.coverage_complete ? "completed" : "failed";
+    const { data: noPermitSyncLog, error: noPermitSyncLogError } = await supabase
+      .from("external_sync_log")
+      .insert({
+        organization_id: callerOrgId,
+        source: "echo_facility",
+        sync_type: syncType,
+        status: noPermitStatus,
+        triggered_by: auth.userId,
+        completed_at: new Date().toISOString(),
+        records_synced: 0,
+        records_failed: coverageResult.remaining_count,
+        error_details: coverageResult.coverage_complete
+          ? null
+          : { remaining_npdes_ids: coverageResult.remaining_npdes_ids },
+        metadata: {
+          run_tag: runTag,
+          batch_number: batchNumber,
+          coverage: coverageResult,
+        },
+      })
+      .select("id")
+      .single();
+
+    if (noPermitSyncLogError || !noPermitSyncLog) {
+      await completeJobRun(supabase, jobRunId, "failed", {
+        rowsScanned: 0,
+        rowsAffected: 0,
+        errorDetail:
+          `Failed to persist empty ECHO coverage: ${noPermitSyncLogError?.message ?? "no log row"}`,
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to persist ECHO coverage",
+          coverage: coverageResult,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const { error: noPermitAuditError } = await supabase.from("audit_log").insert({
+      user_id: auth.userId,
+      organization_id: callerOrgId,
+      action: coverageResult.coverage_complete
+        ? "external_sync_completed"
+        : "external_sync_failed",
+      module: "external_data",
+      table_name: "external_sync_log",
+      record_id: noPermitSyncLog.id,
+      description: JSON.stringify({
+        source: "echo",
+        run_tag: runTag,
+        triggered_by: auth.userId || "system",
+        role: auth.role,
+        coverage: coverageResult,
+      }),
+    });
+    if (noPermitAuditError) {
+      console.error("No-permit audit log insert failed:", noPermitAuditError.message);
+    }
+
     await completeJobRun(
       supabase,
       jobRunId,
@@ -1294,9 +1359,13 @@ serve(async (req) => {
         permits_skipped_invalid: permitsSkippedInvalidSet.size,
         permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
         overrides_applied: overridesApplied,
+        syncLogId: noPermitSyncLog.id,
         coverage: coverageResult,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: coverageResult.coverage_complete ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 
@@ -1614,7 +1683,7 @@ serve(async (req) => {
 
   return new Response(
     JSON.stringify({
-      success: continuationError === null,
+      success: jobStatus === "succeeded",
       syncLogId: syncLog.id,
       permitsSynced: facilitiesSynced,
       dmrsInserted,
@@ -1650,7 +1719,7 @@ serve(async (req) => {
       coverage: coverageResult,
     }),
     {
-      status: continuationError ? 500 : 200,
+      status: jobStatus === "succeeded" ? 200 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     },
   );

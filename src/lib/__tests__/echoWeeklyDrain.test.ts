@@ -140,4 +140,17 @@ describe('weekly ECHO stale-permit drain', () => {
     expect(syncSource).toMatch(/\.rpc\(\s*"dispatch_echo_weekly_sync_continuation"/);
     expect(syncSource).toContain('coverage: coverageResult');
   });
+
+  it('fails the HTTP result when terminal job coverage is incomplete', () => {
+    expect(syncSource).toContain('success: jobStatus === "succeeded"');
+    expect(syncSource).toContain('status: jobStatus === "succeeded" ? 200 : 500');
+  });
+
+  it('persists no-permit terminal coverage to sync and audit logs', () => {
+    expect(syncSource).toContain('const { data: noPermitSyncLog');
+    expect(syncSource).toContain('.from("external_sync_log")');
+    expect(syncSource).toContain('const { error: noPermitAuditError }');
+    expect(syncSource).toContain('record_id: noPermitSyncLog.id');
+    expect(syncSource).toContain('status: coverageResult.coverage_complete ? 200 : 500');
+  });
 });
