@@ -11,6 +11,11 @@ import {
   resolveDmrChunkMonths,
   resolveHeavyDmrParameterCodes,
 } from "../_shared/echo-dmr-sync.ts";
+import {
+  buildEchoBatchPlan,
+  buildEchoCoverageResult,
+  normalizeNpdesIds,
+} from "../_shared/echo-sync-batching.ts";
 import { completeJobRun, readJobRunId } from "../_shared/job-run.ts";
 
 // ---------------------------------------------------------------------------
@@ -133,6 +138,72 @@ async function validateAuth(
 // ---------------------------------------------------------------------------
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+interface WeeklyContinuationInput {
+  remainingNpdesIds: string[];
+  coverageNpdesIds: string[];
+  failedNpdesIds: string[];
+  unresolvedNpdesIds: string[];
+  batchNumber: number;
+  rootJobRunId: string | null;
+  runTag: string;
+  staleDays: number;
+  batchSize: number;
+}
+
+interface ContinuationRpcClient {
+  rpc(
+    functionName: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+async function dispatchWeeklyContinuation(
+  supabaseClient: unknown,
+  input: WeeklyContinuationInput,
+): Promise<{ requestId: number | null; error: string | null }> {
+  const supabase = supabaseClient as ContinuationRpcClient;
+  let lastError: string | null = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const { data, error } = await supabase.rpc(
+        "dispatch_echo_weekly_sync_continuation",
+        {
+          p_remaining_npdes_ids: input.remainingNpdesIds,
+          p_coverage_npdes_ids: input.coverageNpdesIds,
+          p_failed_npdes_ids: input.failedNpdesIds,
+          p_unresolved_npdes_ids: input.unresolvedNpdesIds,
+          p_batch_number: input.batchNumber,
+          p_root_job_run_id: input.rootJobRunId,
+          p_run_tag: input.runTag,
+          p_stale_days: input.staleDays,
+          p_batch_size: input.batchSize,
+        },
+      );
+
+      if (!error) {
+        const requestId = typeof data === "number" ? data : Number(data);
+        return {
+          requestId: Number.isFinite(requestId) ? requestId : null,
+          error: null,
+        };
+      }
+      lastError = error.message;
+    } catch (err) {
+      lastError = String(err);
+    }
+
+    if (attempt < MAX_RETRIES - 1) {
+      await sleep(Math.pow(2, attempt) * 500);
+    }
+  }
+
+  return {
+    requestId: null,
+    error: lastError ?? "unknown continuation dispatch failure",
+  };
 }
 
 function normalizeNpdesId(rawValue: string, stateCode: string | null): NormalizeResult {
@@ -860,6 +931,13 @@ serve(async (req) => {
   let skipFacility = false;
   let dmrOnly = false;
   let jobRunId: string | null = null;
+  let autoContinue = false;
+  let continuationNpdesIds: string[] = [];
+  let coverageNpdesIds: string[] = [];
+  let priorFailedNpdesIds: string[] = [];
+  let priorUnresolvedNpdesIds: string[] = [];
+  let batchNumber = 1;
+  let rootJobRunId: string | null = null;
   try {
     const body = await req.json();
     jobRunId = readJobRunId(body);
@@ -894,8 +972,43 @@ serve(async (req) => {
     skipFacility = body.skip_facility === true;
     dmrOnly = body.dmr_only === true;
     if (dmrOnly) skipFacility = true;
+    autoContinue = body.auto_continue === true;
+    continuationNpdesIds = normalizeNpdesIds(
+      Array.isArray(body.continuation_npdes_ids) ? body.continuation_npdes_ids : [],
+    );
+    coverageNpdesIds = normalizeNpdesIds(
+      Array.isArray(body.coverage_npdes_ids) ? body.coverage_npdes_ids : [],
+    );
+    priorFailedNpdesIds = normalizeNpdesIds(
+      Array.isArray(body.prior_failed_npdes_ids) ? body.prior_failed_npdes_ids : [],
+    );
+    priorUnresolvedNpdesIds = normalizeNpdesIds(
+      Array.isArray(body.prior_unresolved_npdes_ids)
+        ? body.prior_unresolved_npdes_ids
+        : [],
+    );
+    if (typeof body.batch_number === "number" && body.batch_number > 0) {
+      batchNumber = Math.floor(body.batch_number);
+    }
+    rootJobRunId = typeof body.root_job_run_id === "string" &&
+        body.root_job_run_id.trim().length > 0
+      ? body.root_job_run_id.trim()
+      : null;
   } catch {
     // No body is fine — defaults to manual, no limit, offset 0
+  }
+
+  // Continuation fields can cause service-side work after this request returns.
+  // Only the trusted cron/server path may use them; JWT users retain the
+  // existing single-request, tenant-pinned behavior.
+  if (!isPrivileged) {
+    autoContinue = false;
+    continuationNpdesIds = [];
+    coverageNpdesIds = [];
+    priorFailedNpdesIds = [];
+    priorUnresolvedNpdesIds = [];
+    batchNumber = 1;
+    rootJobRunId = null;
   }
 
   if (syncType === "scheduled") {
@@ -904,6 +1017,7 @@ serve(async (req) => {
     if (limit <= 0) limit = 5;
     if (!runTag) runTag = "cron-weekly-echo";
   }
+  if (!rootJobRunId) rootJobRunId = jobRunId;
 
   // -----------------------------------------------------------------------
   // 1. Build permit → org map from file_processing_queue
@@ -1044,7 +1158,12 @@ serve(async (req) => {
   );
 
   let stalePermitsSkipped = 0;
-  if (staleOnly && staleDays > 0 && targetNpdesIds.length === 0) {
+  if (
+    staleOnly &&
+    staleDays > 0 &&
+    targetNpdesIds.length === 0 &&
+    continuationNpdesIds.length === 0
+  ) {
     const npdesIds = eligiblePermits.map((p) => p.npdes_id);
     const syncedAtByNpdes = new Map<string, string>();
     const BATCH = 200;
@@ -1081,21 +1200,42 @@ serve(async (req) => {
   }
 
   const targetSet = new Set(targetNpdesIds);
-  const selectedPermitPool = targetSet.size > 0
-    ? eligiblePermits.filter((p) => targetSet.has(p.npdes_id))
-    : eligiblePermits;
-
-  const sliced = targetSet.size > 0
-    ? selectedPermitPool
-    : (offset > 0 ? selectedPermitPool.slice(offset) : selectedPermitPool);
-  const permits = targetSet.size > 0 ? sliced : (limit > 0 ? sliced.slice(0, limit) : sliced);
-  const hasMore = targetSet.size === 0 && (offset + permits.length < selectedPermitPool.length);
+  const permitByNpdesId = new Map(
+    eligiblePermits.map((permit) => [permit.npdes_id, permit]),
+  );
+  const batchPlan = buildEchoBatchPlan({
+    eligibleNpdesIds: eligiblePermits.map((permit) => permit.npdes_id),
+    targetNpdesIds,
+    continuationNpdesIds,
+    priorCoverageNpdesIds: coverageNpdesIds,
+    limit,
+    offset,
+  });
+  const permits = batchPlan.selectedNpdesIds
+    .map((npdesId) => permitByNpdesId.get(npdesId))
+    .filter((permit): permit is PermitMapping => Boolean(permit));
+  const hasMore = batchPlan.hasMore;
+  coverageNpdesIds = batchPlan.coverageNpdesIds;
+  const unresolvedNpdesIds = normalizeNpdesIds([
+    ...priorUnresolvedNpdesIds,
+    ...batchPlan.unresolvedNpdesIds,
+  ]);
 
   console.log(
-    `Found ${rawPermitIds.size} unique raw permits, ${eligiblePermits.length} eligible, syncing ${permits.length} (offset=${offset}, limit=${limit || "all"}, hasMore=${hasMore}, targets=${targetSet.size})`,
+    `Found ${rawPermitIds.size} unique raw permits, ${eligiblePermits.length} eligible, syncing ${permits.length} (batch=${batchNumber}, offset=${offset}, limit=${limit || "all"}, hasMore=${hasMore}, targets=${targetSet.size}, continuation=${continuationNpdesIds.length})`,
   );
 
   if (dryRun) {
+    const coverageResult = buildEchoCoverageResult({
+      coverageNpdesIds,
+      processedNpdesIds: permits.map((permit) => permit.npdes_id),
+      remainingUnprocessedNpdesIds: batchPlan.remainingUnprocessedNpdesIds,
+      failedNpdesIds: priorFailedNpdesIds,
+      unresolvedNpdesIds,
+      continuationDispatched: false,
+      batchNumber,
+      rootJobRunId,
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -1113,15 +1253,38 @@ serve(async (req) => {
         stale_days: staleDays > 0 ? staleDays : undefined,
         stale_only: staleOnly || undefined,
         stale_permits_skipped: stalePermitsSkipped > 0 ? stalePermitsSkipped : undefined,
+        coverage: coverageResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
   if (permits.length === 0) {
+    const coverageResult = buildEchoCoverageResult({
+      coverageNpdesIds,
+      processedNpdesIds: [],
+      remainingUnprocessedNpdesIds: batchPlan.remainingUnprocessedNpdesIds,
+      failedNpdesIds: priorFailedNpdesIds,
+      unresolvedNpdesIds,
+      continuationDispatched: false,
+      batchNumber,
+      rootJobRunId,
+    });
+    await completeJobRun(
+      supabase,
+      jobRunId,
+      coverageResult.coverage_complete ? "succeeded" : "failed",
+      {
+        rowsScanned: 0,
+        rowsAffected: 0,
+        errorDetail: coverageResult.coverage_complete
+          ? null
+          : `ECHO coverage incomplete; remaining=${coverageResult.remaining_count}`,
+      },
+    );
     return new Response(
       JSON.stringify({
-        success: true,
+        success: coverageResult.coverage_complete,
         message: "No permits found to sync",
         permitsSynced: 0,
         totalPermits: rawPermitIds.size,
@@ -1131,6 +1294,7 @@ serve(async (req) => {
         permits_skipped_invalid: permitsSkippedInvalidSet.size,
         permits_skipped_missing_org: permitsSkippedMissingOrgSet.size,
         overrides_applied: overridesApplied,
+        coverage: coverageResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -1174,12 +1338,14 @@ serve(async (req) => {
   const dmrParameterFailures: DmrFetchFailure[] = [];
   const dmrWindowResults: DmrWindowResult[] = [];
   const errors: string[] = [];
+  const failedNpdesIdsThisBatch = new Set<string>();
 
   // Backfill date range (used for logging; DMR fetch uses chunked windows)
   const backfillStart = new Date();
   backfillStart.setFullYear(backfillStart.getFullYear() - BACKFILL_YEARS);
 
   for (const permit of permits) {
+    const errorsBeforePermit = errors.length;
     try {
       // 3a. Facility info via DFR (Detailed Facility Report)
       if (!skipFacility) {
@@ -1257,11 +1423,59 @@ serve(async (req) => {
       }
     } catch (err) {
       errors.push(`${permit.npdes_id}: unexpected error — ${String(err)}`);
+    } finally {
+      if (errors.length > errorsBeforePermit) {
+        failedNpdesIdsThisBatch.add(permit.npdes_id);
+      }
     }
   }
 
   // -----------------------------------------------------------------------
-  // 4. Update sync log
+  // 4. Continue the weekly drain, then publish batch coverage
+  // -----------------------------------------------------------------------
+  const accumulatedFailedNpdesIds = normalizeNpdesIds([
+    ...priorFailedNpdesIds,
+    ...failedNpdesIdsThisBatch,
+  ]);
+  let continuationRequestId: number | null = null;
+  let continuationError: string | null = null;
+  let continuationDispatched = false;
+
+  if (autoContinue && batchPlan.remainingUnprocessedNpdesIds.length > 0) {
+    const continuation = await dispatchWeeklyContinuation(supabase, {
+      remainingNpdesIds: batchPlan.remainingUnprocessedNpdesIds,
+      coverageNpdesIds,
+      failedNpdesIds: accumulatedFailedNpdesIds,
+      unresolvedNpdesIds,
+      batchNumber: batchNumber + 1,
+      rootJobRunId,
+      runTag: runTag ?? "cron-weekly-echo",
+      staleDays: staleDays || 7,
+      batchSize: limit || 5,
+    });
+    continuationRequestId = continuation.requestId;
+    continuationError = continuation.error;
+    continuationDispatched = continuation.error === null;
+    if (continuationError) {
+      errors.push(`weekly continuation dispatch failed — ${continuationError}`);
+    }
+  }
+
+  const coverageResult = buildEchoCoverageResult({
+    coverageNpdesIds,
+    processedNpdesIds: permits.map((permit) => permit.npdes_id),
+    remainingUnprocessedNpdesIds: batchPlan.remainingUnprocessedNpdesIds,
+    failedNpdesIds: accumulatedFailedNpdesIds,
+    unresolvedNpdesIds,
+    continuationDispatched,
+    continuationRequestId,
+    continuationError,
+    batchNumber,
+    rootJobRunId,
+  });
+
+  // -----------------------------------------------------------------------
+  // 5. Update sync log
   // -----------------------------------------------------------------------
   // Truthful status: nothing synced + errors → failed; something synced but
   // some chunks/permits errored → partial (so cron/stale logic doesn't treat a
@@ -1299,19 +1513,23 @@ serve(async (req) => {
         dmr_window_results: dmrWindowResults,
         offset,
         has_more: hasMore,
-        next_offset: hasMore ? offset + permits.length : null,
+        next_offset:
+          !autoContinue && continuationNpdesIds.length === 0 && hasMore
+            ? offset + permits.length
+            : null,
         target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : null,
         run_tag: runTag,
         triggered_by: auth.userId || "system",
         stale_days: staleDays > 0 ? staleDays : null,
         stale_only: staleOnly,
         stale_permits_skipped: stalePermitsSkipped,
+        coverage: coverageResult,
       },
     })
     .eq("id", syncLog.id);
 
   // -----------------------------------------------------------------------
-  // 5. Audit log
+  // 6. Audit log
   // -----------------------------------------------------------------------
   const { error: auditErr } = await supabase.from("audit_log").insert({
     user_id: auth.userId,
@@ -1336,12 +1554,13 @@ serve(async (req) => {
       run_tag: runTag,
       triggered_by: auth.userId || "system",
       role: auth.role,
+      coverage: coverageResult,
     }),
   });
   if (auditErr) console.error("Audit log insert failed:", auditErr.message);
 
   // -----------------------------------------------------------------------
-  // 6. Trigger discrepancy detection
+  // 7. Trigger discrepancy detection
   // -----------------------------------------------------------------------
   try {
     const detectUrl = `${SUPABASE_URL}/functions/v1/detect-discrepancies`;
@@ -1371,16 +1590,31 @@ serve(async (req) => {
   console.log(`Sync complete: ${facilitiesSynced} facilities, ${dmrsInserted} DMRs, ${errors.length} errors`);
 
   // Report the truthful terminal status to the job_runs ledger row opened by
-  // the cron wrapper (mirrors finalStatus computed for external_sync_log).
-  await completeJobRun(supabase, jobRunId, finalStatus === "failed" ? "failed" : "succeeded", {
+  // the cron wrapper. Intermediate batches succeed only after the next audited
+  // job is dispatched; a terminal batch with uncovered permits is failed.
+  const terminalCoverageFailure =
+    !continuationDispatched &&
+    batchPlan.remainingUnprocessedNpdesIds.length === 0 &&
+    coverageResult.remaining_count > 0;
+  const jobStatus =
+    finalStatus === "failed" || continuationError || terminalCoverageFailure
+      ? "failed"
+      : "succeeded";
+  await completeJobRun(supabase, jobRunId, jobStatus, {
     rowsScanned: facilitiesSynced,
     rowsAffected: dmrsInserted,
-    errorDetail: errors.length > 0 ? `${errors.length} errors; status=${finalStatus}` : null,
+    errorDetail: jobStatus === "failed"
+      ? continuationError
+        ? `ECHO continuation dispatch failed: ${continuationError}`
+        : `ECHO coverage incomplete; remaining=${coverageResult.remaining_count}; status=${finalStatus}`
+      : errors.length > 0
+        ? `${errors.length} errors; status=${finalStatus}`
+        : null,
   });
 
   return new Response(
     JSON.stringify({
-      success: true,
+      success: continuationError === null,
       syncLogId: syncLog.id,
       permitsSynced: facilitiesSynced,
       dmrsInserted,
@@ -1401,15 +1635,23 @@ serve(async (req) => {
       dmr_bad_windows: dmrFetchFailures.length > 0 ? dmrFetchFailures : undefined,
       dmr_window_results: dmrWindowResults.length > 0 ? dmrWindowResults : undefined,
       batchSize: permits.length,
+      batchNumber,
       offset,
       hasMore,
-      nextOffset: hasMore ? offset + permits.length : null,
+      nextOffset:
+        !autoContinue && continuationNpdesIds.length === 0 && hasMore
+          ? offset + permits.length
+          : null,
       target_npdes_ids: targetSet.size > 0 ? Array.from(targetSet) : undefined,
       run_tag: runTag ?? undefined,
       stale_days: staleDays > 0 ? staleDays : undefined,
       stale_only: staleOnly || undefined,
       stale_permits_skipped: stalePermitsSkipped > 0 ? stalePermitsSkipped : undefined,
+      coverage: coverageResult,
     }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    {
+      status: continuationError ? 500 : 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
   );
 });
