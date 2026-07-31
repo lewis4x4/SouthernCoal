@@ -2,16 +2,44 @@ import { RefreshCw, HardHat, Loader2, Clock } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { useExternalData } from '@/hooks/useExternalData';
+import type { MshaMapStatus } from '@/hooks/useMshaMapStatus';
 
 interface Props {
   mineId?: string;
+  mapStatus?: MshaMapStatus | null;
+  mapLoading?: boolean;
+  refreshingMap?: boolean;
+  canRefreshMap?: boolean;
+  onRefreshMap?: () => void;
 }
 
-export function MshaStatusPanel({ mineId }: Props) {
+export function MshaStatusPanel({
+  mineId,
+  mapStatus,
+  mapLoading = false,
+  refreshingMap = false,
+  canRefreshMap = false,
+  onRefreshMap,
+}: Props) {
   const { mshaInspections, mshaLoading, refetchMsha } = useExternalData(undefined, mineId);
 
-  const configured = !!mineId;
+  const hasDerivedMap = mapStatus != null;
+  const configured = !!mineId || hasDerivedMap;
   const hasData = mshaInspections.length > 0;
+  const isRefreshing = mineId ? mshaLoading : refreshingMap;
+  const canRefresh = mineId ? configured : configured && canRefreshMap && !!onRefreshMap;
+  const statusLabel = mineId
+    ?? (mapLoading ? 'Checking derived map' : hasDerivedMap
+      ? `${mapStatus?.active_mines ?? 0} mapped mines`
+      : 'Not configured');
+
+  function handleRefresh() {
+    if (mineId) {
+      void refetchMsha();
+      return;
+    }
+    onRefreshMap?.();
+  }
 
   return (
     <SpotlightCard spotlightColor="rgba(234, 179, 8, 0.06)" className="p-5">
@@ -19,20 +47,25 @@ export function MshaStatusPanel({ mineId }: Props) {
         <div>
           <h3 className="text-sm font-semibold text-text-primary">MSHA</h3>
           <p className="text-[10px] text-text-muted mt-0.5">
-            {mineId || 'Not configured'}
+            {statusLabel}
           </p>
         </div>
         <button
-          onClick={refetchMsha}
-          disabled={mshaLoading || !configured}
+          onClick={handleRefresh}
+          disabled={isRefreshing || !canRefresh}
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-black/[0.05] hover:text-text-secondary disabled:opacity-40"
-          title="Refresh MSHA data"
+          title={mineId ? 'Refresh MSHA data' : canRefreshMap ? 'Refresh derived MSHA map' : 'Requires bulk_process permission'}
         >
-          {mshaLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {isRefreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
 
-      {!configured ? (
+      {mapLoading && !mineId ? (
+        <div className="py-6 text-center space-y-2">
+          <Loader2 size={20} className="mx-auto animate-spin text-text-muted" />
+          <p className="text-xs text-text-muted">Checking MSHA map coverage...</p>
+        </div>
+      ) : !configured ? (
         <div className="py-6 text-center space-y-2">
           <HardHat size={24} className="mx-auto text-text-muted" />
           <p className="text-xs text-text-muted">
@@ -41,6 +74,27 @@ export function MshaStatusPanel({ mineId }: Props) {
           <p className="text-[10px] text-text-muted">
             Contact admin to set up MSHA mine ID mapping.
           </p>
+        </div>
+      ) : !mineId && hasDerivedMap ? (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2">
+            <p className="text-[9px] uppercase tracking-wide text-text-muted">Mines</p>
+            <p className="text-sm font-semibold text-text-primary tabular-nums">
+              {mapStatus?.active_mines ?? 0}
+            </p>
+          </div>
+          <div className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2">
+            <p className="text-[9px] uppercase tracking-wide text-text-muted">Orgs</p>
+            <p className="text-sm font-semibold text-text-primary tabular-nums">
+              {mapStatus?.active_orgs ?? 0}
+            </p>
+          </div>
+          <div className="rounded-lg border border-black/[0.06] bg-qo-nested px-3 py-2">
+            <p className="text-[9px] uppercase tracking-wide text-text-muted">Review</p>
+            <p className="text-sm font-semibold text-text-primary tabular-nums">
+              {mapStatus?.review_mines ?? 0}
+            </p>
+          </div>
         </div>
       ) : !hasData ? (
         <p className="text-xs text-text-muted py-4 text-center">
@@ -93,6 +147,15 @@ export function MshaStatusPanel({ mineId }: Props) {
           <div className="flex items-center gap-1 text-[10px] text-text-muted">
             <Clock size={10} />
             Last synced {new Date(mshaInspections[0]!.synced_at).toLocaleDateString()}
+          </div>
+        )}
+        {!mineId && hasDerivedMap && (
+          <div className="flex items-center gap-1 text-[10px] text-text-muted">
+            <Clock size={10} />
+            Last map{' '}
+            {mapStatus?.last_reconcile || mapStatus?.last_refresh
+              ? new Date(mapStatus.last_reconcile ?? mapStatus.last_refresh!).toLocaleDateString()
+              : 'pending'}
           </div>
         )}
         <p className="text-[9px] text-text-muted italic">

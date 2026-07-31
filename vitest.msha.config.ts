@@ -15,6 +15,8 @@ export default defineConfig({
       'src/lib/__tests__/mshaMineMap.test.ts',
       'src/lib/__tests__/mshaPipelineMigration.test.ts',
       'src/lib/__tests__/mshaDiscrepancyRules.test.ts',
+      'src/lib/__tests__/externalDataRbac.test.ts',
+      'src/components/external-data/__tests__/MshaStatusPanel.test.tsx',
     ],
   },
   resolve: {

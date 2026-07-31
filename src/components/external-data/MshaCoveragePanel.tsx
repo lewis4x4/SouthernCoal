@@ -1,5 +1,7 @@
-import { AlertTriangle, HardHat, Loader2, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, HardHat, Loader2, RefreshCw, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { MshaStatusPanel } from '@/components/external-data/MshaStatusPanel';
@@ -10,15 +12,32 @@ import { useSyncTrigger } from '@/hooks/useSyncTrigger';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { StatutoryAckButton } from '@/components/compliance/StatutoryAckButton';
+import type { Role } from '@/types/auth';
+
+const MSHA_OVERRIDE_ROLES: Role[] = ['admin', 'executive', 'environmental_manager', 'safety_manager', 'coo'];
 
 export function MshaCoveragePanel() {
-  const { status, drift, reviewMines, loading, refreshing, error, refreshMap } = useMshaMapStatus();
+  const { can, hasAllowedRole } = usePermissions();
+  const canSync = can('bulk_process');
+  const canAssignOverrides = hasAllowedRole(MSHA_OVERRIDE_ROLES);
+  const {
+    status,
+    drift,
+    reviewMines,
+    orgOptions,
+    loading,
+    refreshing,
+    assigningMineId,
+    error,
+    refreshMap,
+    assignOverride,
+  } = useMshaMapStatus(canAssignOverrides);
   const { rows, alerts, loading: abatementLoading, detecting, refetch: refetchAbatement, runAbatementDetection } = useMshaAbatement();
   const statutoryAcks = useStatutoryAlertAcks();
   const { syncing, triggerMshaSync } = useSyncTrigger();
-  const { can } = usePermissions();
   const { log } = useAuditLog();
-  const canSync = can('bulk_process');
+  const [selectedOrgByMine, setSelectedOrgByMine] = useState<Record<string, string>>({});
+  const [noteByMine, setNoteByMine] = useState<Record<string, string>>({});
   const isSyncing = syncing.msha ?? false;
 
   async function handleSyncViolations() {
@@ -36,6 +55,34 @@ export function MshaCoveragePanel() {
   async function handleAbatementDetection() {
     if (!canSync) return;
     await runAbatementDetection();
+  }
+
+  async function handleAssignOverride(mineId: string) {
+    if (!canAssignOverrides) return;
+    const organizationId = selectedOrgByMine[mineId];
+    if (!organizationId) {
+      toast.error('Choose an organization before assigning the mine');
+      return;
+    }
+
+    const result = await assignOverride(mineId, organizationId, noteByMine[mineId]);
+    if (!result) {
+      toast.error('MSHA mine assignment failed');
+      return;
+    }
+
+    setSelectedOrgByMine((prev) => {
+      const next = { ...prev };
+      delete next[mineId];
+      return next;
+    });
+    setNoteByMine((prev) => {
+      const next = { ...prev };
+      delete next[mineId];
+      return next;
+    });
+    toast.success(`MSHA mine ${mineId} assigned`);
+    await refetchAbatement();
   }
 
   const overdue = rows.filter((r) => r.urgency === 'overdue');
@@ -134,7 +181,13 @@ export function MshaCoveragePanel() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <MshaStatusPanel />
+        <MshaStatusPanel
+          mapStatus={status}
+          mapLoading={loading}
+          refreshingMap={refreshing}
+          canRefreshMap={canSync}
+          onRefreshMap={() => void handleRefreshMap()}
+        />
 
         <SpotlightCard spotlightColor="rgba(245, 158, 11, 0.06)" className="p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -227,7 +280,7 @@ export function MshaCoveragePanel() {
             Review queue (Justice controller, unresolved operator)
           </h3>
           <p className="text-[10px] text-text-muted mb-3">
-            Assign via <code className="text-text-secondary">msha_mine_org_override</code> — never guessed.
+            Assign reviewed mines to a known subsidiary; overrides are audited and materialized immediately.
           </p>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-[10px]">
@@ -237,17 +290,68 @@ export function MshaCoveragePanel() {
                   <th className="py-1 pr-3">Operator</th>
                   <th className="py-1 pr-3">State</th>
                   <th className="py-1">Status</th>
+                  <th className="py-1 pl-3">Assign</th>
+                  <th className="py-1 pl-3">Note</th>
+                  <th className="py-1 pl-3">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {reviewMines.map((mine) => (
-                  <tr key={mine.mine_id} className="border-t border-black/[0.06]">
-                    <td className="py-1.5 pr-3 font-mono">{mine.mine_id}</td>
-                    <td className="py-1.5 pr-3">{mine.operator_name}</td>
-                    <td className="py-1.5 pr-3">{mine.state}</td>
-                    <td className="py-1.5">{mine.mine_status}</td>
-                  </tr>
-                ))}
+                {reviewMines.map((mine) => {
+                  const selectedOrg = selectedOrgByMine[mine.mine_id] ?? '';
+                  const assigning = assigningMineId === mine.mine_id;
+
+                  return (
+                    <tr key={mine.mine_id} className="border-t border-black/[0.06] align-top">
+                      <td className="py-2 pr-3 font-mono">{mine.mine_id}</td>
+                      <td className="py-2 pr-3 min-w-40">{mine.operator_name ?? '—'}</td>
+                      <td className="py-2 pr-3">{mine.state ?? '—'}</td>
+                      <td className="py-2">{mine.mine_status ?? '—'}</td>
+                      <td className="py-1.5 pl-3">
+                        <select
+                          value={selectedOrg}
+                          onChange={(event) => setSelectedOrgByMine((prev) => ({
+                            ...prev,
+                            [mine.mine_id]: event.target.value,
+                          }))}
+                          disabled={!canAssignOverrides || assigning}
+                          className="h-8 min-w-56 rounded-md border border-black/[0.12] bg-qo-nested px-2 text-[10px] text-text-primary disabled:opacity-40"
+                          aria-label={`Assign mine ${mine.mine_id} to organization`}
+                        >
+                          <option value="">Choose org...</option>
+                          {orgOptions.map((org) => (
+                            <option key={`${org.organization_id}-${org.subsidiary_name}`} value={org.organization_id}>
+                              {org.subsidiary_name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-1.5 pl-3">
+                        <input
+                          value={noteByMine[mine.mine_id] ?? ''}
+                          onChange={(event) => setNoteByMine((prev) => ({
+                            ...prev,
+                            [mine.mine_id]: event.target.value,
+                          }))}
+                          disabled={!canAssignOverrides || assigning}
+                          placeholder="Review note"
+                          className="h-8 min-w-44 rounded-md border border-black/[0.12] bg-qo-nested px-2 text-[10px] text-text-primary placeholder:text-text-muted disabled:opacity-40"
+                        />
+                      </td>
+                      <td className="py-1.5 pl-3">
+                        <button
+                          type="button"
+                          onClick={() => void handleAssignOverride(mine.mine_id)}
+                          disabled={!canAssignOverrides || assigning || !selectedOrg}
+                          title={canAssignOverrides ? 'Assign MSHA mine override' : 'Requires MSHA override role'}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 text-[10px] font-medium text-qo-sage-text hover:bg-emerald-500/20 disabled:opacity-40"
+                        >
+                          {assigning ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                          Assign
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

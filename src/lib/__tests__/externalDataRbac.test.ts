@@ -15,6 +15,30 @@ describe('external data RBAC + realtime wiring (3.46 / 3.47)', () => {
     expect(source).toMatch(/msha_sync_manual_trigger/);
   });
 
+  it('treats an existing derived MSHA map as configured', () => {
+    const coverage = readSrc('components/external-data/MshaCoveragePanel.tsx');
+    const status = readSrc('components/external-data/MshaStatusPanel.tsx');
+
+    expect(coverage).toContain('mapStatus={status}');
+    expect(status).toContain('hasDerivedMap');
+    expect(status).toContain('mapStatus?.active_mines');
+    expect(status).not.toContain("{mineId || 'Not configured'}");
+  });
+
+  it('keeps MSHA review-queue override assignment role gated and inline', () => {
+    const coverage = readSrc('components/external-data/MshaCoveragePanel.tsx');
+    const hook = readSrc('hooks/useMshaMapStatus.ts');
+
+    expect(coverage).toContain('MSHA_OVERRIDE_ROLES');
+    expect(coverage).toContain('hasAllowedRole(MSHA_OVERRIDE_ROLES)');
+    expect(coverage).toContain('Choose org...');
+    expect(coverage).toContain('Requires MSHA override role');
+    expect(coverage).not.toContain('Assign via <code');
+    expect(coverage).toContain('useMshaMapStatus(canAssignOverrides)');
+    expect(hook).toContain('includeOrgOptions');
+    expect(hook).toContain("supabase.rpc('assign_msha_mine_org_override'");
+  });
+
   it('shows ECHO sync buttons disabled (not hidden) when unauthorized', () => {
     const source = readSrc('components/external-data/SyncHealthPanel.tsx');
     expect(source).toMatch(/disabled=\{isSyncing \|\| !canSync\}/);
@@ -32,5 +56,6 @@ describe('external data RBAC + realtime wiring (3.46 / 3.47)', () => {
     expect(source).toContain('PRESET_EXTERNAL_DATA_AUDIT_ACTIONS');
     expect(source).toContain('npdes_federal_mapping_saved');
     expect(source).toContain('msha_sync_manual_trigger');
+    expect(source).toContain('msha_map_override_assigned');
   });
 });

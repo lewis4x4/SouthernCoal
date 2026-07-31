@@ -89,6 +89,9 @@ type AuditAction =
   | 'echo_sync_manual_trigger'
   | 'echo_sync_stale_trigger'
   | 'msha_sync_manual_trigger'
+  | 'msha_map_refreshed'
+  | 'msha_map_reconciled'
+  | 'msha_map_override_assigned'
   | 'compliance_alert_dispatched'
   | 'exceedance_alert_dispatched'
   // Lane C QW1 — calendar gap detection
